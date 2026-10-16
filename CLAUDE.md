@@ -19,6 +19,7 @@ Philosophie, Regeln, Design und Abläufe. Wenn etwas hier nicht steht: am besteh
 |---|---|---|
 | ForeverFrames, ForeverUnits, ForeverCast, ForeverLoot, ForeverXP, ForeverBuffs, ForeverVendor | Patzlinger | im Release |
 | ForeverSpellbook | Patzlinger | Prototyp |
+| ForeverChat | Patzlinger | Prototyp (seit 2026-10-17) |
 | ForeverQuests | flowfy | im Repository, noch nicht im Release |
 | ForeverBars | flowfy | im Repository, noch nicht im Release |
 | `Shared/ForeverHub.lua`, `tools/`, `release/` | gemeinsam | – |
@@ -268,6 +269,7 @@ Damit alle Einstellungsfenster gleich aussehen, gelten diese Maße. Quelle: `For
   | /fbuffs, /foreverbuffs | ForeverBuffs |
   | /fvendor, /forevervendor | ForeverVendor |
   | /fsb, /fspellbook, /foreverspellbook | ForeverSpellbook |
+  | /fchat, /foreverchat | ForeverChat |
 - Tastenkürzel über `Bindings.xml` + `BINDING_HEADER_…`/`BINDING_NAME_…` (Bereich "AddOns")
 
 ## 12. Code-Stil
@@ -314,6 +316,15 @@ Damit alle Einstellungsfenster gleich aussehen, gelten diese Maße. Quelle: `For
 - **ForeverBars Proc-Leuchten**: blendet Blizzards Leuchten per `SetAlpha(0)` aus einem `hooksecurefunc` heraus aus
   (taint-frei, gleiches Verfahren wie ForeverXP/ForeverCast)
 - **ForeverQuests**: ersetzt den Blizzard-Questtracker
+- **ForeverChat ↔ Blizzard-Chat**: Der Chat ist im Forever-Client besonders geschützt (Nachrichten können im Kampf
+  gesperrt sein, `AddMessage` läuft über `ScrollingMessageFrameSecureMixin`). Deshalb gilt für Chat-Code:
+  - Texte nur über die offiziellen Filter ändern: `ChatFrameUtil.AddSenderNameFilter` (Absendername) und
+    `ChatFrameUtil.AddMessageEventFilter` (Nachricht/Argumente). Blizzard überspringt sie bei gesperrten Werten selbst
+  - **Nie** `AddMessage`, `GetColoredName`, `SetItemRef` o. Ä. ersetzen und nie `ChatTypeInfo` oder
+    `CHAT_TIMESTAMP_FORMAT` beschreiben – das lässt Blizzards Chat-Code danach "verunreinigt" laufen
+  - Eigene klickbare Links: `|Haddon:<Addonname>:…|h…|h`; Klicks kommen über `EventRegistry` "SetItemRef"
+  - Den Hauptchat (`ChatFrame1`) verwaltet der Bearbeitungsmodus – nicht selbst verschieben
+  - Nur Blizzard-Grafiken unsichtbar machen (`UI.HideBlizzard`), eigene Flächen daneben/als Zusatz-Texturen
 
 ## 15. Git-Ablauf
 - Vor dem Arbeiten: `git pull --ff-only` (bzw. `git pull --rebase`, wenn lokal schon Commits liegen)

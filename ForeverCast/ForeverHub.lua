@@ -14,7 +14,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 21
+local VERSION = 22
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -1259,6 +1259,7 @@ local KNOWN = {
     { name = "ForeverCast",   button = "ForeverCastMinimapButton", cmd = "/fcast" },
     { name = "ForeverBars",   button = "ForeverBarsMinimapButton", cmd = "/fb" },
     { name = "ForeverQuests", button = "ForeverQuestsMinimapButton", cmd = "/fq" },
+    { name = "ForeverChat",   button = "ForeverChatMinimapButton", cmd = "/fchat" },
     { name = "ForeverLoot",   button = "ForeverLootMinimapButton", cmd = "/floot" },
     { name = "ForeverXP",     button = "ForeverXPMinimapButton", cmd = "/fxp" },
     { name = "ForeverBuffs",  button = "ForeverBuffsMinimapButton", cmd = "/fbuffs" },
