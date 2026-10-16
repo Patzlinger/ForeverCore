@@ -285,6 +285,8 @@ local function BuildToolbar()
     toolbar:SetFrameStrata("MEDIUM") -- wie die Reiter
     toolbar:SetAlpha(0.55)
     local buttons = {
+        { "Interface\\Buttons\\LockButton-Locked-Up", T("Chat entsperren / sperren", "Unlock / lock chat"),
+            function() ns.ToggleChatLock() end, "lock" },
         { "Interface\\Buttons\\UI-OptionsButton", T("ForeverChat-Einstellungen", "ForeverChat settings"),
             function() ns.ToggleOptions() end },
         { "Interface\\Buttons\\UI-GuildButton-PublicNote-Up", T("Chat kopieren", "Copy chat"),
@@ -298,6 +300,11 @@ local function BuildToolbar()
     toolbar.iconWidth = 0
     for _, def in ipairs(buttons) do
         local b = ToolButton(toolbar, def[1], def[2], def[3])
+        if def[4] == "lock" then
+            toolbar.lockButton = b
+            b.icon:SetPoint("TOPLEFT", 1, -1) -- Schloss-Symbol etwas groesser
+            b.icon:SetPoint("BOTTOMRIGHT", -1, 1)
+        end
         if prev then b:SetPoint("RIGHT", prev, "LEFT", -TOOL_GAP, 0) else b:SetPoint("RIGHT", toolbar, "RIGHT", 0, 0) end
         prev = b
         toolbar.iconWidth = toolbar.iconWidth + TOOL_SIZE + (toolbar.iconWidth > 0 and TOOL_GAP or 0)
@@ -337,6 +344,20 @@ local function ApplyToolbar()
     if toolbar.imTab then toolbar.imTab:SetShown(ns.GetDB().messenger and true or false) end
     toolbar:SetWidth(math.max(1, ToolbarWidth()))
     ApplyDockSpace()
+    if ns.UpdateLockButton then ns.UpdateLockButton() end
+end
+
+-- Schloss-Symbol: zu = gesperrt, offen = entsperrt (offen leuchtet gold)
+function ns.UpdateLockButton()
+    local b = toolbar and toolbar.lockButton
+    if not b then return end
+    local locked = ns.IsLocked()
+    b.icon:SetTexture(locked and "Interface\\Buttons\\LockButton-Locked-Up" or "Interface\\Buttons\\LockButton-Unlocked-Up")
+    if locked then
+        b:SetBackdropBorderColor(C.border[1], C.border[2], C.border[3], 1)
+    else
+        b:SetBackdropBorderColor(C.accent[1], C.accent[2], C.accent[3], 0.9)
+    end
 end
 
 ---------------------------------------------------------------------------
@@ -435,24 +456,64 @@ function ns.ApplyLock()
 end
 
 local hintShown = false
-function ns.SetLocked(locked)
+function ns.SetLocked(locked, silent)
     ns.GetDB().locked = locked and true or false
     ns.ApplyLock()
-    if not locked and not hintShown then
+    if not locked and not hintShown and not silent then
         hintShown = true
         ns.Chat(T("Chatfenster entsperrt. Den Hauptchat verschiebst du im Bearbeitungsmodus (Esc » Bearbeitungsmodus).",
             "Chat windows unlocked. Move the main chat in Edit Mode (Esc » Edit Mode)."))
     end
+    if ns.UpdateLockButton then ns.UpdateLockButton() end
     if ns.RefreshOptions then ns.RefreshOptions() end
 end
 
--- Bearbeitungsmodus oeffnen (nur ausserhalb des Kampfes)
+-- Bearbeitungsmodus oeffnen (nur ausserhalb des Kampfes). Rueckgabe: true = geoeffnet
 function ns.OpenEditMode()
     if InCombatLockdown() then
         ns.Chat(T("Im Kampf nicht möglich.", "Not possible in combat."))
+        return false
+    end
+    if _G.EditModeManagerFrame and ShowUIPanel then
+        ShowUIPanel(_G.EditModeManagerFrame)
+        return true
+    end
+    return false
+end
+
+-- Schloss in der Knopfleiste: entsperren oeffnet den Bearbeitungsmodus (Blizzard laesst den Hauptchat nur dort
+-- verschieben); schliesst man den Bearbeitungsmodus, wird wieder gesperrt. Hooks/Callbacks des
+-- Bearbeitungsmodus loesen in Forever nicht aus – deshalb wird kurz nachgesehen, ob er noch offen ist.
+local editWatch
+local function WatchEditMode()
+    if editWatch then editWatch:Cancel() end
+    editWatch = C_Timer.NewTicker(0.25, function()
+        local open = _G.EditModeManagerFrame and _G.EditModeManagerFrame:IsShown()
+        if not open then
+            editWatch:Cancel()
+            editWatch = nil
+            if not ns.IsLocked() then ns.SetLocked(true, true) end
+        end
+    end)
+end
+
+function ns.ToggleChatLock()
+    if not ns.IsLocked() then
+        ns.SetLocked(true, true)
+        if _G.EditModeManagerFrame and _G.EditModeManagerFrame:IsShown() and HideUIPanel and not InCombatLockdown() then
+            HideUIPanel(_G.EditModeManagerFrame)
+        end
         return
     end
-    if _G.EditModeManagerFrame and ShowUIPanel then ShowUIPanel(_G.EditModeManagerFrame) end
+    ns.SetLocked(false, true)
+    if ns.OpenEditMode() then
+        ns.Chat(T("Chat entsperrt: im Bearbeitungsmodus den Chat ziehen. Bearbeitungsmodus schließen = wieder gesperrt.",
+            "Chat unlocked: drag the chat in Edit Mode. Closing Edit Mode locks it again."))
+        WatchEditMode()
+    else
+        ns.Chat(T("Zusatzfenster entsperrt. Den Hauptchat verschiebst du nach dem Kampf im Bearbeitungsmodus.",
+            "Extra windows unlocked. Move the main chat in Edit Mode after combat."))
+    end
 end
 
 -- Gemeinsamer Verschiebe-Modus (/fmove): sperrt/entsperrt die Chatfenster mit
