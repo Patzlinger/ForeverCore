@@ -42,6 +42,9 @@ ns.BAR_DEFS = {
     -- Berufe: eigene Knöpfe (Bars.lua), belegt mit den Berufen und Berufs-Fähigkeiten des Charakters
     { key = "prof", textKey = "BAR_PROF", titleKey = "PROF_FRAME_TITLE", kind = "prof",
       buttons = "ForeverBarsProfButton", count = 12 },
+    -- Verpflegung: Essen, Getränke, Fläschchen/Elixiere/Tränke aus den Taschen (Bars.lua)
+    { key = "food", textKey = "BAR_FOOD", titleKey = "FOOD_FRAME_TITLE", kind = "food",
+      buttons = "ForeverBarsFoodButton", count = 18 },
     { key = "micro", textKey = "BAR_MICRO", kind = "container", frames = { "MicroMenuContainer", "MicroMenu" } },
     -- Taschen: einzelne Taschenknöpfe (Rucksack, Taschen, Reagenzientasche, Schlüsselbund) in eigener Anordnung
     { key = "bags", textKey = "BAR_BAGS", kind = "bags", blizzard = { "BagsBar" },
@@ -93,6 +96,7 @@ ns.defaults = {
         bar4 = BarDefaults(false, 1), bar5 = BarDefaults(false, 1),
         bar6 = BarDefaults(false), bar7 = BarDefaults(false), bar8 = BarDefaults(false),
         pet = BarDefaults(true, 10), stance = BarDefaults(true, 10), prof = BarDefaults(true, 12),
+        food = BarDefaults(true, 6),
         -- (Haltungsleiste: "enabled" hängt von der Klasse ab, siehe ADDON_LOADED)
         micro = BarDefaults(true), bags = BarDefaults(true), vehicle = BarDefaults(true),
         xp = BarDefaults(true), rep = BarDefaults(true), queue = BarDefaults(true),
@@ -134,6 +138,11 @@ ns.defaults.bars.stance.growX = "LEFT" -- erster Knopf rechts, damit die Leiste 
 ns.defaults.bars.prof.point = "BOTTOMRIGHT"
 ns.defaults.bars.prof.frame = true
 ns.defaults.bars.prof.scale = 80
+-- Verpflegungsleiste: gespiegelt zur Berufeleiste rechts neben den Aktionsleisten, gleiche Größe, mit Rahmen
+ns.defaults.bars.food.buttons = 18
+ns.defaults.bars.food.point = "BOTTOMLEFT"
+ns.defaults.bars.food.frame = true
+ns.defaults.bars.food.scale = 80
 ns.defaults.bars.prof.growX = "LEFT"
 ns.defaults.bars.micro.point = "BOTTOMRIGHT"
 ns.defaults.bars.bags.point = "BOTTOMRIGHT"

@@ -123,6 +123,7 @@ local function DefaultPosition(key)
         pet = { left, stackTop + BAR_GAP },     -- BOTTOMLEFT
         stance = { right, stackTop + BAR_GAP }, -- BOTTOMRIGHT
         prof = { left - SIDE_GAP - FRAME_SPACE, EDGE + FRAME_SPACE }, -- BOTTOMRIGHT (Rahmen eingerechnet)
+        food = { right + SIDE_GAP + FRAME_SPACE, EDGE + FRAME_SPACE }, -- BOTTOMLEFT, gespiegelt zur Berufeleiste
         micro = { width - EDGE, EDGE },                        -- BOTTOMRIGHT
         bags = { width - EDGE, EDGE + microHeight + 2 },       -- BOTTOMRIGHT
         xp = { width / 2, height - EDGE },                     -- TOP
@@ -531,6 +532,188 @@ function ns.UpdateProfessionCooldowns()
 end
 
 ---------------------------------------------------------------------------
+-- Verpflegungsleiste: eigene geschützte Knöpfe mit dem Essen und Trinken aus den Taschen
+-- (Gegenstandsart "Verbrauchbar", Unterart "Speis & Trank"), höchste Stufe zuerst
+---------------------------------------------------------------------------
+
+local FOOD_COUNT = 18
+-- Gegenstandsart "Verbrauchbar" (0) und ihre Unterarten: 5 = Speis & Trank, 1 = Trank, 2 = Elixier, 3 = Fläschchen
+local CONSUMABLE_CLASS = 0
+local FOOD_SUBCLASS = 5
+local FLASK_SUBCLASSES = { [1] = true, [2] = true, [3] = true }
+local foodItems = {}                   -- [i] = { item = Gegenstands-ID, icon = Symbol, row, col }
+local foodSignature = ""               -- welche Gegenstände gerade belegt sind (für Änderungen)
+
+local function ItemInfoInstant(itemID)
+    if C_Item and C_Item.GetItemInfoInstant then return C_Item.GetItemInfoInstant(itemID) end
+    return GetItemInfoInstant and GetItemInfoInstant(itemID)
+end
+
+local function ItemCount(itemID)
+    if C_Item and C_Item.GetItemCount then return C_Item.GetItemCount(itemID) end
+    return GetItemCount and GetItemCount(itemID) or 0
+end
+
+-- Getränk oder Essen? Der Zauber eines Getränks heißt wie Blizzards "Trinken" (Zauber 430, in jeder Sprache
+-- passend übersetzt). Rückfall: im Tooltip steht Mana, aber keine Gesundheit.
+local DRINK_SPELL = 430
+local function SpellName(spellID)
+    if C_Spell and C_Spell.GetSpellName then return C_Spell.GetSpellName(spellID) end
+    return GetSpellInfo and (GetSpellInfo(spellID))
+end
+
+local drinkCache = {} -- [Gegenstand] = true/false (nur sichere Ergebnisse)
+
+local function IsDrink(itemID)
+    if drinkCache[itemID] ~= nil then return drinkCache[itemID] end
+    local getItemSpell = C_Item and C_Item.GetItemSpell or GetItemSpell
+    local spellName = getItemSpell and getItemSpell(itemID)
+    local drinkName = SpellName(DRINK_SPELL)
+    if spellName and drinkName then
+        drinkCache[itemID] = spellName == drinkName
+        return drinkCache[itemID]
+    end
+    if C_TooltipInfo and C_TooltipInfo.GetItemByID and MANA and HEALTH then
+        local data = C_TooltipInfo.GetItemByID(itemID)
+        local mana, health = false, false
+        for _, line in ipairs(data and data.lines or {}) do
+            local text = line.leftText or ""
+            if text:find(MANA, 1, true) then mana = true end
+            if text:find(HEALTH, 1, true) then health = true end
+        end
+        return mana and not health
+    end
+    return false
+end
+
+-- Taschen durchsuchen. Jeder Eintrag bekommt row (1 = Essen, 2 = Getränk, 3 = Fläschchen/Elixier/Trank) und
+-- col (Platz in der Reihe, höchste benötigte Stufe zuerst). Rückgabe: Liste (nach Reihen) und "Fingerabdruck"
+local function CollectFood()
+    local groups, seen = { {}, {}, {} }, {}
+    local numSlots = C_Container and C_Container.GetContainerNumSlots or GetContainerNumSlots
+    local itemAt = C_Container and C_Container.GetContainerItemID or GetContainerItemID
+    if not numSlots or not itemAt then return {}, "" end
+    for bag = 0, NUM_BAG_SLOTS or 4 do
+        for slot = 1, numSlots(bag) or 0 do
+            local itemID = itemAt(bag, slot)
+            if itemID and not seen[itemID] then
+                seen[itemID] = true
+                local _, _, _, _, icon, classID, subclassID = ItemInfoInstant(itemID)
+                local row
+                if classID == CONSUMABLE_CLASS and subclassID == FOOD_SUBCLASS then
+                    row = IsDrink(itemID) and 2 or 1
+                elseif classID == CONSUMABLE_CLASS and FLASK_SUBCLASSES[subclassID] then
+                    row = 3
+                end
+                if row then
+                    local level = 0
+                    if C_Item and C_Item.GetItemInfo then
+                        level = select(5, C_Item.GetItemInfo(itemID)) or 0 -- benötigte Stufe
+                    end
+                    table.insert(groups[row], { item = itemID, icon = icon, level = level, row = row })
+                end
+            end
+        end
+    end
+    local list, ids = {}, {}
+    for _, group in ipairs(groups) do
+        table.sort(group, function(a, b)
+            if a.level ~= b.level then return a.level > b.level end
+            return a.item < b.item
+        end)
+        for col, entry in ipairs(group) do
+            entry.col = col - 1
+            table.insert(list, entry)
+            table.insert(ids, entry.item .. ":" .. entry.row)
+        end
+    end
+    return list, table.concat(ids, ",")
+end
+
+local function UpdateFoodButton(button)
+    local entry = button.fbEntry
+    if not entry then return end
+    button.Count:SetText(ItemCount(entry.item))
+    -- Abklingzeit unverändert an die Anzeige weiterreichen (keine eigene Rechnung)
+    local getCooldown = C_Container and C_Container.GetItemCooldown or GetItemCooldown
+    if getCooldown then
+        local start, duration = getCooldown(entry.item)
+        if start then pcall(button.cooldown.SetCooldown, button.cooldown, start, duration) end
+    end
+end
+
+-- Eigener geschützter Knopf (Berufe, Verpflegung): Symbol, Abklingzeit, Anzahl, Tooltip
+local function CreateOwnButton(name, showTooltip)
+    local button = CreateFrame("Button", name, hiddenParent, "SecureActionButtonTemplate")
+    button:SetSize(ACTION_SIZE, ACTION_SIZE)
+    -- Beide Richtungen anmelden: welche auslöst, regelt die Blizzard-Einstellung "Beim Drücken auslösen"
+    button:RegisterForClicks("AnyUp", "AnyDown")
+    button.icon = button:CreateTexture(nil, "ARTWORK")
+    button.icon:SetAllPoints()
+    button:SetHighlightTexture("Interface\\Buttons\\WHITE8x8")
+    button:SetPushedTexture("Interface\\Buttons\\WHITE8x8")
+    button.cooldown = CreateFrame("Cooldown", nil, button, "CooldownFrameTemplate")
+    button.cooldown:SetAllPoints(button.icon)
+    button.Count = button:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
+    button.Count:SetPoint("BOTTOMRIGHT", -2, 2)
+    button:SetScript("OnEnter", function(self)
+        local mode = ns.db.buttonTooltip
+        if mode == "NEVER" or (mode == "NOCOMBAT" and InCombatLockdown()) or not self.fbEntry then return end
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        showTooltip(self.fbEntry)
+        GameTooltip:Show()
+    end)
+    button:SetScript("OnLeave", function(self)
+        if GameTooltip:GetOwner() == self then GameTooltip:Hide() end
+    end)
+    return button
+end
+
+function ns.CreateFoodButtons()
+    for i = 1, FOOD_COUNT do
+        local name = "ForeverBarsFoodButton" .. i
+        if not _G[name] then
+            CreateOwnButton(name, function(entry) GameTooltip:SetItemByID(entry.item) end)
+        end
+    end
+end
+
+-- Knöpfe belegen (nur außerhalb des Kampfes); Rückgabe: Anzahl belegter Knöpfe
+local function AssignFoodButtons()
+    foodItems, foodSignature = CollectFood()
+    for i = 1, FOOD_COUNT do
+        local button = _G["ForeverBarsFoodButton" .. i]
+        local entry = foodItems[i]
+        if button then
+            button.fbEntry = entry
+            button:SetAttribute("type", entry and "item" or nil)
+            button:SetAttribute("item", entry and ("item:" .. entry.item) or nil)
+            button.icon:SetTexture(entry and entry.icon or nil)
+            button.Count:SetText("")
+            button:SetShown(entry ~= nil)
+            if entry then UpdateFoodButton(button) else button.cooldown:Clear() end
+        end
+    end
+    return #foodItems
+end
+
+-- Taschen geändert: neu belegen, wenn sich die Auswahl geändert hat, sonst nur Anzahl und Abklingzeit
+function ns.OnBagsChanged()
+    local _, signature = CollectFood()
+    if signature ~= foodSignature then
+        ns.RequestLayout() -- im Kampf erst danach (geschützte Knöpfe)
+    end
+    ns.UpdateFoodButtons()
+end
+
+function ns.UpdateFoodButtons()
+    for i = 1, FOOD_COUNT do
+        local button = _G["ForeverBarsFoodButton" .. i]
+        if button and button.fbEntry then UpdateFoodButton(button) end
+    end
+end
+
+---------------------------------------------------------------------------
 -- Leuchten bei Procs: Blizzard entscheidet, welcher Knopf leuchtet (ShowAlert/HideAlert);
 -- ForeverBars zeigt dazu wahlweise einen goldenen pulsierenden Rahmen im eigenen Stil
 -- oder lässt Blizzards Leuchten stehen. Es wird nichts selbst berechnet.
@@ -862,29 +1045,39 @@ local function LayoutButtons(def, cfg, holder)
         wanted = math.max(1, GetNumShapeshiftForms and GetNumShapeshiftForms() or 0)
     elseif def.kind == "prof" then
         wanted = math.min(wanted, math.max(1, AssignProfessionButtons()))
+    elseif def.kind == "food" then
+        wanted = math.min(wanted, math.max(1, AssignFoodButtons()))
     end
     local count = math.max(1, math.min(wanted, #buttons))
     local perRow = math.max(1, math.min(cfg.perRow or count, count))
     local rows = math.ceil(count / perRow)
-    -- Platz (Spalte, Reihe) je Knopf; Berufeleiste wahlweise in zwei Reihen: Fenster oben, Fertigkeit darunter
+    -- Platz (Spalte, Reihe) je Knopf; wahlweise nach Reihen getrennt: Berufeleiste Fenster oben, Fertigkeit
+    -- darunter; Verpflegungsleiste Essen, Getränke, Fläschchen/Tränke. Leere Reihen fallen weg.
     local slots = {}
-    if def.kind == "prof" and cfg.profRows then
-        local hasTop, hasBottom, maxColumn = false, false, 0
+    if (def.kind == "prof" or def.kind == "food") and cfg.profRows then
+        local entries = def.kind == "prof" and profSpells or foodItems
+        local used, maxColumn = {}, 0
         for i = 1, count do
-            local entry = profSpells[i]
+            local entry = entries[i]
             if entry then
-                if entry.row == 1 then hasTop = true else hasBottom = true end
+                used[entry.row or 1] = true
                 maxColumn = math.max(maxColumn, entry.col or 0)
             end
         end
+        -- Genutzte Reihen der Reihe nach durchnummerieren (0 = oberste)
+        local rowIndex, nextRow = {}, 0
+        for row = 1, 3 do
+            if used[row] then
+                rowIndex[row] = nextRow
+                nextRow = nextRow + 1
+            end
+        end
         for i = 1, count do
-            local entry = profSpells[i]
-            local row = entry and entry.row or 1
-            -- Gibt es nur eine der beiden Reihen, rückt sie nach oben
-            slots[i] = { entry and entry.col or (i - 1), (hasTop and row == 2) and 1 or 0 }
+            local entry = entries[i]
+            slots[i] = { entry and entry.col or (i - 1), entry and rowIndex[entry.row or 1] or 0 }
         end
         perRow = maxColumn + 1
-        rows = (hasTop and hasBottom) and 2 or 1
+        rows = math.max(1, nextRow)
     else
         for i = 1, count do slots[i] = { (i - 1) % perRow, math.floor((i - 1) / perRow) } end
     end
@@ -1377,6 +1570,7 @@ function ns.SetupBars()
         hooksecurefunc("NPE_LoadUI", DisableTutorials)
     end
     ns.CreateProfessionButtons()
+    ns.CreateFoodButtons()
     HookProcGlow()
     ns.ApplyLayout()
     C_Timer.NewTicker(FADE_INTERVAL, UpdateFading)
@@ -1388,7 +1582,7 @@ function ns.SetupBars()
     -- neue oder verlernte Berufe in die Berufeleiste übernehmen
     for _, event in ipairs({ "PLAYER_REGEN_ENABLED", "PLAYER_REGEN_DISABLED", "PLAYER_ENTERING_WORLD", "EDIT_MODE_LAYOUTS_UPDATED",
         "UPDATE_SHAPESHIFT_FORMS", "UI_SCALE_CHANGED", "DISPLAY_SIZE_CHANGED",
-        "SKILL_LINES_CHANGED", "SPELLS_CHANGED", "SPELL_UPDATE_COOLDOWN" }) do
+        "SKILL_LINES_CHANGED", "SPELLS_CHANGED", "SPELL_UPDATE_COOLDOWN", "BAG_UPDATE_DELAYED", "BAG_UPDATE_COOLDOWN" }) do
         pcall(events.RegisterEvent, events, event)
     end
     events:SetScript("OnEvent", function(_, event)
@@ -1399,6 +1593,10 @@ function ns.SetupBars()
             if layoutPending then ns.ApplyLayout() end
         elseif event == "SPELL_UPDATE_COOLDOWN" then
             ns.UpdateProfessionCooldowns()
+        elseif event == "BAG_UPDATE_DELAYED" then
+            ns.OnBagsChanged()
+        elseif event == "BAG_UPDATE_COOLDOWN" then
+            ns.UpdateFoodButtons()
         else
             ns.RequestLayout()
         end

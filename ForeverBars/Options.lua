@@ -985,7 +985,7 @@ function ns.RefreshOptions()
     options.cooldownCheck:SetShown(ns.HasCVar("countdownForCooldowns"))
     -- Nur die Einstellungen zeigen, die zur gewählten Leiste passen
     local hasButtons = def.kind == "action" or def.kind == "pet" or def.kind == "stance" or def.kind == "bags"
-        or def.kind == "prof"
+        or def.kind == "prof" or def.kind == "food"
     options.frameTitleCheck:SetShown(SelectedConfig().frame == true)
     options.frameTitleBox:SetShown(SelectedConfig().frame == true and SelectedConfig().frameTitle == true)
     if options.activeProfileText then
@@ -998,8 +998,11 @@ function ns.RefreshOptions()
     options.growYSelector:SetShown(hasButtons)
     options.flyoutSelector:SetShown(def.kind == "action")
     options.backpackCheck:SetShown(def.kind == "bags")
-    options.profRowsCheck:SetShown(def.kind == "prof")
-    options.perRowSlider:SetShown(hasButtons and not (def.kind == "prof" and SelectedConfig().profRows))
+    -- Reihen nach Art: Berufe (Fenster/Fertigkeit) bzw. Verpflegung (Essen/Getränke/Fläschchen)
+    local splitRows = def.kind == "prof" or def.kind == "food"
+    options.profRowsCheck:SetShown(splitRows)
+    options.profRowsCheck.label:SetText(L(def.kind == "food" and "OPT_FOOD_ROWS" or "OPT_PROF_ROWS"))
+    options.perRowSlider:SetShown(hasButtons and not (splitRows and SelectedConfig().profRows))
     options.keyringCheck:SetShown(def.kind == "bags" and ns.HasKeyring())
     for _, control in ipairs(controls) do
         control.Refresh()
