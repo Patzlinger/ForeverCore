@@ -230,7 +230,8 @@ local function CreateOptions()
     list:SetPoint("TOPLEFT", 12, -68)
     list:SetSize(LIST_WIDTH, PANEL_HEIGHT)
     local function ListButton(text, y, key, onClick)
-        local button = ns.Style.CreateButton(list, text, LIST_WIDTH - 24, 20, onClick)
+        -- 19 hoch im 21er-Raster: so passen alle 18 Leisten und "Profile" ins Feld
+        local button = ns.Style.CreateButton(list, text, LIST_WIDTH - 24, 19, onClick)
         button:SetPoint("TOPLEFT", 12, y)
         button:GetFontString():ClearAllPoints()
         button:GetFontString():SetPoint("LEFT", 8, 0)
@@ -247,10 +248,10 @@ local function CreateOptions()
             ns.RefreshOptions()
         end)
         table.insert(searchIndex, { label = L(def.textKey), control = button, barKey = def.key })
-        listY = listY - 22
+        listY = listY - 21
     end
     -- Unterpunkt "Profile" (Vorlagen, gespeicherte Profile, Export/Import), etwas abgesetzt
-    local profileEntry = ListButton(L("SEC_PROFILES"), listY - 6, "profiles", function()
+    local profileEntry = ListButton(L("SEC_PROFILES"), listY - 4, "profiles", function()
         options.view = "profiles"
         ns.RefreshOptions()
     end)
@@ -275,10 +276,8 @@ local function CreateOptions()
     externalText:SetJustifyH("LEFT")
     externalText:SetText(L("XP_EXTERNAL_TEXT"))
     ns.Style.CreateButton(external, L("BTN_OPEN_FOREVERXP"), 220, 24, function()
-        if SlashCmdList and SlashCmdList.FOREVERXP then
-            options:Hide()
-            SlashCmdList.FOREVERXP("")
-        end
+        -- ForeverBars-Menü bleibt offen; ForeverXP öffnet sein eigenes Fenster
+        if SlashCmdList and SlashCmdList.FOREVERXP then SlashCmdList.FOREVERXP("") end
     end):SetPoint("TOPLEFT", externalText, "BOTTOMLEFT", 0, -14)
     external:Hide()
     options.externalXP = external
