@@ -280,7 +280,11 @@ Damit alle Einstellungsfenster gleich aussehen, gelten diese Maße. Quelle: `For
   bündeln (`C_Timer.After(0.3, …)` mit "schon geplant"-Merker)
 - Blizzard-Rahmen umhängen (`SetParent`, nur mit dokumentierter Ausnahme wie ForeverBars): vorher im Blizzard-Code
   prüfen, ob er Funktionen am Elternrahmen aufruft (Beispiel: die Status-Leisten rufen
-  `self:GetParent():CheckForLayoutChange()` auf) und diese am neuen Halter bereitstellen. Quelltext des
+  `self:GetParent():CheckForLayoutChange()` auf). Solche Rahmen **nicht umhängen**, sondern nur per `SetPoint` an
+  den eigenen Halter anlegen: Eine eigene Ersatz-Funktion am Halter wäre Addon-Code, den Blizzard dann aufruft –
+  danach läuft Blizzards Code "getaintet" weiter (Beispiel: Fehler mit gesperrten Werten in
+  `CompactUnitFrame_UpdateHealthColor` beim Öffnen des Bearbeitungsmodus, behoben in ForeverBars 0.13.0).
+  Allgemein: nie eigene Funktionen oder Werte in Tabellen legen, die Blizzard-Code liest. Quelltext des
   Forever-Clients: github.com/Gethe/wow-ui-source, Zweig **forever**
 - Keine Abhängigkeiten zu fremden Bibliotheken (Ace3, LibStub …) – optional erkennen ist ok (z. B. LibSharedMedia)
 - Nur eigene Forever-Addons im Repository; keine SavedVariables, keine fremden Addons, keine gebauten Zips
