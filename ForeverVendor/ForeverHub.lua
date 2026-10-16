@@ -7,12 +7,23 @@
 --  3. Hub-Fenster (/forever): Liste aller Forever-Addons mit direktem Weg in ihr Menue –
 --     auch ohne Minimap-Knoepfe.
 --  4. Eintrag "Forever Core" im Blizzard-Optionsmenue (Reiter AddOns) mit Unterseite je Addon.
+--  5. Eintrag "Forever Core" im Addon-Menue an der Minimap (falls der Client es hat).
+--
+-- Mehrere Versionen gleichzeitig (z. B. nur ein Addon aktualisiert): die neueste Kopie uebernimmt.
+-- Ab v21 teilen alle Kopien ihren Zustand (hub.shared: Anmeldungen fuer /fmove, Einrast-Rahmen,
+-- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
+-- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 20
-if _G.ForeverHub and (_G.ForeverHub.version or 0) >= VERSION then return end
+local VERSION = 21
+local PREV = _G.ForeverHub
+if PREV and (PREV.version or 0) >= VERSION then return end
 
 local hub = { version = VERSION }
 _G.ForeverHub = hub
+local SHARED = (PREV and PREV.shared) or {}
+hub.shared = SHARED
+SHARED.uiTables = SHARED.uiTables or {} -- UI-Tabellen aelterer Kopien (werden am Dateiende umgeleitet)
+if PREV and PREV.UI then tinsert(SHARED.uiTables, PREV.UI) end
 
 ---------------------------------------------------------------------------
 -- 1. Gemeinsamer Stil
@@ -91,6 +102,132 @@ end
 -- Chat-Ausgabe: "ForeverXY: Text" mit goldenem Namen
 function UI.Chat(addon, text)
     print("|cffffcc00" .. addon .. "|r: " .. tostring(text))
+end
+
+---------------------------------------------------------------------------
+-- Gemeinsame Helfer (statt in jedem Addon eigene)
+---------------------------------------------------------------------------
+-- Fehlerschutz: ein Fehler legt nicht das ganze Addon lahm. Jeder Fehler wird nur EINMAL pro Stelle
+-- im Chat gemeldet und immer an die Fehleranzeige (BugSack) weitergegeben. UI.ErrorCount(addon) = Anzahl.
+SHARED.errors = SHARED.errors or {}           -- [Addon] = Anzahl seit dem Login
+SHARED.reportedErrors = SHARED.reportedErrors or {} -- ["Addon|Stelle"] = true
+function UI.ReportError(addon, where, err)
+    addon = addon or "Forever"
+    where = tostring(where or "?")
+    SHARED.errors[addon] = (SHARED.errors[addon] or 0) + 1
+    local key = addon .. "|" .. where
+    if SHARED.reportedErrors[key] then return end
+    SHARED.reportedErrors[key] = true
+    UI.Chat(addon, string.format(T("|cffff4444Fehler in %s|r – das Addon läuft weiter. (%s)",
+        "|cffff4444Error in %s|r – the addon keeps running. (%s)"), where, tostring(err)))
+    local handler = geterrorhandler and geterrorhandler()
+    if handler then pcall(handler, err) end
+end
+
+function UI.ErrorCount(addon) return SHARED.errors[addon] or 0 end
+
+-- fn abgesichert ausfuehren lassen: UI.Safe("ForeverXY", "Stelle", fn) liefert eine geschuetzte Funktion
+function UI.Safe(addon, where, fn)
+    return function(...)
+        local ok, err = pcall(fn, ...)
+        if not ok then UI.ReportError(addon, where, err) end
+    end
+end
+
+-- Aenderungen an geschuetzten Rahmen sind im Kampf verboten: sofort ausfuehren oder bis nach dem Kampf
+-- merken. Gleicher Schluessel = nur der letzte Auftrag zaehlt. Rueckgabe: true = sofort erledigt.
+-- Schluessel mit Addon-Namen beginnen ("ForeverFrames:layout"), damit sich Addons nicht ueberschreiben.
+SHARED.combatQueue = SHARED.combatQueue or { jobs = {}, order = {} }
+function UI.AfterCombat(key, fn, addon)
+    if not InCombatLockdown() then
+        local ok, err = pcall(fn)
+        if not ok then UI.ReportError(addon, key, err) end
+        return true
+    end
+    local q = SHARED.combatQueue
+    if not q.jobs[key] then tinsert(q.order, key) end
+    q.jobs[key] = { fn = fn, addon = addon }
+    return false
+end
+
+do
+    local f = CreateFrame("Frame")
+    f:RegisterEvent("PLAYER_REGEN_ENABLED")
+    f:SetScript("OnEvent", function()
+        if _G.ForeverHub ~= hub then return end -- nur die neueste Kopie arbeitet die Liste ab
+        local q = SHARED.combatQueue
+        local order = q.order
+        q.order = {}
+        for _, key in ipairs(order) do
+            local job = q.jobs[key]
+            q.jobs[key] = nil
+            if job then
+                local ok, err = pcall(job.fn)
+                if not ok then UI.ReportError(job.addon, key, err) end
+            end
+        end
+    end)
+end
+
+-- Blizzard-Teil taint-frei unsichtbar machen: Alpha 0 (auch fuer Unterrahmen) und gegen Zuruecksetzen
+-- absichern. SetAlpha startet keine Blizzard-Skripte (anders als Hide/SetParent) -> kein taint; der Rahmen
+-- behaelt seinen Platz, nichts verrutscht. Geht auch im Kampf.
+--  opts.when()   -> nur unsichtbar halten, solange das true liefert (z. B. Einstellung "ausblenden")
+--  opts.children -> Unterrahmen mit einsammeln (Standard: true)
+--  opts.noMouse  -> Liste von Rahmen, die nicht mehr anklickbar sein sollen (z. B. Auswahl im Bearbeitungsmodus)
+-- Nicht geeignet fuer Rahmen mit geschuetzten, anklickbaren Knoepfen (die blieben unsichtbar klickbar).
+-- Erneuter Aufruf sammelt neu hinzugekommene Unterrahmen ein. UI.ShowBlizzard(frame) macht es rueckgaengig.
+local settingBlizzAlpha = false
+local function HoldAlpha(f, root)
+    if not f or not f.SetAlpha or f.fcHideRoot then return end
+    f.fcHideRoot = root
+    root.fcHideParts[#root.fcHideParts + 1] = f
+    hooksecurefunc(f, "SetAlpha", function(self, a)
+        local r = self.fcHideRoot
+        if settingBlizzAlpha or not r or not r.fcHideActive or (r.fcHideWhen and not r.fcHideWhen()) then return end
+        if a and a > 0 then
+            settingBlizzAlpha = true
+            self:SetAlpha(0)
+            settingBlizzAlpha = false
+        end
+    end)
+end
+
+local function CollectChildren(f, root, depth)
+    if depth <= 0 or not f.GetChildren then return end
+    for _, c in ipairs({ f:GetChildren() }) do
+        HoldAlpha(c, root)
+        CollectChildren(c, root, depth - 1)
+    end
+end
+
+function UI.HideBlizzard(frame, opts)
+    if not frame then return end
+    opts = opts or {}
+    frame.fcHideParts = frame.fcHideParts or {}
+    frame.fcHideWhen = opts.when or frame.fcHideWhen
+    frame.fcHideActive = true
+    HoldAlpha(frame, frame)
+    if opts.children ~= false then CollectChildren(frame, frame, 3) end
+    if frame.fcHideWhen and not frame.fcHideWhen() then return end
+    settingBlizzAlpha = true
+    for _, p in ipairs(frame.fcHideParts) do p:SetAlpha(0) end
+    settingBlizzAlpha = false
+    for _, m in ipairs(opts.noMouse or {}) do
+        if m and m.EnableMouse then m:EnableMouse(false) end
+    end
+    frame.fcHideNoMouse = opts.noMouse or frame.fcHideNoMouse
+end
+
+function UI.ShowBlizzard(frame)
+    if not (frame and frame.fcHideParts) then return end
+    frame.fcHideActive = false
+    settingBlizzAlpha = true
+    for _, p in ipairs(frame.fcHideParts) do p:SetAlpha(1) end
+    settingBlizzAlpha = false
+    for _, m in ipairs(frame.fcHideNoMouse or {}) do
+        if m and m.EnableMouse then m:EnableMouse(true) end
+    end
 end
 
 -- Anzeige-Fenster (XP-Leiste, Wuerfel-Fenster, Sammelliste …): dunkel, schlanker Rand
@@ -851,8 +988,10 @@ end
 -- (auch ueber Addons hinweg, z. B. Zauberleiste an Spielerrahmen).
 ---------------------------------------------------------------------------
 local SNAP = 8          -- ab diesem Abstand (px) rastet eine Kante ein
-local movers = {}
-local grid, gridOwners = nil, {}
+SHARED.movers = SHARED.movers or {}
+SHARED.gridOwners = SHARED.gridOwners or {}
+local movers = SHARED.movers
+local grid, gridOwners = nil, SHARED.gridOwners
 
 function UI.AddMover(frame) movers[#movers + 1] = frame end
 
@@ -1039,7 +1178,9 @@ end
 -- Forever-Addons auf einmal – nochmal sperrt alle wieder. Jedes Addon meldet sich an mit
 -- UI.RegisterMovable(name, isLocked(), setLocked(locked)).
 ---------------------------------------------------------------------------
-local movables, movableOrder = {}, {}
+SHARED.movables = SHARED.movables or {}
+SHARED.movableOrder = SHARED.movableOrder or {}
+local movables, movableOrder = SHARED.movables, SHARED.movableOrder
 
 function UI.RegisterMovable(name, isLocked, setLocked)
     if not movables[name] then movableOrder[#movableOrder + 1] = name end
@@ -1294,6 +1435,7 @@ local function ApplyMode()
 end
 
 local RegisterSettings -- Eintrag im Blizzard-Optionsmenue (Abschnitt 4), wird weiter unten belegt
+local RegisterCompartment -- Eintrag im Addon-Menue an der Minimap (Abschnitt 5)
 
 local function Setup()
     if _G.ForeverHub ~= hub then return end -- eine neuere Kopie ist zustaendig
@@ -1316,6 +1458,7 @@ local function Setup()
     if flyout and #entries ~= before then flyout:Hide() flyout = nil end
     ApplyMode()
     if RegisterSettings then RegisterSettings() end
+    if RegisterCompartment then RegisterCompartment() end
 end
 
 -- true: Einzelknoepfe sollen versteckt bleiben (gesammelt oder ganz ausgeblendet)
@@ -1622,6 +1765,42 @@ RegisterSettings = function()
     end
 end
 
+---------------------------------------------------------------------------
+-- 5. Addon-Menue an der Minimap (Retail: Knopf neben der Minimap mit allen Addons ohne eigenen Knopf).
+-- Ein einziger Eintrag "Forever Core" fuer alle Forever-Addons: Linksklick Hub-Fenster, Rechtsklick
+-- alle Rahmen verschieben/sperren. Gibt es das Menue im Client nicht, passiert nichts.
+---------------------------------------------------------------------------
+RegisterCompartment = function()
+    if SHARED.compartment or #entries == 0 then return end
+    local menu = _G.AddonCompartmentFrame
+    if not (menu and menu.RegisterAddon) then return end
+    SHARED.compartment = true
+    local ok = pcall(menu.RegisterAddon, menu, {
+        text = UI.NAME,
+        icon = UI.LOGO,
+        notCheckable = true,
+        -- je nach Client-Version: (Knopfname, …) oder (…, { buttonName = … })
+        func = function(a, b)
+            local mouseButton = type(a) == "string" and a or (type(b) == "table" and b.buttonName) or "LeftButton"
+            local current = _G.ForeverHub
+            if mouseButton == "RightButton" then
+                current.UI.MoveAll()
+            elseif current.ToggleWindow then
+                current.ToggleWindow()
+            end
+        end,
+        funcOnEnter = function(button)
+            GameTooltip:SetOwner(button or UIParent, "ANCHOR_LEFT")
+            GameTooltip:AddLine(UI.NAME)
+            GameTooltip:AddLine(T("Linksklick: alle Forever-Addons", "Left-click: all Forever addons"), 1, 1, 1)
+            GameTooltip:AddLine(T("Rechtsklick: alle Rahmen verschieben/sperren", "Right-click: move/lock all frames"), 1, 1, 1)
+            GameTooltip:Show()
+        end,
+        funcOnLeave = function() GameTooltip:Hide() end,
+    })
+    if not ok then SHARED.compartment = nil end
+end
+
 -- Blizzard-Optionsmenue direkt bei "Forever Core" oeffnen (fuer /forever options)
 function hub.OpenSettings()
     if settingsCategory and Settings and Settings.OpenToCategory then
@@ -1648,5 +1827,19 @@ SlashCmdList["FOREVERHUB"] = function(msg)
         hub.OpenSettings()
     else
         hub.ToggleWindow()
+    end
+end
+
+---------------------------------------------------------------------------
+-- Aeltere, frueher geladene Kopien auf diese (neueste) umleiten: Addons, die sich dort ihre
+-- UI-Tabelle gemerkt haben, rufen damit ab sofort die neuen Funktionen auf (gemeinsamer Zustand).
+-- Hinweis: Kopien vor v21 hatten noch keinen gemeinsamen Zustand – was sich dort beim Laden
+-- angemeldet hat, kennt erst die naechste Version dieses Addons.
+---------------------------------------------------------------------------
+for _, old in ipairs(SHARED.uiTables) do
+    if old ~= UI then
+        for key, value in pairs(UI) do
+            if type(value) == "function" then old[key] = value end
+        end
     end
 end

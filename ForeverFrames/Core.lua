@@ -14,8 +14,8 @@ local T = ns.T
 -- Einstellungen (SavedVariables)
 ---------------------------------------------------------------------------
 ns.DEFAULTS = {
-    -- Rahmen / Anordnung
-    locked = false,
+    -- Rahmen / Anordnung (gesperrt starten; entsperren per Menue, Minimap-Rechtsklick oder /fmove)
+    locked = true,
     gridShow = true,      -- Raster beim Ziehen / bei offenen Einstellungen (nur entsperrt)
     gridSize = 32,
     snap = true,          -- an anderen Forever-Rahmen, Bildschirmmitte und Raster einrasten
@@ -282,18 +282,12 @@ function ns.Chat(text)
     ns.UI.Chat("ForeverFrames", text)
 end
 
--- Fehlerschutz: ein Fehler in einem Teil legt nicht das ganze Addon lahm.
+-- Fehlerschutz (gemeinsam im ForeverHub): ein Fehler in einem Teil legt nicht das ganze Addon lahm.
 -- Jeder Fehler wird nur EINMAL pro Stelle im Chat gemeldet (und an BugSack weitergegeben).
-local reportedErrors = {}
 ns.errorCount = 0
 function ns.ReportError(where, err)
     ns.errorCount = ns.errorCount + 1
-    if reportedErrors[where] then return end
-    reportedErrors[where] = true
-    ns.Chat(string.format(T("|cffff4444Fehler in %s|r – das Addon läuft weiter. (%s)",
-        "|cffff4444Error in %s|r – the addon keeps running. (%s)"), where, tostring(err)))
-    local handler = geterrorhandler and geterrorhandler()
-    if handler then pcall(handler, err) end
+    ns.UI.ReportError(ADDON_NAME, where, err)
 end
 
 function ns.Safe(where, fn)
@@ -340,17 +334,10 @@ end
 
 ---------------------------------------------------------------------------
 -- Aenderungen an sicheren Rahmen sind im Kampf verboten:
--- dann wird die Aufgabe gemerkt und nach dem Kampf ausgefuehrt.
+-- dann wird die Aufgabe gemerkt und nach dem Kampf ausgefuehrt (Warteschlange im ForeverHub).
 ---------------------------------------------------------------------------
-local pending, pendingOrder = {}, {}
 function ns.OutOfCombat(key, fn)
-    if InCombatLockdown() then
-        if not pending[key] then tinsert(pendingOrder, key) end
-        pending[key] = fn
-        return false
-    end
-    fn()
-    return true
+    return ns.UI.AfterCombat(ADDON_NAME .. ":" .. tostring(key), fn, ADDON_NAME)
 end
 
 ---------------------------------------------------------------------------
@@ -379,18 +366,6 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
     end
 end)
 
-ns.On("PLAYER_REGEN_ENABLED", "Nach dem Kampf", function()
-    local order = pendingOrder
-    pendingOrder = {}
-    for _, key in ipairs(order) do
-        local fn = pending[key]
-        pending[key] = nil
-        if fn then
-            local ok, err = pcall(fn)
-            if not ok then ns.ReportError(key, err) end
-        end
-    end
-end)
 
 ns.savedVarsLoaded = nil
 ns.On("ADDON_LOADED", "Laden", function(name)

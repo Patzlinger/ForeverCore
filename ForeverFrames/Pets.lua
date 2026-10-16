@@ -398,8 +398,17 @@ end)
 ns.On("GROUP_ROSTER_UPDATE", T("Begleiter", "Pet"), function()
     C_Timer.After(0.2, Safe(T("Begleiter", "Pet"), ns.UpdatePetSpace))
 end)
--- zur Sicherheit regelmaessig (z. B. Testmodus, Begleiter beschworen waehrend eines Ladebildschirms)
-C_Timer.NewTicker(1, Safe(T("Begleiter", "Pet"), function()
+-- nach Ladebildschirm und Kampfende nachziehen (z. B. Begleiter waehrend eines Ladebildschirms beschworen),
+-- dazu alle 5 s zur Sicherheit (vorher jede Sekunde)
+local function PetSpaceSoon()
+    C_Timer.After(0.2, Safe(T("Begleiter", "Pet"), function()
+        if not InCombatLockdown() then ns.UpdatePetSpace() end
+    end))
+end
+ns.On("PLAYER_ENTERING_WORLD", T("Begleiter", "Pet"), PetSpaceSoon)
+ns.On("PLAYER_REGEN_ENABLED", T("Begleiter", "Pet"), PetSpaceSoon)
+if ns.SetTestMode then hooksecurefunc(ns, "SetTestMode", PetSpaceSoon) end -- Testmodus (Frames.lua)
+C_Timer.NewTicker(5, Safe(T("Begleiter", "Pet"), function()
     if not InCombatLockdown() then ns.UpdatePetSpace() end
 end))
 ns.On("PLAYER_TARGET_CHANGED", T("Begleiter", "Pet"), function() ForEachPet(UpdatePetTarget) end)

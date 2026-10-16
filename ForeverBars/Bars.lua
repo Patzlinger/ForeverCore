@@ -704,6 +704,18 @@ local function LayoutContainer(def, cfg, holder)
         return
     end
     frame.fbHolder = holder
+    -- Blizzards Status-Leisten (Erfahrung/Ruf) rufen bei jeder Aktualisierung
+    -- self:GetParent():CheckForLayoutChange() auf – gemeint ist der StatusTrackingBarManager, ihr
+    -- eigentlicher Elternrahmen. Der Halter reicht den Aufruf an den echten Manager weiter; ohne das gibt
+    -- es Lua-Fehler (z. B. beim Öffnen/Schließen des Bearbeitungsmodus, Blizzard-Code Zeile 228).
+    if frame.GetStatusTrackingManager and not holder.CheckForLayoutChange then
+        holder.CheckForLayoutChange = function()
+            local manager = _G.StatusTrackingBarManager
+            if manager and manager ~= holder and manager.CheckForLayoutChange then
+                pcall(manager.CheckForLayoutChange, manager)
+            end
+        end
+    end
     if frame:GetParent() ~= holder then frame:SetParent(holder) end
     frame.fbPositioning = true
     frame:ClearAllPoints()

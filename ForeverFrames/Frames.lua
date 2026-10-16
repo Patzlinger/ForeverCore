@@ -84,11 +84,21 @@ function ns.UpdateBounds()
     bounds:SetSize(math.max(1, R - L), math.max(1, Tp - B))
     bounds:Show()
 end
--- regelmaessig nachziehen (Gruppe aendert sich, Testmodus, Groesse) – nur ausserhalb des Kampfs
-C_Timer.NewTicker(1, function() pcall(ns.UpdateBounds) end)
+-- Nachziehen, wenn sich etwas aendert (Anordnung, Testmodus, Gruppe, Kampfende – siehe Dateiende);
+-- mehrere Anlaesse kurz hintereinander werden zusammengefasst. Dazu alle 5 s zur Sicherheit.
+local boundsQueued = false
+function ns.RequestBounds()
+    if boundsQueued then return end
+    boundsQueued = true
+    C_Timer.After(0.3, function()
+        boundsQueued = false
+        pcall(ns.UpdateBounds)
+    end)
+end
+C_Timer.NewTicker(5, function() pcall(ns.UpdateBounds) end)
 
 -- Raster nur entsperrt und nur beim Ziehen oder bei offenen Einstellungen
--- (ForeverFrames startet entsperrt – ein Dauer-Raster waere stoerend)
+-- (ein Dauer-Raster waere stoerend, solange man nur kurz entsperrt)
 local dragging = false
 function ns.UpdateGrid()
     local db = GetDB()
@@ -1243,3 +1253,12 @@ ns.On("PLAYER_LOGIN", "Start", function()
     ns.UpdateMover()
     ns.HideBlizzard()
 end)
+
+-- Einrast-Kanten ("bounds") nachziehen, sobald sich Anordnung oder Gruppe aendert (statt jede Sekunde)
+for _, name in ipairs({ "ApplyLayout", "LayoutFakes", "SetTestMode" }) do
+    if ns[name] then hooksecurefunc(ns, name, ns.RequestBounds) end
+end
+for _, event in ipairs({ "GROUP_ROSTER_UPDATE", "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_ENABLED",
+    "UI_SCALE_CHANGED", "DISPLAY_SIZE_CHANGED" }) do
+    ns.On(event, T("Rahmen-Kanten", "Frame bounds"), ns.RequestBounds)
+end

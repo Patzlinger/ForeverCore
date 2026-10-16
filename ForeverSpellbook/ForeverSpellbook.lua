@@ -107,9 +107,10 @@ local function Collect()
         end
     end
     if C_SpellBook.HasPetSpells then
-        local n, petName = C_SpellBook.HasPetSpells()
+        -- der zweite Rueckgabewert ist ein interner Code in Grossbuchstaben ("PET", "DEMON"), kein Anzeigename
+        local n = C_SpellBook.HasPetSpells()
         if n and n > 0 then
-            local line = { name = petName or T("Begleiter", "Pet"), icon = 132599, spells = {}, pet = true }
+            local line = { name = T("Begleiter", "Pets"), icon = 132599, spells = {}, pet = true }
             for s = 1, n do
                 local e = ReadItem(s, BANK_PET)
                 if e then line.spells[#line.spells + 1] = e end

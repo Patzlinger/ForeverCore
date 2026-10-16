@@ -54,8 +54,10 @@ Philosophie, Regeln, Design und Abläufe. Wenn etwas hier nicht steht: am besteh
 - Dokumentierte Ausnahmen (bewusst so, nicht "reparieren" ohne Absprache):
   - **ForeverBars** setzt Blizzards Aktionsknöpfe und Leisten per `SetParent` in eigene Halter – das ist für ein
     Leisten-Addon nötig (Bartender4 macht es genauso); nur außerhalb des Kampfes, Sichtbarkeit über State-Driver
-  - **ForeverQuests** blendet den Blizzard-Questtracker mit `:Hide()` aus (außerhalb des Kampfes, mit OnShow-Hook).
-    Falls dadurch Taint-Meldungen auftauchen: auf das Alpha-/State-Driver-Verfahren umstellen
+  - **ForeverQuests** blendet den Blizzard-Questtracker mit `:Hide()` aus (außerhalb des Kampfes, mit OnShow-Hook,
+    Wiederholung nach dem Kampf über `UI.AfterCombat`). `UI.HideBlizzard` passt hier NICHT: der Tracker enthält
+    geschützte Questgegenstand-Knöpfe, die unsichtbar anklickbar blieben. Falls Taint-Meldungen auftauchen:
+    `RegisterStateDriver(ObjectiveTrackerFrame, "visibility", "hide")` im Spiel testen
 - Zwei Addons dürfen nicht denselben Blizzard-Teil "besitzen". Bekannte Berührungspunkte siehe Abschnitt 14.
 
 ## 5. Aufbau eines Addons
@@ -107,6 +109,17 @@ Philosophie, Regeln, Design und Abläufe. Wenn etwas hier nicht steht: am besteh
      Forever-Addon eine Unterseite mit "Einstellungen öffnen" (öffnet das eigene Fenster, Optionsmenü schließt sich).
      Automatisch für jedes Addon aus `KNOWN`, dessen Minimap-Knopf existiert; `/forever options` springt dorthin.
      Die eigentlichen Einstellungen bleiben in den eigenen Fenstern (keine zweite Einstellungs-Oberfläche bauen)
+  6. **Addon-Menü an der Minimap**: ein einziger Eintrag "Forever Core" (Links: Hub-Fenster, Rechts: alle verschieben)
+  7. **Gemeinsame Helfer** – statt eigener Kopien in jedem Addon benutzen:
+     - `UI.ReportError(addon, stelle, fehler)` / `UI.Safe(addon, stelle, fn)`: Fehler einmal pro Stelle im Chat, immer an
+       BugSack; `UI.ErrorCount(addon)`
+     - `UI.AfterCombat("Addon:schlüssel", fn, addon)`: sofort oder nach dem Kampf (gleicher Schlüssel = letzter Auftrag)
+     - `UI.HideBlizzard(frame, { when, children, noMouse })` / `UI.ShowBlizzard(frame)`: Blizzard-Teil taint-frei
+       unsichtbar halten (Alpha 0 + Absicherung). Nicht für Rahmen mit geschützten, anklickbaren Knöpfen
+       (z. B. Questgegenstände im Questtracker) – die blieben unsichtbar anklickbar
+- **Mehrere Hub-Versionen gleichzeitig** (Spieler aktualisiert nur einzelne Addons): ab v21 teilen alle Kopien ihren
+  Zustand über `ForeverHub.shared`, ältere UI-Tabellen werden auf die neueste Kopie umgeleitet. Neuer gemeinsamer
+  Zustand im Hub gehört deshalb in `SHARED` (nicht in lokale Tabellen), sonst geht er beim Versionswechsel verloren
 - Damit ein Addon voll eingebunden ist:
   - Minimap-Knopf **immer über `UI.MinimapButton({...})`** bauen, globaler Name `Forever<Name>MinimapButton`,
     **Linksklick öffnet das Menü**, Rechtsklick frei (meist: entsperren/sperren bzw. ein-/ausblenden); in `KNOWN`
@@ -169,8 +182,7 @@ ihn identisch um. Neue Oberflächen nutzen eine dieser beiden – keine dritten 
 - Blizzard-Einstellungen (CVars, Tastenbelegung) nur auf ausdrücklichen Wunsch des Spielers ändern
 
 ## 10. Verschieben und Positionen
-- Entsperren per Menü, Rechtsklick auf den Minimap-Knopf oder `/fmove`; Ziel für neue Addons: standardmäßig gesperrt
-  (ältere Addons noch nicht überall so)
+- Alle Rahmen starten **gesperrt**; entsperren per Menü, Rechtsklick auf den Minimap-Knopf oder `/fmove`
 - Entsperrt: sichtbarer Griff mit Namen, Ziehen mit Raster/Einrasten, **Shift = frei schieben**; X/Y-Felder im Menü
 - Positionen relativ zu einem festen Bezugspunkt (Bildschirmmitte oder -rand) speichern und auf ganze Pixel runden
 
@@ -198,7 +210,13 @@ ihn identisch um. Neue Oberflächen nutzen eine dieser beiden – keine dritten 
 - Addon-Namensraum: `local addonName, ns = ...`; globale Namen nur für Rahmen (`Forever<Name>…`) und Pflicht-Globale
   (SavedVariables, `SLASH_…`, `BINDING_…`)
 - Ereignis-Code absichern, damit ein Fehler nicht das ganze Addon stoppt (`pcall` + `geterrorhandler()`), wo sinnvoll
-- Ticker/OnUpdate sparsam; teure Arbeit bündeln (z. B. `C_Timer.After(0, …)` statt mehrfach pro Frame)
+- Ticker/OnUpdate sparsam: wo Blizzard ein Ereignis liefert, das Ereignis nehmen; Timer nur für Dinge ohne Ereignis
+  (Reichweite, verstrichene Zeit) bzw. als seltene Sicherheitsprüfung (≥ 5 s). Mehrere Anlässe kurz hintereinander
+  bündeln (`C_Timer.After(0.3, …)` mit "schon geplant"-Merker)
+- Blizzard-Rahmen umhängen (`SetParent`, nur mit dokumentierter Ausnahme wie ForeverBars): vorher im Blizzard-Code
+  prüfen, ob er Funktionen am Elternrahmen aufruft (Beispiel: die Status-Leisten rufen
+  `self:GetParent():CheckForLayoutChange()` auf) und diese am neuen Halter bereitstellen. Quelltext des
+  Forever-Clients: github.com/Gethe/wow-ui-source, Zweig **forever**
 - Keine Abhängigkeiten zu fremden Bibliotheken (Ace3, LibStub …) – optional erkennen ist ok (z. B. LibSharedMedia)
 - Nur eigene Forever-Addons im Repository; keine SavedVariables, keine fremden Addons, keine gebauten Zips
 

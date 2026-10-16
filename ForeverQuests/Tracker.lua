@@ -42,10 +42,21 @@ local BLIZZARD_TRACKERS = { "ObjectiveTrackerFrame", "QuestWatchFrame" }
 local hookedFrames = {}
 local blizzardUpdatePending = false
 
+-- Nach dem Kampf erneut versuchen: über die gemeinsame Warteschlange im ForeverHub
+-- (ohne Hub wie bisher über PLAYER_REGEN_ENABLED, siehe unten)
+local function RetryAfterCombat()
+    local UI = _G.ForeverHub and _G.ForeverHub.UI
+    if UI and UI.AfterCombat then
+        UI.AfterCombat("ForeverQuests:blizzardTracker", function() ns.UpdateBlizzardTracker() end, addonName)
+    else
+        blizzardUpdatePending = true
+    end
+end
+
 function ns.UpdateBlizzardTracker()
     -- Im Kampf darf der Blizzard-Tracker nicht verändert werden (Questgegenstand-Knöpfe sind geschützt)
     if InCombatLockdown() then
-        blizzardUpdatePending = true
+        RetryAfterCombat()
         return
     end
     blizzardUpdatePending = false
@@ -58,7 +69,7 @@ function ns.UpdateBlizzardTracker()
                 frame:HookScript("OnShow", function(self)
                     if not ns.db.hideBlizzard then return end
                     if InCombatLockdown() then
-                        blizzardUpdatePending = true
+                        RetryAfterCombat()
                     else
                         self:Hide()
                     end

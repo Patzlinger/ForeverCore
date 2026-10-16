@@ -43,7 +43,7 @@ local T = UI.T
 -- Einstellungen (SavedVariables)
 ---------------------------------------------------------------------------
 local DEFAULTS = {
-    locked = false,
+    locked = true, -- gesperrt starten; entsperren per Menue, Minimap-Rechtsklick oder /fmove
     showIcon = true,
     showLatency = true,
     showQueue = true,
@@ -97,17 +97,12 @@ local function Chat(text)
     UI.Chat("ForeverCast", text)
 end
 
--- Fehlerschutz: ein Fehler in einem Teil legt nicht das ganze Addon lahm.
+-- Fehlerschutz (gemeinsam im ForeverHub): ein Fehler in einem Teil legt nicht das ganze Addon lahm.
 -- Jeder Fehler wird nur EINMAL pro Stelle im Chat gemeldet (und an BugSack weitergegeben).
-local reportedErrors, errorCount = {}, 0
+local errorCount = 0
 local function ReportError(where, err)
     errorCount = errorCount + 1
-    if reportedErrors[where] then return end
-    reportedErrors[where] = true
-    Chat(string.format(T("|cffff4444Fehler in %s|r – das Addon läuft weiter. (%s)",
-        "|cffff4444Error in %s|r – the addon keeps running. (%s)"), where, tostring(err)))
-    local handler = geterrorhandler and geterrorhandler()
-    if handler then pcall(handler, err) end
+    UI.ReportError("ForeverCast", where, err)
 end
 
 local function Safe(where, fn)
@@ -1414,7 +1409,7 @@ end)
 -- Verschieben
 ---------------------------------------------------------------------------
 -- Raster (aus ForeverHub.lua): nur entsperrt, und nur beim Ziehen oder bei offenen Einstellungen
--- (die Leiste ist anfangs entsperrt – ein Dauer-Raster waere stoerend)
+-- (ein Dauer-Raster waere stoerend, solange man nur kurz entsperrt)
 -- Nach aussen nur diese drei (200-Variablen-Grenze); castFrame.fcOnMoved setzt das Einstellungsfenster
 local RestorePosition, UpdateGrid, SetPosition
 do
@@ -1473,26 +1468,12 @@ local blizzPending = false
 local blizzHidden = false
 
 -- Im Bearbeitungsmodus zeigt Blizzard die Leiste als Vorschau an – ganz ohne Ereignisse. Deshalb zusaetzlich
--- unsichtbar halten: Alpha 0 und gegen Zuruecksetzen absichern (SetAlpha startet keine Blizzard-Skripte,
--- anders als Hide -> kein taint). Ihr Auswahl-Rahmen im Bearbeitungsmodus wird nicht anklickbar, damit man
--- die unsichtbare Leiste dort nicht aus Versehen erwischt. Geht auch im Kampf (die Leiste ist nicht geschuetzt).
-local settingBlizzAlpha = false
+-- unsichtbar halten (UI.HideBlizzard aus dem ForeverHub: Alpha 0, gegen Zuruecksetzen abgesichert, kein taint).
+-- Ihr Auswahl-Rahmen im Bearbeitungsmodus wird nicht anklickbar, damit man die unsichtbare Leiste dort nicht
+-- aus Versehen erwischt. Geht auch im Kampf (die Leiste ist nicht geschuetzt).
 local function KeepBlizzardInvisible(f)
-    if not f.fcAlphaHooked then
-        f.fcAlphaHooked = true
-        hooksecurefunc(f, "SetAlpha", function(self, a)
-            if settingBlizzAlpha or not GetDB().hideBlizzard then return end
-            if a and a > 0 then
-                settingBlizzAlpha = true
-                self:SetAlpha(0)
-                settingBlizzAlpha = false
-            end
-        end)
-    end
-    settingBlizzAlpha = true
-    f:SetAlpha(0)
-    settingBlizzAlpha = false
-    if f.Selection and f.Selection.EnableMouse then f.Selection:EnableMouse(false) end
+    UI.HideBlizzard(f, { when = function() return GetDB().hideBlizzard end, children = false,
+        noMouse = { f.Selection } })
 end
 
 local function ApplyBlizzardBar()
@@ -1682,10 +1663,7 @@ local function Section(x, y, title, list)
             if key == "hideBlizzard" and not checked then
                 -- wieder sichtbar (z. B. im Bearbeitungsmodus); Zauber zeigt sie erst nach /reload wieder an
                 local f = PlayerCastingBarFrame or CastingBarFrame
-                if f then
-                    f:SetAlpha(1)
-                    if f.Selection and f.Selection.EnableMouse then f.Selection:EnableMouse(true) end
-                end
+                if f then UI.ShowBlizzard(f) end
                 if blizzHidden then
                     Chat(T("Die Blizzard-Zauberleiste kommt nach /reload zurück.", "The Blizzard cast bar returns after /reload."))
                 end

@@ -25,7 +25,7 @@ local DEFAULTS = {
     drink = true, drinkCount = 20,
     ammo = true, ammoCount = 1000,
     useBuffsList = false,    -- eigene Liste aus ForeverBuffs mitkaufen
-    showIcon = true,
+    showIcon = false,        -- verschiebbares Symbol auf dem Bildschirm (optional; Fenster am Haendler + Minimap reichen)
     locked = true,
     iconSize = 22,
     gridShow = true, gridSize = 32, snap = true,
@@ -782,7 +782,7 @@ end
 function UpdateIcon()
     local d = GetDB()
     icon:SetSize(d.iconSize, d.iconSize)
-    icon:SetShown(d.showIcon or not d.locked)
+    icon:SetShown(d.showIcon and true or false) -- optional; ausgeschaltet auch beim Entsperren nicht zeigen
     icon.tex:SetDesaturated(not d.enabled)
     icon:SetAlpha((icon:IsMouseOver() or not d.locked) and 1 or 0.75)
     icon:SetBackdropBorderColor(d.locked and 0 or 0.3, d.locked and 0 or 0.6, d.locked and 0 or 1, 1)
@@ -896,7 +896,7 @@ Check(L - 4, -508, T("Passend zur Waffe nachkaufen", "Restock to match your weap
 Slider(L + 2, -538, T("Menge", "Amount"), "ammoCount", 200, 3000, 200, { width = 150 })
 
 UI.Header(options, L, -598, T("Anzeige", "Display"), LW)
-Check(L - 4, -620, T("Kleines Symbol anzeigen", "Show small icon"), "showIcon")
+Check(L - 4, -620, T("Verschiebbares Symbol anzeigen (optional)", "Show movable icon (optional)"), "showIcon")
 local lockCheck = Check(L - 4, -644, T("Symbol sperren (entsperrt: ziehen)", "Lock icon (unlocked: drag)"), "locked")
 
 -- rechte Spalte: Nachkauf-Liste
@@ -1151,6 +1151,13 @@ function ToggleOptions() options:SetShown(not options:IsShown()) end
 function ToggleLock(silent)
     if InCombatLockdown() then Chat(T("Im Kampf nicht möglich.", "Not possible in combat.")) return end
     local d = GetDB()
+    if not d.showIcon then
+        if not silent then
+            Chat(T("Das verschiebbare Symbol ist aus – einschalten unter Einstellungen » Anzeige.",
+                "The movable icon is off – turn it on under Settings » Display."))
+        end
+        return
+    end
     d.locked = not d.locked
     lockCheck:SetChecked(d.locked)
     UpdateIcon()
@@ -1163,7 +1170,8 @@ end
 
 -- gemeinsamer Verschiebe-Modus (/fmove, Sammelknopf)
 if UI.RegisterMovable then
-    UI.RegisterMovable("ForeverVendor", function() return GetDB().locked end, function(locked)
+    UI.RegisterMovable("ForeverVendor", function() return GetDB().locked or not GetDB().showIcon end, function(locked)
+        if not GetDB().showIcon then return end -- ohne Symbol gibt es nichts zu verschieben
         if GetDB().locked ~= locked then ToggleLock(true) end
     end)
 end

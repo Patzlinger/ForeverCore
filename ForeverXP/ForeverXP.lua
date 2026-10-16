@@ -626,44 +626,19 @@ end
 -- Blizzards Leiste unsichtbar machen (nur Durchsichtigkeit – kein Ausblenden, kein "taint"-Risiko
 -- wie bei :Hide()). Erfasst werden ALLE bekannten Rahmen (Retail- und Classic-Variante) samt ihren
 -- Unterrahmen (die eigentliche Leiste darin kann die Durchsichtigkeit des Rahmens ignorieren).
--- Setzt Blizzard sie wieder sichtbar, wird das gleich zurueckgenommen.
-local settingAlpha = false
-local blizzParts = {} -- alle unsichtbar gemachten Teile
+-- Setzt Blizzard sie wieder sichtbar, wird das gleich zurueckgenommen (UI.HideBlizzard aus dem ForeverHub;
+-- ein erneuter Aufruf sammelt spaeter dazugekommene Unterrahmen ein, z. B. wenn man einen Ruf beobachtet).
 local function WantHidden() return IsBar() and GetDB().hideBlizzard end
-
-local function Claim(f)
-    if not f or blizzParts[f] or not f.SetAlpha then return end
-    blizzParts[f] = true
-    hooksecurefunc(f, "SetAlpha", function(self, a)
-        if settingAlpha or not WantHidden() then return end
-        if a and a > 0 then
-            settingAlpha = true
-            self:SetAlpha(0)
-            settingAlpha = false
-        end
-    end)
-    -- Unterrahmen (zwei Ebenen tief) ebenfalls
-    for _, c in ipairs({ f:GetChildren() }) do
-        if not blizzParts[c] and c.SetAlpha then
-            blizzParts[c] = true
-            hooksecurefunc(c, "SetAlpha", function(self, a)
-                if settingAlpha or not WantHidden() then return end
-                if a and a > 0 then
-                    settingAlpha = true
-                    self:SetAlpha(0)
-                    settingAlpha = false
-                end
-            end)
-            for _, cc in ipairs({ c:GetChildren() }) do Claim(cc) end
-        end
-    end
-end
 
 local function HideBlizzardBar()
     for _, name in ipairs(BLIZZ_BARS) do
         local f = _G[name]
         if f then
-            Claim(f)
+            if WantHidden() then
+                UI.HideBlizzard(f, { when = WantHidden })
+            else
+                UI.ShowBlizzard(f)
+            end
             -- Ziel fuer unseren Balken: die erste sichtbare, breite Leiste
             if not blizzBar and f:IsVisible() and (f:GetWidth() or 0) > 100 then
                 blizzBar = f
@@ -672,16 +647,6 @@ local function HideBlizzardBar()
             end
         end
     end
-    -- Leisten koennen spaeter dazukommen (z. B. Ruf beobachten): Unterrahmen neu einsammeln
-    for f in pairs(blizzParts) do
-        if f.GetChildren then
-            for _, c in ipairs({ f:GetChildren() }) do Claim(c) end
-        end
-    end
-    settingAlpha = true
-    local a = WantHidden() and 0 or 1
-    for f in pairs(blizzParts) do f:SetAlpha(a) end
-    settingAlpha = false
     RestoreBarPosition()
     LayoutBar()
 end
@@ -699,7 +664,10 @@ local function BlizzStatus()
         end
     end
     local n = 0
-    for _ in pairs(blizzParts) do n = n + 1 end
+    for _, name in ipairs(BLIZZ_BARS) do
+        local f = _G[name]
+        if f and f.fcHideParts then n = n + #f.fcHideParts end
+    end
     out[#out + 1] = "parts=" .. n
     return table.concat(out, " | ")
 end
@@ -1331,7 +1299,14 @@ events:RegisterEvent("QUEST_TURNED_IN")
 events:RegisterEvent("CHAT_MSG_COMBAT_XP_GAIN")
 events:RegisterEvent("DISPLAY_SIZE_CHANGED")
 events:RegisterEvent("UI_SCALE_CHANGED")
+-- Blizzard-Leiste neu einsammeln, wenn sie sich aendern kann (Ruf beobachten, Bearbeitungsmodus)
+pcall(events.RegisterEvent, events, "UPDATE_FACTION")
+pcall(events.RegisterEvent, events, "EDIT_MODE_LAYOUTS_UPDATED")
 events:SetScript("OnEvent", function(_, event, arg1)
+    if event == "UPDATE_FACTION" or event == "EDIT_MODE_LAYOUTS_UPDATED" then
+        if not InCombatLockdown() then HideBlizzardBar() end
+        return
+    end
     if event == "PLAYER_REGEN_DISABLED" then
         if GetDB().combatFade and not panelHover then FadeTo(COMBAT_ALPHA) end
         return
@@ -1370,6 +1345,7 @@ events:SetScript("OnEvent", function(_, event, arg1)
         UpdateQuestXP()
     elseif event == "PLAYER_LEVEL_UP" then
         OnLevelUp(arg1)
+        if not InCombatLockdown() then HideBlizzardBar() end
     elseif event == "PLAYER_XP_UPDATE" then
         TrackXP()
     elseif event == "QUEST_LOG_UPDATE" then
@@ -1378,9 +1354,13 @@ events:SetScript("OnEvent", function(_, event, arg1)
     UpdateDisplay()
 end)
 
+-- Zeitabhaengige Werte (XP/Stunde, Zeit bis Level-Up) laufen ohne Ereignis weiter
 C_Timer.NewTicker(REFRESH, function()
     TickLevelTime()
     UpdateDisplay()
+end)
+-- Blizzard-Leiste zur Sicherheit selten nachpruefen (sonst ueber Ereignisse, siehe oben; vorher alle 5 s)
+C_Timer.NewTicker(30, function()
     if not InCombatLockdown() then HideBlizzardBar() end
 end)
 

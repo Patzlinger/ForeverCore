@@ -9,7 +9,7 @@ local T = UI.T
 -- Einstellungen (SavedVariables)
 ---------------------------------------------------------------------------
 local DEFAULTS = {
-    locked = false,
+    locked = true, -- gesperrt starten; entsperren per Menue, Minimap-Rechtsklick oder /fmove
     scale = 1,
     keep = 5,       -- so viele Sekunden nach dem Ergebnis bleibt ein Wurf sichtbar (danach ausblenden)
     maxRows = 5,    -- mehr Spieler: Liste startet eingeklappt
@@ -49,18 +49,9 @@ local function Chat(text)
     UI.Chat("ForeverLoot", text)
 end
 
-local reported = {}
+-- Fehlerschutz (gemeinsam im ForeverHub): Fehler einmal pro Stelle melden, Addon laeuft weiter
 local function Safe(where, fn)
-    return function(...)
-        local ok, err = pcall(fn, ...)
-        if not ok and not reported[where] then
-            reported[where] = true
-            Chat(string.format(T("|cffff4444Fehler in %s|r – das Addon läuft weiter. (%s)",
-                "|cffff4444Error in %s|r – the addon keeps running. (%s)"), where, tostring(err)))
-            local handler = geterrorhandler and geterrorhandler()
-            if handler then pcall(handler, err) end
-        end
-    end
+    return UI.Safe("ForeverLoot", where, fn)
 end
 
 local function ShortName(name)

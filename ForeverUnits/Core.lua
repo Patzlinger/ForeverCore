@@ -224,15 +224,10 @@ local IsSecret = ns.IsSecret
 
 function ns.Chat(text) UI.Chat("ForeverUnits", text) end
 
--- Fehlerschutz: jeder Fehler wird nur einmal pro Stelle gemeldet (und an BugSack weitergegeben)
-local reported = {}
+-- Fehlerschutz (gemeinsam im ForeverHub): jeder Fehler wird nur einmal pro Stelle gemeldet
+-- (und an BugSack weitergegeben)
 function ns.ReportError(where, err)
-    if reported[where] then return end
-    reported[where] = true
-    ns.Chat(string.format(T("|cffff4444Fehler in %s|r – das Addon läuft weiter. (%s)",
-        "|cffff4444Error in %s|r – the addon keeps running. (%s)"), where, tostring(err)))
-    local handler = geterrorhandler and geterrorhandler()
-    if handler then pcall(handler, err) end
+    UI.ReportError(ADDON_NAME, where, err)
 end
 
 function ns.Safe(where, fn)
@@ -257,15 +252,9 @@ function ns.ShortNumber(v)
 end
 
 -- Aenderungen an sicheren Rahmen sind im Kampf verboten: merken und nach dem Kampf ausfuehren
-local pending, pendingOrder = {}, {}
+-- (Warteschlange im ForeverHub)
 function ns.OutOfCombat(key, fn)
-    if InCombatLockdown() then
-        if not pending[key] then tinsert(pendingOrder, key) end
-        pending[key] = fn
-        return false
-    end
-    fn()
-    return true
+    return UI.AfterCombat(ADDON_NAME .. ":" .. tostring(key), fn, ADDON_NAME)
 end
 
 ---------------------------------------------------------------------------
@@ -291,15 +280,3 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
     end
 end)
 
-ns.On("PLAYER_REGEN_ENABLED", T("Nach dem Kampf", "After combat"), function()
-    local order = pendingOrder
-    pendingOrder = {}
-    for _, key in ipairs(order) do
-        local fn = pending[key]
-        pending[key] = nil
-        if fn then
-            local ok, err = pcall(fn)
-            if not ok then ns.ReportError(key, err) end
-        end
-    end
-end)
