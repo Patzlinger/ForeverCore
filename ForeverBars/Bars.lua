@@ -86,6 +86,7 @@ local function DefaultPosition(key)
         bar6 = { width / 2, base + step * 3 }, bar7 = { width / 2, base + step * 4 }, bar8 = { width / 2, base + step * 5 },
         bar4 = { width - 30, height / 2 }, bar5 = { width - 30 - step, height / 2 },
         pet = { width / 2 - 140, base + step * 3 }, stance = { width / 2 + 140, base + step * 3 },
+        prof = { width / 2 - 420, base + step },
         micro = { width - 170, 22 }, bags = { width - 110, 62 }, vehicle = { width / 2 - 300, base + 20 },
         xp = { width / 2, 8 }, rep = { width / 2, 20 }, queue = { width - 290, 120 },
     }
@@ -127,6 +128,58 @@ local function SetTextFont(text, size)
     end
 end
 
+-- Stile der Knöpfe, alle im flachen Forever-Design: Randfarbe, Randstärke, Abstand des Symbols zum Rand
+-- und Hintergrund leerer Plätze
+local COLOR = ns.Style.COLOR
+ns.SKINS = {
+    { key = "FLAT", textKey = "SKIN_FLAT", border = COLOR.border, size = 1, inset = 1,
+      background = { 0.06, 0.06, 0.08, 0.85 } },
+    { key = "GOLD", textKey = "SKIN_GOLD", border = { COLOR.accent[1], COLOR.accent[2], COLOR.accent[3], 0.55 }, size = 1,
+      inset = 1, background = { 0.06, 0.06, 0.08, 0.85 } },
+    { key = "SHADOW", textKey = "SKIN_SHADOW", border = { 0, 0, 0, 1 }, size = 2, inset = 2,
+      background = { 0, 0, 0, 0.6 } },
+    { key = "GLASS", textKey = "SKIN_GLASS", border = { 1, 1, 1, 0.18 }, size = 1, inset = 1,
+      background = { 0.20, 0.20, 0.25, 0.35 } },
+}
+
+local function GetSkin()
+    for _, skin in ipairs(ns.SKINS) do
+        if skin.key == ns.db.skin then return skin end
+    end
+    return ns.SKINS[1]
+end
+
+-- Hover-, Gedrückt- und Aktiv-Leuchten: Blizzards Grafiken sind für größere Knöpfe mit Rahmen gemacht und
+-- sitzen auf den flachen Knöpfen versetzt. Darum flache Flächen genau über dem Symbol.
+local function UpdateStateTextures(button, icon)
+    local target = icon or button
+    local highlight = button.GetHighlightTexture and button:GetHighlightTexture()
+    if highlight then
+        highlight:SetColorTexture(1, 1, 1, math.max(0, math.min(100, ns.db.hoverAlpha or 15)) / 100)
+        highlight:ClearAllPoints()
+        highlight:SetAllPoints(target)
+    end
+    local pushed = button.GetPushedTexture and button:GetPushedTexture()
+    if pushed then
+        pushed:SetColorTexture(0, 0, 0, 0.35)
+        pushed:ClearAllPoints()
+        pushed:SetAllPoints(target)
+    end
+    local checked = button.GetCheckedTexture and button:GetCheckedTexture()
+    if checked then
+        checked:SetColorTexture(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3], 0.25)
+        checked:ClearAllPoints()
+        checked:SetAllPoints(target)
+    end
+    -- Weitere Blizzard-Flächen (Aufblinken beim Angriff, neue Aktion, Hinweis aus dem Zauberbuch) ebenfalls aufs Symbol
+    for _, region in ipairs({ button.Flash, button.NewActionTexture, button.SpellHighlightTexture }) do
+        if region and region.SetAllPoints then
+            region:ClearAllPoints()
+            region:SetAllPoints(target)
+        end
+    end
+end
+
 -- Position der Tastenbelegung auf dem Knopf
 local HOTKEY_POSITIONS = {
     TOPRIGHT = { "TOPRIGHT", -2, -3, "RIGHT" },
@@ -163,13 +216,37 @@ local function UpdateButtonLook(button)
         if effect and effect.SetAlpha then effect:SetAlpha(db.castVFX and 1 or 0) end
     end
 
-    -- Rand, grüner "Ausgerüstet"-Rand, Zuschnitt des Symbols
-    if button.fbBorder then button.fbBorder:SetShown(db.showBorder) end
+    -- Stil: Rand, Hintergrund leerer Plätze, Abstand des Symbols zum Rand
+    local skin = GetSkin()
+    if button.fbBorder then
+        button.fbBorder:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = skin.size })
+        button.fbBorder:SetBackdropBorderColor(unpack(skin.border))
+        button.fbBorder:SetShown(db.showBorder)
+    end
+    if button.fbBackground then button.fbBackground:SetColorTexture(unpack(skin.background)) end
+    -- Grüner "Ausgerüstet"-Rand, Zuschnitt des Symbols
     if button.Border then button.Border:SetAlpha(db.showEquipped and 1 or 0) end
     local icon = button.icon or button.Icon or (name and _G[name .. "Icon"])
     if icon then
         local crop = math.max(0, math.min(30, db.iconZoom or 8)) / 100
         icon:SetTexCoord(crop, 1 - crop, crop, 1 - crop)
+        local inset = db.showBorder and skin.inset or 0
+        icon:ClearAllPoints()
+        icon:SetPoint("TOPLEFT", inset, -inset)
+        icon:SetPoint("BOTTOMRIGHT", -inset, inset)
+    end
+    UpdateStateTextures(button, icon)
+
+    -- Abklingzeit: auf die Symbolfläche legen (nur außerhalb des Kampfes, der Rahmen hängt am geschützten Knopf);
+    -- Zahlen in der Schrift der Knopftexte (ob Zahlen erscheinen, regelt die Blizzard-Einstellung)
+    local cooldown = button.cooldown or button.Cooldown or (name and _G[name .. "Cooldown"])
+    if cooldown then
+        if icon and not InCombatLockdown() then
+            cooldown:ClearAllPoints()
+            cooldown:SetAllPoints(icon)
+        end
+        local countdown = cooldown.GetCountdownFontString and cooldown:GetCountdownFontString()
+        if countdown then SetTextFont(countdown, db.fontSize + 2) end
     end
 end
 
@@ -184,36 +261,29 @@ local function StyleButton(button)
     HideRegion(button.BottomDivider)
     HideRegion(name and _G[name .. "FloatingBG"])
 
-    -- Symbol eckig und randlos zuschneiden
+    -- Symbol eckig zuschneiden (Abstand zum Rand setzt der Stil in UpdateButtonLook)
     local icon = button.icon or button.Icon or (name and _G[name .. "Icon"])
-    if icon then
-        if button.IconMask and icon.RemoveMaskTexture then pcall(icon.RemoveMaskTexture, icon, button.IconMask) end
-        icon:ClearAllPoints()
-        icon:SetPoint("TOPLEFT", 1, -1)
-        icon:SetPoint("BOTTOMRIGHT", -1, 1)
-    end
+    if icon and button.IconMask and icon.RemoveMaskTexture then pcall(icon.RemoveMaskTexture, icon, button.IconMask) end
 
     if not button.fbBorder then
-        -- Dunkler Hintergrund für leere Plätze und dünner grauer Rand wie in ForeverQuests
+        -- Hintergrund für leere Plätze und dünner Rand (Farben je nach Stil)
         local background = button:CreateTexture(nil, "BACKGROUND", nil, -8)
         background:SetAllPoints()
-        background:SetColorTexture(0.06, 0.06, 0.08, 0.85)
         button.fbBackground = background
 
         local border = CreateFrame("Frame", nil, button, "BackdropTemplate")
         border:SetAllPoints()
-        border:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 })
-        border:SetBackdropBorderColor(unpack(ns.Style.COLOR.border))
         border:SetFrameLevel(button:GetFrameLevel() + 1)
         border:EnableMouse(false)
         button.fbBorder = border
 
-        -- Blizzard setzt seine Grafiken bei manchen Aktualisierungen neu: danach wieder ausblenden
+        -- Blizzard setzt seine Grafiken bei manchen Aktualisierungen neu: danach wieder ausblenden bzw. anpassen
         if button.UpdateButtonArt then
             hooksecurefunc(button, "UpdateButtonArt", function(self)
                 HideRegion(self.NormalTexture)
                 HideRegion(self.SlotArt)
                 HideRegion(self.SlotBackground)
+                UpdateStateTextures(self, self.icon or self.Icon)
             end)
         end
         if button.UpdateHotkeys then
@@ -266,6 +336,307 @@ local function HideBlizzardBars(def)
 end
 
 ---------------------------------------------------------------------------
+-- Berufeleiste: eigene geschützte Knöpfe, belegt mit den Berufen des Charakters
+-- (aktive Berufs-Fähigkeiten aus dem Zauberbuch, z. B. Schmelzen, Kräutersuche; sonst der Beruf selbst)
+---------------------------------------------------------------------------
+
+local PROF_COUNT = 12
+local profSpells = {} -- [i] = { spell = Zauber-ID oder Name, icon = Symbol }
+
+-- Zauber an einer Stelle im Zauberbuch (neue und alte Schnittstelle); nur aktive Zauber
+local function SpellBookSpell(slot)
+    if C_SpellBook and C_SpellBook.GetSpellBookItemInfo and Enum and Enum.SpellBookSpellBank then
+        local info = C_SpellBook.GetSpellBookItemInfo(slot, Enum.SpellBookSpellBank.Player)
+        if info and info.spellID and not info.isPassive then return info.spellID, info.iconID end
+    elseif GetSpellBookItemInfo then
+        local kind, spellID = GetSpellBookItemInfo(slot, BOOKTYPE_SPELL or "spell")
+        local passive = IsPassiveSpell and IsPassiveSpell(slot, BOOKTYPE_SPELL or "spell")
+        if kind == "SPELL" and spellID and not passive then return spellID end
+    end
+end
+
+local function SpellIcon(spellID)
+    if C_Spell and C_Spell.GetSpellTexture then return C_Spell.GetSpellTexture(spellID) end
+    return GetSpellTexture and GetSpellTexture(spellID)
+end
+
+-- Liste der Berufs-Knöpfe neu ermitteln (Hauptberufe, Archäologie, Angeln, Kochen, Erste Hilfe)
+local function CollectProfessionSpells()
+    wipe(profSpells)
+    if not GetProfessions or not GetProfessionInfo then return end
+    local indices = { GetProfessions() }
+    local seen = {}
+    for i = 1, 6 do
+        local index = indices[i]
+        if index then
+            local name, icon, _, _, numSpells, offset = GetProfessionInfo(index)
+            local added = false
+            for s = 1, numSpells or 0 do
+                local spellID, spellIcon = SpellBookSpell((offset or 0) + s)
+                if spellID and not seen[spellID] then
+                    seen[spellID] = true
+                    added = true
+                    table.insert(profSpells, { spell = spellID, icon = spellIcon or SpellIcon(spellID) or icon })
+                end
+            end
+            -- Ohne eigene Fähigkeit im Zauberbuch: den Beruf über seinen Namen öffnen
+            if not added and name then table.insert(profSpells, { spell = name, icon = icon }) end
+        end
+    end
+end
+
+local function UpdateProfessionCooldown(button)
+    local entry = button.fbEntry
+    if not entry or type(entry.spell) ~= "number" or not C_Spell or not C_Spell.GetSpellCooldown then
+        button.cooldown:Clear()
+        return
+    end
+    -- Werte unverändert an die Abklingzeit-Anzeige weiterreichen (keine eigene Rechnung)
+    local info = C_Spell.GetSpellCooldown(entry.spell)
+    if info then pcall(button.cooldown.SetCooldown, button.cooldown, info.startTime, info.duration) end
+end
+
+function ns.CreateProfessionButtons()
+    for i = 1, PROF_COUNT do
+        local name = "ForeverBarsProfButton" .. i
+        if not _G[name] then
+            local button = CreateFrame("Button", name, hiddenParent, "SecureActionButtonTemplate")
+            button:SetSize(ACTION_SIZE, ACTION_SIZE)
+            -- Beide Richtungen anmelden: welche auslöst, regelt die Blizzard-Einstellung "Beim Drücken auslösen"
+            button:RegisterForClicks("AnyUp", "AnyDown")
+            button.icon = button:CreateTexture(nil, "ARTWORK")
+            button.icon:SetAllPoints()
+            button:SetHighlightTexture("Interface\\Buttons\\WHITE8x8")
+            button:SetPushedTexture("Interface\\Buttons\\WHITE8x8")
+            button.cooldown = CreateFrame("Cooldown", nil, button, "CooldownFrameTemplate")
+            button.cooldown:SetAllPoints(button.icon)
+            button:SetScript("OnEnter", function(self)
+                local mode = ns.db.buttonTooltip
+                if mode == "NEVER" or (mode == "NOCOMBAT" and InCombatLockdown()) or not self.fbEntry then return end
+                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                if type(self.fbEntry.spell) == "number" then
+                    GameTooltip:SetSpellByID(self.fbEntry.spell)
+                else
+                    GameTooltip:SetText(self.fbEntry.spell)
+                end
+                GameTooltip:Show()
+            end)
+            button:SetScript("OnLeave", function(self)
+                if GameTooltip:GetOwner() == self then GameTooltip:Hide() end
+            end)
+        end
+    end
+end
+
+-- Knöpfe belegen (nur außerhalb des Kampfes); Rückgabe: Anzahl belegter Knöpfe
+local function AssignProfessionButtons()
+    CollectProfessionSpells()
+    for i = 1, PROF_COUNT do
+        local button = _G["ForeverBarsProfButton" .. i]
+        local entry = profSpells[i]
+        if button then
+            button.fbEntry = entry
+            button:SetAttribute("type", entry and "spell" or nil)
+            button:SetAttribute("spell", entry and entry.spell or nil)
+            button.icon:SetTexture(entry and entry.icon or nil)
+            button:SetShown(entry ~= nil)
+            UpdateProfessionCooldown(button)
+        end
+    end
+    return #profSpells
+end
+
+function ns.UpdateProfessionCooldowns()
+    for i = 1, PROF_COUNT do
+        local button = _G["ForeverBarsProfButton" .. i]
+        if button and button.fbEntry then UpdateProfessionCooldown(button) end
+    end
+end
+
+---------------------------------------------------------------------------
+-- Leuchten bei Procs: Blizzard entscheidet, welcher Knopf leuchtet (ShowAlert/HideAlert);
+-- ForeverBars zeigt dazu wahlweise einen goldenen pulsierenden Rahmen im eigenen Stil
+-- oder lässt Blizzards Leuchten stehen. Es wird nichts selbst berechnet.
+---------------------------------------------------------------------------
+
+local function GetGlow(button)
+    if button.fbGlow then return button.fbGlow end
+    local glow = CreateFrame("Frame", nil, button, "BackdropTemplate")
+    glow:SetPoint("TOPLEFT", -2, 2)
+    glow:SetPoint("BOTTOMRIGHT", 2, -2)
+    glow:SetFrameLevel(button:GetFrameLevel() + 5)
+    glow:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 2 })
+    glow:SetBackdropBorderColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3], 1)
+    glow:EnableMouse(false)
+    local pulse = glow:CreateAnimationGroup()
+    pulse:SetLooping("BOUNCE")
+    local fade = pulse:CreateAnimation("Alpha")
+    fade:SetFromAlpha(1)
+    fade:SetToAlpha(0.3)
+    fade:SetDuration(0.5)
+    glow.pulse = pulse
+    glow:Hide()
+    button.fbGlow = glow
+    return glow
+end
+
+local function ShowGlow(button, on)
+    local glow = GetGlow(button)
+    if on then
+        glow:Show()
+        glow.pulse:Play()
+    else
+        glow.pulse:Stop()
+        glow:Hide()
+    end
+end
+
+local function OnAlertShown(button)
+    if not button or not button.fbBorder then return end -- nur Knöpfe in ForeverBars-Leisten
+    button.fbAlertActive = true
+    local style = ns.db.procGlow
+    local alert = button.SpellActivationAlert or button.overlay
+    if alert then alert:SetAlpha(style == "BLIZZARD" and 1 or 0) end
+    ShowGlow(button, style == "FOREVER")
+end
+
+local function OnAlertHidden(button)
+    if not button then return end
+    button.fbAlertActive = nil
+    -- Im Testmodus leuchtet der Knopf weiter
+    if button.fbGlow and not button.fbTestGlow then ShowGlow(button, false) end
+end
+
+---------------------------------------------------------------------------
+-- Testmodus: alle aktiven Leisten zeigen, auf einigen Knöpfen Proc-Leuchten und Beispiel-Abklingzeiten.
+-- Nutzt eigene Anzeigen (eigener Abklingzeit-Rahmen, eigenes Leuchten) - Blizzards Knöpfe bleiben unberührt.
+---------------------------------------------------------------------------
+
+local TEST_COOLDOWN = 30 -- Sekunden der Beispiel-Abklingzeit
+local testTicker
+
+local function TestCooldown(button)
+    if not button.fbTestCooldown then
+        local cooldown = CreateFrame("Cooldown", nil, button, "CooldownFrameTemplate")
+        local icon = button.icon or button.Icon
+        if icon then cooldown:SetAllPoints(icon) else cooldown:SetAllPoints() end
+        button.fbTestCooldown = cooldown
+    end
+    return button.fbTestCooldown
+end
+
+-- Alle Aktionsknöpfe in ForeverBars-Leisten, die gerade zu sehen sind
+local function TestButtons()
+    local list = {}
+    for _, def in ipairs(ns.BAR_DEFS) do
+        if def.kind == "action" and ns.db.bars[def.key].enabled then
+            for _, button in ipairs(GetAllButtons(def)) do
+                if button.fbBorder and button:GetParent() ~= hiddenParent then table.insert(list, button) end
+            end
+        end
+    end
+    return list
+end
+
+local function ApplyTestEffects(on)
+    for i, button in ipairs(TestButtons()) do
+        -- Jeder dritte Knopf leuchtet (im eigenen Stil, falls gewählt), jeder vierte (versetzt) zeigt eine Abklingzeit
+        local glow = on and i % 3 == 1 and ns.db.procGlow == "FOREVER"
+        button.fbTestGlow = glow or nil
+        if glow then
+            ShowGlow(button, true)
+        elseif not button.fbAlertActive or ns.db.procGlow ~= "FOREVER" then
+            ShowGlow(button, false)
+        end
+        if on and i % 4 == 2 then
+            TestCooldown(button):SetCooldown(GetTime(), TEST_COOLDOWN)
+        elseif button.fbTestCooldown then
+            button.fbTestCooldown:Clear()
+        end
+    end
+end
+
+function ns.SetTestMode(on)
+    if on and InCombatLockdown() then
+        ns.Print(L("NOT_IN_COMBAT"))
+        return
+    end
+    ns.testMode = on and true or false
+    if testTicker then
+        testTicker:Cancel()
+        testTicker = nil
+    end
+    if ns.testMode then
+        -- Abklingzeiten regelmäßig neu starten, solange der Testmodus läuft
+        testTicker = C_Timer.NewTicker(TEST_COOLDOWN, function() ApplyTestEffects(true) end)
+    end
+    ns.RequestLayout() -- Sichtbarkeit (alle Leisten zeigen bzw. wieder wie eingestellt)
+    -- Nach dem Anordnen, damit die Knöpfe schon in den Leisten liegen
+    C_Timer.After(0.1, function() ApplyTestEffects(ns.testMode) end)
+    ns.Print(L(ns.testMode and "TEST_ON" or "TEST_OFF"))
+    if ns.testMode and ns.db.procGlow ~= "FOREVER" then ns.Print(L("TEST_GLOW_HINT")) end
+    if ns.RefreshOptions then ns.RefreshOptions() end
+end
+
+local function HookProcGlow()
+    local manager = ActionButtonSpellAlertManager
+    if manager and manager.ShowAlert then
+        hooksecurefunc(manager, "ShowAlert", function(_, button) OnAlertShown(button) end)
+        if manager.HideAlert then
+            hooksecurefunc(manager, "HideAlert", function(_, button) OnAlertHidden(button) end)
+        end
+    end
+    -- Ältere Blizzard-Funktionen (falls es sie in Forever gibt)
+    if ActionButton_ShowOverlayGlow then hooksecurefunc("ActionButton_ShowOverlayGlow", OnAlertShown) end
+    if ActionButton_HideOverlayGlow then hooksecurefunc("ActionButton_HideOverlayGlow", OnAlertHidden) end
+end
+
+---------------------------------------------------------------------------
+-- Rahmen um eine Leiste (wie die Fenster in ForeverQuests: dunkle Fläche, Kopfzeile mit Namen, goldene Linie)
+---------------------------------------------------------------------------
+
+local FRAME_PAD, FRAME_TITLE = 4, 18
+
+local function UpdateBarFrame(def, cfg, holder)
+    local frame = holder.fbFrame
+    if not cfg.frame then
+        if frame then frame:Hide() end
+        return
+    end
+    if not frame then
+        frame = CreateFrame("Frame", nil, holder, "BackdropTemplate")
+        frame:EnableMouse(false)
+        ns.Style.SetFlat(frame, { COLOR.background[1], COLOR.background[2], COLOR.background[3], 0.85 })
+        frame.header = frame:CreateTexture(nil, "BORDER")
+        frame.header:SetColorTexture(unpack(COLOR.header))
+        frame.header:SetPoint("TOPLEFT", 1, -1)
+        frame.header:SetPoint("TOPRIGHT", -1, -1)
+        frame.header:SetHeight(FRAME_TITLE)
+        frame.line = frame:CreateTexture(nil, "ARTWORK")
+        frame.line:SetColorTexture(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3], 0.6)
+        frame.line:SetPoint("TOPLEFT", frame.header, "BOTTOMLEFT")
+        frame.line:SetPoint("TOPRIGHT", frame.header, "BOTTOMRIGHT")
+        frame.line:SetHeight(1)
+        frame.title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        frame.title:SetPoint("LEFT", frame.header, "LEFT", 6, 0)
+        holder.fbFrame = frame
+    end
+    -- Unter den Knöpfen (die Knöpfe liegen eine Ebene höher im Halter)
+    frame:SetFrameLevel(holder:GetFrameLevel())
+    local withTitle = cfg.frameTitle and true or false
+    frame.header:SetShown(withTitle)
+    frame.line:SetShown(withTitle)
+    frame.title:SetShown(withTitle)
+    -- Eigener Titel aus dem Menü, sonst der Name der Leiste
+    local titleText = strtrim(cfg.frameTitleText or "")
+    frame.title:SetText(titleText ~= "" and titleText or L(def.textKey))
+    frame:ClearAllPoints()
+    frame:SetPoint("TOPLEFT", holder, "TOPLEFT", -FRAME_PAD, FRAME_PAD + (withTitle and FRAME_TITLE + 1 or 0))
+    frame:SetPoint("BOTTOMRIGHT", holder, "BOTTOMRIGHT", FRAME_PAD, -FRAME_PAD)
+    frame:Show()
+end
+
+---------------------------------------------------------------------------
 -- Anordnung
 ---------------------------------------------------------------------------
 
@@ -286,8 +657,14 @@ end
 -- von oben nach unten bzw. unten nach oben (der erste Knopf sitzt in der Ecke, von der aus es wächst).
 local function LayoutButtons(def, cfg, holder)
     local buttons = GetButtons(def, cfg)
-    local size = def.kind == "action" and ACTION_SIZE or SMALL_SIZE
+    local size = (def.kind == "action" or def.kind == "prof") and ACTION_SIZE or SMALL_SIZE
     local wanted = def.bagButtons and #buttons or (cfg.buttons or def.count)
+    -- Haltungen: immer genau so viele Plätze, wie der Charakter hat; Berufe: höchstens so viele
+    if def.kind == "stance" then
+        wanted = math.max(1, GetNumShapeshiftForms and GetNumShapeshiftForms() or 0)
+    elseif def.kind == "prof" then
+        wanted = math.min(wanted, math.max(1, AssignProfessionButtons()))
+    end
     local count = math.max(1, math.min(wanted, #buttons))
     local perRow = math.max(1, math.min(cfg.perRow or count, count))
     local gap = cfg.spacing or 4
@@ -354,71 +731,22 @@ local function LayoutContainer(def, cfg, holder)
     holder:SetSize(math.max(minSize, frame:GetWidth()), math.max(minSize, frame:GetHeight()))
 end
 
--- Sichtbarkeit als Blizzard-Bedingung (wird vom Spiel auch im Kampf umgeschaltet)
 ---------------------------------------------------------------------------
--- Seitenwechsel (nur Aktionsleisten). Eine "Seite" ist eine andere Belegung derselben 12 Knöpfe.
--- Läuft über die geschützte Blizzard-Technik (Zustandstreiber), damit er auch im Kampf funktioniert.
+-- Feste Seite der Aktionsleisten. Eine "Seite" ist eine Belegung von 12 Knöpfen; nach dem Umhängen in die
+-- eigenen Halter muss jede Leiste ihre Seite selbst setzen. Leiste 1 überlässt den Wechsel Blizzard
+-- (Gestalten, Fahrzeuge, Seiten-Pfeile). Läuft über die geschützte Blizzard-Technik (Zustandstreiber).
 ---------------------------------------------------------------------------
 
 -- Eigene Seite jeder Leiste (wie bei Blizzard): Leiste 1 = Seite 1, Leiste 2 = Seite 6 usw.
 local HOME_PAGES = { bar1 = 1, bar2 = 6, bar3 = 5, bar4 = 3, bar5 = 4, bar6 = 13, bar7 = 14, bar8 = 15 }
-ns.HOME_PAGES = HOME_PAGES
-local MODIFIERS = { { key = "pageCtrl", mod = "ctrl" }, { key = "pageAlt", mod = "alt" }, { key = "pageShift", mod = "shift" } }
 
--- Leiste 1 ohne eigene Einstellungen: Blizzard regelt den Seitenwechsel selbst (Gestalten, Seiten-Pfeile)
-local function IsDefaultPaging(cfg)
-    if cfg.usePagingCustom and strtrim(cfg.pagingCustom or "") ~= "" then return false end
-    for _, modifier in ipairs(MODIFIERS) do
-        if (tonumber(cfg[modifier.key]) or 0) > 0 then return false end
-    end
-    for _, value in pairs(cfg.stancePages or {}) do
-        if value ~= "BLIZZARD" then return false end
-    end
-    return true
+-- nil = Blizzard regelt es (Leiste 1), sonst die feste Seite der Leiste
+local function PagingDriver(def)
+    if def.kind ~= "action" or def.key == "bar1" then return nil end
+    return tostring(HOME_PAGES[def.key] or 1)
 end
 
--- Makro-Bedingung für den Seitenwechsel, z. B. "[mod:shift] 2; [stance:1] 7; 1" (nil = Blizzard regelt es)
-local function PagingDriver(def, cfg)
-    if def.kind ~= "action" then return nil end
-    if def.key == "bar1" and IsDefaultPaging(cfg) then return nil end
-    local home = HOME_PAGES[def.key] or 1
-    local custom = cfg.usePagingCustom and strtrim(cfg.pagingCustom or "")
-    if custom and custom ~= "" then return custom end
-    local parts = {}
-    if def.key == "bar1" then
-        -- Fahrzeug, Blizzard-Fahrzeugleiste, Gedankenkontrolle und Sonderleisten wie bei Blizzard
-        table.insert(parts, ("[overridebar] %d"):format(GetOverrideBarIndex and GetOverrideBarIndex() or 14))
-        table.insert(parts, ("[vehicleui] %d"):format(GetVehicleBarIndex and GetVehicleBarIndex() or 12))
-        table.insert(parts, ("[possessbar] %d"):format(GetVehicleBarIndex and GetVehicleBarIndex() or 12))
-        table.insert(parts, ("[shapeshift] %d"):format(GetTempShapeshiftBarIndex and GetTempShapeshiftBarIndex() or 13))
-    end
-    for _, modifier in ipairs(MODIFIERS) do
-        local page = tonumber(cfg[modifier.key]) or 0
-        if page > 0 then table.insert(parts, ("[mod:%s] %d"):format(modifier.mod, page)) end
-    end
-    local blizzardStances = false
-    local forms = GetNumShapeshiftForms and GetNumShapeshiftForms() or 0
-    for i = 1, forms do
-        local value = cfg.stancePages and cfg.stancePages[i]
-        if value == nil then value = def.key == "bar1" and "BLIZZARD" or 0 end
-        if value == "BLIZZARD" then
-            blizzardStances = true
-        elseif (tonumber(value) or 0) > 0 then
-            table.insert(parts, ("[stance:%d] %d"):format(i, value))
-        end
-    end
-    if def.key == "bar1" then
-        -- Blizzard-Seiten für Gestalten (Bär, Katze, Verstohlenheit …) und die Seiten-Pfeile
-        if blizzardStances or forms == 0 then
-            for n = 5, 1, -1 do table.insert(parts, ("[bonusbar:%d] %d"):format(n, 6 + n)) end
-        end
-        for n = 6, 2, -1 do table.insert(parts, ("[bar:%d] %d"):format(n, n)) end
-    end
-    table.insert(parts, tostring(home))
-    return table.concat(parts, "; ")
-end
-
--- Seitenwechsel einer Leiste einrichten (nur außerhalb des Kampfes)
+-- Seite einer Leiste einrichten (nur außerhalb des Kampfes)
 local function SetupPaging(def, cfg, holder)
     if def.kind ~= "action" then return end
     local buttons = GetAllButtons(def)
@@ -443,15 +771,12 @@ local function SetupPaging(def, cfg, holder)
             end
         ]])
     end
-    local driver = PagingDriver(def, cfg)
+    local driver = PagingDriver(def)
     if driver then
-        -- Abgesichert: bei fehlerhafter eigener Bedingung die eigene Seite der Leiste
-        if not pcall(RegisterStateDriver, holder, "page", driver) then
-            RegisterStateDriver(holder, "page", tostring(HOME_PAGES[def.key] or 1))
-        end
+        RegisterStateDriver(holder, "page", driver)
         holder.fbPaging = true
     elseif holder.fbPaging then
-        -- Zurück zum Blizzard-Seitenwechsel (nur Leiste 1)
+        -- Zurück zum Blizzard-Seitenwechsel (Leiste 1, z. B. nach Profilen aus älteren Versionen)
         UnregisterStateDriver(holder, "page")
         holder.fbPaging = false
         holder:SetAttribute("actionpage", nil)
@@ -460,19 +785,6 @@ local function SetupPaging(def, cfg, holder)
             if button.UpdateAction then button:UpdateAction() end
         end
     end
-end
-
--- Namen der Gestalten/Haltungen des Charakters (für das Menü)
-function ns.GetStanceNames()
-    local names = {}
-    local forms = GetNumShapeshiftForms and GetNumShapeshiftForms() or 0
-    for i = 1, forms do
-        local _, _, _, spellID = GetShapeshiftFormInfo(i)
-        local name = spellID and (C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(spellID)
-            or (GetSpellInfo and GetSpellInfo(spellID)))
-        names[i] = name or ns.L("STANCE_N", i)
-    end
-    return names
 end
 
 -- Ausblend-Bedingungen (Häkchen im Menü) -> Makro-Bedingung
@@ -487,7 +799,7 @@ local HIDE_CONDITIONS = {
 
 local function VisibilityDriver(def, cfg)
     if not cfg.enabled then return "hide" end
-    if ns.unlocked then return "show" end
+    if ns.unlocked or ns.testMode then return "show" end
     -- Eigene Bedingung ersetzt alle anderen Einstellungen
     local custom = cfg.useCustom and strtrim(cfg.custom or "")
     if custom and custom ~= "" then return custom end
@@ -495,6 +807,8 @@ local function VisibilityDriver(def, cfg)
     for _, entry in ipairs(HIDE_CONDITIONS) do
         if cfg[entry.key] then table.insert(parts, entry.condition .. " hide") end
     end
+    -- Allgemeine Einstellung: alle Leisten nur im Kampf zeigen
+    if ns.db.hideOutOfCombat then table.insert(parts, "[nocombat] hide") end
     if cfg.visibility == "COMBAT" then
         table.insert(parts, "[combat] show")
         table.insert(parts, "hide")
@@ -681,7 +995,7 @@ function ns.ApplyLayout()
         holder:ClearAllPoints()
         holder:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x / scale, y / scale)
         -- Deckkraft; beim Einblenden per Maus übernimmt das die Überblendung (siehe UpdateFading)
-        if not cfg.fadeMouseover or ns.unlocked then
+        if not cfg.fadeMouseover or ns.unlocked or ns.testMode then
             holder:SetAlpha((cfg.alpha or 100) / 100)
             holder.fbAlpha = nil
         end
@@ -690,6 +1004,7 @@ function ns.ApplyLayout()
         if not pcall(RegisterStateDriver, holder, "visibility", VisibilityDriver(def, cfg)) then
             RegisterStateDriver(holder, "visibility", "[petbattle] hide; show")
         end
+        UpdateBarFrame(def, cfg, holder)
         UpdateMover(def, holder)
     end
 end
@@ -753,7 +1068,7 @@ local function UpdateFading()
     for _, def in ipairs(ns.BAR_DEFS) do
         local cfg = ns.db.bars[def.key]
         local holder = holders[def.key]
-        if holder and cfg.enabled and cfg.fadeMouseover and not ns.unlocked then
+        if holder and cfg.enabled and cfg.fadeMouseover and not ns.unlocked and not ns.testMode then
             local full = (cfg.alpha or 100) / 100
             local over = holder:IsMouseOver()
                 or (SpellFlyout and SpellFlyout:IsShown() and SpellFlyout:IsMouseOver())
@@ -792,6 +1107,34 @@ local function DisableTutorials()
     if watcher and watcher.Complete then pcall(watcher.Complete, watcher) end
 end
 
+-- Blizzard-Bearbeitungsmodus kann die Leisten nicht greifen (sie liegen in ForeverBars-Haltern).
+-- Darum beim Öffnen die eigenen Griffe zeigen und beim Schließen wieder sperren – aber nur, wenn
+-- der Bearbeitungsmodus sie entsperrt hat. Hooks/Callbacks lösen in Forever nicht aus, darum wird
+-- nur nachgeschaut, ob der Rahmen sichtbar ist (liest nur, verändert nichts – kein taint).
+local EDIT_MODE_INTERVAL = 0.2 -- Sekunden zwischen zwei Blicken
+local editModeOpen = false
+
+local function CheckEditMode()
+    local frame = EditModeManagerFrame
+    local open = frame and frame:IsShown() or false
+    if open == editModeOpen then return end
+    if InCombatLockdown() then return end -- im Kampf nichts umbauen, danach erneut prüfen
+    editModeOpen = open
+    if open then
+        if ns.unlocked then return end
+        ns.unlockedByEditMode = true
+        ns.SetUnlocked(true)
+        if ns.unlocked then ns.Print(L("EDITMODE_HINT")) end
+    elseif ns.unlockedByEditMode then
+        ns.unlockedByEditMode = nil
+        if ns.unlocked then ns.SetUnlocked(false) end
+    end
+end
+
+function ns.WatchEditMode()
+    C_Timer.NewTicker(EDIT_MODE_INTERVAL, CheckEditMode)
+end
+
 function ns.SetupBars()
     ns.ready = true
     local isLoaded = C_AddOns and C_AddOns.IsAddOnLoaded
@@ -800,35 +1143,29 @@ function ns.SetupBars()
     elseif NPE_LoadUI then
         hooksecurefunc("NPE_LoadUI", DisableTutorials)
     end
+    ns.CreateProfessionButtons()
+    HookProcGlow()
     ns.ApplyLayout()
     C_Timer.NewTicker(FADE_INTERVAL, UpdateFading)
 
-    -- Blizzard-Bearbeitungsmodus kann die Leisten nicht greifen (sie liegen in ForeverBars-Haltern).
-    -- Darum beim Öffnen die eigenen Griffe zeigen und beim Schließen wieder sperren – aber nur, wenn
-    -- der Bearbeitungsmodus sie entsperrt hat. HookScript verändert den Blizzard-Rahmen nicht (kein taint).
-    if EditModeManagerFrame then
-        EditModeManagerFrame:HookScript("OnShow", function()
-            if ns.unlocked or InCombatLockdown() then return end
-            ns.unlockedByEditMode = true
-            ns.SetUnlocked(true)
-            ns.Print(L("EDITMODE_HINT"))
-        end)
-        EditModeManagerFrame:HookScript("OnHide", function()
-            if not ns.unlockedByEditMode then return end
-            ns.unlockedByEditMode = nil
-            if ns.unlocked and not InCombatLockdown() then ns.SetUnlocked(false) end
-        end)
-    end
+    ns.WatchEditMode()
 
     local events = CreateFrame("Frame")
-    -- Nach dem Kampf ausstehende Änderungen übernehmen; nach Ladebildschirmen und Bearbeitungsmodus neu anordnen
-    for _, event in ipairs({ "PLAYER_REGEN_ENABLED", "PLAYER_ENTERING_WORLD", "EDIT_MODE_LAYOUTS_UPDATED",
-        "UPDATE_SHAPESHIFT_FORMS", "UI_SCALE_CHANGED", "DISPLAY_SIZE_CHANGED" }) do
+    -- Nach dem Kampf ausstehende Änderungen übernehmen; nach Ladebildschirmen und Bearbeitungsmodus neu anordnen;
+    -- neue oder verlernte Berufe in die Berufeleiste übernehmen
+    for _, event in ipairs({ "PLAYER_REGEN_ENABLED", "PLAYER_REGEN_DISABLED", "PLAYER_ENTERING_WORLD", "EDIT_MODE_LAYOUTS_UPDATED",
+        "UPDATE_SHAPESHIFT_FORMS", "UI_SCALE_CHANGED", "DISPLAY_SIZE_CHANGED",
+        "SKILL_LINES_CHANGED", "SPELLS_CHANGED", "SPELL_UPDATE_COOLDOWN" }) do
         pcall(events.RegisterEvent, events, event)
     end
     events:SetScript("OnEvent", function(_, event)
-        if event == "PLAYER_REGEN_ENABLED" then
+        if event == "PLAYER_REGEN_DISABLED" then
+            -- Kampf beginnt: Testmodus beenden (Leisten werden nach dem Kampf wieder wie eingestellt)
+            if ns.testMode then ns.SetTestMode(false) end
+        elseif event == "PLAYER_REGEN_ENABLED" then
             if layoutPending then ns.ApplyLayout() end
+        elseif event == "SPELL_UPDATE_COOLDOWN" then
+            ns.UpdateProfessionCooldowns()
         else
             ns.RequestLayout()
         end

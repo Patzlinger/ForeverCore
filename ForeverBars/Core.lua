@@ -39,6 +39,8 @@ ns.BAR_DEFS = {
       blizzard = { "PetActionBar", "PetActionBarFrame" } },
     { key = "stance", textKey = "BAR_STANCE", kind = "stance", buttons = "StanceButton", count = 10,
       blizzard = { "StanceBar", "StanceBarFrame" } },
+    -- Berufe: eigene Knöpfe (Bars.lua), belegt mit den Berufen und Berufs-Fähigkeiten des Charakters
+    { key = "prof", textKey = "BAR_PROF", kind = "prof", buttons = "ForeverBarsProfButton", count = 12 },
     { key = "micro", textKey = "BAR_MICRO", kind = "container", frames = { "MicroMenuContainer", "MicroMenu" } },
     -- Taschen: einzelne Taschenknöpfe (Rucksack, Taschen, Reagenzientasche, Schlüsselbund) in eigener Anordnung
     { key = "bags", textKey = "BAR_BAGS", kind = "bags", blizzard = { "BagsBar" },
@@ -66,13 +68,11 @@ local function BarDefaults(enabled, perRow)
              alpha = 100, visibility = "ALWAYS", growX = "RIGHT", growY = "DOWN", flyout = "UP",
              onlyBackpack = false, keyring = false,
              fadeMouseover = false, fadeInCombat = true, fadeAlpha = 0, fadeDelay = 1,
+             -- Rahmen um die Leiste (wie die Fenster in ForeverQuests), wahlweise mit Titel
+             frame = false, frameTitle = true, frameTitleText = "", -- leerer Titel = Name der Leiste
              hideVehicle = false, hideOverride = false, hidePossess = false,
              hidePet = false, hideNoPet = false, hideStance = false,
-             useCustom = false, custom = "",
-             -- Seitenwechsel (nur Aktionsleisten): Seite mit Strg/Alt/Shift (0 = aus), je Gestalt/Haltung,
-             -- oder eigene Bedingung
-             pageCtrl = 0, pageAlt = 0, pageShift = 0, stancePages = {},
-             usePagingCustom = false, pagingCustom = "" }
+             useCustom = false, custom = "" }
 end
 
 -- Schriftarten, die in jedem WoW-Client vorhanden sind
@@ -89,10 +89,17 @@ ns.defaults = {
         bar1 = BarDefaults(true), bar2 = BarDefaults(true), bar3 = BarDefaults(true),
         bar4 = BarDefaults(true, 1), bar5 = BarDefaults(true, 1),
         bar6 = BarDefaults(false), bar7 = BarDefaults(false), bar8 = BarDefaults(false),
-        pet = BarDefaults(true, 10), stance = BarDefaults(true, 10),
+        pet = BarDefaults(true, 10), stance = BarDefaults(true, 10), prof = BarDefaults(true, 12),
+        -- (Haltungsleiste: "enabled" hängt von der Klasse ab, siehe ADDON_LOADED)
         micro = BarDefaults(true), bags = BarDefaults(true), vehicle = BarDefaults(true),
         xp = BarDefaults(true), rep = BarDefaults(true), queue = BarDefaults(true),
     },
+    profiles = {},           -- gespeicherte Profile: [Name] = Kopie der Einstellungen (siehe Profiles.lua)
+    activeProfile = "Default", -- aktives Profil; "Default" gibt es immer
+    skin = "FLAT",           -- Aussehen der Knöpfe (ns.SKINS in Bars.lua)
+    hoverAlpha = 15,         -- Stärke des Hover-Leuchtens über den Knöpfen (%)
+    procGlow = "FOREVER",    -- Leuchten bei Procs: "FOREVER" (goldener Rahmen), "BLIZZARD", "OFF"
+    hideOutOfCombat = false, -- alle Leisten außerhalb des Kampfes ausblenden
     showHotkeys = true,
     showMacroNames = false,
     showCounts = true,
@@ -111,7 +118,7 @@ ns.defaults = {
     minimapAngle = 200,       -- Position des Minimap-Symbols (Winkel in Grad)
 }
 ns.defaults.bars.pet.buttons = 10
-ns.defaults.bars.stance.buttons = 10
+ns.defaults.bars.stance.buttons = 10 -- Haltungsleiste zeigt immer so viele Knöpfe, wie der Charakter Haltungen hat
 -- Leiste 1 macht in Fahrzeugen der Blizzard-Fahrzeugleiste Platz; die Begleiterleiste nur mit Begleiter
 ns.defaults.bars.bar1.hideVehicle = true
 ns.defaults.bars.bar1.hideOverride = true
@@ -119,6 +126,9 @@ ns.defaults.bars.pet.hideVehicle = true
 ns.defaults.bars.pet.hideOverride = true
 ns.defaults.bars.pet.hidePossess = true
 ns.defaults.bars.pet.hideNoPet = true
+
+-- Haltungsleiste standardmäßig nur bei Klassen mit Haltungen, Gestalten oder Auren
+local STANCE_CLASSES = { WARRIOR = true, DRUID = true, ROGUE = true, PALADIN = true, PRIEST = true, DEATHKNIGHT = true }
 
 -- Fehlende Werte aus den Standardwerten ergänzen (auch in verschachtelten Tabellen)
 local function FillDefaults(target, defaults)
@@ -131,6 +141,7 @@ local function FillDefaults(target, defaults)
         end
     end
 end
+ns.FillDefaults = FillDefaults
 
 ---------------------------------------------------------------------------
 -- Blizzard-Einstellungen (vom Spiel selbst gespeichert, daher unabhängig vom SavedVariables-Bug)
@@ -177,9 +188,12 @@ end
 local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("ADDON_LOADED")
 eventFrame:RegisterEvent("PLAYER_LOGIN")
+eventFrame:RegisterEvent("PLAYER_LOGOUT")
 eventFrame:SetScript("OnEvent", function(self, event, ...)
     if event == "ADDON_LOADED" then
         if ... ~= addonName then return end
+        local _, class = UnitClass("player")
+        ns.defaults.bars.stance.enabled = STANCE_CLASSES[class] or false
         -- Wegen des Beta-Bugs (SavedVariables werden nicht geladen) gelten notfalls die Standardwerte
         ForeverBarsDB = ForeverBarsDB or {}
         FillDefaults(ForeverBarsDB, ns.defaults)
@@ -192,6 +206,10 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
             end
         end
         self:UnregisterEvent("ADDON_LOADED")
+        ns.InitProfiles()
+    elseif event == "PLAYER_LOGOUT" then
+        -- Aktuelle Einstellungen im aktiven Profil sichern
+        if ns.SaveActiveProfile then ns.SaveActiveProfile() end
     elseif event == "PLAYER_LOGIN" then
         ns.CreateMinimapButton()
         -- Läuft Bartender4, lässt ForeverBars die Leisten in Ruhe (zwei Leisten-Addons stören sich)
@@ -215,6 +233,8 @@ SlashCmdList.FOREVERBARS = function(msg)
     msg = strtrim(msg or ""):lower()
     if msg == "move" or msg == "unlock" then
         ns.SetUnlocked(not ns.unlocked)
+    elseif msg == "test" then
+        if ns.SetTestMode then ns.SetTestMode(not ns.testMode) end
     elseif msg == "kb" or msg == "keybind" then
         ns.OpenKeybindMode()
     else

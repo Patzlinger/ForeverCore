@@ -75,6 +75,124 @@ function ns.ApplyPreset(key)
 end
 
 ---------------------------------------------------------------------------
+-- Gespeicherte Profile: Kopie aller Einstellungen unter einem Namen (ohne Minimap-Symbol und die Profile selbst)
+---------------------------------------------------------------------------
+
+-- Es gibt immer ein aktives Profil. Die aktuellen Einstellungen gehören zu ihm: beim Wechseln und beim
+-- Ausloggen werden sie in das aktive Profil geschrieben. "Default" gibt es immer (Anzeige: "Standard").
+ns.DEFAULT_PROFILE = "Default"
+local NOT_IN_PROFILE = { profiles = true, activeProfile = true, version = true,
+                         showMinimapButton = true, minimapAngle = true }
+
+local function Snapshot()
+    local copy = {}
+    for key, value in pairs(ns.db) do
+        if not NOT_IN_PROFILE[key] then
+            copy[key] = type(value) == "table" and CopyTable(value) or value
+        end
+    end
+    return copy
+end
+
+-- Anzeigename (das Standardprofil heißt in jeder Sprache passend)
+function ns.ProfileLabel(name)
+    if name == ns.DEFAULT_PROFILE then return L("PROFILE_DEFAULT") end
+    return name
+end
+
+-- Beim Start: Standardprofil anlegen, aktives Profil prüfen
+function ns.InitProfiles()
+    ns.db.profiles = ns.db.profiles or {}
+    if not ns.db.profiles[ns.DEFAULT_PROFILE] then ns.db.profiles[ns.DEFAULT_PROFILE] = Snapshot() end
+    if not ns.db.profiles[ns.db.activeProfile or ""] then ns.db.activeProfile = ns.DEFAULT_PROFILE end
+end
+
+function ns.GetActiveProfile()
+    return ns.db.activeProfile or ns.DEFAULT_PROFILE
+end
+
+-- Aktuelle Einstellungen ins aktive Profil schreiben
+function ns.SaveActiveProfile()
+    if not ns.db then return end
+    ns.db.profiles = ns.db.profiles or {}
+    ns.db.profiles[ns.GetActiveProfile()] = Snapshot()
+end
+
+-- Standardprofil zuerst, dann alphabetisch
+function ns.GetProfileNames()
+    local names = {}
+    for name in pairs(ns.db.profiles or {}) do
+        if name ~= ns.DEFAULT_PROFILE then table.insert(names, name) end
+    end
+    table.sort(names)
+    table.insert(names, 1, ns.DEFAULT_PROFILE)
+    return names
+end
+
+-- Neues Profil aus den aktuellen Einstellungen; es wird das aktive Profil
+function ns.SaveProfile(name)
+    name = strtrim(name or "")
+    if name == "" then return false end
+    ns.SaveActiveProfile()
+    ns.db.profiles[name] = Snapshot()
+    ns.db.activeProfile = name
+    ns.Print(L("PROFILE_SAVED", ns.ProfileLabel(name)))
+    return true
+end
+
+-- Zu einem anderen Profil wechseln (die Einstellungen des bisherigen bleiben in dessen Profil)
+function ns.LoadProfile(name)
+    local profile = ns.db.profiles and ns.db.profiles[name]
+    if not profile then return end
+    if InCombatLockdown() then
+        ns.Print(L("NOT_IN_COMBAT"))
+        return
+    end
+    ns.SaveActiveProfile()
+    for key, value in pairs(profile) do
+        if not NOT_IN_PROFILE[key] then
+            ns.db[key] = type(value) == "table" and CopyTable(value) or value
+        end
+    end
+    -- Ältere Profile kennen neuere Einstellungen nicht: aus den Standardwerten ergänzen
+    ns.FillDefaults(ns.db, ns.defaults)
+    ns.db.activeProfile = name
+    ns.RequestLayout()
+    ns.UpdateAllButtons()
+    ns.Print(L("PROFILE_LOADED", ns.ProfileLabel(name)))
+    if ns.RefreshOptions then ns.RefreshOptions() end
+end
+
+-- Das Standardprofil lässt sich nicht löschen; wird das aktive gelöscht, gilt danach das Standardprofil
+function ns.DeleteProfile(name)
+    if name == ns.DEFAULT_PROFILE then
+        ns.Print(L("PROFILE_DEFAULT_KEEP"))
+        return
+    end
+    if ns.db.profiles and ns.db.profiles[name] then
+        if name == ns.GetActiveProfile() then
+            ns.db.profiles[name] = nil
+            ns.db.activeProfile = ns.DEFAULT_PROFILE
+            -- Einstellungen des Standardprofils übernehmen (ohne die gelöschten zurückzuschreiben)
+            local profile = ns.db.profiles[ns.DEFAULT_PROFILE]
+            if profile and not InCombatLockdown() then
+                for key, value in pairs(profile) do
+                    if not NOT_IN_PROFILE[key] then
+                        ns.db[key] = type(value) == "table" and CopyTable(value) or value
+                    end
+                end
+                ns.FillDefaults(ns.db, ns.defaults)
+                ns.RequestLayout()
+                ns.UpdateAllButtons()
+            end
+        else
+            ns.db.profiles[name] = nil
+        end
+        ns.Print(L("PROFILE_DELETED", name))
+    end
+end
+
+---------------------------------------------------------------------------
 -- Export/Import als Text: "FB1:" + Einträge "pfad=typ:wert" getrennt durch ";"
 -- (z. B. "bars.bar1.x=n:640;bars.bar1.enabled=b:1;font=s:STANDARD")
 ---------------------------------------------------------------------------
@@ -83,6 +201,11 @@ local EXPORT_PREFIX = "FB1:"
 
 local function Escape(text)
     return (tostring(text):gsub("%%", "%%25"):gsub(";", "%%3B"):gsub("=", "%%3D"):gsub("\n", "%%0A"))
+end
+
+-- Teil eines Pfades (z. B. Profilname): zusätzlich den Punkt, der die Teile trennt
+local function EscapePart(text)
+    return (Escape(text):gsub("%.", "%%2E"))
 end
 
 local function Unescape(text)
@@ -96,22 +219,23 @@ local function Flatten(tbl, prefix, out)
     table.sort(keys, function(a, b) return tostring(a) < tostring(b) end)
     for _, key in ipairs(keys) do
         local value = tbl[key]
-        local path = prefix and (prefix .. "." .. tostring(key)) or tostring(key)
+        local path = prefix and (prefix .. "." .. EscapePart(key)) or EscapePart(key)
         local kind = type(value)
         if kind == "table" then
             Flatten(value, path, out)
         elseif kind == "number" then
-            table.insert(out, Escape(path) .. "=n:" .. value)
+            table.insert(out, path .. "=n:" .. value)
         elseif kind == "boolean" then
-            table.insert(out, Escape(path) .. "=b:" .. (value and "1" or "0"))
+            table.insert(out, path .. "=b:" .. (value and "1" or "0"))
         elseif kind == "string" then
-            table.insert(out, Escape(path) .. "=s:" .. Escape(value))
+            table.insert(out, path .. "=s:" .. Escape(value))
         end
     end
     return out
 end
 
 function ns.ExportSettings()
+    ns.SaveActiveProfile() -- damit das aktive Profil im Text den aktuellen Stand hat
     return EXPORT_PREFIX .. table.concat(Flatten(ns.db, nil, {}), ";")
 end
 
@@ -138,7 +262,8 @@ function ns.ImportSettings(text)
             end
             -- Pfad auflösen; der erste Teil muss eine bekannte Einstellung sein
             local parts = {}
-            for part in Unescape(rawPath):gmatch("[^%.]+") do
+            for part in rawPath:gmatch("[^%.]+") do
+                part = Unescape(part)
                 table.insert(parts, tonumber(part) or part)
             end
             if value ~= nil and #parts > 0 and ns.defaults[parts[1]] ~= nil then
@@ -152,6 +277,7 @@ function ns.ImportSettings(text)
             end
         end
     end
+    ns.InitProfiles() -- Standardprofil sicherstellen, aktives Profil prüfen
     ns.RequestLayout()
     ns.UpdateAllButtons()
     if ns.UpdateMinimapButton then ns.UpdateMinimapButton() end

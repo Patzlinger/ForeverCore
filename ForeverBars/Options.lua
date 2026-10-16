@@ -8,9 +8,11 @@ local options
 local controls = {}       -- alle Bedienelemente mit :Refresh()
 local barButtons = {}     -- Einträge der Leistenliste
 local selectedKey = "bar1"
+local searchIndex = {}    -- für die Suche: { label, control, page } je Einstellung
+local pageInfo = {}       -- [Seite] = wo sie im Menü liegt (Ansicht, Reiter, Name für die Suche)
 
-local WINDOW_WIDTH, WINDOW_HEIGHT = 720, 800
-local PANEL_HEIGHT = 436   -- Platz für alle Einträge der Leistenliste
+local WINDOW_WIDTH, WINDOW_HEIGHT = 720, 810
+local PANEL_HEIGHT = 446   -- Platz für alle Einträge der Leistenliste
 local GENERAL_HEIGHT = 236 -- Feld "Allgemein"
 local LIST_WIDTH = 200
 local DROPDOWN_X = 150
@@ -69,6 +71,12 @@ end
 -- Bausteine (wie in ForeverQuests)
 ---------------------------------------------------------------------------
 
+-- Einstellung für die Suche merken
+local function AddSearch(label, control, page)
+    if label and label ~= "" then table.insert(searchIndex, { label = label, control = control, page = page }) end
+    return control
+end
+
 local function CreateCheckbox(parent, label, x, y, getValue, setValue)
     local checkbox = ns.Style.CreateCheckbox(parent, label)
     checkbox:SetPoint("TOPLEFT", x, y)
@@ -77,7 +85,7 @@ local function CreateCheckbox(parent, label, x, y, getValue, setValue)
     end)
     checkbox.Refresh = function() checkbox:SetChecked(getValue()) end
     table.insert(controls, checkbox)
-    return checkbox
+    return AddSearch(label, checkbox, parent)
 end
 
 local function CreateSlider(parent, label, x, y, width, getMin, getMax, getValue, setValue)
@@ -120,7 +128,7 @@ local function CreateSlider(parent, label, x, y, width, getMin, getMax, getValue
         box:SetText(math.floor(getValue() + 0.5))
     end
     table.insert(controls, holder)
-    return holder
+    return AddSearch(label, holder, parent)
 end
 
 -- Text einer Auswahl: aus den Übersetzungen (textKey) oder fest (text, z. B. Schriftnamen)
@@ -137,6 +145,7 @@ local function CreateSelectorBase(parent, label, x, y, width, choices, getValue,
     holder.label = text -- Beschriftung lässt sich später ändern (z. B. Namen der Gestalten)
 
     local button = ns.Style.CreateDropdown(holder, width)
+    holder.button = button
     if compact then
         holder:SetSize(width, 40)
         text:SetPoint("TOPLEFT", 0, 0)
@@ -163,12 +172,32 @@ local function CreateSelectorBase(parent, label, x, y, width, choices, getValue,
         ns.Style.ShowMenu(self, items, { align = "LEFT" })
     end)
     holder.Refresh = function()
+        button:SetText("")
         for _, choice in ipairs(choices) do
             if choice.value == getValue() then button:SetText(ChoiceText(choice)) end
         end
     end
     table.insert(controls, holder)
-    return holder
+    return AddSearch(label, holder, parent)
+end
+
+-- Knopf, der auch in der Suche auftaucht
+local function CreateSearchButton(parent, text, width, height, onClick, tooltip)
+    local button = ns.Style.CreateButton(parent, text, width, height, onClick, tooltip)
+    return AddSearch(text, button, parent)
+end
+
+-- Überschrift innerhalb einer Seite (goldene Schrift, dünne Linie)
+local function CreateHeading(parent, text, x, y, width)
+    local title = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    title:SetPoint("TOPLEFT", x, y)
+    title:SetText(text)
+    local line = parent:CreateTexture(nil, "ARTWORK")
+    line:SetColorTexture(1, 1, 1, 0.08)
+    line:SetHeight(1)
+    line:SetPoint("TOPLEFT", x - 2, y - 18)
+    line:SetWidth(width)
+    return title
 end
 
 local function CreateSelector(parent, label, x, y, width, choices, getValue, setValue)
@@ -200,18 +229,33 @@ local function CreateOptions()
     local list = ns.Style.CreatePanel(options, L("SEC_BARS"))
     list:SetPoint("TOPLEFT", 12, -68)
     list:SetSize(LIST_WIDTH, PANEL_HEIGHT)
-    for i, def in ipairs(ns.BAR_DEFS) do
-        local button = ns.Style.CreateButton(list, L(def.textKey), LIST_WIDTH - 24, 22, function()
-            selectedKey = def.key
-            ns.RefreshOptions()
-        end)
-        button:SetPoint("TOPLEFT", 12, -38 - (i - 1) * 24)
+    local function ListButton(text, y, key, onClick)
+        local button = ns.Style.CreateButton(list, text, LIST_WIDTH - 24, 20, onClick)
+        button:SetPoint("TOPLEFT", 12, y)
         button:GetFontString():ClearAllPoints()
         button:GetFontString():SetPoint("LEFT", 8, 0)
-        button.key = def.key
+        button.key = key
         button:HookScript("OnLeave", function() ns.RefreshOptions() end)
         table.insert(barButtons, button)
+        return button
     end
+    local listY = -38
+    for _, def in ipairs(ns.BAR_DEFS) do
+        local button = ListButton(L(def.textKey), listY, def.key, function()
+            selectedKey = def.key
+            options.view = "bar"
+            ns.RefreshOptions()
+        end)
+        table.insert(searchIndex, { label = L(def.textKey), control = button, barKey = def.key })
+        listY = listY - 22
+    end
+    -- Unterpunkt "Profile" (Vorlagen, gespeicherte Profile, Export/Import), etwas abgesetzt
+    local profileEntry = ListButton(L("SEC_PROFILES"), listY - 6, "profiles", function()
+        options.view = "profiles"
+        ns.RefreshOptions()
+    end)
+    table.insert(searchIndex, { label = L("SEC_PROFILES"), control = profileEntry, view = "profiles" })
+    options.view = "bar"
 
     -- Rechts: Einstellungen der gewählten Leiste
     local bar = ns.Style.CreatePanel(options, L("SEC_BAR"))
@@ -219,6 +263,8 @@ local function CreateOptions()
     bar:SetPoint("RIGHT", -12, 0)
     bar:SetHeight(PANEL_HEIGHT)
     options.barTitle = bar.title
+    options.barPanel = bar
+    pageInfo[bar] = { view = "bar", path = L("SEC_BAR") }
 
     CreateCheckbox(bar, L("OPT_ENABLED"), 14, -44,
         function() return SelectedConfig().enabled end,
@@ -231,12 +277,10 @@ local function CreateOptions()
     visPage:SetAllPoints()
     options.pages = { layout = layoutPage, visibility = visPage }
     options.tabs = {}
-    local pagingPage = CreateFrame("Frame", nil, bar)
-    pagingPage:SetAllPoints()
-    options.pages.paging = pagingPage
+    pageInfo[layoutPage] = { view = "bar", page = "layout", path = L("TAB_LAYOUT") }
+    pageInfo[visPage] = { view = "bar", page = "visibility", path = L("TAB_VISIBILITY") }
     local tabX = -14
-    for _, tab in ipairs({ { key = "paging", textKey = "TAB_PAGING" }, { key = "visibility", textKey = "TAB_VISIBILITY" },
-                           { key = "layout", textKey = "TAB_LAYOUT" } }) do
+    for _, tab in ipairs({ { key = "visibility", textKey = "TAB_VISIBILITY" }, { key = "layout", textKey = "TAB_LAYOUT" } }) do
         local button = ns.Style.CreateButton(bar, L(tab.textKey), 96, 20, function()
             options.page = tab.key
             ns.RefreshOptions()
@@ -248,69 +292,6 @@ local function CreateOptions()
         tabX = tabX - 100
     end
     options.page = "layout"
-
-    -- Reiter "Seiten" (nur Aktionsleisten): andere Belegung mit Zusatztaste, je Gestalt oder eigene Bedingung
-    local pageChoices = { { value = 0, textKey = "PAGE_OFF" } }
-    for page = 1, 10 do table.insert(pageChoices, { value = page, text = L("PAGE_N", page) }) end
-    local modifierLabels = { pageCtrl = "PAGE_CTRL", pageAlt = "PAGE_ALT", pageShift = "PAGE_SHIFT" }
-    for i, key in ipairs({ "pageCtrl", "pageAlt", "pageShift" }) do
-        CreateSmallSelector(pagingPage, L(modifierLabels[key]), 14, -74 - (i - 1) * 48, 200, pageChoices,
-            function() return tonumber(SelectedConfig()[key]) or 0 end,
-            function(value) SelectedConfig()[key] = value; Changed() end)
-    end
-
-    -- Je Gestalt/Haltung eine Auswahl (Namen kommen vom Spiel); Leiste 1 kann "wie Blizzard" wechseln
-    local MAX_STANCES = 6
-    local stanceTitle = pagingPage:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    stanceTitle:SetPoint("TOPLEFT", 290, -74)
-    stanceTitle:SetTextColor(0.75, 0.75, 0.75)
-    stanceTitle:SetText(L("PAGE_STANCES"))
-    options.noStances = pagingPage:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    options.noStances:SetPoint("TOPLEFT", 290, -94)
-    options.noStances:SetWidth(170)
-    options.noStances:SetJustifyH("LEFT")
-    options.noStances:SetText(L("PAGE_NO_STANCES"))
-    local stanceChoices = { { value = "BLIZZARD", textKey = "PAGE_BLIZZARD" } }
-    for _, choice in ipairs(pageChoices) do table.insert(stanceChoices, choice) end
-    stanceChoices[2] = { value = 0, textKey = "PAGE_OWN" }
-    options.stanceSelectors = {}
-    for i = 1, MAX_STANCES do
-        local selector = CreateSmallSelector(pagingPage, L("STANCE_N", i), 290, -94 - (i - 1) * 46, 170, stanceChoices,
-            function()
-                local value = SelectedConfig().stancePages and SelectedConfig().stancePages[i]
-                if value == nil then value = selectedKey == "bar1" and "BLIZZARD" or 0 end
-                return value
-            end,
-            function(value)
-                SelectedConfig().stancePages = SelectedConfig().stancePages or {}
-                SelectedConfig().stancePages[i] = value
-                Changed()
-            end)
-        options.stanceSelectors[i] = selector
-    end
-
-    -- Eigene Bedingung für den Seitenwechsel (ersetzt die Einstellungen oben)
-    CreateCheckbox(pagingPage, L("OPT_PAGING_CUSTOM"), 14, -232,
-        function() return SelectedConfig().usePagingCustom end,
-        function(value) SelectedConfig().usePagingCustom = value; Changed() end)
-    local pagingBox = ns.Style.CreateEditBox(pagingPage, 260, 22)
-    pagingBox:SetPoint("TOPLEFT", 14, -258)
-    local function SavePaging(self)
-        SelectedConfig().pagingCustom = strtrim(self:GetText() or "")
-        Changed()
-    end
-    pagingBox:SetScript("OnEnterPressed", function(self) SavePaging(self); self:ClearFocus() end)
-    pagingBox:HookScript("OnEditFocusLost", SavePaging)
-    pagingBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
-    pagingBox.Refresh = function()
-        if not pagingBox:HasFocus() then pagingBox:SetText(SelectedConfig().pagingCustom or "") end
-    end
-    table.insert(controls, pagingBox)
-    local pagingHint = pagingPage:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    pagingHint:SetPoint("TOPLEFT", 14, -286)
-    pagingHint:SetWidth(260)
-    pagingHint:SetJustifyH("LEFT")
-    options.pagingHint = pagingHint
 
     -- Linke Spalte: Anzahl, Reihen, Abstand (nur Leisten mit einzelnen Knöpfen), Größe, Deckkraft, Position
     options.buttonsSlider = CreateSlider(layoutPage, L("OPT_BUTTONS"), 14, -74, 180,
@@ -354,32 +335,63 @@ local function CreateOptions()
     options.flyoutSelector = CreateSmallSelector(layoutPage, L("OPT_FLYOUT"), RIGHT_X, -188, 170, FLYOUT_CHOICES,
         function() return SelectedConfig().flyout or "UP" end,
         function(value) SelectedConfig().flyout = value; Changed() end)
-    -- Nur Taschenleiste
-    options.backpackCheck = CreateCheckbox(layoutPage, L("OPT_ONLY_BACKPACK"), RIGHT_X, -240,
+    -- Nur Taschenleiste (an der Stelle der Ausklapp-Richtung, die es nur bei Aktionsleisten gibt)
+    options.backpackCheck = CreateCheckbox(layoutPage, L("OPT_ONLY_BACKPACK"), RIGHT_X, -192,
         function() return SelectedConfig().onlyBackpack end,
         function(value) SelectedConfig().onlyBackpack = value; Changed() end)
-    options.keyringCheck = CreateCheckbox(layoutPage, L("OPT_KEYRING"), RIGHT_X, -264,
+    options.keyringCheck = CreateCheckbox(layoutPage, L("OPT_KEYRING"), RIGHT_X, -216,
         function() return SelectedConfig().keyring end,
         function(value) SelectedConfig().keyring = value; Changed() end)
+    -- Rahmen um die Leiste (wie die Fenster in ForeverQuests)
+    CreateCheckbox(layoutPage, L("OPT_FRAME"), RIGHT_X, -244,
+        function() return SelectedConfig().frame end,
+        function(value) SelectedConfig().frame = value; Changed(); ns.RefreshOptions() end)
+    options.frameTitleCheck = CreateCheckbox(layoutPage, L("OPT_FRAME_TITLE"), RIGHT_X + 16, -268,
+        function() return SelectedConfig().frameTitle end,
+        function(value) SelectedConfig().frameTitle = value; Changed(); ns.RefreshOptions() end)
+    -- Eigener Titel (leer = Name der Leiste); Enter oder Verlassen des Feldes übernimmt
+    local titleBox = ns.Style.CreateEditBox(layoutPage, 154, 22)
+    titleBox:SetPoint("TOPLEFT", RIGHT_X + 16, -290)
+    local titlePlaceholder = titleBox:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    titlePlaceholder:SetPoint("LEFT", 7, 0)
+    titlePlaceholder:SetText(L("OPT_FRAME_TITLE_TEXT"))
+    local function SaveTitle(self)
+        SelectedConfig().frameTitleText = strtrim(self:GetText() or "")
+        Changed()
+    end
+    titleBox:SetScript("OnEnterPressed", function(self) SaveTitle(self); self:ClearFocus() end)
+    titleBox:HookScript("OnEditFocusLost", SaveTitle)
+    titleBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+    titleBox:SetScript("OnTextChanged", function(self)
+        titlePlaceholder:SetShown((self:GetText() or "") == "" and not self:HasFocus())
+    end)
+    titleBox:HookScript("OnEditFocusGained", function() titlePlaceholder:Hide() end)
+    titleBox.Refresh = function()
+        if not titleBox:HasFocus() then titleBox:SetText(SelectedConfig().frameTitleText or "") end
+        titlePlaceholder:SetShown((titleBox:GetText() or "") == "" and not titleBox:HasFocus())
+    end
+    table.insert(controls, titleBox)
+    AddSearch(L("OPT_FRAME_TITLE_TEXT"), titleBox, layoutPage)
+    options.frameTitleBox = titleBox
 
     -- Zentrieren: Leiste waagerecht bzw. senkrecht in die Bildschirmmitte setzen
-    ns.Style.CreateButton(layoutPage, L("BTN_CENTER_X"), 170, 22, function()
+    CreateSearchButton(layoutPage, L("BTN_CENTER_X"), 170, 22, function()
         SelectedConfig().x = math.floor(UIParent:GetWidth() / 2 + 0.5)
         Changed()
         ns.RefreshOptions()
-    end):SetPoint("TOPLEFT", RIGHT_X, -300)
-    ns.Style.CreateButton(layoutPage, L("BTN_CENTER_Y"), 170, 22, function()
+    end):SetPoint("TOPLEFT", RIGHT_X, -326)
+    CreateSearchButton(layoutPage, L("BTN_CENTER_Y"), 170, 22, function()
         SelectedConfig().y = math.floor(UIParent:GetHeight() / 2 + 0.5)
         Changed()
         ns.RefreshOptions()
-    end):SetPoint("TOPLEFT", RIGHT_X, -326)
+    end):SetPoint("TOPLEFT", RIGHT_X, -352)
 
-    local resetButton = ns.Style.CreateButton(layoutPage, L("BTN_RESET_BAR"), 170, 22, function()
+    local resetButton = CreateSearchButton(layoutPage, L("BTN_RESET_BAR"), 170, 22, function()
         ns.ResetBar(selectedKey)
         ns.Print(L("RESET_DONE"))
         ns.RefreshOptions()
     end)
-    resetButton:SetPoint("TOPLEFT", RIGHT_X, -366)
+    resetButton:SetPoint("TOPLEFT", RIGHT_X, -390)
 
     -- Reiter "Sichtbarkeit": wann die Leiste zu sehen ist
     -- Links: Grundeinstellung und Einblenden bei Maus darüber
@@ -449,19 +461,27 @@ local function CreateOptions()
     general:SetPoint("RIGHT", -12, 0)
     general:SetHeight(GENERAL_HEIGHT)
 
-    -- Zwei Reiter: "Darstellung" (Aussehen der Knöpfe) und "Bedienung" (Blizzard-Einstellungen fürs Zaubern)
+    -- Reiter: "Darstellung" (Aussehen der Knöpfe), "Schrift" (Texte auf den Knöpfen),
+    -- "Bedienung" (Blizzard-Einstellungen fürs Zaubern), "Verwaltung" (Minimap-Symbol)
     local displayPage = CreateFrame("Frame", nil, general)
     displayPage:SetAllPoints()
+    local fontPage = CreateFrame("Frame", nil, general)
+    fontPage:SetAllPoints()
     local controlPage = CreateFrame("Frame", nil, general)
     controlPage:SetAllPoints()
     local managePage = CreateFrame("Frame", nil, general)
     managePage:SetAllPoints()
-    options.generalPages = { display = displayPage, control = controlPage, manage = managePage }
+    options.generalPages = { display = displayPage, font = fontPage, control = controlPage, manage = managePage }
+    local generalPath = L("SEC_GENERAL") .. " » "
+    pageInfo[displayPage] = { general = "display", path = generalPath .. L("TAB_DISPLAY") }
+    pageInfo[fontPage] = { general = "font", path = generalPath .. L("TAB_FONT") }
+    pageInfo[controlPage] = { general = "control", path = generalPath .. L("TAB_CONTROL") }
+    pageInfo[managePage] = { general = "manage", path = generalPath .. L("TAB_MANAGE") }
     options.generalTabs = {}
     options.generalPage = "display"
     local generalTabX = -14
     for _, tab in ipairs({ { key = "manage", textKey = "TAB_MANAGE" }, { key = "control", textKey = "TAB_CONTROL" },
-                           { key = "display", textKey = "TAB_DISPLAY" } }) do
+                           { key = "font", textKey = "TAB_FONT" }, { key = "display", textKey = "TAB_DISPLAY" } }) do
         local button = ns.Style.CreateButton(general, L(tab.textKey), 110, 20, function()
             options.generalPage = tab.key
             ns.RefreshOptions()
@@ -473,20 +493,98 @@ local function CreateOptions()
         generalTabX = generalTabX - 116
     end
 
-    -- Reiter "Verwaltung": Minimap-Symbol, Vorlagen, Export/Import
+    -- Reiter "Verwaltung": Minimap-Symbol; Vorlagen, Profile und Export/Import liegen unter "Profile"
     CreateCheckbox(managePage, L("OPT_MINIMAP"), 14, -42,
         function() return ns.db.showMinimapButton end,
         function(value) ns.db.showMinimapButton = value; ns.UpdateMinimapButton() end)
+    local manageHint = managePage:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    manageHint:SetPoint("TOPLEFT", 14, -72)
+    manageHint:SetPoint("RIGHT", -14, 0)
+    manageHint:SetJustifyH("LEFT")
+    manageHint:SetText(L("OPT_MANAGE_MOVED"))
 
+    -- Rechts statt der Leisten-Einstellungen: "Profile" (Vorlagen, gespeicherte Profile, Export/Import)
+    local profilePanel = ns.Style.CreatePanel(options, L("SEC_PROFILES"))
+    profilePanel:SetAllPoints(bar)
+    options.profilePanel = profilePanel
+    pageInfo[profilePanel] = { view = "profiles", path = L("SEC_PROFILES") }
+    -- Breite der rechten Fläche: Fenster minus Liste und Ränder (12 + 200 + 12 ... 12)
+    local PROFILE_WIDTH = WINDOW_WIDTH - LIST_WIDTH - 36 - 28
+    local BUTTON_X = DROPDOWN_X - 14 + 168 -- rechts neben den Auswahlfeldern (160 breit)
+
+    -- Gespeicherte Profile: wählen, laden, löschen; aktuelle Einstellungen unter einem Namen speichern
+    CreateHeading(profilePanel, L("PROFILE_SAVED_TITLE"), 14, -44, PROFILE_WIDTH)
+    local profileChoices = {}
+    local profileSelector = CreateSelector(profilePanel, L("OPT_PROFILE"), 14, -76, 160, profileChoices,
+        function() return options.selectedProfile end,
+        function(value) options.selectedProfile = value end)
+    profileSelector.Refresh = function()
+        -- Auswahl-Liste aus den gespeicherten Profilen neu füllen (Standardprofil zuerst)
+        wipe(profileChoices)
+        for _, name in ipairs(ns.GetProfileNames()) do
+            table.insert(profileChoices, { value = name, text = ns.ProfileLabel(name) })
+        end
+        if options.selectedProfile and not (ns.db.profiles or {})[options.selectedProfile] then options.selectedProfile = nil end
+        if not options.selectedProfile then options.selectedProfile = ns.GetActiveProfile() end
+        profileSelector.button:SetText(options.selectedProfile and ns.ProfileLabel(options.selectedProfile) or L("PROFILE_NONE"))
+    end
+    -- Aktives Profil oben rechts in der Überschrift
+    options.activeProfileText = profilePanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    options.activeProfileText:SetPoint("TOPRIGHT", -14, -47)
+    CreateSearchButton(profilePanel, L("BTN_PROFILE_LOAD"), 82, 22, function()
+        if options.selectedProfile then ns.LoadProfile(options.selectedProfile) end
+    end):SetPoint("TOPLEFT", BUTTON_X, -77)
+    -- Löschen: zweimal klicken
+    local deleteButton
+    deleteButton = CreateSearchButton(profilePanel, L("BTN_PROFILE_DELETE"), 82, 22, function()
+        if not options.selectedProfile then return end
+        if deleteButton.confirm then
+            deleteButton.confirm = nil
+            deleteButton:SetText(L("BTN_PROFILE_DELETE"))
+            ns.DeleteProfile(options.selectedProfile)
+            if options.selectedProfile ~= ns.DEFAULT_PROFILE then options.selectedProfile = nil end
+            ns.RefreshOptions()
+        else
+            deleteButton.confirm = true
+            deleteButton:SetText(L("BTN_CONFIRM_SHORT"))
+            C_Timer.After(5, function()
+                if deleteButton.confirm then
+                    deleteButton.confirm = nil
+                    deleteButton:SetText(L("BTN_PROFILE_DELETE"))
+                end
+            end)
+        end
+    end)
+    deleteButton:SetPoint("TOPLEFT", BUTTON_X + 88, -77)
+    local nameLabel = profilePanel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    nameLabel:SetPoint("TOPLEFT", 14, -114)
+    nameLabel:SetText(L("OPT_PROFILE_NAME"))
+    local nameBox = ns.Style.CreateEditBox(profilePanel, 160, 22)
+    nameBox:SetPoint("TOPLEFT", DROPDOWN_X - 14, -110)
+    nameBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+    local function SaveProfile()
+        if ns.SaveProfile(nameBox:GetText()) then
+            options.selectedProfile = strtrim(nameBox:GetText())
+            nameBox:SetText("")
+            nameBox:ClearFocus()
+            ns.RefreshOptions()
+        end
+    end
+    nameBox:SetScript("OnEnterPressed", SaveProfile)
+    CreateSearchButton(profilePanel, L("BTN_PROFILE_SAVE"), 170, 22, SaveProfile, L("TIP_PROFILE_SAVE"))
+        :SetPoint("TOPLEFT", BUTTON_X, -110)
+
+    -- Vorlagen: fertige Anordnungen
+    CreateHeading(profilePanel, L("PROFILE_PRESETS_TITLE"), 14, -156, PROFILE_WIDTH)
     local presetChoices = {}
     for _, preset in ipairs(ns.PRESETS) do table.insert(presetChoices, { value = preset.key, textKey = preset.textKey }) end
     options.selectedPreset = ns.PRESETS[1].key
-    CreateSelector(managePage, L("OPT_PRESET"), 14, -76, 200, presetChoices,
+    CreateSelector(profilePanel, L("OPT_PRESET"), 14, -188, 160, presetChoices,
         function() return options.selectedPreset end,
         function(value) options.selectedPreset = value end)
     -- Vorlage anwenden: zweimal klicken (setzt alle Leisten zurück)
     local presetButton
-    presetButton = ns.Style.CreateButton(managePage, L("BTN_PRESET_APPLY"), 170, 22, function()
+    presetButton = CreateSearchButton(profilePanel, L("BTN_PRESET_APPLY"), 170, 22, function()
         if presetButton.confirm then
             presetButton.confirm = nil
             presetButton:SetText(L("BTN_PRESET_APPLY"))
@@ -502,17 +600,19 @@ local function CreateOptions()
             end)
         end
     end, L("TIP_PRESET"))
-    presetButton:SetPoint("TOPLEFT", 380, -74)
+    presetButton:SetPoint("TOPLEFT", BUTTON_X, -189)
 
-    ns.Style.CreateButton(managePage, L("BTN_EXPORT"), 200, 24, function() ns.ShowTransferWindow("export") end,
-        L("TIP_EXPORT")):SetPoint("TOPLEFT", 14, -116)
-    ns.Style.CreateButton(managePage, L("BTN_IMPORT"), 200, 24, function() ns.ShowTransferWindow("import") end,
-        L("TIP_IMPORT")):SetPoint("TOPLEFT", 224, -116)
-    local manageHint = managePage:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    manageHint:SetPoint("TOPLEFT", 14, -152)
-    manageHint:SetPoint("RIGHT", -14, 0)
-    manageHint:SetJustifyH("LEFT")
-    manageHint:SetText(L("OPT_MANAGE_HINT"))
+    -- Export/Import als Text (umgeht den Beta-Bug; gespeicherte Profile sind enthalten)
+    CreateHeading(profilePanel, L("PROFILE_TRANSFER_TITLE"), 14, -234, PROFILE_WIDTH)
+    CreateSearchButton(profilePanel, L("BTN_EXPORT"), 220, 24, function() ns.ShowTransferWindow("export") end,
+        L("TIP_EXPORT")):SetPoint("TOPLEFT", 14, -264)
+    CreateSearchButton(profilePanel, L("BTN_IMPORT"), 220, 24, function() ns.ShowTransferWindow("import") end,
+        L("TIP_IMPORT")):SetPoint("TOPLEFT", 244, -264)
+    local profileHint = profilePanel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    profileHint:SetPoint("TOPLEFT", 14, -302)
+    profileHint:SetPoint("RIGHT", -14, 0)
+    profileHint:SetJustifyH("LEFT")
+    profileHint:SetText(L("OPT_MANAGE_HINT"))
 
     -- Reiter "Bedienung": diese Einstellungen sind Blizzard-Einstellungen (auch im Blizzard-Menü sichtbar)
     local MODIFIER_CHOICES = {
@@ -573,6 +673,7 @@ local function CreateOptions()
     controlHint:SetJustifyH("LEFT")
     controlHint:SetText(L("OPT_CONTROL_HINT"))
 
+    -- Reiter "Darstellung": Aussehen der Knöpfe und Leisten
     CreateCheckbox(displayPage, L("OPT_UNLOCK"), 14, -42,
         function() return ns.unlocked end,
         function(value) ns.SetUnlocked(value) end)
@@ -582,40 +683,66 @@ local function CreateOptions()
     CreateCheckbox(displayPage, L("OPT_BORDER"), 14, -94,
         function() return ns.db.showBorder end,
         function(value) ns.db.showBorder = value; ns.UpdateAllButtons() end)
-    CreateCheckbox(displayPage, L("OPT_HOTKEYS"), 250, -42,
-        function() return ns.db.showHotkeys end,
-        function(value) ns.db.showHotkeys = value; ns.UpdateAllButtons() end)
-    CreateCheckbox(displayPage, L("OPT_MACRONAMES"), 250, -68,
-        function() return ns.db.showMacroNames end,
-        function(value) ns.db.showMacroNames = value; ns.UpdateAllButtons() end)
-    CreateCheckbox(displayPage, L("OPT_EQUIPPED"), 250, -94,
-        function() return ns.db.showEquipped end,
-        function(value) ns.db.showEquipped = value; ns.UpdateAllButtons() end)
-    CreateCheckbox(displayPage, L("OPT_COUNTS"), 490, -42,
-        function() return ns.db.showCounts end,
-        function(value) ns.db.showCounts = value; ns.UpdateAllButtons() end)
-    CreateCheckbox(displayPage, L("OPT_SNAP"), 490, -68,
+    CreateCheckbox(displayPage, L("OPT_SNAP"), 250, -42,
         function() return ns.db.snap end,
         function(value) ns.db.snap = value end)
+    CreateCheckbox(displayPage, L("OPT_EQUIPPED"), 250, -68,
+        function() return ns.db.showEquipped end,
+        function(value) ns.db.showEquipped = value; ns.UpdateAllButtons() end)
+    -- Zahlen bei Abklingzeiten: Blizzard-Einstellung (gilt für alle Abklingzeiten im Spiel)
+    options.cooldownCheck = CreateCheckbox(displayPage, L("OPT_CD_NUMBERS"), 250, -94,
+        function() return ns.GetCVarBool("countdownForCooldowns") end,
+        function(value) ns.SetCVarBool("countdownForCooldowns", value) end)
+    -- Alle Leisten außerhalb des Kampfes ausblenden (entsperrt bleiben sie sichtbar)
+    CreateCheckbox(displayPage, L("OPT_HIDE_OOC"), 14, -120,
+        function() return ns.db.hideOutOfCombat end,
+        function(value) ns.db.hideOutOfCombat = value; Changed() end)
 
-    -- Schrift der Knopftexte, Position der Tastenbelegung, Zuschnitt der Symbole
-    CreateSelector(displayPage, L("OPT_FONT"), 14, -128, 140, FontChoices(),
-        function() return ns.db.font end,
-        function(value) ns.db.font = value; ns.UpdateAllButtons() end)
-    CreateSelector(displayPage, L("OPT_OUTLINE"), 360, -128, 150, OUTLINE_CHOICES,
-        function() return ns.db.fontOutline end,
-        function(value) ns.db.fontOutline = value; ns.UpdateAllButtons() end)
-    CreateSelector(displayPage, L("OPT_HOTKEY_POS"), 14, -158, 140, HOTKEY_POS_CHOICES,
-        function() return ns.db.hotkeyPosition end,
-        function(value) ns.db.hotkeyPosition = value; ns.UpdateAllButtons() end)
-    CreateSlider(displayPage, L("OPT_FONT_SIZE"), 14, -186, 160,
-        function() return 6 end, function() return 24 end,
-        function() return ns.db.fontSize end,
-        function(value) ns.db.fontSize = value; ns.UpdateAllButtons() end)
-    CreateSlider(displayPage, L("OPT_ZOOM"), 360, -160, 160,
+    local skinChoices = {}
+    for _, skin in ipairs(ns.SKINS) do table.insert(skinChoices, { value = skin.key, textKey = skin.textKey }) end
+    CreateSelector(displayPage, L("OPT_SKIN"), 14, -154, 140, skinChoices,
+        function() return ns.db.skin end,
+        function(value) ns.db.skin = value; ns.UpdateAllButtons() end)
+    CreateSelector(displayPage, L("OPT_PROC_GLOW"), 360, -154, 150, {
+            { value = "FOREVER", textKey = "GLOW_FOREVER" },
+            { value = "BLIZZARD", textKey = "GLOW_BLIZZARD" },
+            { value = "OFF", textKey = "GLOW_OFF" },
+        },
+        function() return ns.db.procGlow end,
+        function(value) ns.db.procGlow = value end)
+    CreateSlider(displayPage, L("OPT_ZOOM"), 14, -182, 160,
         function() return 0 end, function() return 30 end,
         function() return ns.db.iconZoom end,
         function(value) ns.db.iconZoom = value; ns.UpdateAllButtons() end)
+    -- Stärke des Hover-Leuchtens (0 = aus)
+    CreateSlider(displayPage, L("OPT_HOVER_ALPHA"), 360, -182, 160,
+        function() return 0 end, function() return 60 end,
+        function() return ns.db.hoverAlpha or 15 end,
+        function(value) ns.db.hoverAlpha = value; ns.UpdateAllButtons() end)
+
+    -- Reiter "Schrift": Texte auf den Knöpfen
+    CreateCheckbox(fontPage, L("OPT_HOTKEYS"), 14, -42,
+        function() return ns.db.showHotkeys end,
+        function(value) ns.db.showHotkeys = value; ns.UpdateAllButtons() end)
+    CreateCheckbox(fontPage, L("OPT_MACRONAMES"), 250, -42,
+        function() return ns.db.showMacroNames end,
+        function(value) ns.db.showMacroNames = value; ns.UpdateAllButtons() end)
+    CreateCheckbox(fontPage, L("OPT_COUNTS"), 490, -42,
+        function() return ns.db.showCounts end,
+        function(value) ns.db.showCounts = value; ns.UpdateAllButtons() end)
+    CreateSelector(fontPage, L("OPT_FONT"), 14, -76, 140, FontChoices(),
+        function() return ns.db.font end,
+        function(value) ns.db.font = value; ns.UpdateAllButtons() end)
+    CreateSelector(fontPage, L("OPT_OUTLINE"), 360, -76, 150, OUTLINE_CHOICES,
+        function() return ns.db.fontOutline end,
+        function(value) ns.db.fontOutline = value; ns.UpdateAllButtons() end)
+    CreateSelector(fontPage, L("OPT_HOTKEY_POS"), 14, -106, 140, HOTKEY_POS_CHOICES,
+        function() return ns.db.hotkeyPosition end,
+        function(value) ns.db.hotkeyPosition = value; ns.UpdateAllButtons() end)
+    CreateSlider(fontPage, L("OPT_FONT_SIZE"), 14, -138, 160,
+        function() return 6 end, function() return 24 end,
+        function() return ns.db.fontSize end,
+        function(value) ns.db.fontSize = value; ns.UpdateAllButtons() end)
 
     -- Fußzeile
     ns.Style.CreateButton(options, L("BTN_KEYBIND"), 150, 26, function() ns.OpenKeybindMode() end, L("TIP_KEYBIND"))
@@ -625,9 +752,164 @@ local function CreateOptions()
     -- Alle Leisten entsperren bzw. wieder sperren (wie /fb move)
     options.unlockButton = ns.Style.CreateButton(options, L("BTN_UNLOCK"), 170, 26,
         function() ns.SetUnlocked(not ns.unlocked) end, L("TIP_UNLOCK"))
-    options.unlockButton:SetPoint("BOTTOM", 0, 12)
+    options.unlockButton:SetPoint("BOTTOMLEFT", 170, 12)
+    -- Testmodus: alle Leisten, Proc-Leuchten und Abklingzeiten zur Vorschau (wie /fb test)
+    options.testButton = CreateSearchButton(options, L("BTN_TEST"), 170, 26,
+        function() ns.SetTestMode(not ns.testMode) end, L("TIP_TEST"))
+    options.testButton:SetPoint("BOTTOMLEFT", 348, 12)
+    pageInfo[options] = { path = L("OPT_TITLE") }
+
+    ---------------------------------------------------------------------------
+    -- Suche in der Titelleiste: Einstellungen nach Namen finden und direkt hinspringen
+    ---------------------------------------------------------------------------
+    local search = ns.Style.CreateEditBox(options.header, 200, 22)
+    search:SetPoint("RIGHT", options.header, "RIGHT", -40, 0)
+    local placeholder = search:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    placeholder:SetPoint("LEFT", 7, 0)
+    placeholder:SetText(L("SEARCH_PLACEHOLDER"))
+    options.search = search
+
+    -- Goldener Rahmen, der kurz um die gefundene Einstellung aufleuchtet
+    local flash = CreateFrame("Frame", nil, options, "BackdropTemplate")
+    flash:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 2 })
+    local accent = ns.Style.COLOR.accent
+    flash:SetBackdropBorderColor(accent[1], accent[2], accent[3], 1)
+    flash:SetFrameStrata("FULLSCREEN")
+    flash:EnableMouse(false)
+    flash:Hide()
+    local function Flash(control)
+        if not control or not control:IsVisible() then return end
+        flash:ClearAllPoints()
+        flash:SetPoint("TOPLEFT", control, "TOPLEFT", -4, 4)
+        if control:GetObjectType() == "CheckButton" and control.label then
+            flash:SetPoint("BOTTOMRIGHT", control.label, "BOTTOMRIGHT", 4, -4)
+            flash:SetPoint("BOTTOM", control, "BOTTOM", 0, -4)
+        else
+            flash:SetPoint("BOTTOMRIGHT", control, "BOTTOMRIGHT", 4, -4)
+        end
+        flash:Show()
+        flash.token = (flash.token or 0) + 1
+        local token = flash.token
+        C_Timer.After(1.5, function() if flash.token == token then flash:Hide() end end)
+    end
+
+    -- Wo liegt eine Einstellung? (Seite des Bedienelements, notfalls dessen Eltern)
+    local function InfoFor(entry)
+        if entry.barKey then return { view = "bar", path = L("SEC_BARS") } end
+        if entry.view then return { view = entry.view, path = L("SEC_PROFILES") } end
+        local frame = entry.page
+        while frame and not pageInfo[frame] do frame = frame:GetParent() end
+        return frame and pageInfo[frame] or {}
+    end
+
+    local function GoTo(entry)
+        local info = InfoFor(entry)
+        if entry.barKey then selectedKey = entry.barKey end
+        if info.view then options.view = info.view end
+        if info.page then options.page = info.page end
+        if info.general then options.generalPage = info.general end
+        ns.RefreshOptions()
+        -- Einstellung gibt es nur bei bestimmten Leisten: die erste passende Leiste wählen
+        if info.view == "bar" and info.page and not entry.control:IsVisible() then
+            local previous = selectedKey
+            local found = false
+            for _, def in ipairs(ns.BAR_DEFS) do
+                selectedKey = def.key
+                options.page = info.page
+                ns.RefreshOptions()
+                if entry.control:IsVisible() then found = true break end
+            end
+            if not found then
+                selectedKey = previous
+                ns.RefreshOptions()
+            end
+        end
+        Flash(entry.control)
+    end
+
+    -- Trefferliste unter dem Suchfeld
+    local results = CreateFrame("Frame", nil, options, "BackdropTemplate")
+    ns.Style.SetFlat(results, ns.Style.COLOR.background)
+    results:SetFrameStrata("FULLSCREEN_DIALOG")
+    results:SetPoint("TOPRIGHT", search, "BOTTOMRIGHT", 0, -4)
+    results:SetWidth(320)
+    results:EnableMouse(true)
+    results:Hide()
+    local MAX_RESULTS = 12
+    local resultRows = {}
+    for i = 1, MAX_RESULTS do
+        local row = CreateFrame("Button", nil, results)
+        row:SetHeight(20)
+        row:SetPoint("TOPLEFT", 1, -4 - (i - 1) * 20)
+        row:SetPoint("RIGHT", -1, 0)
+        local highlight = row:CreateTexture(nil, "HIGHLIGHT")
+        highlight:SetAllPoints()
+        highlight:SetColorTexture(1, 1, 1, 0.06)
+        row.text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        row.text:SetPoint("LEFT", 10, 0)
+        row.text:SetPoint("RIGHT", -10, 0)
+        row.text:SetJustifyH("LEFT")
+        row.text:SetWordWrap(false)
+        -- Eintrag "nichts gefunden" (ohne entry) ist nicht anklickbar
+        row:SetScript("OnClick", function(self)
+            if not self.entry then return end
+            results:Hide()
+            search:ClearFocus()
+            GoTo(self.entry)
+        end)
+        resultRows[i] = row
+    end
+
+    local function UpdateResults()
+        local text = strtrim(search:GetText() or ""):lower()
+        placeholder:SetShown(text == "" and not search:HasFocus())
+        if text == "" then
+            results:Hide()
+            return
+        end
+        local count, seen = 0, {}
+        for _, entry in ipairs(searchIndex) do
+            local info = InfoFor(entry)
+            local key = (info.path or "") .. entry.label
+            if count < MAX_RESULTS and not seen[key] and entry.label:lower():find(text, 1, true) then
+                seen[key] = true
+                count = count + 1
+                local row = resultRows[count]
+                row.entry = entry
+                local path = info.path and ("|cff8a8a8a" .. info.path .. " »|r ") or ""
+                row.text:SetText(path .. entry.label)
+                row:Show()
+            end
+        end
+        for i = count + 1, MAX_RESULTS do resultRows[i]:Hide() end
+        if count == 0 then
+            resultRows[1].entry = nil
+            resultRows[1].text:SetText("|cff8a8a8a" .. L("SEARCH_NONE") .. "|r")
+            resultRows[1]:Show()
+            count = 1
+        end
+        results:SetHeight(count * 20 + 8)
+        results:Show()
+    end
+    search:SetScript("OnTextChanged", UpdateResults)
+    search:HookScript("OnEditFocusGained", function() placeholder:Hide() end)
+    search:HookScript("OnEditFocusLost", function() placeholder:SetShown(strtrim(search:GetText() or "") == "") end)
+    search:SetScript("OnEscapePressed", function(self)
+        self:SetText("")
+        self:ClearFocus()
+        results:Hide()
+    end)
+    search:SetScript("OnEnterPressed", function(self)
+        local first = resultRows[1]
+        if results:IsShown() and first:IsShown() and first.entry then
+            results:Hide()
+            self:ClearFocus()
+            GoTo(first.entry)
+        end
+    end)
 
     options:SetScript("OnShow", function() ns.RefreshOptions() end)
+    options:HookScript("OnHide", function() results:Hide() end)
     options:Hide()
 end
 
@@ -635,12 +917,18 @@ function ns.RefreshOptions()
     if not options or not options:IsShown() then return end
     options.warning:SetShown(ns.disabledByBartender == true)
     options.unlockButton:SetText(L(ns.unlocked and "BTN_LOCK" or "BTN_UNLOCK"))
+    options.testButton:SetText(L(ns.testMode and "BTN_TEST_OFF" or "BTN_TEST"))
     local def = ns.GetBarDef(selectedKey)
     options.barTitle:SetText(L(def.textKey))
-    -- Gewählte Leiste in der Liste hervorheben
+    -- Rechts entweder die Einstellungen der Leiste oder "Profile"
+    local showProfiles = options.view == "profiles"
+    options.barPanel:SetShown(not showProfiles)
+    options.profilePanel:SetShown(showProfiles)
+    local activeKey = showProfiles and "profiles" or selectedKey
+    -- Gewählten Eintrag in der Liste hervorheben
     local accent = ns.Style.COLOR.accent
     for _, button in ipairs(barButtons) do
-        if button.key == selectedKey then
+        if button.key == activeKey then
             button:GetFontString():SetTextColor(accent[1], accent[2], accent[3])
             button:SetBackdropBorderColor(accent[1], accent[2], accent[3], 0.9)
         else
@@ -648,21 +936,8 @@ function ns.RefreshOptions()
             button:SetBackdropBorderColor(unpack(ns.Style.COLOR.border))
         end
     end
-    -- Reiter: gewählte Seite zeigen und hervorheben ("Seiten" gibt es nur bei Aktionsleisten)
-    local isAction = def.kind == "action"
-    if options.page == "paging" and not isAction then options.page = "layout" end
+    -- Reiter: gewählte Seite zeigen und hervorheben
     for key, page in pairs(options.pages) do page:SetShown(key == options.page) end
-    for _, tab in ipairs(options.tabs) do
-        tab:SetShown(tab.key ~= "paging" or isAction)
-    end
-    -- Gestalten des Charakters mit Namen anzeigen
-    local stances = ns.GetStanceNames()
-    for i, selector in ipairs(options.stanceSelectors) do
-        selector:SetShown(stances[i] ~= nil)
-        if stances[i] then selector.label:SetText(stances[i]) end
-    end
-    options.noStances:SetShown(#stances == 0)
-    options.pagingHint:SetText(L("OPT_PAGING_HINT", ns.HOME_PAGES[selectedKey] or 1))
     for _, tab in ipairs(options.tabs) do
         if tab.key == options.page then
             tab:GetFontString():SetTextColor(accent[1], accent[2], accent[3])
@@ -687,9 +962,17 @@ function ns.RefreshOptions()
     for _, control in ipairs(options.controlRows) do
         control:SetShown(not control.cvar or ns.HasCVar(control.cvar))
     end
+    options.cooldownCheck:SetShown(ns.HasCVar("countdownForCooldowns"))
     -- Nur die Einstellungen zeigen, die zur gewählten Leiste passen
     local hasButtons = def.kind == "action" or def.kind == "pet" or def.kind == "stance" or def.kind == "bags"
-    options.buttonsSlider:SetShown(hasButtons and def.kind ~= "bags")
+        or def.kind == "prof"
+    options.frameTitleCheck:SetShown(SelectedConfig().frame == true)
+    options.frameTitleBox:SetShown(SelectedConfig().frame == true and SelectedConfig().frameTitle == true)
+    if options.activeProfileText then
+        options.activeProfileText:SetText(L("PROFILE_ACTIVE", ns.ProfileLabel(ns.GetActiveProfile())))
+    end
+    -- Taschen und Haltungen: Anzahl ergibt sich von selbst
+    options.buttonsSlider:SetShown(hasButtons and def.kind ~= "bags" and def.kind ~= "stance")
     options.perRowSlider:SetShown(hasButtons)
     options.spacingSlider:SetShown(hasButtons)
     options.growXSelector:SetShown(hasButtons)
@@ -711,6 +994,7 @@ function ns.ShowBarOptions(key)
     if not ns.db or not ns.GetBarDef(key) then return end
     if not options then CreateOptions() end
     selectedKey = key
+    options.view = "bar"
     if options:IsShown() then
         ns.RefreshOptions()
     else
