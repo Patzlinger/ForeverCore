@@ -2,7 +2,7 @@
 local ADDON_NAME, ns = ...
 local UI, T = ns.UI, ns.T
 
-local options = UI.Window("ForeverChatOptions", T("ForeverChat – Einstellungen", "ForeverChat – Settings"), 660, 640)
+local options = UI.Window("ForeverChatOptions", T("ForeverChat – Einstellungen", "ForeverChat – Settings"), 660, 680)
 local loaders = {} -- Funktionen, die beim Oeffnen die aktuellen Werte anzeigen
 
 local function Changed()
@@ -54,13 +54,18 @@ local L, R = 18, 340
 UI.Header(options, L, -34, T("Fenster", "Window"), 300)
 Slider(L + 2, -58, T("Deckkraft der Fläche", "Window opacity"), "bgAlpha", 0, 100, 5)
 Slider(L + 2, -100, T("Deckkraft des Rahmens", "Border opacity"), "borderAlpha", 0, 100, 5)
-Check(L - 4, -142, T("Reiter im Forever-Stil", "Tabs in Forever style"), "styleTabs")
-Check(L - 4, -166, T("Eingabefeld im Forever-Stil", "Input box in Forever style"), "styleEditBox")
-Check(L - 4, -190, T("Blizzard-Knöpfe neben dem Chat ausblenden", "Hide Blizzard buttons next to the chat"), "hideSideButtons")
-Check(L - 4, -214, T("Eigene Knopfleiste über dem Chat", "Own button bar above the chat"), "toolbar")
+-- Textgroesse: Blizzards eigene Einstellung je Chatfenster (wird von Blizzard gespeichert, nur auf Wunsch geaendert)
+local fontSlider = UI.Slider(options, L + 2, -142, T("Textgröße", "Text size"), 8, 24, 1, function(v)
+    ns.SetFontSize(v)
+end, { width = 200 })
+loaders[#loaders + 1] = function() fontSlider:Load(ns.GetFontSize()) end
+Check(L - 4, -184, T("Reiter im Forever-Stil", "Tabs in Forever style"), "styleTabs")
+Check(L - 4, -208, T("Eingabefeld im Forever-Stil", "Input box in Forever style"), "styleEditBox")
+Check(L - 4, -232, T("Blizzard-Knöpfe neben dem Chat ausblenden", "Hide Blizzard buttons next to the chat"), "hideSideButtons")
+Check(L - 4, -256, T("Knopfleiste in der Reiterzeile", "Button bar in the tab row"), "toolbar")
 
-UI.Header(options, L, -256, T("Position und Sperre", "Position and lock"), 300)
-local lockCheck = UI.Check(options, L - 4, -278, T("Chatfenster sperren", "Lock chat windows"), function(checked)
+UI.Header(options, L, -298, T("Position und Sperre", "Position and lock"), 300)
+local lockCheck = UI.Check(options, L - 4, -320, T("Chatfenster sperren", "Lock chat windows"), function(checked)
     ns.SetLocked(checked)
 end)
 loaders[#loaders + 1] = function() lockCheck:SetChecked(ns.IsLocked()) end
@@ -68,24 +73,24 @@ local editBtn = UI.Button(options, T("Im Bearbeitungsmodus verschieben", "Move i
     options:Hide()
     ns.OpenEditMode()
 end)
-editBtn:SetPoint("TOPLEFT", L, -306)
-UI.Hint(options, L + 2, -334, 300, T("Den Hauptchat verwaltet Blizzards Bearbeitungsmodus (Position und Größe). "
+editBtn:SetPoint("TOPLEFT", L, -348)
+UI.Hint(options, L + 2, -376, 300, T("Den Hauptchat verwaltet Blizzards Bearbeitungsmodus (Position und Größe). "
     .. "Entsperrte Zusatzfenster lassen sich am Reiter ziehen.",
     "Blizzard's Edit Mode manages the main chat (position and size). Unlocked extra windows can be dragged by their tab."))
 
-UI.Header(options, L, -392, T("Eingabe", "Input"), 300)
-Check(L - 4, -414, T("Pfeiltasten blättern im Verlauf (ohne Alt)", "Arrow keys browse history (no Alt)"), "arrowHistory")
-Check(L - 4, -438, T("Umschalt + Mausrad: ganz nach oben/unten", "Shift + mouse wheel: jump to top/bottom"), "shiftScroll")
+UI.Header(options, L, -434, T("Eingabe", "Input"), 300)
+Check(L - 4, -456, T("Pfeiltasten blättern im Verlauf (ohne Alt)", "Arrow keys browse history (no Alt)"), "arrowHistory")
+Check(L - 4, -480, T("Umschalt + Mausrad: ganz nach oben/unten", "Shift + mouse wheel: jump to top/bottom"), "shiftScroll")
 
-UI.Header(options, L, -480, T("Instant Messaging", "Instant messaging"), 300)
-Check(L - 4, -502, T("Reiter „IM“: je Person ein Unterreiter", "“IM” tab: one sub-tab per person"), "messenger", function(on)
+UI.Header(options, L, -522, T("Instant Messaging", "Instant messaging"), 300)
+Check(L - 4, -544, T("Reiter „IM“: je Person ein Unterreiter", "“IM” tab: one sub-tab per person"), "messenger", function(on)
     if not on and ns.HideIM then ns.HideIM() end
     Changed()
 end)
-Check(L + 16, -526, T("Flüstern zusätzlich im normalen Chat", "Also show whispers in the normal chat"), "whispersInMain")
-UI.Hint(options, L + 2, -552, 300, T("Antworten im IM-Reiter über das eigene Feld (Enter). Ist in Blizzards Chat-Einstellungen "
-    .. "„Flüstern in neuem Fenster“ an, öffnet Blizzard zusätzlich eigene Reiter.",
-    "Reply in the IM tab with its own input (Enter). If Blizzard's “whispers in new window” is on, Blizzard opens extra tabs too."))
+Check(L + 16, -568, T("Flüstern zusätzlich im normalen Chat", "Also show whispers in the normal chat"), "whispersInMain")
+UI.Hint(options, L + 2, -594, 300, T("Im IM-Reiter schreibt die Eingabezeile (Enter) an die gewählte Person. "
+    .. "/r kennt Absender nur, wenn Flüstern auch im normalen Chat steht.",
+    "In the IM tab the input line (Enter) writes to the selected person. /r only knows senders shown in the normal chat."))
 
 ---------------------------------------------------------------------------
 -- rechte Spalte

@@ -182,7 +182,7 @@ local function ShowConversation(key)
         placeholder:SetText(string.format(T("Antwort an %s … (Enter sendet)", "Reply to %s … (Enter sends)"), c.name))
     end
     emptyHint:SetShown(c == nil)
-    input:SetShown(c ~= nil)
+    input:SetShown(c ~= nil and ns.imActive)
     ns.UpdateIMTabs()
 end
 
@@ -282,7 +282,7 @@ local function BuildPanel()
     -- Verlauf
     view = CreateFrame("ScrollingMessageFrame", nil, panel)
     view:SetPoint("TOPLEFT", 2, -(SUBTAB_H + 6))
-    view:SetPoint("BOTTOMRIGHT", -2, 30)
+    view:SetPoint("BOTTOMRIGHT", -2, 2)
     local font, size, flags = main:GetFont()
     if font then view:SetFont(font, size, flags) else view:SetFontObject("ChatFontNormal") end
     view:SetJustifyH("LEFT")
@@ -305,11 +305,23 @@ local function BuildPanel()
     emptyHint:SetPoint("CENTER", panel, "CENTER", 0, 0)
     emptyHint:SetJustifyH("CENTER")
 
-    -- Antwortfeld (Forever-Stil, goldener Rand beim Tippen)
-    input = CreateFrame("EditBox", nil, panel, "BackdropTemplate")
-    input:SetPoint("BOTTOMLEFT", 0, 2)
-    input:SetPoint("BOTTOMRIGHT", 0, 2)
-    input:SetHeight(24)
+    -- Antwortfeld: liegt genau an der Stelle der normalen Eingabezeile (die waehrenddessen unsichtbar ist), damit
+    -- es nur eine Eingabezeile gibt. Blizzards Eingabezeile selbst wird nicht umgestellt (taint, siehe oben).
+    local eb = main.editBox or _G[main:GetName() .. "EditBox"]
+    local bd = ns.GetBackdrop and ns.GetBackdrop(main)
+    input = CreateFrame("EditBox", "ForeverChatMessengerInput", UIParent, "BackdropTemplate")
+    input:SetFrameStrata("DIALOG") -- wie Blizzards Eingabezeile
+    if eb then
+        input:SetPoint("TOP", eb, "TOP", 0, -4)
+        input:SetPoint("BOTTOM", eb, "BOTTOM", 0, 4)
+        input:SetPoint("LEFT", bd or eb, "LEFT", 0, 0)
+        input:SetPoint("RIGHT", bd or eb, "RIGHT", 0, 0)
+    else
+        input:SetPoint("TOPLEFT", panel, "BOTTOMLEFT", 0, -4)
+        input:SetPoint("TOPRIGHT", panel, "BOTTOMRIGHT", 0, -4)
+        input:SetHeight(24)
+    end
+    input:Hide()
     Flat(input, { C.input[1], C.input[2], C.input[3], 0.92 }, C.border)
     input:SetFontObject("ChatFontNormal")
     input:SetTextInsets(8, 8, 0, 0)
@@ -331,7 +343,15 @@ local function BuildPanel()
     input:SetScript("OnEnterPressed", function(self)
         SendText(self:GetText())
         self:SetText("")
+        self:ClearFocus() -- wie die normale Eingabezeile: nach dem Senden wieder laufen koennen
     end)
+
+    -- Enter (Taste "Chat oeffnen") springt waehrend der Messenger-Ansicht ins Antwortfeld
+    local focus = CreateFrame("Button", "ForeverChatMessengerFocus", UIParent)
+    focus:SetScript("OnClick", function()
+        if ns.imActive and input:IsShown() then input:SetFocus() end
+    end)
+    panel.focusButton = focus
 
     panel:SetScript("OnSizeChanged", function() ns.UpdateIMTabs() end)
 end
@@ -339,6 +359,51 @@ end
 ---------------------------------------------------------------------------
 -- Ein- und Ausblenden
 ---------------------------------------------------------------------------
+-- Blizzards Eingabezeilen waehrend der Messenger-Ansicht unsichtbar (Alpha 0, nicht anklickbar), danach zurueck
+local savedEditAlpha = {}
+local function HideEditBoxes(hide)
+    ns.ForEachChatFrame(function(frame)
+        local eb = frame.editBox or _G[frame:GetName() .. "EditBox"]
+        if not eb then return end
+        if hide then
+            savedEditAlpha[eb] = eb:GetAlpha()
+            UI.HideBlizzard(eb, { children = false, noMouse = { eb } })
+        elseif savedEditAlpha[eb] then
+            UI.ShowBlizzard(eb)
+            eb:SetAlpha(savedEditAlpha[eb])
+            savedEditAlpha[eb] = nil
+        end
+    end)
+end
+
+-- Taste "Chat oeffnen" (meist Enter) solange aufs Antwortfeld legen (Tastenbelegung nur ausserhalb des Kampfes)
+local function SetEnterOverride(on)
+    if not (panel and panel.focusButton) then return end
+    local function Apply()
+        ClearOverrideBindings(panel.focusButton)
+        if on and ns.imActive then
+            for _, key in ipairs({ GetBindingKey("OPENCHAT") }) do
+                SetOverrideBindingClick(panel.focusButton, true, key, "ForeverChatMessengerFocus")
+            end
+        end
+    end
+    UI.AfterCombat("ForeverChat:imEnter", Apply, ADDON_NAME)
+end
+
+-- Im Kampf gehoert Enter wieder dem normalen Chat (sonst koennte die Taste bis Kampfende festhaengen):
+-- direkt vor Kampfbeginn (PLAYER_REGEN_DISABLED, Belegung dann noch erlaubt) freigeben, danach ggf. wieder setzen
+local combatWatch = CreateFrame("Frame")
+combatWatch:RegisterEvent("PLAYER_REGEN_DISABLED")
+combatWatch:RegisterEvent("PLAYER_REGEN_ENABLED")
+combatWatch:SetScript("OnEvent", function(_, event)
+    if not (panel and panel.focusButton) then return end
+    if event == "PLAYER_REGEN_DISABLED" then
+        ClearOverrideBindings(panel.focusButton)
+    elseif ns.imActive then
+        SetEnterOverride(true)
+    end
+end)
+
 function ns.ShowIM()
     if not ns.GetDB().messenger then return end
     BuildPanel()
@@ -346,9 +411,11 @@ function ns.ShowIM()
     hiddenChat = ns.SelectedChatFrame()
     if hiddenChat then hiddenChat:SetAlpha(0) end
     ns.imActive = true
+    HideEditBoxes(true)
     panel:Show()
     if not current then current = order[1] end
     ShowConversation(current)
+    SetEnterOverride(true)
     ns.UpdateAllTabLooks()
 end
 
@@ -356,10 +423,26 @@ function ns.HideIM()
     if not ns.imActive then return end
     ns.imActive = false
     if panel then panel:Hide() end
+    if input then
+        input:ClearFocus()
+        input:Hide()
+    end
     if hiddenChat then hiddenChat:SetAlpha(1) end
     hiddenChat = nil
+    HideEditBoxes(false)
+    SetEnterOverride(false)
     ns.UpdateAllTabLooks()
     UpdateIMTab()
+end
+
+-- Schriftgroesse des Messengers an den Chat angleichen (nach einer Aenderung in den Einstellungen)
+function ns.UpdateIMFont()
+    if not view then return end
+    local font, size, flags = ns.MainChatFrame():GetFont()
+    if font then
+        view:SetFont(font, size, flags)
+        input:SetFont(font, size, flags)
+    end
 end
 
 function ns.ToggleIM()
@@ -388,7 +471,19 @@ events:SetScript("OnEvent", ns.Safe(T("Messenger", "Messenger"), function(_, eve
     end
     if info.incoming and guid and ns.CanRead(guid) then c.guid = guid end
 
-    local who = info.incoming and ClassName(c.name, c.guid) or ("|cffffd100" .. T("Du", "You") .. "|r")
+    local who
+    if info.incoming then
+        who = ClassName(c.name, c.guid)
+        -- Stufe wie im normalen Chat (dezentes Grau vor dem Namen), gleiche Einstellungen
+        if db.showLevel and info.kind == "W" then
+            local level = ns.LevelOf(sender, c.guid)
+            if level and not (db.hideMaxLevel and level >= ns.MaxLevel()) then
+                who = "|cff8a8a8a" .. level .. "|r " .. who
+            end
+        end
+    else
+        who = "|cffffd100" .. T("Du", "You") .. "|r"
+    end
     local line = { text = "|cff8a8a8a" .. date("%H:%M") .. "|r " .. who .. ": " .. text }
     line.r, line.g, line.b = ColorOf(info.color)
     table.insert(c.lines, line)

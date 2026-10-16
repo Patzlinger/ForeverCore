@@ -10,6 +10,7 @@ local WHITE = "Interface\\Buttons\\WHITE8x8"
 
 local skinned = {}  -- [Chatfenster] = true
 local backdrops = {} -- [Chatfenster] = Flaeche
+function ns.GetBackdrop(frame) return backdrops[frame] end
 
 ---------------------------------------------------------------------------
 -- Flache Rahmen aus Texturen (fuer Blizzard-Knoepfe/Eingabefelder, an die wir keine Kind-Rahmen haengen)
@@ -392,6 +393,18 @@ function ns.SetupSkin()
             if button ~= "RightButton" and ns.HideIM then ns.HideIM() end
         end)
     end
+end
+
+-- Textgroesse aller Chatfenster (Blizzards eigene Einstellung, FCF_SetChatWindowFontSize speichert sie)
+function ns.GetFontSize()
+    local _, size = ns.MainChatFrame():GetFont()
+    return math.floor((size or 14) + 0.5)
+end
+
+function ns.SetFontSize(size)
+    if not _G.FCF_SetChatWindowFontSize then return end
+    ns.ForEachChatFrame(function(frame) _G.FCF_SetChatWindowFontSize(nil, frame, size) end)
+    if ns.UpdateIMFont then ns.UpdateIMFont() end
 end
 
 -- alle Reiter neu einfaerben (z. B. wenn der Messenger auf- oder zugeht)
