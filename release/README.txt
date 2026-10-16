@@ -35,7 +35,9 @@ in einem gemeinsamen Zahnrad-Knopf gesammelt.
 
 Forever Core Hub: /forever (oder /fhub) öffnet ein Fenster mit allen Forever-Addons –
 ein Klick auf "Öffnen" führt direkt ins Menü des Addons. Dort lässt sich auch der
-Minimap-Knopf ausblenden und die Sprache für alle Forever-Addons auf Englisch umstellen. /forever reset holt die Knöpfe zurück und setzt die Position zurück.
+Minimap-Knopf ausblenden und die Sprache für alle Forever-Addons auf Englisch umstellen.
+Außerdem steht "Forever Core" im Blizzard-Optionsmenü (Esc » Optionen » AddOns) – mit
+einer Unterseite pro Addon, die dessen Einstellungen öffnet. /forever options springt direkt dorthin. /forever reset holt die Knöpfe zurück und setzt die Position zurück.
 
 Alles verschieben: /fmove (oder Rechtsklick auf den Sammelknopf) entsperrt alle aktiven
 Forever-Addons auf einmal – mit Raster und Einrasten (Umschalt = frei). Nochmal /fmove sperrt alle.
@@ -78,7 +80,9 @@ collected in one shared gear button.
 
 Forever Core Hub: /forever (or /fhub) opens a window listing all Forever addons –
 click "Open" to go straight to that addon's settings. The minimap button can be hidden
-there as well (German clients can also switch all Forever addons to English there). /forever reset brings the buttons back and resets their position.
+there as well (German clients can also switch all Forever addons to English there).
+"Forever Core" also appears in the Blizzard options (Esc » Options » AddOns) with one page
+per addon that opens its settings. /forever options jumps straight there. /forever reset brings the buttons back and resets their position.
 
 Move everything: /fmove (or right-click the collector button) unlocks all active Forever
 addons at once – with grid and snapping (Shift = free). /fmove again locks them all.

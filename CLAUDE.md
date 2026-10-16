@@ -103,9 +103,14 @@ Philosophie, Regeln, Design und Abläufe. Wenn etwas hier nicht steht: am besteh
   3. **Hub-Fenster** `/forever` (`/fhub`): alle installierten Forever-Addons mit "Öffnen"-Knopf ins jeweilige Menü,
      "Alle verschieben", Minimap-Knopf ein/aus, **Sprache für alle Forever-Addons**; `/forever reset` holt Knöpfe zurück
   4. **Gemeinsamer Verschiebe-Modus** `/fmove`: entsperrt/sperrt alle angemeldeten Addons auf einmal
+  5. **Blizzard-Optionsmenü** (Esc » Optionen » Reiter "AddOns"): Eintrag "Forever Core" mit Übersicht und je
+     Forever-Addon eine Unterseite mit "Einstellungen öffnen" (öffnet das eigene Fenster, Optionsmenü schließt sich).
+     Automatisch für jedes Addon aus `KNOWN`, dessen Minimap-Knopf existiert; `/forever options` springt dorthin.
+     Die eigentlichen Einstellungen bleiben in den eigenen Fenstern (keine zweite Einstellungs-Oberfläche bauen)
 - Damit ein Addon voll eingebunden ist:
   - Minimap-Knopf **immer über `UI.MinimapButton({...})`** bauen, globaler Name `Forever<Name>MinimapButton`,
-    **Linksklick öffnet das Menü**, Rechtsklick frei (meist: entsperren/sperren bzw. ein-/ausblenden); in `KNOWN` eintragen.
+    **Linksklick öffnet das Menü**, Rechtsklick frei (meist: entsperren/sperren bzw. ein-/ausblenden); in `KNOWN`
+    eintragen (Name, Knopf, Chatbefehl `cmd`) – damit erscheint es in Sammelknopf, Hub-Fenster und Blizzard-Optionsmenü.
     Die Vorlage bringt Aussehen, Ziehen um die Minimap und den Tooltip-Hinweis "Ziehen" mit
   - für `/fmove`: `UI.RegisterMovable("ForeverName", isLocked, setLocked)` – `isLocked()` liefert true/false,
     `setLocked(locked)` sperrt bzw. entsperrt (inkl. Menü aktualisieren). Addons mit eigener Stil-Datei melden sich

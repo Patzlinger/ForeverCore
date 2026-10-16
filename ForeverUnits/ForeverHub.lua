@@ -6,8 +6,9 @@
 --     ausgeblendet und in einer ausklappbaren Liste gesammelt. Klicks gehen an den Original-Knopf.
 --  3. Hub-Fenster (/forever): Liste aller Forever-Addons mit direktem Weg in ihr Menue –
 --     auch ohne Minimap-Knoepfe.
+--  4. Eintrag "Forever Core" im Blizzard-Optionsmenue (Reiter AddOns) mit Unterseite je Addon.
 local ADDON_NAME = ...
-local VERSION = 18
+local VERSION = 19
 if _G.ForeverHub and (_G.ForeverHub.version or 0) >= VERSION then return end
 
 local hub = { version = VERSION }
@@ -976,17 +977,18 @@ end
 ---------------------------------------------------------------------------
 -- Bekannte Forever-Addons und der Name ihres Minimap-Knopfs (Reihenfolge = Reihenfolge in Liste und Hub-Fenster).
 -- Neues Addon: hier eintragen; sein Minimap-Knopf muss so heissen und mit Linksklick das Menue oeffnen.
+-- cmd = Chatbefehl (Anzeige im Blizzard-Optionsmenue)
 local KNOWN = {
-    { name = "ForeverFrames", button = "ForeverFramesMinimapButton" },
-    { name = "ForeverUnits",  button = "ForeverUnitsMinimapButton" },
-    { name = "ForeverCast",   button = "ForeverCastMinimapButton" },
-    { name = "ForeverBars",   button = "ForeverBarsMinimapButton" },
-    { name = "ForeverQuests", button = "ForeverQuestsMinimapButton" },
-    { name = "ForeverLoot",   button = "ForeverLootMinimapButton" },
-    { name = "ForeverXP",     button = "ForeverXPMinimapButton" },
-    { name = "ForeverBuffs",  button = "ForeverBuffsMinimapButton" },
-    { name = "ForeverVendor", button = "ForeverVendorMinimapButton" },
-    { name = "ForeverSpellbook", button = "ForeverSpellbookMinimapButton" },
+    { name = "ForeverFrames", button = "ForeverFramesMinimapButton", cmd = "/ff" },
+    { name = "ForeverUnits",  button = "ForeverUnitsMinimapButton", cmd = "/fu" },
+    { name = "ForeverCast",   button = "ForeverCastMinimapButton", cmd = "/fcast" },
+    { name = "ForeverBars",   button = "ForeverBarsMinimapButton", cmd = "/fb" },
+    { name = "ForeverQuests", button = "ForeverQuestsMinimapButton", cmd = "/fq" },
+    { name = "ForeverLoot",   button = "ForeverLootMinimapButton", cmd = "/floot" },
+    { name = "ForeverXP",     button = "ForeverXPMinimapButton", cmd = "/fxp" },
+    { name = "ForeverBuffs",  button = "ForeverBuffsMinimapButton", cmd = "/fbuffs" },
+    { name = "ForeverVendor", button = "ForeverVendorMinimapButton", cmd = "/fvendor" },
+    { name = "ForeverSpellbook", button = "ForeverSpellbookMinimapButton", cmd = "/fsb" },
     { name = "ForeverQuestmob", button = "ForeverQuestmobMinimapButton" },
     { name = "ForeverBoard",  button = "ForeverBoardMinimapButton" },
     { name = "ForeverNotes",  button = "ForeverNotesMinimapButton" },
@@ -1157,6 +1159,8 @@ local function ApplyMode()
     end
 end
 
+local RegisterSettings -- Eintrag im Blizzard-Optionsmenue (Abschnitt 4), wird weiter unten belegt
+
 local function Setup()
     if _G.ForeverHub ~= hub then return end -- eine neuere Kopie ist zustaendig
     local before = #entries
@@ -1164,7 +1168,7 @@ local function Setup()
     for _, k in ipairs(KNOWN) do
         local button = _G[k.button]
         if button then
-            entries[#entries + 1] = { name = k.name, button = button, icon = IconOf(button) }
+            entries[#entries + 1] = { name = k.name, button = button, icon = IconOf(button), cmd = k.cmd }
             -- falls ein Addon seinen Knopf spaeter wieder einblendet: im Sammelmodus versteckt lassen
             if not button.ffHubHooked then
                 button.ffHubHooked = true
@@ -1177,6 +1181,7 @@ local function Setup()
     -- Liste neu bauen, falls inzwischen weitere Addons dazugekommen sind
     if flyout and #entries ~= before then flyout:Hide() flyout = nil end
     ApplyMode()
+    if RegisterSettings then RegisterSettings() end
 end
 
 -- true: Einzelknoepfe sollen versteckt bleiben (gesammelt oder ganz ausgeblendet)
@@ -1360,6 +1365,136 @@ function hub.ToggleWindow()
     hubWindow:SetShown(not hubWindow:IsShown())
 end
 
+---------------------------------------------------------------------------
+-- 4. Blizzard-Optionsmenue (Reiter "AddOns"): Eintrag "Forever Core" mit Uebersicht und je Addon
+-- eine Unterseite mit Knopf ins eigene Einstellungsfenster. Die Fenster selbst bleiben eigenstaendig.
+---------------------------------------------------------------------------
+local settingsCategory
+local settingsPages = {} -- [Addon-Name] = true, sobald eingetragen
+
+-- Optionsmenue schliessen (nur ausserhalb des Kampfes) und das Addon-Fenster oeffnen
+local function OpenFromSettings(name)
+    if SettingsPanel and SettingsPanel:IsShown() and not InCombatLockdown() then HideUIPanel(SettingsPanel) end
+    if name then OpenAddon(EntryOf(name)) else hub.ToggleWindow() end
+end
+
+local function NotesOf(name)
+    local ok, _, _, notes = pcall(C_AddOns.GetAddOnInfo, name)
+    return ok and notes or ""
+end
+
+-- Kopf einer Seite: Logo/Symbol, Titel, Untertitel
+local function PageHeader(page, icon, title, subtitle)
+    local ic = page:CreateTexture(nil, "ARTWORK")
+    ic:SetSize(32, 32)
+    ic:SetPoint("TOPLEFT", 16, -16)
+    ic:SetTexture(icon)
+    local t = page:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    t:SetPoint("TOPLEFT", ic, "TOPRIGHT", 10, -1)
+    t:SetText(title)
+    local s = page:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    s:SetPoint("TOPLEFT", t, "BOTTOMLEFT", 0, -4)
+    s:SetPoint("RIGHT", page, "RIGHT", -16, 0)
+    s:SetJustifyH("LEFT")
+    s:SetText(subtitle or "")
+    local line = page:CreateTexture(nil, "ARTWORK")
+    line:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 0.6)
+    line:SetHeight(1)
+    line:SetPoint("TOPLEFT", 16, -60)
+    line:SetPoint("TOPRIGHT", -16, -60)
+end
+
+-- Uebersichtsseite "Forever Core": alle geladenen Forever-Addons mit "Öffnen"
+local function BuildOverview()
+    local page = CreateFrame("Frame")
+    PageHeader(page, UI.LOGO, UI.NAME, "Less clutter. More control. Just the essentials.")
+    UI.Hint(page, 16, -72, 560, T("Jedes Forever-Addon hat ein eigenes Einstellungsfenster. Hier öffnest du es direkt "
+        .. "– oder über die Unterpunkte links, den Minimap-Knopf bzw. /forever.",
+        "Every Forever addon has its own settings window. Open it right here – or via the entries on the left, "
+        .. "the minimap button or /forever."))
+    page.rows = {}
+    local function Refresh()
+        for i, e in ipairs(entries) do
+            local row = page.rows[i]
+            if not row then
+                row = CreateFrame("Frame", nil, page)
+                row:SetSize(560, 30)
+                row:SetPoint("TOPLEFT", 16, -112 - (i - 1) * 32)
+                row.icon = row:CreateTexture(nil, "ARTWORK")
+                row.icon:SetSize(20, 20)
+                row.icon:SetPoint("LEFT", 4, 0)
+                row.label = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+                row.label:SetPoint("LEFT", row.icon, "RIGHT", 8, 0)
+                row.label:SetWidth(130)
+                row.label:SetJustifyH("LEFT")
+                row.note = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+                row.note:SetPoint("LEFT", row.label, "RIGHT", 6, 0)
+                row.note:SetPoint("RIGHT", row, "RIGHT", -96, 0)
+                row.note:SetJustifyH("LEFT")
+                row.note:SetWordWrap(false)
+                row.open = UI.Button(row, T("Öffnen", "Open"), 84)
+                row.open:SetPoint("RIGHT", -4, 0)
+                page.rows[i] = row
+            end
+            row.icon:SetTexture(e.icon)
+            row.label:SetText(e.name)
+            row.note:SetText(NotesOf(e.name))
+            row.open:SetScript("OnClick", function() OpenFromSettings(e.name) end)
+            row:Show()
+        end
+        for i = #entries + 1, #page.rows do page.rows[i]:Hide() end
+    end
+    page:SetScript("OnShow", Refresh)
+
+    local hubBtn = UI.Button(page, T("Hub-Fenster öffnen", "Open hub window"), 150, function() OpenFromSettings(nil) end)
+    hubBtn:SetPoint("BOTTOMLEFT", 16, 16)
+    local move = UI.Button(page, T("Alle verschieben/sperren", "Move/lock all"), 170, function()
+        if SettingsPanel and SettingsPanel:IsShown() and not InCombatLockdown() then HideUIPanel(SettingsPanel) end
+        UI.MoveAll()
+    end)
+    move:SetPoint("LEFT", hubBtn, "RIGHT", 8, 0)
+    return page
+end
+
+-- Unterseite eines Addons: Beschreibung, Knopf ins Einstellungsfenster, Chatbefehl
+local function BuildAddonPage(e)
+    local page = CreateFrame("Frame")
+    PageHeader(page, e.icon, e.name, NotesOf(e.name))
+    local open = UI.Button(page, T("Einstellungen öffnen", "Open settings"), 180, function() OpenFromSettings(e.name) end)
+    open:SetHeight(26)
+    open:SetPoint("TOPLEFT", 16, -76)
+    if e.cmd then
+        local hint = UI.Hint(page, nil, nil, nil, string.format(T("Auch im Chat: %s", "Also in chat: %s"), e.cmd))
+        hint:SetPoint("LEFT", open, "RIGHT", 12, 0)
+    end
+    UI.Hint(page, 16, -114, 560, T("Die Einstellungen öffnen sich im eigenen Forever-Fenster, damit du beim Einstellen "
+        .. "das Spiel siehst.", "Settings open in their own Forever window so you can see the game while adjusting them."))
+    return page
+end
+
+RegisterSettings = function()
+    if not (Settings and Settings.RegisterCanvasLayoutCategory and Settings.RegisterAddOnCategory) then return end
+    if #entries == 0 then return end
+    if not settingsCategory then
+        settingsCategory = Settings.RegisterCanvasLayoutCategory(BuildOverview(), UI.NAME)
+        Settings.RegisterAddOnCategory(settingsCategory)
+    end
+    if not Settings.RegisterCanvasLayoutSubcategory then return end
+    for _, e in ipairs(entries) do
+        if not settingsPages[e.name] then
+            settingsPages[e.name] = true
+            Settings.RegisterCanvasLayoutSubcategory(settingsCategory, BuildAddonPage(e), e.name)
+        end
+    end
+end
+
+-- Blizzard-Optionsmenue direkt bei "Forever Core" oeffnen (fuer /forever options)
+function hub.OpenSettings()
+    if settingsCategory and Settings and Settings.OpenToCategory then
+        Settings.OpenToCategory(settingsCategory:GetID())
+    end
+end
+
 -- /forever: Hub-Fenster · /forever reset: Sammelknopf zuruecksetzen und wieder an die Minimap holen
 SLASH_FOREVERHUB1 = "/forever"
 SLASH_FOREVERHUB2 = "/fhub"
@@ -1375,6 +1510,8 @@ SlashCmdList["FOREVERHUB"] = function(msg)
         UI.Chat("Forever", active
             and T("Sammelknopf zurückgesetzt.", "Collector button reset.")
             or T("Minimap-Knöpfe wieder eingeblendet.", "Minimap buttons shown again."))
+    elseif msg == "options" or msg == "optionen" then
+        hub.OpenSettings()
     else
         hub.ToggleWindow()
     end
