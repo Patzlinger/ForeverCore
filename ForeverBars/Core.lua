@@ -103,7 +103,7 @@ ns.defaults = {
     },
     profiles = {},           -- gespeicherte Profile: [Name] = Kopie der Einstellungen (siehe Profiles.lua)
     activeProfile = "Default", -- aktives Profil; "Default" gibt es immer
-    layoutVersion = 6,         -- Stand der Standard-Anordnung (siehe MigrateLayout)
+    layoutVersion = 7,         -- Stand der Standard-Anordnung (siehe MigrateLayout)
     skin = "FLAT",           -- Aussehen der Knöpfe (ns.SKINS in Bars.lua)
     hoverAlpha = 15,         -- Stärke des Hover-Leuchtens über den Knöpfen (%)
     procGlow = "FOREVER",    -- Leuchten bei Procs: "FOREVER" (goldener Rahmen), "BLIZZARD", "OFF"
@@ -149,7 +149,8 @@ ns.defaults.bars.food.frame = true
 ns.defaults.bars.food.scale = 80
 ns.defaults.bars.prof.growX = "LEFT"
 ns.defaults.bars.micro.point = "BOTTOMRIGHT"
-ns.defaults.bars.micro.scale = 80 -- Mikromenü und Taschen etwas kleiner (Forever-Stil, dezent)
+ns.defaults.bars.micro.scale = 40 -- Mikromenü klein und schwarz-weiß, Taschen etwas kleiner (dezent)
+ns.defaults.bars.micro.microGrey = true
 ns.defaults.bars.bags.scale = 80
 ns.defaults.bars.bags.point = "BOTTOMRIGHT"
 ns.defaults.bars.bags.growX = "LEFT"
@@ -191,7 +192,8 @@ ns.FillDefaults = FillDefaults
 --   5 (0.14.0): Begleiter-/Haltungsleiste etwas größer (56 %); Ränder benachbarter Knöpfe liegen jetzt
 --               übereinander, darum Positionen der Standard-Anordnung neu berechnet
 --   6 (0.15.0): Mikromenü und Taschenleiste kleiner (80 %), Positionen unten rechts neu berechnet
-local LAYOUT_VERSION = 6
+--   7 (0.15.1): Mikromenü 40 % und schwarz-weiß, Positionen unten rechts neu berechnet
+local LAYOUT_VERSION = 7
 local STANDARD_LAYOUT_BARS = { "bar1", "bar2", "bar3", "bar6", "bar7", "bar8", "pet", "stance", "prof", "food",
                                "micro", "bags", "xp", "rep", "vehicle" }
 function ns.MigrateLayout(db)
@@ -234,6 +236,14 @@ function ns.MigrateLayout(db)
                         bar.x, bar.y = nil, nil
                     end
                 end
+            end
+            if version < 7 and target.bars.micro then
+                local micro = target.bars.micro
+                if micro.scale == nil or micro.scale == 100 or micro.scale == 80 then
+                    micro.scale = ns.defaults.bars.micro.scale
+                end
+                micro.x, micro.y = nil, nil
+                if target.bars.bags then target.bars.bags.x, target.bars.bags.y = nil, nil end
             end
         end
     end

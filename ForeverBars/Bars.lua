@@ -415,6 +415,20 @@ local function StyleMicroButton(button)
     end
     HideRegion(button.Background)
     HideRegion(button.PushedBackground)
+    -- Schwarz-weiß: alle Grafiken des Knopfes (Symbol, Porträt, Hervorhebung) entsättigen
+    local grey = ns.db.bars.micro.microGrey and true or false
+    for _, region in ipairs({ button:GetRegions() }) do
+        if region:IsObjectType("Texture") and region ~= button.fbMicroBackground and region.SetDesaturated then
+            region:SetDesaturated(grey)
+        end
+    end
+    for _, child in ipairs({ button:GetChildren() }) do
+        if child ~= button.fbMicroBorder then
+            for _, region in ipairs({ child:GetRegions() }) do
+                if region:IsObjectType("Texture") and region.SetDesaturated then region:SetDesaturated(grey) end
+            end
+        end
+    end
     local skin = GetSkin()
     button.fbMicroBackground:SetColorTexture(unpack(skin.background))
     button.fbMicroBorder:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = skin.size })
