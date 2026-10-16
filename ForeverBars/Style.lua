@@ -130,6 +130,9 @@ function Style.CreateWindow(name, width, height, titleText)
     close:SetScript("OnClick", function() window:Hide() end)
 
     window.header = header
+    -- beim Forever-Hub anmelden: das zuletzt geoeffnete/angeklickte Forever-Fenster liegt oben (kein Ineinander-Clippen)
+    local hubUI = _G.ForeverHub and _G.ForeverHub.UI
+    if hubUI and hubUI.RegisterWindow then hubUI.RegisterWindow(window) end
     return window
 end
 

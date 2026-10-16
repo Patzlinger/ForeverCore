@@ -14,7 +14,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 24
+local VERSION = 25
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -296,7 +296,69 @@ function UI.Window(name, title, width, height)
     f.CloseButton = close
     -- jedes benannte Forever-Fenster ist mit der Maus skalierbar (Griff unten rechts)
     if name then UI.MakeResizable(f) end
+    UI.RegisterWindow(f)
     return f
+end
+
+---------------------------------------------------------------------------
+-- Fenster-Stapel: das zuletzt geoeffnete bzw. angeklickte Forever-Fenster liegt ueber allen anderen.
+-- Alle Einstellungsfenster teilen sich die Ebene DIALOG; ohne Ordnung verzahnen sich ihre Bedienelemente
+-- (Unterebenen ueberschneiden sich). Gilt addon-uebergreifend (gemeinsamer Zustand SHARED.windows).
+---------------------------------------------------------------------------
+SHARED.windows = SHARED.windows or {}
+local LEVEL_LIMIT = 8000
+
+-- hoechste Unterebene eines Fensters samt seiner Bedienelemente
+local function HighestLevel(frame, depth)
+    local top = frame:GetFrameLevel()
+    if depth > 0 then
+        for _, child in ipairs({ frame:GetChildren() }) do
+            top = math.max(top, HighestLevel(child, depth - 1))
+        end
+    end
+    return top
+end
+
+-- Ebenen neu durchnummerieren, wenn sie zu hoch werden (Reihenfolge bleibt erhalten)
+local function Renumber(strata)
+    local list = {}
+    for w in pairs(SHARED.windows) do
+        if w:GetFrameStrata() == strata then list[#list + 1] = w end
+    end
+    table.sort(list, function(a, b) return a:GetFrameLevel() < b:GetFrameLevel() end)
+    local level = 10
+    for _, w in ipairs(list) do
+        w:SetFrameLevel(level)
+        level = HighestLevel(w, 5) + 10
+    end
+end
+
+function UI.BringToFront(f, again)
+    local strata = f:GetFrameStrata()
+    local top = 0
+    for w in pairs(SHARED.windows) do
+        if w ~= f and w:IsShown() and w:GetFrameStrata() == strata then
+            top = math.max(top, HighestLevel(w, 5))
+        end
+    end
+    if top < f:GetFrameLevel() then return end -- liegt schon oben
+    local level = top + 10
+    if level > LEVEL_LIMIT and not again then
+        Renumber(strata)
+        return UI.BringToFront(f, true)
+    end
+    f:SetFrameLevel(math.min(level, LEVEL_LIMIT))
+end
+
+-- Fenster anmelden: beim Oeffnen und beim Anklicken (Flaeche oder Titelleiste) nach oben.
+-- Auch fuer Fenster mit eigener Stil-Datei nutzbar (ForeverQuests/ForeverBars: Style.CreateWindow).
+function UI.RegisterWindow(f)
+    if not f or SHARED.windows[f] then return end
+    SHARED.windows[f] = true
+    local function Front() UI.BringToFront(f) end
+    f:HookScript("OnShow", Front)
+    f:HookScript("OnMouseDown", Front)
+    if f.header and f.header.HookScript then f.header:HookScript("OnMouseDown", Front) end
 end
 
 ---------------------------------------------------------------------------
@@ -1002,6 +1064,7 @@ function UI.MenuWindow(name, title, subtitle, width, height)
     f:HookScript("OnShow", function(self) self:RefreshAll() end)
     f:HookScript("OnHide", UI.HideMenu) -- offene Auswahlliste schliessen
     if name then UI.MakeResizable(f) end
+    UI.RegisterWindow(f)
     return f
 end
 

@@ -149,6 +149,10 @@ ihn identisch um. Neue Oberflächen nutzen eine dieser beiden – keine dritten 
   | accent (Gold) | 1 0.82 0 | **einzige Akzentfarbe**: Hover-Rand, Häkchen, Regler, Titellinie, Überschriften |
 - Fenster: flach und dunkel, 1-px-Rand, Titelleiste mit Logo + Titel + Schließen-Kreuz und goldener Linie unten,
   verschiebbar an der Titelleiste, mit Escape schließbar (`UISpecialFrames`)
+- **Fenster-Stapel**: Jedes Fenster meldet sich mit `UI.RegisterWindow(f)` an (`UI.Window`/`UI.MenuWindow` tun das
+  selbst, `Style.CreateWindow` in ForeverQuests/ForeverBars ebenfalls). Das zuletzt geöffnete oder angeklickte
+  Forever-Fenster liegt dann über allen anderen – addonübergreifend, ohne dass sich Bedienelemente verzahnen.
+  Eigene Fenster nicht per `SetFrameLevel` festnageln (sonst greift der Stapel nicht)
 - **Fenstergröße mit der Maus**: jedes benannte `UI.Window` bekommt automatisch einen Griff unten rechts
   (Skalieren 60–160 %, Rechtsklick = Standard, gespeichert in `ForeverHubDB.windows`). Fenster, deren Inhalt
   mitwachsen kann (z. B. ForeverSpellbook), nutzen `UI.MakeResizable(f, { mode = "size", minW, minH, maxW, maxH })`
