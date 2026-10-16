@@ -587,8 +587,10 @@ local function IsDrink(itemID)
 end
 
 -- Taschen durchsuchen. Jeder Eintrag bekommt row (1 = Essen, 2 = Getränk, 3 = Fläschchen/Elixier/Trank) und
--- col (Platz in der Reihe, höchste benötigte Stufe zuerst). Rückgabe: Liste (nach Reihen) und "Fingerabdruck"
-local function CollectFood()
+-- col (Platz in der Reihe, höchste benötigte Stufe zuerst). perRow (optional) = höchstens so viele je Reihe.
+-- Rückgabe: Liste (nach Reihen) und "Fingerabdruck"
+local foodLimit -- zuletzt verwendete Grenze je Reihe (damit der Vergleich bei Taschenänderungen passt)
+local function CollectFood(perRow)
     local groups, seen = { {}, {}, {} }, {}
     local numSlots = C_Container and C_Container.GetContainerNumSlots or GetContainerNumSlots
     local itemAt = C_Container and C_Container.GetContainerItemID or GetContainerItemID
@@ -622,6 +624,7 @@ local function CollectFood()
             return a.item < b.item
         end)
         for col, entry in ipairs(group) do
+            if perRow and col > perRow then break end
             entry.col = col - 1
             table.insert(list, entry)
             table.insert(ids, entry.item .. ":" .. entry.row)
@@ -679,8 +682,9 @@ function ns.CreateFoodButtons()
 end
 
 -- Knöpfe belegen (nur außerhalb des Kampfes); Rückgabe: Anzahl belegter Knöpfe
-local function AssignFoodButtons()
-    foodItems, foodSignature = CollectFood()
+local function AssignFoodButtons(perRow)
+    foodLimit = perRow
+    foodItems, foodSignature = CollectFood(perRow)
     for i = 1, FOOD_COUNT do
         local button = _G["ForeverBarsFoodButton" .. i]
         local entry = foodItems[i]
@@ -699,7 +703,7 @@ end
 
 -- Taschen geändert: neu belegen, wenn sich die Auswahl geändert hat, sonst nur Anzahl und Abklingzeit
 function ns.OnBagsChanged()
-    local _, signature = CollectFood()
+    local _, signature = CollectFood(foodLimit)
     if signature ~= foodSignature then
         ns.RequestLayout() -- im Kampf erst danach (geschützte Knöpfe)
     end
@@ -1046,7 +1050,8 @@ local function LayoutButtons(def, cfg, holder)
     elseif def.kind == "prof" then
         wanted = math.min(wanted, math.max(1, AssignProfessionButtons()))
     elseif def.kind == "food" then
-        wanted = math.min(wanted, math.max(1, AssignFoodButtons()))
+        -- In Reihen getrennt: je Reihe höchstens "Knöpfe pro Reihe"
+        wanted = math.min(wanted, math.max(1, AssignFoodButtons(cfg.profRows and math.max(1, cfg.perRow or 4) or nil)))
     end
     local count = math.max(1, math.min(wanted, #buttons))
     local perRow = math.max(1, math.min(cfg.perRow or count, count))
@@ -1064,10 +1069,12 @@ local function LayoutButtons(def, cfg, holder)
                 maxColumn = math.max(maxColumn, entry.col or 0)
             end
         end
-        -- Genutzte Reihen der Reihe nach durchnummerieren (0 = oberste)
+        -- Genutzte Reihen der Reihe nach durchnummerieren (0 = oberste). Verpflegung: festes Raster
+        -- (immer 3 Reihen, "Knöpfe pro Reihe" breit), damit die Leiste gleich groß bleibt
+        local fixed = def.kind == "food"
         local rowIndex, nextRow = {}, 0
         for row = 1, 3 do
-            if used[row] then
+            if used[row] or fixed then
                 rowIndex[row] = nextRow
                 nextRow = nextRow + 1
             end
@@ -1076,7 +1083,7 @@ local function LayoutButtons(def, cfg, holder)
             local entry = entries[i]
             slots[i] = { entry and entry.col or (i - 1), entry and rowIndex[entry.row or 1] or 0 }
         end
-        perRow = maxColumn + 1
+        perRow = fixed and math.max(1, cfg.perRow or 4) or (maxColumn + 1)
         rows = math.max(1, nextRow)
     else
         for i = 1, count do slots[i] = { (i - 1) % perRow, math.floor((i - 1) / perRow) } end

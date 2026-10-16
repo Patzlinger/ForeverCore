@@ -1002,7 +1002,8 @@ function ns.RefreshOptions()
     local splitRows = def.kind == "prof" or def.kind == "food"
     options.profRowsCheck:SetShown(splitRows)
     options.profRowsCheck.label:SetText(L(def.kind == "food" and "OPT_FOOD_ROWS" or "OPT_PROF_ROWS"))
-    options.perRowSlider:SetShown(hasButtons and not (splitRows and SelectedConfig().profRows))
+    -- Berufe in Spalten: Breite ergibt sich aus den Berufen; Verpflegung: "pro Reihe" = Breite des Rasters
+    options.perRowSlider:SetShown(hasButtons and not (def.kind == "prof" and SelectedConfig().profRows))
     options.keyringCheck:SetShown(def.kind == "bags" and ns.HasKeyring())
     for _, control in ipairs(controls) do
         control.Refresh()

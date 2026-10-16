@@ -103,7 +103,7 @@ ns.defaults = {
     },
     profiles = {},           -- gespeicherte Profile: [Name] = Kopie der Einstellungen (siehe Profiles.lua)
     activeProfile = "Default", -- aktives Profil; "Default" gibt es immer
-    layoutVersion = 3,         -- Stand der Standard-Anordnung (siehe MigrateLayout)
+    layoutVersion = 4,         -- Stand der Standard-Anordnung (siehe MigrateLayout)
     skin = "FLAT",           -- Aussehen der Knöpfe (ns.SKINS in Bars.lua)
     hoverAlpha = 15,         -- Stärke des Hover-Leuchtens über den Knöpfen (%)
     procGlow = "FOREVER",    -- Leuchten bei Procs: "FOREVER" (goldener Rahmen), "BLIZZARD", "OFF"
@@ -139,7 +139,8 @@ ns.defaults.bars.prof.point = "BOTTOMRIGHT"
 ns.defaults.bars.prof.frame = true
 ns.defaults.bars.prof.scale = 80
 -- Verpflegungsleiste: gespiegelt zur Berufeleiste rechts neben den Aktionsleisten, gleiche Größe, mit Rahmen
-ns.defaults.bars.food.buttons = 18
+ns.defaults.bars.food.buttons = 12 -- festes Raster: 4 breit, 3 Reihen (Essen, Getränke, Fläschchen)
+ns.defaults.bars.food.perRow = 4
 ns.defaults.bars.food.point = "BOTTOMLEFT"
 ns.defaults.bars.food.frame = true
 ns.defaults.bars.food.scale = 80
@@ -176,7 +177,8 @@ ns.FillDefaults = FillDefaults
 -- Einmalige Anpassungen des Standardprofils (andere gespeicherte Profile bleiben unverändert):
 --   2 (0.10.2): Vorlage "Standard (3 unten)" – alle Leisten auf Standard, Positionen neu berechnet
 --   3 (0.10.3): Berufeleiste kleiner (80 %), Position neu berechnet
-local LAYOUT_VERSION = 3
+--   4 (0.11.1): Verpflegungsleiste 4 breit und 3 hoch, Position neu berechnet
+local LAYOUT_VERSION = 4
 function ns.MigrateLayout(db)
     local version = db.layoutVersion or 1
     if version >= LAYOUT_VERSION then return end
@@ -189,9 +191,16 @@ function ns.MigrateLayout(db)
     for _, target in ipairs(targets) do
         if version < 2 then
             target.bars = CopyTable(ns.defaults.bars)
-        elseif version < 3 and target.bars.prof then
-            target.bars.prof.scale = ns.defaults.bars.prof.scale
-            target.bars.prof.x, target.bars.prof.y = nil, nil
+        else
+            if version < 3 and target.bars.prof then
+                target.bars.prof.scale = ns.defaults.bars.prof.scale
+                target.bars.prof.x, target.bars.prof.y = nil, nil
+            end
+            if version < 4 and target.bars.food then
+                target.bars.food.perRow = ns.defaults.bars.food.perRow
+                target.bars.food.buttons = ns.defaults.bars.food.buttons
+                target.bars.food.x, target.bars.food.y = nil, nil
+            end
         end
     end
 end
