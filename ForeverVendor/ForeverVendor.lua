@@ -842,85 +842,74 @@ icon:SetScript("OnLeave", function()
 end)
 
 ---------------------------------------------------------------------------
--- Einstellungsfenster – Aufbau nach CLAUDE.md 7.1 ("Grosse Menues"): links die Bereiche, rechts das Feld
--- des Bereichs, unten die Fussleiste. Bausteine: UI.MenuWindow/MenuPanel/MenuCheck/MenuSlider/… (ForeverHub)
+-- Einstellungsfenster
 ---------------------------------------------------------------------------
 local RefreshList
 do
-local M = UI.MENU
-local WIDTH, HEIGHT = 680, 560
-local options = UI.MenuWindow("ForeverVendorOptions", T("Einstellungen", "Settings"), "ForeverVendor", WIDTH, HEIGHT)
-local PANEL_X = M.pad + M.sidebarWidth + M.pad                    -- 224
-local PANEL_W = WIDTH - PANEL_X - M.pad                            -- 444
-local PANEL_H = HEIGHT + M.panelTop - (M.pad + M.footerHeight + M.pad) -- 458
-local X, Y = M.contentX, M.contentY                                -- Inhalt ab 14 / -44
-local CW = PANEL_W - 2 * M.contentX                                -- Inhaltsbreite 416
+-- 720 breit: die deutschen Beschriftungen links sind laenger und brauchen ~370 px bis zur rechten Spalte
+local options = UI.Window("ForeverVendorOptions", T("ForeverVendor – Einstellungen", "ForeverVendor – Settings"), 720, 690)
+local controls = {}
+local function Changed() UpdateIcon() end
 
-local function Changed() UpdateIcon() UpdateGrid() end
-local function Get(key) return function() return GetDB()[key] end end
-local function Set(key) return function(v) GetDB()[key] = v Changed() end end
-local goldUnit = T(" (Gold)", " (gold)")
-
--- Ein Feld je Bereich (nur das gewaehlte ist sichtbar)
-local pages, order = {}, {}
-local function Page(key, title)
-    local p = UI.MenuPanel(options, title)
-    p:SetPoint("TOPLEFT", PANEL_X, M.panelTop)
-    p:SetSize(PANEL_W, PANEL_H)
-    p:Hide()
-    pages[key] = p
-    order[#order + 1] = { key = key, label = title }
-    return p
+local function Check(x, y, label, key)
+    local cb = UI.Check(options, x, y, label, function(checked)
+        GetDB()[key] = checked
+        Changed()
+        UpdateGrid()
+    end)
+    controls[#controls + 1] = function() cb:SetChecked(GetDB()[key] and true or false) end
+    return cb
 end
+local function Slider(x, y, label, key, minV, maxV, step, opts)
+    local s = UI.Slider(options, x, y, label, minV, maxV, step, function(v)
+        GetDB()[key] = v
+        Changed()
+    end, opts)
+    controls[#controls + 1] = function() s:Load(GetDB()[key]) end
+end
+local goldFormat = { width = 150, format = function(v) return string.format(T("%g Gold", "%g gold"), v) end }
 
----------------------------------------------------------------------------
--- Bereich: Beim Haendler
----------------------------------------------------------------------------
-local p = Page("merchant", T("Beim Händler", "At the merchant"))
-UI.MenuCheck(p, X, Y, T("Automatik beim Händler", "Automatic at merchants"), Get("enabled"), Set("enabled"))
-UI.Hint(p, X + 24, Y - 20, CW - 24, T("Umschalt beim Öffnen des Händlers = diesmal nicht.",
-    "Hold Shift when opening the merchant = skip once."))
-UI.MenuCheck(p, X, Y - 40, T("Graue Gegenstände verkaufen", "Sell grey items"), Get("sellGrey"), Set("sellGrey"))
-UI.MenuCheck(p, X, Y - 64, T("Reparieren", "Repair"), Get("repair"), Set("repair"))
-UI.MenuCheck(p, X + 20, Y - 88, T("zuerst aus der Gildenkasse", "use guild bank first"), Get("guildRepair"), Set("guildRepair"))
-UI.MenuCheck(p, X, Y - 112, T("Nachkaufen (Liste, Essen, Trinken, Munition)", "Restock (list, food, drink, ammo)"),
-    Get("restock"), Set("restock"))
-UI.MenuCheck(p, X + 20, Y - 136, T("nicht automatisch – nur per Knopf am Händler", "not automatic – only via button at the merchant"),
-    Get("askBuy"), Set("askBuy"))
-UI.MenuCheck(p, X, Y - 160, T("Zusammenfassung im Chat", "Summary in chat"), Get("summary"), Set("summary"))
-UI.MenuSlider(p, X, Y - 200, T("Höchstens pro Händlerbesuch", "At most per merchant visit") .. goldUnit,
-    0, 20, 0.5, Get("maxSpend"), Set("maxSpend"))
-UI.MenuSlider(p, X, Y - 246, T("Gold-Rücklage (nie darunter)", "Gold reserve (never below)") .. goldUnit,
-    0, 100, 1, Get("reserve"), Set("reserve"))
+local L, R = 18, 398
+local LW = R - L - 30 -- Breite der linken Abschnitte
+-- linke Spalte: Verhalten
+UI.Header(options, L, -32, T("Beim Händler", "At the merchant"), LW)
+Check(L - 4, -54, T("Automatisch (Umschalt beim Öffnen = diesmal nicht)", "Automatic (Shift when opening = skip once)"), "enabled")
+Check(L - 4, -78, T("Graue Gegenstände verkaufen", "Sell grey items"), "sellGrey")
+Check(L - 4, -102, T("Reparieren", "Repair"), "repair")
+Check(L + 16, -126, T("zuerst aus der Gildenkasse", "use guild bank first"), "guildRepair")
+Check(L - 4, -150, T("Nachkaufen (Liste, Essen, Trinken, Munition)", "Restock (list, food, drink, ammo)"), "restock")
+Check(L + 16, -174, T("nicht automatisch – nur per Knopf am Händler", "not automatic – only via button at the merchant"), "askBuy")
+Check(L - 4, -198, T("Zusammenfassung im Chat", "Summary in chat"), "summary")
 
----------------------------------------------------------------------------
--- Bereich: Verpflegung und Munition
----------------------------------------------------------------------------
-p = Page("supplies", T("Verpflegung und Munition", "Food, drink and ammo"))
-UI.MenuCheck(p, X, Y, T("Essen nachkaufen", "Restock food"), Get("food"), Set("food"))
-UI.MenuSlider(p, X + 24, Y - 24, T("Menge", "Amount"), 0, 80, 5, Get("foodCount"), Set("foodCount"))
-UI.MenuCheck(p, X, Y - 70, T("Trinken nachkaufen", "Restock drink"), Get("drink"), Set("drink"))
-UI.MenuSlider(p, X + 24, Y - 94, T("Menge", "Amount"), 0, 80, 5, Get("drinkCount"), Set("drinkCount"))
-UI.MenuCheck(p, X, Y - 140, T("Munition passend zur Waffe (Jäger)", "Ammo matching your weapon (hunter)"), Get("ammo"), Set("ammo"))
-UI.MenuSlider(p, X + 24, Y - 164, T("Menge", "Amount"), 200, 3000, 200, Get("ammoCount"), Set("ammoCount"))
-UI.Hint(p, X, Y - 212, CW, T("Gekauft wird jeweils das Beste für deine Stufe, das der Händler anbietet.",
-    "Buys the best the merchant offers for your level."))
+UI.Header(options, L, -240, T("Grenzen beim Nachkaufen", "Restock limits"), LW)
+Slider(L + 2, -264, T("Höchstens pro Händlerbesuch", "At most per merchant visit"), "maxSpend", 0, 20, 0.5, goldFormat)
+Slider(L + 2, -304, T("Gold-Rücklage (nie darunter)", "Gold reserve (never below)"), "reserve", 0, 100, 1, goldFormat)
 
----------------------------------------------------------------------------
--- Bereich: Nachkauf-Liste
----------------------------------------------------------------------------
-p = Page("list", T("Nachkauf-Liste", "Restock list"))
-local LIST_H = 196
-local listBox = UI.Box(p, 0.35)
-listBox:SetPoint("TOPLEFT", X, Y)
-listBox:SetSize(CW, LIST_H)
+UI.Header(options, L, -362, T("Essen und Trinken (bestes für deine Stufe)", "Food and drink (best for your level)"), LW)
+Check(L - 4, -384, T("Essen", "Food"), "food")
+Slider(L + 120, -384, T("Menge", "Amount"), "foodCount", 0, 80, 5, { width = 100 })
+Check(L - 4, -426, T("Trinken", "Drink"), "drink")
+Slider(L + 120, -426, T("Menge", "Amount"), "drinkCount", 0, 80, 5, { width = 100 })
+
+UI.Header(options, L, -486, T("Munition (Jäger)", "Ammo (hunter)"), LW)
+Check(L - 4, -508, T("Passend zur Waffe nachkaufen", "Restock to match your weapon"), "ammo")
+Slider(L + 2, -538, T("Menge", "Amount"), "ammoCount", 200, 3000, 200, { width = 150 })
+
+UI.Header(options, L, -598, T("Anzeige", "Display"), LW)
+Check(L - 4, -620, T("Verschiebbares Symbol anzeigen (optional)", "Show movable icon (optional)"), "showIcon")
+local lockCheck = Check(L - 4, -644, T("Symbol sperren (entsperrt: ziehen)", "Lock icon (unlocked: drag)"), "locked")
+
+-- rechte Spalte: Nachkauf-Liste
+UI.Header(options, R, -32, T("Nachkauf-Liste", "Restock list"), 300)
+local listBox = UI.Box(options, 0.35)
+listBox:SetPoint("TOPLEFT", R - 2, -56)
+listBox:SetSize(296, 236)
 local okScroll, scroll = pcall(CreateFrame, "ScrollFrame", nil, listBox, "UIPanelScrollFrameTemplate")
 if not okScroll then scroll = CreateFrame("ScrollFrame", nil, listBox, "ScrollFrameTemplate") end
 scroll:SetPoint("TOPLEFT", 4, -4)
 scroll:SetPoint("BOTTOMRIGHT", -26, 4)
-local ROW_W = CW - 30
 local content = CreateFrame("Frame", nil, scroll)
-content:SetSize(ROW_W, 10)
+content:SetSize(266, 10)
 scroll:SetScrollChild(content)
 
 local ROW_H = 26
@@ -937,7 +926,7 @@ end
 local function Row(i)
     if rows[i] then return rows[i] end
     local r = CreateFrame("Frame", nil, content)
-    r:SetSize(ROW_W, ROW_H)
+    r:SetSize(266, ROW_H)
     r:SetPoint("TOPLEFT", 0, -(i - 1) * ROW_H)
     r:EnableMouse(true)
     r.icon = r:CreateTexture(nil, "ARTWORK")
@@ -945,18 +934,17 @@ local function Row(i)
     r.icon:SetPoint("LEFT", 2, 0)
     r.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
     r.name = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    r.name:SetPoint("LEFT", r.icon, "RIGHT", 6, 0)
-    r.name:SetWidth(ROW_W - 170)
+    r.name:SetPoint("LEFT", r.icon, "RIGHT", 5, 0)
+    r.name:SetWidth(102)
     r.name:SetJustifyH("LEFT")
     r.name:SetWordWrap(false)
-    r.num = UI.Number(r, ROW_W - 156, -2, "", function() return r.entry and r.entry.count or 0 end, function(v)
+    r.num = UI.Number(r, 122, -2, "", function() return r.entry and r.entry.count or 0 end, function(v)
         if r.entry then
             r.entry.count = math.max(0, math.floor(v))
             UpdateIcon()
         end
     end)
-    r.del = UI.MenuButton(r, "×", 22, 20, function() if r.entry then RemoveEntry(r.entry) end end,
-        T("Aus der Liste entfernen", "Remove from the list"))
+    r.del = UI.Button(r, "×", 22, function() if r.entry then RemoveEntry(r.entry) end end)
     r.del:SetPoint("RIGHT", r, "RIGHT", 0, 0)
     r:SetScript("OnEnter", function(self)
         local e = self.entry
@@ -981,7 +969,7 @@ local function Row(i)
     return r
 end
 
-local emptyHint = UI.Hint(content, 6, -8, ROW_W - 12, T("Noch leer – unten Gegenstände hinzufügen.", "Empty – add items below."))
+local emptyHint = UI.Hint(content, 6, -8, 250, T("Noch leer – unten Gegenstände hinzufügen.", "Empty – add items below."))
 
 function RefreshList()
     local list = GetDB().list
@@ -991,7 +979,9 @@ function RefreshList()
         r.entry = e
         r.icon:SetTexture(ItemIcon(e))
         local name = ItemName(e)
-        if (e.minLevel and e.minLevel > Level()) or not IsActive(e) then
+        if e.minLevel and e.minLevel > Level() then
+            name = "|cff888888" .. name .. "|r"
+        elseif not IsActive(e) then
             name = "|cff888888" .. name .. "|r"
         end
         r.name:SetText(name)
@@ -1036,10 +1026,9 @@ local function AddFromText(text)
     return n
 end
 
-local ADD_H = 46
-local addBox = UI.Box(p, 0.5)
-addBox:SetPoint("TOPLEFT", X, Y - LIST_H - 8)
-addBox:SetSize(CW - 34 - 6, ADD_H)
+local addBox = UI.Box(options, 0.5)
+addBox:SetPoint("TOPLEFT", R - 2, -300)
+addBox:SetSize(258, 46)
 local addEdit = CreateFrame("EditBox", nil, addBox)
 addEdit:SetMultiLine(true)
 addEdit:SetAutoFocus(false)
@@ -1048,12 +1037,6 @@ addEdit:SetPoint("TOPLEFT", 6, -5)
 addEdit:SetPoint("BOTTOMRIGHT", -6, 5)
 addEdit:SetMaxLetters(1000)
 addEdit:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
-local addPlaceholder = addBox:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-addPlaceholder:SetPoint("TOPLEFT", 8, -7)
-addPlaceholder:SetText(T("Name, ID oder Link eingeben …", "Enter name, ID or link …"))
-addEdit:SetScript("OnTextChanged", function(self) addPlaceholder:SetShown((self:GetText() or "") == "" and not self:HasFocus()) end)
-addEdit:HookScript("OnEditFocusGained", function() addPlaceholder:Hide() end)
-addEdit:HookScript("OnEditFocusLost", function(self) addPlaceholder:SetShown((self:GetText() or "") == "") end)
 addBox:EnableMouse(true)
 addBox:SetScript("OnMouseDown", function() addEdit:SetFocus() end)
 
@@ -1075,13 +1058,21 @@ local function AddNow()
         C_Timer.After(0, function() scroll:SetVerticalScroll(scroll:GetVerticalScrollRange()) end)
     end
 end
-local plus = UI.MenuButton(p, "+", 34, ADD_H, AddNow, T("Fügt die Einträge aus dem Feld hinzu – oder einen Gegenstand, den du hierher ziehst.",
-    "Adds the entries from the field – or an item you drag here."))
-plus:SetPoint("LEFT", addBox, "RIGHT", 6, 0)
+local plus = UI.Button(options, "+", 34, AddNow)
+plus:SetHeight(46)
+plus:SetPoint("LEFT", addBox, "RIGHT", 4, 0)
 -- Gegenstand aus der Tasche auf "+" oder ins Feld ziehen
 for _, f in ipairs({ plus, addBox, addEdit }) do
     f:SetScript("OnReceiveDrag", AddNow)
 end
+plus:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:AddLine(T("Hinzufügen", "Add"))
+    GameTooltip:AddLine(T("Fügt die Einträge aus dem Feld hinzu – oder einen Gegenstand, den du hierher ziehst.",
+        "Adds the entries from the field – or an item you drag here."), 1, 1, 1, true)
+    GameTooltip:Show()
+end)
+plus:SetScript("OnLeave", GameTooltip_Hide)
 addEdit:SetScript("OnEnterPressed", function(self)
     if IsShiftKeyDown() then self:Insert("\n") else AddNow() end
 end)
@@ -1098,15 +1089,14 @@ end
 if ChatEdit_InsertLink then hooksecurefunc("ChatEdit_InsertLink", InsertLink) end
 if ChatFrameUtil and ChatFrameUtil.InsertLink then hooksecurefunc(ChatFrameUtil, "InsertLink", InsertLink) end
 
-UI.Hint(p, X, Y - LIST_H - 8 - ADD_H - 8, CW, T("Name (oder Teil davon), Gegenstands-ID oder Link (Umschalt-Klick auf einen Gegenstand). " ..
+UI.Hint(options, R + 2, -352, 296, T("Name (oder Teil davon), Gegenstands-ID oder Link (Umschalt-Klick auf einen Gegenstand). " ..
     "Mehrere je Zeile oder mit Komma, Menge mit Doppelpunkt: Heiltrank:5. Oder einen Gegenstand auf + ziehen. " ..
     "Grau = gilt erst ab höherer Stufe.",
     "Name (or part of it), item ID or link (shift-click an item). One per line or comma-separated, amount after a colon: " ..
     "Healing Potion:5. Or drag an item onto +. Grey = only applies at a higher level."))
-local LIST_BOTTOM = Y - LIST_H - 8 - ADD_H - 8 - 52
-UI.MenuCheck(p, X, LIST_BOTTOM, T("Auch die eigene Liste aus ForeverBuffs nachkaufen", "Also restock the own list from ForeverBuffs"),
-    Get("useBuffsList"), Set("useBuffsList"))
-local resetList = UI.MenuButton(p, T("Klassen-Vorschläge wiederherstellen", "Restore class suggestions"), 240, 22, function()
+
+Check(R - 4, -420, T("Auch die eigene Liste aus ForeverBuffs nachkaufen", "Also restock the own list from ForeverBuffs"), "useBuffsList")
+local resetList = UI.Button(options, T("Klassen-Vorschläge wiederherstellen", "Restore class suggestions"), 240, function()
     for _, e in ipairs(ClassList()) do
         local found = false
         for _, x in ipairs(GetDB().list) do if x.id == e.id then found = true end end
@@ -1114,23 +1104,10 @@ local resetList = UI.MenuButton(p, T("Klassen-Vorschläge wiederherstellen", "Re
     end
     RefreshList()
     UpdateIcon()
-end, T("Fügt die Vorschläge für deine Klasse wieder hinzu (vorhandene Einträge bleiben).",
-    "Adds the suggestions for your class again (existing entries stay)."))
-resetList:SetPoint("TOPLEFT", X, LIST_BOTTOM - 30)
+end)
+resetList:SetPoint("TOPLEFT", R + 2, -450)
 
----------------------------------------------------------------------------
--- Bereich: Symbol und Position
----------------------------------------------------------------------------
-p = Page("icon", T("Symbol und Position", "Icon and position"))
-UI.MenuCheck(p, X, Y, T("Verschiebbares Symbol anzeigen (optional)", "Show movable icon (optional)"), Get("showIcon"), Set("showIcon"))
-UI.Hint(p, X + 24, Y - 20, CW - 24, T("Das Fenster am Händler und der Minimap-Knopf reichen im Alltag – das Symbol zeigt zusätzlich, ob nachgekauft wird.",
-    "The merchant window and the minimap button are enough day to day – the icon also shows whether a restock is due."))
-local lockCheck
-lockCheck = UI.MenuCheck(p, X, Y - 56, T("Symbol sperren (entsperrt: ziehen)", "Lock icon (unlocked: drag)"),
-    Get("locked"), function(v)
-        if GetDB().locked ~= v then ToggleLock() end -- ohne Symbol erklaert ToggleLock, warum nichts passiert
-        lockCheck:Refresh()
-    end)
+UI.Header(options, R, -500, T("Position (X/Y ab Bildschirmmitte)", "Position (X/Y from screen center)"), 300)
 local function PosGet(i) return function() return select(i, UI.CenterOffset(icon)) end end
 local function PosSet(i)
     return function(v)
@@ -1139,70 +1116,22 @@ local function PosSet(i)
         SetPosition(x, y)
     end
 end
-local posX = UI.MenuNumber(p, X, Y - 92, "X", PosGet(1), PosSet(1))
-local posY = UI.MenuNumber(p, X + 110, Y - 92, "Y", PosGet(2), PosSet(2))
-UI.Hint(p, X, Y - 120, CW, T("Abstand der Symbolmitte zur Bildschirmmitte, Enter übernimmt.",
-    "Distance of the icon's center from the screen center, Enter applies."))
-UI.MenuCheck(p, X, Y - 146, T("Raster beim Ziehen und hier", "Grid while dragging and here"), Get("gridShow"), Set("gridShow"))
-UI.MenuCheck(p, X, Y - 170, T("Einrasten (Umschalt = aus)", "Snap (Shift = off)"), Get("snap"), Set("snap"))
+local posX = UI.Number(options, R + 2, -524, "X", PosGet(1), PosSet(1))
+local posY = UI.Number(options, R + 148, -524, "Y", PosGet(2), PosSet(2))
+Check(R - 4, -554, T("Raster beim Ziehen und hier", "Grid while dragging and here"), "gridShow")
+Check(R - 4, -578, T("Einrasten (Umschalt = aus)", "Snap (Shift = off)"), "snap")
 OnMoved = function()
-    if options:IsShown() then posX:Refresh() posY:Refresh() end
+    if options:IsShown() then posX:Load() posY:Load() end
 end
 
----------------------------------------------------------------------------
--- Bereichsliste links
----------------------------------------------------------------------------
-local selected = "merchant"
-local sidebar = UI.MenuSidebar(options, M.pad, M.panelTop, order, function(key)
-    selected = key
-    for k, page in pairs(pages) do page:SetShown(k == key) end
-end)
-
----------------------------------------------------------------------------
--- Fussleiste: links Zuruecksetzen, dazwischen Entsperren, rechts Schliessen (150 x 26, 12 px vom Rand)
----------------------------------------------------------------------------
-local unlockedByMenu = false
-local resetBtn = UI.MenuButton(options, T("Standardwerte", "Defaults"), M.footerWidth, M.footerHeight, function()
-    local d = GetDB()
-    for key, value in pairs(DEFAULTS) do
-        if key ~= "list" and key ~= "pos" and key ~= "minimapAngle" and type(value) ~= "table" then d[key] = value end
-    end
-    Changed()
-    options:RefreshAll()
-    Chat(T("Einstellungen auf Standard gesetzt (Liste und Position bleiben).", "Settings reset to defaults (list and position stay)."))
-end, T("Alle Einstellungen auf Standard – die Nachkauf-Liste und die Position bleiben erhalten.",
-    "All settings to default – the restock list and the position are kept."))
-resetBtn:SetPoint("BOTTOMLEFT", M.pad, M.pad)
-local closeBtn = UI.MenuButton(options, T("Schließen", "Close"), M.footerWidth, M.footerHeight, function() options:Hide() end)
-closeBtn:SetPoint("BOTTOMRIGHT", -M.pad - 16, M.pad) -- 16 px Platz fuer den Groessen-Griff in der Ecke
-local unlockBtn = UI.MenuButton(options, "", M.footerWidth, M.footerHeight, function()
-    if not GetDB().showIcon then
-        ToggleLock() -- erklaert, dass das Symbol aus ist
-        return
-    end
-    ToggleLock(true)
-    unlockedByMenu = not GetDB().locked
-    options:RefreshAll()
-end, T("Symbol zum Verschieben freigeben bzw. wieder sperren", "Unlock the icon for moving, or lock it again"))
-unlockBtn:SetPoint("RIGHT", closeBtn, "LEFT", -M.pad, 0)
-function unlockBtn:Refresh()
-    self:SetText(GetDB().locked and T("Entsperren", "Unlock") or T("Sperren", "Lock"))
-    self:SetEnabled(GetDB().showIcon and true or false)
-end
-options.menuControls = options.menuControls or {}
-tinsert(options.menuControls, unlockBtn)
-
-options:HookScript("OnShow", function()
-    sidebar:Select(selected)
+options:SetScript("OnShow", function()
+    for _, load in ipairs(controls) do load() end
+    posX:Load()
+    posY:Load()
     RefreshList()
     UpdateGrid()
 end)
-options:HookScript("OnHide", function()
-    -- Entsperren beenden, wenn das Menue es gestartet hat
-    if unlockedByMenu and not GetDB().locked then ToggleLock(true) end
-    unlockedByMenu = false
-    UpdateGrid()
-end)
+options:SetScript("OnHide", function() UpdateGrid() end)
 
 -- Gegenstandsnamen kommen evtl. erst spaeter vom Server
 local pendingRefresh = false
@@ -1224,14 +1153,13 @@ function ToggleLock(silent)
     local d = GetDB()
     if not d.showIcon then
         if not silent then
-            Chat(T("Das verschiebbare Symbol ist aus – einschalten unter Einstellungen » Symbol und Position.",
-                "The movable icon is off – turn it on under Settings » Icon and position."))
+            Chat(T("Das verschiebbare Symbol ist aus – einschalten unter Einstellungen » Anzeige.",
+                "The movable icon is off – turn it on under Settings » Display."))
         end
         return
     end
     d.locked = not d.locked
-    lockCheck:Refresh()
-    unlockBtn:Refresh()
+    lockCheck:SetChecked(d.locked)
     UpdateIcon()
     UpdateGrid()
     if not silent then
