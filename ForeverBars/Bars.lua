@@ -803,6 +803,23 @@ function ns.SetupBars()
     ns.ApplyLayout()
     C_Timer.NewTicker(FADE_INTERVAL, UpdateFading)
 
+    -- Blizzard-Bearbeitungsmodus kann die Leisten nicht greifen (sie liegen in ForeverBars-Haltern).
+    -- Darum beim Öffnen die eigenen Griffe zeigen und beim Schließen wieder sperren – aber nur, wenn
+    -- der Bearbeitungsmodus sie entsperrt hat. HookScript verändert den Blizzard-Rahmen nicht (kein taint).
+    if EditModeManagerFrame then
+        EditModeManagerFrame:HookScript("OnShow", function()
+            if ns.unlocked or InCombatLockdown() then return end
+            ns.unlockedByEditMode = true
+            ns.SetUnlocked(true)
+            ns.Print(L("EDITMODE_HINT"))
+        end)
+        EditModeManagerFrame:HookScript("OnHide", function()
+            if not ns.unlockedByEditMode then return end
+            ns.unlockedByEditMode = nil
+            if ns.unlocked and not InCombatLockdown() then ns.SetUnlocked(false) end
+        end)
+    end
+
     local events = CreateFrame("Frame")
     -- Nach dem Kampf ausstehende Änderungen übernehmen; nach Ladebildschirmen und Bearbeitungsmodus neu anordnen
     for _, event in ipairs({ "PLAYER_REGEN_ENABLED", "PLAYER_ENTERING_WORLD", "EDIT_MODE_LAYOUTS_UPDATED",

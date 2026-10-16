@@ -8,6 +8,7 @@ local STRINGS = {
         BARTENDER_ACTIVE = "Bartender4 ist aktiv – ForeverBars verändert die Leisten erst, wenn Bartender4 abgeschaltet ist.",
         COMBAT_QUEUED = "Änderung wird nach dem Kampf übernommen.",
         UNLOCKED = "Leisten entsperrt – zum Verschieben ziehen.", LOCKED = "Leisten gesperrt.",
+        EDITMODE_HINT = "Die Aktionsleisten verschiebt ForeverBars – solange der Bearbeitungsmodus offen ist, sind sie entsperrt.",
         RESET_DONE = "Leiste zurückgesetzt.",
 
         -- Leisten
@@ -109,6 +110,7 @@ local STRINGS = {
         BARTENDER_ACTIVE = "Bartender4 is active – ForeverBars only changes the bars once Bartender4 is disabled.",
         COMBAT_QUEUED = "Change will be applied after combat.",
         UNLOCKED = "Bars unlocked – drag to move.", LOCKED = "Bars locked.",
+        EDITMODE_HINT = "Action bars are moved by ForeverBars – they stay unlocked while Edit Mode is open.",
         RESET_DONE = "Bar reset.",
 
         BAR_1 = "Action bar 1", BAR_2 = "Action bar 2", BAR_3 = "Action bar 3", BAR_4 = "Action bar 4",
