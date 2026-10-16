@@ -17,6 +17,13 @@
 - WoW-Schrift kennt "→" nicht: "»" oder "–" verwenden
 - Syntax-Check: lua-language-server `--check <ordner> --checklevel=Error`
 
+## Addons
+- Ab sofort erlaubt: eigenes Aktionsleisten-Addon "ForeverBars" (Ordner `ForeverBars/`, gleiche Konventionen wie alle Forever-Addons)
+  - Knöpfe über sichere Vorlagen (z. B. ActionButtonTemplate / SecureActionButtonTemplate); Anlegen, Verschieben und Belegen nur außerhalb des Kampfes (InCombatLockdown prüfen)
+  - Blizzard-Leisten nur taint-frei ausblenden (siehe oben), nie Hide/SetParent/SetScript
+  - Keine Rotationslogik und keine Auswertung gesperrter Werte (z. B. Abklingzeiten im Kampf nur anzeigen, nicht berechnen)
+  - Bis zur Freigabe durch den Nutzer nicht in `release/addons.txt` eintragen
+
 ## Git-Ablauf
 - Vor dem Arbeiten: `git pull --ff-only`
 - Während der Arbeit am Live-Ordner (AddOns-Verknüpfung = dieses Repository) NICHT automatisch pushen
