@@ -372,12 +372,67 @@ local function StyleButton(button)
 end
 
 -- Nach Änderung von Texten, Schrift, Rand oder Zoom alle Knöpfe aktualisieren (geht auch im Kampf)
+---------------------------------------------------------------------------
+-- Mikromenü im Forever-Stil: Blizzards Hintergrund-Grafiken unsichtbar, darunter eine flache dunkle Fläche
+-- mit 1-px-Rand (Farben wie der gewählte Knopf-Stil), beim Darüberfahren goldener Rand.
+-- Nur Alpha, eigene Flächen und HookScript – keine Blizzard-Funktion wird ersetzt (kein taint).
+---------------------------------------------------------------------------
+
+local function MicroButtons()
+    local list = {}
+    local function Collect(frame)
+        for _, child in ipairs({ frame:GetChildren() }) do
+            if child:IsObjectType("Button") then
+                table.insert(list, child)
+            elseif child == MicroMenu then
+                Collect(child)
+            end
+        end
+    end
+    local container = MicroMenuContainer or MicroMenu
+    if container then Collect(container) end
+    return list
+end
+
+local function StyleMicroButton(button)
+    if not button.fbMicroBorder then
+        local background = button:CreateTexture(nil, "BACKGROUND", nil, -8)
+        background:SetAllPoints()
+        button.fbMicroBackground = background
+        local border = CreateFrame("Frame", nil, button, "BackdropTemplate")
+        border:SetAllPoints()
+        border:SetFrameLevel(button:GetFrameLevel() + 1)
+        border:EnableMouse(false)
+        button.fbMicroBorder = border
+        button:HookScript("OnEnter", function(self)
+            if ns.db.showBorder then
+                self.fbMicroBorder:SetBackdropBorderColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3], 0.9)
+            end
+        end)
+        button:HookScript("OnLeave", function(self)
+            self.fbMicroBorder:SetBackdropBorderColor(unpack(GetSkin().border))
+        end)
+    end
+    HideRegion(button.Background)
+    HideRegion(button.PushedBackground)
+    local skin = GetSkin()
+    button.fbMicroBackground:SetColorTexture(unpack(skin.background))
+    button.fbMicroBorder:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = skin.size })
+    button.fbMicroBorder:SetBackdropBorderColor(unpack(skin.border))
+    button.fbMicroBorder:SetShown(ns.db.showBorder)
+end
+
+function ns.StyleMicroMenu()
+    for _, button in ipairs(MicroButtons()) do StyleMicroButton(button) end
+end
+
 function ns.UpdateAllButtons()
     for _, def in ipairs(ns.BAR_DEFS) do
         for _, button in ipairs(GetAllButtons(def)) do
             if button.fbBorder then UpdateButtonLook(button) end
         end
     end
+    ns.StyleMicroMenu()
 end
 ns.UpdateAllButtonTexts = ns.UpdateAllButtons
 
@@ -1475,6 +1530,7 @@ local function LayoutContainer(def, cfg, holder)
             if frame[method] then hooksecurefunc(frame, method, BackToHolder) end
         end
     end
+    if def.key == "micro" then ns.StyleMicroMenu() end
     -- Mindestgröße, damit der Halter auch dann Platz hat, wenn Blizzard das Element gerade ausblendet
     local minSize = def.minSize or 1
     holder:SetSize(math.max(minSize, frame:GetWidth()), math.max(minSize, frame:GetHeight()))

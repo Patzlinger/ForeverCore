@@ -103,7 +103,7 @@ ns.defaults = {
     },
     profiles = {},           -- gespeicherte Profile: [Name] = Kopie der Einstellungen (siehe Profiles.lua)
     activeProfile = "Default", -- aktives Profil; "Default" gibt es immer
-    layoutVersion = 5,         -- Stand der Standard-Anordnung (siehe MigrateLayout)
+    layoutVersion = 6,         -- Stand der Standard-Anordnung (siehe MigrateLayout)
     skin = "FLAT",           -- Aussehen der Knöpfe (ns.SKINS in Bars.lua)
     hoverAlpha = 15,         -- Stärke des Hover-Leuchtens über den Knöpfen (%)
     procGlow = "FOREVER",    -- Leuchten bei Procs: "FOREVER" (goldener Rahmen), "BLIZZARD", "OFF"
@@ -149,6 +149,8 @@ ns.defaults.bars.food.frame = true
 ns.defaults.bars.food.scale = 80
 ns.defaults.bars.prof.growX = "LEFT"
 ns.defaults.bars.micro.point = "BOTTOMRIGHT"
+ns.defaults.bars.micro.scale = 80 -- Mikromenü und Taschen etwas kleiner (Forever-Stil, dezent)
+ns.defaults.bars.bags.scale = 80
 ns.defaults.bars.bags.point = "BOTTOMRIGHT"
 ns.defaults.bars.bags.growX = "LEFT"
 ns.defaults.bars.bags.collapsible = true   -- Pfeil zum Aus-/Einklappen der Taschen
@@ -188,7 +190,8 @@ ns.FillDefaults = FillDefaults
 --   4 (0.11.1): Verpflegungsleiste 4 breit und 3 hoch, Position neu berechnet
 --   5 (0.14.0): Begleiter-/Haltungsleiste etwas größer (56 %); Ränder benachbarter Knöpfe liegen jetzt
 --               übereinander, darum Positionen der Standard-Anordnung neu berechnet
-local LAYOUT_VERSION = 5
+--   6 (0.15.0): Mikromenü und Taschenleiste kleiner (80 %), Positionen unten rechts neu berechnet
+local LAYOUT_VERSION = 6
 local STANDARD_LAYOUT_BARS = { "bar1", "bar2", "bar3", "bar6", "bar7", "bar8", "pet", "stance", "prof", "food",
                                "micro", "bags", "xp", "rep", "vehicle" }
 function ns.MigrateLayout(db)
@@ -221,6 +224,15 @@ function ns.MigrateLayout(db)
                 for _, key in ipairs(STANDARD_LAYOUT_BARS) do
                     local bar = target.bars[key]
                     if bar then bar.x, bar.y = nil, nil end
+                end
+            end
+            if version < 6 then
+                for _, key in ipairs({ "micro", "bags" }) do
+                    local bar = target.bars[key]
+                    if bar then
+                        if bar.scale == nil or bar.scale == 100 then bar.scale = ns.defaults.bars[key].scale end
+                        bar.x, bar.y = nil, nil
+                    end
                 end
             end
         end
