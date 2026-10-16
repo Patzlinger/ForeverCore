@@ -330,13 +330,24 @@ local function BuildPanel()
     placeholder = input:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     placeholder:SetPoint("LEFT", 8, 0)
     local function UpdatePlaceholder(self) placeholder:SetShown((self:GetText() or "") == "" and not self:HasFocus()) end
+    -- wie die normale Eingabezeile: nur beim Schreiben bzw. mit der Maus darueber sichtbar (Einstellung)
+    local function UpdateInputAlpha(self)
+        local show = not ns.GetDB().autoHideEditBox or self:HasFocus() or self:IsMouseOver()
+        self:SetAlpha(show and 1 or 0)
+    end
+    input.UpdateAlpha = UpdateInputAlpha
+    input:SetScript("OnEnter", UpdateInputAlpha)
+    input:SetScript("OnLeave", UpdateInputAlpha)
+    input:SetScript("OnShow", UpdateInputAlpha)
     input:SetScript("OnEditFocusGained", function(self)
         self:SetBackdropBorderColor(C.accent[1], C.accent[2], C.accent[3], 0.85)
         UpdatePlaceholder(self)
+        UpdateInputAlpha(self)
     end)
     input:SetScript("OnEditFocusLost", function(self)
         self:SetBackdropBorderColor(C.border[1], C.border[2], C.border[3], 1)
         UpdatePlaceholder(self)
+        UpdateInputAlpha(self)
     end)
     input:SetScript("OnTextChanged", UpdatePlaceholder)
     input:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
@@ -359,21 +370,10 @@ end
 ---------------------------------------------------------------------------
 -- Ein- und Ausblenden
 ---------------------------------------------------------------------------
--- Blizzards Eingabezeilen waehrend der Messenger-Ansicht unsichtbar (Alpha 0, nicht anklickbar), danach zurueck
-local savedEditAlpha = {}
-local function HideEditBoxes(hide)
-    ns.ForEachChatFrame(function(frame)
-        local eb = frame.editBox or _G[frame:GetName() .. "EditBox"]
-        if not eb then return end
-        if hide then
-            savedEditAlpha[eb] = eb:GetAlpha()
-            UI.HideBlizzard(eb, { children = false, noMouse = { eb } })
-        elseif savedEditAlpha[eb] then
-            UI.ShowBlizzard(eb)
-            eb:SetAlpha(savedEditAlpha[eb])
-            savedEditAlpha[eb] = nil
-        end
-    end)
+-- Blizzards Eingabezeilen waehrend der Messenger-Ansicht unsichtbar und nicht anklickbar, danach wieder wie
+-- eingestellt (Skin.lua: ns.UpdateEditVisibility beruecksichtigt ns.imActive und "nur beim Schreiben zeigen")
+local function HideEditBoxes()
+    if ns.UpdateAllEditVisibility then ns.UpdateAllEditVisibility() end
 end
 
 -- Taste "Chat oeffnen" (meist Enter) solange aufs Antwortfeld legen (Tastenbelegung nur ausserhalb des Kampfes)
@@ -411,7 +411,7 @@ function ns.ShowIM()
     hiddenChat = ns.SelectedChatFrame()
     if hiddenChat then hiddenChat:SetAlpha(0) end
     ns.imActive = true
-    HideEditBoxes(true)
+    HideEditBoxes()
     panel:Show()
     if not current then current = order[1] end
     ShowConversation(current)
@@ -429,7 +429,7 @@ function ns.HideIM()
     end
     if hiddenChat then hiddenChat:SetAlpha(1) end
     hiddenChat = nil
-    HideEditBoxes(false)
+    HideEditBoxes()
     SetEnterOverride(false)
     ns.UpdateAllTabLooks()
     UpdateIMTab()

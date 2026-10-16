@@ -181,9 +181,38 @@ local function ApplyEditArt(edit)
     end
 end
 
+-- Eingabezeile nur zeigen, wenn darin geschrieben wird oder die Maus darueber ist (Einstellung autoHideEditBox).
+-- Blizzards Chat-Stil bleibt unveraendert; die Zeile ist nur unsichtbar (Alpha 0) und bleibt anklickbar.
+-- Waehrend der Messenger-Ansicht ist sie ganz unsichtbar und nicht anklickbar (dort schreibt das IM-Feld).
+local function EditShouldHide(edit)
+    if ns.imActive then return true end
+    if not ns.GetDB().autoHideEditBox then return false end
+    return not (edit:HasFocus() or edit:IsMouseOver())
+end
+
+function ns.UpdateEditVisibility(edit)
+    if not edit then return end
+    if EditShouldHide(edit) then
+        UI.HideBlizzard(edit, { children = false, when = function() return EditShouldHide(edit) end,
+            noMouse = ns.imActive and { edit } or {} })
+        if not ns.imActive then edit:EnableMouse(true) end -- Mausover soll sie wieder zeigen
+    else
+        UI.ShowBlizzard(edit)
+    end
+end
+
+function ns.UpdateAllEditVisibility()
+    ns.ForEachChatFrame(function(frame)
+        ns.UpdateEditVisibility(frame.editBox or _G[frame:GetName() .. "EditBox"])
+    end)
+end
+
 local function SkinEditBox(frame)
     local edit = frame.editBox or _G[frame:GetName() .. "EditBox"]
     if not edit or edit.fcFlat then return end
+    for _, script in ipairs({ "OnEnter", "OnLeave", "OnEditFocusGained", "OnEditFocusLost" }) do
+        edit:HookScript(script, function(self) ns.UpdateEditVisibility(self) end)
+    end
     local area = CreateFrame("Frame", nil, edit)
     area:EnableMouse(false)
     -- Hoehe vom Eingabefeld, Breite genau wie der Rahmen des Chatfensters (buendig links und rechts)
@@ -388,12 +417,15 @@ local function SkinFrame(frame)
     if edit then
         ApplyEditArt(edit)
         UpdateEditLook(edit)
+        ns.UpdateEditVisibility(edit)
     end
 end
 
 function ns.ApplySkin()
     ns.ForEachChatFrame(SkinFrame)
     ApplyToolbar()
+    local imInput = _G.ForeverChatMessengerInput
+    if imInput and imInput.UpdateAlpha then imInput:UpdateAlpha() end
 end
 
 function ns.SetupSkin()

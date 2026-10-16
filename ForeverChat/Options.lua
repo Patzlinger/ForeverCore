@@ -61,6 +61,7 @@ end, { width = 200 })
 loaders[#loaders + 1] = function() fontSlider:Load(ns.GetFontSize()) end
 Check(L - 4, -184, T("Reiter im Forever-Stil", "Tabs in Forever style"), "styleTabs")
 Check(L - 4, -208, T("Eingabefeld im Forever-Stil", "Input box in Forever style"), "styleEditBox")
+Check(L + 160, -208, T("nur beim Schreiben", "only while typing"), "autoHideEditBox")
 Check(L - 4, -232, T("Blizzard-Knöpfe neben dem Chat ausblenden", "Hide Blizzard buttons next to the chat"), "hideSideButtons")
 Check(L - 4, -256, T("Knopfleiste in der Reiterzeile", "Button bar in the tab row"), "toolbar")
 
