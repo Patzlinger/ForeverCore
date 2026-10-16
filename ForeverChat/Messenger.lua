@@ -56,6 +56,50 @@ local function ClassName(name, guid)
     return "|cffffffff" .. name .. "|r"
 end
 
+-- Goldenes Blinken bei ungelesenen Nachrichten (goldene Flaeche + Rand, pulsiert sanft)
+local function AddBlink(button)
+    local glow = CreateFrame("Frame", nil, button)
+    glow:SetAllPoints()
+    glow:SetFrameLevel(button:GetFrameLevel() + 2)
+    glow:EnableMouse(false)
+    local fill = glow:CreateTexture(nil, "ARTWORK")
+    fill:SetPoint("TOPLEFT", 1, -1)
+    fill:SetPoint("BOTTOMRIGHT", -1, 1)
+    fill:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 0.22)
+    fill:SetBlendMode("ADD")
+    for _, side in ipairs({ { "TOPLEFT", "TOPRIGHT", nil, 1 }, { "BOTTOMLEFT", "BOTTOMRIGHT", nil, 1 },
+        { "TOPLEFT", "BOTTOMLEFT", 1, nil }, { "TOPRIGHT", "BOTTOMRIGHT", 1, nil } }) do
+        local e = glow:CreateTexture(nil, "OVERLAY")
+        e:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 1)
+        e:SetPoint(side[1])
+        e:SetPoint(side[2])
+        if side[3] then e:SetWidth(side[3]) else e:SetHeight(side[4]) end
+    end
+    local anim = glow:CreateAnimationGroup()
+    anim:SetLooping("BOUNCE")
+    local a = anim:CreateAnimation("Alpha")
+    a:SetFromAlpha(1)
+    a:SetToAlpha(0.1)
+    a:SetDuration(0.6)
+    glow.anim = anim
+    glow:Hide()
+    button.blink = glow
+end
+
+local function SetBlink(button, on)
+    local glow = button and button.blink
+    if not glow then return end
+    if on then
+        if not glow:IsShown() then
+            glow:Show()
+            glow.anim:Play()
+        end
+    elseif glow:IsShown() then
+        glow.anim:Stop()
+        glow:Hide()
+    end
+end
+
 local function TotalUnread()
     local n = 0
     for _, c in pairs(convs) do n = n + c.unread end
@@ -89,6 +133,8 @@ local function UpdateIMTab()
         imTab:SetBackdropBorderColor(C.border[1], C.border[2], C.border[3], 1)
     end
     imTab:GetFontString():SetTextColor(on and C.accent[1] or 0.82, on and C.accent[2] or 0.82, on and C.accent[3] or 0.82)
+    -- blinkt, solange ungelesene Nachrichten warten und der Messenger nicht offen ist
+    SetBlink(imTab, n > 0 and not on)
     if ns.ApplyDockSpace then ns.ApplyDockSpace() end
 end
 
@@ -103,6 +149,7 @@ function ns.CreateIMTab(parent)
     hl:SetPoint("TOPLEFT", 1, -1)
     hl:SetPoint("BOTTOMRIGHT", -1, 1)
     hl:SetColorTexture(1, 1, 1, 0.06)
+    AddBlink(imTab)
     imTab:SetScript("OnClick", function() ns.ToggleIM() end)
     imTab:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
@@ -153,6 +200,7 @@ local function SubTab(i)
     hl:SetPoint("TOPLEFT", 1, -1)
     hl:SetPoint("BOTTOMRIGHT", -1, 1)
     hl:SetColorTexture(1, 1, 1, 0.06)
+    AddBlink(b)
     b:SetScript("OnClick", function(self, button)
         if button == "RightButton" then
             -- Gespraech schliessen
@@ -196,6 +244,7 @@ function ns.UpdateIMTabs()
             Flat(b, on and { C.header[1], C.header[2], C.header[3], 0.95 } or { C.button[1], C.button[2], C.button[3], 0.85 },
                 on and { C.accent[1], C.accent[2], C.accent[3], 0.75 } or C.border)
             b:GetFontString():SetTextColor(on and C.accent[1] or 0.82, on and C.accent[2] or 0.82, on and C.accent[3] or 0.82)
+            SetBlink(b, c.unread > 0) -- Unterreiter mit ungelesenen Nachrichten blinkt gold
             b:Show()
             x = x + w + 3
             shown = shown + 1
