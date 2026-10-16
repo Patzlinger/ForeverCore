@@ -4,8 +4,10 @@
 --     Chat-Ausgabe, Sprache). Jedes Forever-Addon baut seine Oberflaeche damit.
 --  2. Sammelknopf: Sind mindestens zwei Forever-Addons aktiv, werden deren Minimap-Knoepfe
 --     ausgeblendet und in einer ausklappbaren Liste gesammelt. Klicks gehen an den Original-Knopf.
+--  3. Hub-Fenster (/forever): Liste aller Forever-Addons mit direktem Weg in ihr Menue –
+--     auch ohne Minimap-Knoepfe.
 local ADDON_NAME = ...
-local VERSION = 15
+local VERSION = 16
 if _G.ForeverHub and (_G.ForeverHub.version or 0) >= VERSION then return end
 
 local hub = { version = VERSION }
@@ -1123,13 +1125,15 @@ local function BuildHubButton()
     })
 end
 
--- ab zwei Forever-Addons immer sammeln (Einzelknoepfe versteckt), sonst wie ohne ForeverHub
+-- ab zwei Forever-Addons immer sammeln (Einzelknoepfe versteckt), sonst wie ohne ForeverHub.
+-- "Minimap-Knopf ausblenden" (im Hub-Fenster) versteckt alle Forever-Knoepfe; Zugang dann ueber /forever.
 local function ApplyMode()
     active = #entries >= 2
+    local hidden = GetDB().hideButton
     if active and not hubButton then BuildHubButton() end
-    if hubButton then hubButton:SetShown(active) end
+    if hubButton then hubButton:SetShown(active and not hidden) end
     for _, e in ipairs(entries) do
-        e.button:SetShown(not active)
+        e.button:SetShown(not active and not hidden)
     end
 end
 
@@ -1155,7 +1159,8 @@ local function Setup()
     ApplyMode()
 end
 
-function hub.IsCollecting() return active end
+-- true: Einzelknoepfe sollen versteckt bleiben (gesammelt oder ganz ausgeblendet)
+function hub.IsCollecting() return active or GetDB().hideButton == true end
 
 local function SafeSetup()
     local ok, err = pcall(Setup)
@@ -1175,14 +1180,147 @@ events:SetScript("OnEvent", function()
     C_Timer.After(3, SafeSetup)
 end)
 
--- /forever: Sammelknopf zuruecksetzen und wieder an die Minimap holen
+---------------------------------------------------------------------------
+-- 3. Hub-Fenster: alle Forever-Addons auf einen Blick, Klick oeffnet das jeweilige Menue
+---------------------------------------------------------------------------
+local HUB_ROW_H = 38
+local hubWindow
+
+-- Addon installiert? (auch wenn es gerade deaktiviert ist)
+local function IsInstalled(name)
+    if not (C_AddOns and C_AddOns.GetAddOnInfo) then return false end
+    local ok, _, _, _, _, reason = pcall(C_AddOns.GetAddOnInfo, name)
+    return ok and reason ~= "MISSING"
+end
+
+local function EntryOf(name)
+    for _, e in ipairs(entries) do
+        if e.name == name then return e end
+    end
+end
+
+-- Menue eines Addons oeffnen = Linksklick auf seinen (evtl. versteckten) Minimap-Knopf
+local function OpenAddon(e)
+    local onClick = e and e.button:GetScript("OnClick")
+    if onClick then onClick(e.button, "LeftButton") end
+end
+
+local function BuildHubWindow()
+    local list = {}
+    for _, k in ipairs(KNOWN) do
+        if IsInstalled(k.name) then list[#list + 1] = k.name end
+    end
+
+    local f = UI.Window("ForeverHubWindow", UI.NAME, 420, 26 + 12 + math.max(#list, 1) * HUB_ROW_H + 92)
+    hubWindow = f
+    f.rows = {}
+
+    for i, name in ipairs(list) do
+        local row = CreateFrame("Frame", nil, f)
+        row:SetHeight(HUB_ROW_H)
+        row:SetPoint("TOPLEFT", 10, -26 - 8 - (i - 1) * HUB_ROW_H)
+        row:SetPoint("TOPRIGHT", -10, -26 - 8 - (i - 1) * HUB_ROW_H)
+        if i > 1 then
+            local sep = row:CreateTexture(nil, "ARTWORK")
+            sep:SetColorTexture(1, 1, 1, 0.06)
+            sep:SetHeight(1)
+            sep:SetPoint("TOPLEFT", 4, 0)
+            sep:SetPoint("TOPRIGHT", -4, 0)
+        end
+
+        row.icon = row:CreateTexture(nil, "ARTWORK")
+        row.icon:SetSize(24, 24)
+        row.icon:SetPoint("LEFT", 4, 0)
+        row.label = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        row.label:SetPoint("TOPLEFT", row.icon, "TOPRIGHT", 10, 1)
+        row.label:SetText(name)
+        row.note = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+        row.note:SetPoint("TOPLEFT", row.label, "BOTTOMLEFT", 0, -2)
+        row.note:SetPoint("RIGHT", row, "RIGHT", -100, 0)
+        row.note:SetJustifyH("LEFT")
+        row.note:SetWordWrap(false)
+        local ok, _, _, notes = pcall(C_AddOns.GetAddOnInfo, name)
+        row.note:SetText(ok and notes or "")
+
+        row.open = UI.Button(row, T("Öffnen", "Open"), 84, function()
+            f:Hide()
+            OpenAddon(EntryOf(name))
+        end)
+        row.open:SetPoint("RIGHT", -4, 0)
+        row.status = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+        row.status:SetPoint("RIGHT", -8, 0)
+
+        function row.Update()
+            local e = EntryOf(name)
+            local loaded = C_AddOns.IsAddOnLoaded(name)
+            row.icon:SetTexture(e and e.icon or UI.LOGO)
+            row.icon:SetDesaturated(not e)
+            row.label:SetTextColor(e and 1 or 0.5, e and 0.82 or 0.5, e and 0 or 0.5)
+            row.open:SetShown(e ~= nil)
+            row.status:SetShown(e == nil)
+            row.status:SetText(loaded and T("ohne Menü", "no menu") or T("deaktiviert", "disabled"))
+        end
+        f.rows[i] = row
+    end
+
+    if #list == 0 then
+        UI.Hint(f, 16, -40, nil, T("Keine Forever-Addons gefunden.", "No Forever addons found."))
+    end
+
+    -- unten: alle verschieben/sperren und Minimap-Knopf
+    local line = f:CreateTexture(nil, "ARTWORK")
+    line:SetColorTexture(C.border[1], C.border[2], C.border[3], 1)
+    line:SetHeight(1)
+    line:SetPoint("BOTTOMLEFT", 10, 82)
+    line:SetPoint("BOTTOMRIGHT", -10, 82)
+
+    local move = UI.Button(f, "", 150, function()
+        f:Hide()
+        UI.MoveAll()
+    end)
+    move:SetPoint("BOTTOMLEFT", 14, 48)
+
+    local mm = UI.Check(f, nil, nil, T("Minimap-Knopf anzeigen", "Show minimap button"), function(checked)
+        GetDB().hideButton = not checked or nil
+        ApplyMode()
+    end)
+    mm:SetPoint("LEFT", move, "RIGHT", 18, 0)
+
+    local hint = UI.Hint(f, nil, nil, nil, T("/forever öffnet dieses Fenster · /fmove verschiebt alle Rahmen · /forever reset holt die Knöpfe zurück",
+        "/forever opens this window · /fmove moves all frames · /forever reset brings the buttons back"))
+    hint:SetPoint("BOTTOMLEFT", 16, 14)
+    hint:SetPoint("RIGHT", f, "RIGHT", -16, 0)
+    hint:SetWordWrap(true)
+
+    f:SetScript("OnShow", function()
+        SafeSetup() -- falls seit dem Login Addons/Knoepfe dazugekommen sind
+        for _, row in ipairs(f.rows) do row.Update() end
+        move:SetText(UI.AnyUnlocked() and T("Alle sperren", "Lock all") or T("Alle verschieben", "Move all"))
+        mm:SetChecked(not GetDB().hideButton)
+    end)
+end
+
+function hub.ToggleWindow()
+    if not hubWindow then BuildHubWindow() end
+    hubWindow:SetShown(not hubWindow:IsShown())
+end
+
+-- /forever: Hub-Fenster · /forever reset: Sammelknopf zuruecksetzen und wieder an die Minimap holen
 SLASH_FOREVERHUB1 = "/forever"
-SlashCmdList["FOREVERHUB"] = function()
+SLASH_FOREVERHUB2 = "/fhub"
+SlashCmdList["FOREVERHUB"] = function(msg)
     if _G.ForeverHub ~= hub then return end
-    GetDB().angle = 195
-    SafeSetup()
-    if hubButton then hubButton.UpdatePosition() end
-    UI.Chat("Forever", active
-        and T("Sammelknopf zurückgesetzt.", "Collector button reset.")
-        or T("Weniger als zwei Forever-Addons aktiv – kein Sammelknopf nötig.", "Fewer than two Forever addons active – no collector needed."))
+    msg = strtrim(msg or ""):lower()
+    if msg == "reset" then
+        local db = GetDB()
+        db.angle = 195
+        db.hideButton = nil
+        SafeSetup()
+        if hubButton then hubButton.UpdatePosition() end
+        UI.Chat("Forever", active
+            and T("Sammelknopf zurückgesetzt.", "Collector button reset.")
+            or T("Minimap-Knöpfe wieder eingeblendet.", "Minimap buttons shown again."))
+    else
+        hub.ToggleWindow()
+    end
 end
