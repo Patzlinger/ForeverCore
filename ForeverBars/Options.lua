@@ -356,15 +356,24 @@ local function CreateOptions()
         function() return SelectedConfig().profRows end,
         function(value) SelectedConfig().profRows = value; Changed(); ns.RefreshOptions() end)
     -- Nur Taschenleiste (an der Stelle der Ausklapp-Richtung, die es nur bei Aktionsleisten gibt)
-    options.backpackCheck = CreateCheckbox(layoutPage, L("OPT_ONLY_BACKPACK"), RIGHT_X, -192,
-        function() return SelectedConfig().onlyBackpack end,
-        function(value) SelectedConfig().onlyBackpack = value; Changed() end)
+    -- Taschenleiste ausklappbar: eingeklappt nur der Rucksack, ein Pfeil klappt die Taschen aus
+    options.backpackCheck = CreateCheckbox(layoutPage, L("OPT_BAGS_COLLAPSIBLE"), RIGHT_X, -192,
+        function() return SelectedConfig().collapsible end,
+        function(value) SelectedConfig().collapsible = value; Changed() end)
+    -- Nur Mikromenü: am Chatfenster anheften (an der Stelle der Wachstumsrichtung, die es dort nicht gibt)
+    options.chatSelector = CreateSmallSelector(layoutPage, L("OPT_ATTACH_CHAT"), RIGHT_X, -92, 170, {
+            { value = "OFF", textKey = "ATTACH_OFF" },
+            { value = "ABOVE", textKey = "ATTACH_ABOVE" },
+            { value = "BELOW", textKey = "ATTACH_BELOW" },
+        },
+        function() return SelectedConfig().attachChat or "OFF" end,
+        function(value) SelectedConfig().attachChat = value; Changed() end)
     options.keyringCheck = CreateCheckbox(layoutPage, L("OPT_KEYRING"), RIGHT_X, -216,
         function() return SelectedConfig().keyring end,
         function(value) SelectedConfig().keyring = value; Changed() end)
-    -- Nur Verpflegungsleiste: herausgezogene Gegenstände und eigene Reihenfolge zurücksetzen
+    -- Nur Verpflegungs- und Berufeleiste: herausgezogene Knöpfe und eigene Reihenfolge zurücksetzen
     options.foodResetButton = CreateSearchButton(layoutPage, L("BTN_FOOD_RESET"), 170, 20, function()
-        ns.FoodResetChoices()
+        if selectedKey == "prof" then ns.ProfResetChoices() else ns.FoodResetChoices() end
         ns.Print(L("FOOD_RESET_DONE"))
     end, L("TIP_FOOD_RESET"))
     options.foodResetButton:SetPoint("TOPLEFT", RIGHT_X, -214)
@@ -620,42 +629,14 @@ local function CreateOptions()
     CreateSearchButton(profilePanel, L("BTN_PROFILE_SAVE"), 170, 22, SaveProfile, L("TIP_PROFILE_SAVE"))
         :SetPoint("TOPLEFT", BUTTON_X, -110)
 
-    -- Vorlagen: fertige Anordnungen
-    CreateHeading(profilePanel, L("PROFILE_PRESETS_TITLE"), 14, -156, PROFILE_WIDTH)
-    local presetChoices = {}
-    for _, preset in ipairs(ns.PRESETS) do table.insert(presetChoices, { value = preset.key, textKey = preset.textKey }) end
-    options.selectedPreset = ns.PRESETS[1].key
-    CreateSelector(profilePanel, L("OPT_PRESET"), 14, -188, 160, presetChoices,
-        function() return options.selectedPreset end,
-        function(value) options.selectedPreset = value end)
-    -- Vorlage anwenden: zweimal klicken (setzt alle Leisten zurück)
-    local presetButton
-    presetButton = CreateSearchButton(profilePanel, L("BTN_PRESET_APPLY"), 170, 22, function()
-        if presetButton.confirm then
-            presetButton.confirm = nil
-            presetButton:SetText(L("BTN_PRESET_APPLY"))
-            ns.ApplyPreset(options.selectedPreset)
-        else
-            presetButton.confirm = true
-            presetButton:SetText(L("BTN_PRESET_CONFIRM"))
-            C_Timer.After(5, function()
-                if presetButton.confirm then
-                    presetButton.confirm = nil
-                    presetButton:SetText(L("BTN_PRESET_APPLY"))
-                end
-            end)
-        end
-    end, L("TIP_PRESET"))
-    presetButton:SetPoint("TOPLEFT", BUTTON_X, -189)
-
-    -- Export/Import als Text (umgeht den Beta-Bug; gespeicherte Profile sind enthalten)
-    CreateHeading(profilePanel, L("PROFILE_TRANSFER_TITLE"), 14, -234, PROFILE_WIDTH)
+    -- Export/Import als Text (gespeicherte Profile sind enthalten)
+    CreateHeading(profilePanel, L("PROFILE_TRANSFER_TITLE"), 14, -156, PROFILE_WIDTH)
     CreateSearchButton(profilePanel, L("BTN_EXPORT"), 220, 24, function() ns.ShowTransferWindow("export") end,
-        L("TIP_EXPORT")):SetPoint("TOPLEFT", 14, -264)
+        L("TIP_EXPORT")):SetPoint("TOPLEFT", 14, -186)
     CreateSearchButton(profilePanel, L("BTN_IMPORT"), 220, 24, function() ns.ShowTransferWindow("import") end,
-        L("TIP_IMPORT")):SetPoint("TOPLEFT", 244, -264)
+        L("TIP_IMPORT")):SetPoint("TOPLEFT", 244, -186)
     local profileHint = profilePanel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    profileHint:SetPoint("TOPLEFT", 14, -302)
+    profileHint:SetPoint("TOPLEFT", 14, -224)
     profileHint:SetPoint("RIGHT", -14, 0)
     profileHint:SetJustifyH("LEFT")
     profileHint:SetText(L("OPT_MANAGE_HINT"))
@@ -728,7 +709,7 @@ local function CreateOptions()
         function(value) ns.db.showGrid = value; Changed() end)
     CreateCheckbox(displayPage, L("OPT_BORDER"), 14, -94,
         function() return ns.db.showBorder end,
-        function(value) ns.db.showBorder = value; ns.UpdateAllButtons() end)
+        function(value) ns.db.showBorder = value; ns.UpdateAllButtons(); Changed() end) -- Abstände ändern sich mit
     CreateCheckbox(displayPage, L("OPT_SNAP"), 250, -42,
         function() return ns.db.snap end,
         function(value) ns.db.snap = value end)
@@ -743,12 +724,17 @@ local function CreateOptions()
     CreateCheckbox(displayPage, L("OPT_HIDE_OOC"), 14, -120,
         function() return ns.db.hideOutOfCombat end,
         function(value) ns.db.hideOutOfCombat = value; Changed() end)
+    -- Wie stark außerhalb des Kampfes abgeblendet wird (Maus darüber und im Kampf: voll sichtbar)
+    CreateSlider(displayPage, L("OPT_OOC_ALPHA"), 360, -108, 160,
+        function() return 0 end, function() return 100 end,
+        function() return ns.db.oocAlpha or 30 end,
+        function(value) ns.db.oocAlpha = value end)
 
     local skinChoices = {}
     for _, skin in ipairs(ns.SKINS) do table.insert(skinChoices, { value = skin.key, textKey = skin.textKey }) end
     CreateSelector(displayPage, L("OPT_SKIN"), 14, -154, 140, skinChoices,
         function() return ns.db.skin end,
-        function(value) ns.db.skin = value; ns.UpdateAllButtons() end)
+        function(value) ns.db.skin = value; ns.UpdateAllButtons(); Changed() end) -- Randstärke ändert die Abstände
     CreateSelector(displayPage, L("OPT_PROC_GLOW"), 360, -154, 150, ns.GLOW_STYLES,
         function() return ns.db.procGlow end,
         function(value) ns.db.procGlow = value; ns.RefreshGlows() end)
@@ -1037,7 +1023,8 @@ function ns.RefreshOptions()
     -- Berufe in Spalten: Breite ergibt sich aus den Berufen; Verpflegung: "pro Reihe" = Breite des Rasters
     options.perRowSlider:SetShown(hasButtons and not (def.kind == "prof" and SelectedConfig().profRows))
     options.keyringCheck:SetShown(def.kind == "bags" and ns.HasKeyring())
-    options.foodResetButton:SetShown(def.kind == "food")
+    options.foodResetButton:SetShown(def.kind == "food" or def.kind == "prof")
+    options.chatSelector:SetShown(def.key == "micro")
     for _, control in ipairs(controls) do
         control.Refresh()
     end

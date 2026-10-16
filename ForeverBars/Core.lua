@@ -103,11 +103,12 @@ ns.defaults = {
     },
     profiles = {},           -- gespeicherte Profile: [Name] = Kopie der Einstellungen (siehe Profiles.lua)
     activeProfile = "Default", -- aktives Profil; "Default" gibt es immer
-    layoutVersion = 4,         -- Stand der Standard-Anordnung (siehe MigrateLayout)
+    layoutVersion = 5,         -- Stand der Standard-Anordnung (siehe MigrateLayout)
     skin = "FLAT",           -- Aussehen der Knöpfe (ns.SKINS in Bars.lua)
     hoverAlpha = 15,         -- Stärke des Hover-Leuchtens über den Knöpfen (%)
     procGlow = "FOREVER",    -- Leuchten bei Procs: "FOREVER" (goldener Rahmen), "BLIZZARD", "OFF"
-    hideOutOfCombat = false, -- alle Leisten außerhalb des Kampfes ausblenden
+    hideOutOfCombat = false, -- alle Leisten außerhalb des Kampfes abblenden (auf oocAlpha, Maus darüber = voll)
+    oocAlpha = 30,           -- Deckkraft außerhalb des Kampfes (%)
     showHotkeys = true,
     showMacroNames = false,
     showCounts = true,
@@ -130,9 +131,9 @@ ns.defaults.bars.stance.buttons = 10 -- Haltungsleiste zeigt immer so viele Knö
 -- Standard-Anordnung (Positionen in Bars.lua, DefaultPosition): Begleiter- und Haltungsleiste halb so groß,
 -- links bzw. rechts bündig über den Aktionsleisten; Berufeleiste mit Rahmen links daneben;
 -- Menü und Taschen unten rechts; Erfahrung und Ruf oben mittig
-ns.defaults.bars.pet.scale = 50
+ns.defaults.bars.pet.scale = 56
 ns.defaults.bars.pet.point = "BOTTOMLEFT"
-ns.defaults.bars.stance.scale = 50
+ns.defaults.bars.stance.scale = 56
 ns.defaults.bars.stance.point = "BOTTOMRIGHT"
 ns.defaults.bars.stance.growX = "LEFT" -- erster Knopf rechts, damit die Leiste rechtsbündig wächst
 ns.defaults.bars.prof.point = "BOTTOMRIGHT"
@@ -150,6 +151,11 @@ ns.defaults.bars.prof.growX = "LEFT"
 ns.defaults.bars.micro.point = "BOTTOMRIGHT"
 ns.defaults.bars.bags.point = "BOTTOMRIGHT"
 ns.defaults.bars.bags.growX = "LEFT"
+ns.defaults.bars.bags.collapsible = true   -- Pfeil zum Aus-/Einklappen der Taschen
+ns.defaults.bars.bags.bagsCollapsed = true -- eingeklappt: nur der Rucksack
+ns.defaults.bars.micro.attachChat = "OFF"  -- Mikromenü am Chatfenster: "OFF", "ABOVE", "BELOW"
+ns.defaults.bars.prof.profExcluded = {}    -- mit Shift herausgezogene Berufs-Knöpfe
+ns.defaults.bars.prof.profOrder = {}       -- eigene Reihenfolge der Berufe
 ns.defaults.bars.xp.point = "TOP"
 ns.defaults.bars.rep.point = "TOP"
 -- Leiste 1 macht in Fahrzeugen der Blizzard-Fahrzeugleiste Platz; die Begleiterleiste nur mit Begleiter
@@ -180,7 +186,11 @@ ns.FillDefaults = FillDefaults
 --   2 (0.10.2): Vorlage "Standard (3 unten)" – alle Leisten auf Standard, Positionen neu berechnet
 --   3 (0.10.3): Berufeleiste kleiner (80 %), Position neu berechnet
 --   4 (0.11.1): Verpflegungsleiste 4 breit und 3 hoch, Position neu berechnet
-local LAYOUT_VERSION = 4
+--   5 (0.14.0): Begleiter-/Haltungsleiste etwas größer (56 %); Ränder benachbarter Knöpfe liegen jetzt
+--               übereinander, darum Positionen der Standard-Anordnung neu berechnet
+local LAYOUT_VERSION = 5
+local STANDARD_LAYOUT_BARS = { "bar1", "bar2", "bar3", "bar6", "bar7", "bar8", "pet", "stance", "prof", "food",
+                               "micro", "bags", "xp", "rep", "vehicle" }
 function ns.MigrateLayout(db)
     local version = db.layoutVersion or 1
     if version >= LAYOUT_VERSION then return end
@@ -202,6 +212,16 @@ function ns.MigrateLayout(db)
                 target.bars.food.perRow = ns.defaults.bars.food.perRow
                 target.bars.food.buttons = ns.defaults.bars.food.buttons
                 target.bars.food.x, target.bars.food.y = nil, nil
+            end
+            if version < 5 then
+                for _, key in ipairs({ "pet", "stance" }) do
+                    local bar = target.bars[key]
+                    if bar and (bar.scale == 50 or bar.scale == nil) then bar.scale = ns.defaults.bars[key].scale end
+                end
+                for _, key in ipairs(STANDARD_LAYOUT_BARS) do
+                    local bar = target.bars[key]
+                    if bar then bar.x, bar.y = nil, nil end
+                end
             end
         end
     end

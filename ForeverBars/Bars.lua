@@ -52,11 +52,13 @@ end
 local function GetButtons(def, cfg)
     if not def.bagButtons then return GetAllButtons(def) end
     cfg = cfg or ns.db.bars[def.key]
+    -- Ausklappbar und gerade eingeklappt: nur der Rucksack (der Pfeil daneben klappt die Taschen aus)
+    local onlyBackpack = cfg.collapsible and cfg.bagsCollapsed
     local list = {}
     for i, name in ipairs(def.bagButtons) do
-        if _G[name] and (i == 1 or not cfg.onlyBackpack) then table.insert(list, _G[name]) end
+        if _G[name] and (i == 1 or not onlyBackpack) then table.insert(list, _G[name]) end
     end
-    if cfg.keyring and KeyRingButton then table.insert(list, KeyRingButton) end
+    if cfg.keyring and KeyRingButton and not onlyBackpack then table.insert(list, KeyRingButton) end
     return list
 end
 
@@ -104,8 +106,10 @@ local function DefaultPosition(key)
         if holder and holder:GetHeight() > 1 then return holder:GetHeight() * holder:GetScale() end
         return fallback
     end
+    -- Zwischen aneinanderliegenden Leisten wie zwischen Knöpfen: Ränder übereinander, eine feine Linie
+    local BAR_GAP = ns.ButtonGap({ spacing = BAR_GAP })
     local scale = Scale("bar1")
-    local barWidth = (12 * ACTION_SIZE + 11 * (bars.bar1.spacing or 1)) * scale
+    local barWidth = (12 * ACTION_SIZE + 11 * ns.ButtonGap(bars.bar1)) * scale
     local barHeight = ACTION_SIZE * scale
     local left, right = width / 2 - barWidth / 2, width / 2 + barWidth / 2
     local function BarCenter(row) return EDGE + barHeight / 2 + row * (barHeight + BAR_GAP) end
@@ -201,6 +205,14 @@ local function GetSkin()
         if skin.key == ns.db.skin then return skin end
     end
     return ns.SKINS[1]
+end
+
+-- Platz zwischen zwei Knöpfen. "Abstand" meint den Abstand zwischen den Symbolen: die Ränder benachbarter
+-- Knöpfe liegen übereinander (sonst wirken Rand + Lücke + Rand wie ein Balken). Bei Abstand 1 und 1-px-Rand
+-- bleibt genau eine feine Linie.
+function ns.ButtonGap(cfg)
+    local inset = ns.db.showBorder and GetSkin().inset or 0
+    return (cfg.spacing or 1) - 2 * inset
 end
 
 -- Hover-, Gedrückt- und Aktiv-Leuchten: Blizzards Grafiken sind für größere Knöpfe mit Rahmen gemacht und
@@ -419,12 +431,13 @@ end
 -- hat ein Beruf mehrere Fertigkeiten, bekommen die weiteren eigene Spalten (oben frei).
 -- Jeder Eintrag bekommt col (Spalte ab 0) und row (1 = Fenster, 2 = Fertigkeit).
 local FISHING_SLOT = 4 -- GetProfessions liefert Angeln an 4. Stelle
-local function CollectProfessionSpells()
-    wipe(profSpells)
-    if not GetProfessions or not GetProfessionInfo then return end
+
+-- Alle Berufe des Charakters mit Fenster und Fertigkeiten (ohne Rücksicht auf Auswahl und Reihenfolge)
+local function ProfessionGroups()
+    local groups = {}
+    if not GetProfessions or not GetProfessionInfo then return groups end
     local indices = { GetProfessions() }
     local seen = {}
-    local column = 0
     for i = 1, 6 do
         local index = indices[i]
         if index then
@@ -450,17 +463,117 @@ local function CollectProfessionSpells()
             end
             -- Ohne eigene Fähigkeit im Zauberbuch: den Beruf über seinen Namen öffnen
             if not window and #skills == 0 and name then window = { spell = name, icon = icon } end
+            table.insert(groups, { name = name or tostring(i), window = window, skills = skills })
+        end
+    end
+    return groups
+end
+
+-- Eigene Reihenfolge der Berufe und entfernte Knöpfe (gespeichert in der Leiste, also je Profil)
+local function ProfConfig()
+    local cfg = ns.db.bars.prof
+    cfg.profExcluded = cfg.profExcluded or {}
+    cfg.profOrder = cfg.profOrder or {}
+    return cfg
+end
+
+-- Zu welchem Beruf gehört ein Zauber? (nil = kein Berufs-Zauber)
+local function ProfessionOfSpell(spell)
+    for _, group in ipairs(ProfessionGroups()) do
+        if group.window and group.window.spell == spell then return group.name end
+        for _, entry in ipairs(group.skills) do
+            if entry.spell == spell then return group.name end
+        end
+    end
+end
+
+-- Knöpfe der Berufeleiste: Berufe in eigener Reihenfolge, mit Shift herausgezogene fehlen
+local function CollectProfessionSpells()
+    wipe(profSpells)
+    local cfg = ProfConfig()
+    local groups = ProfessionGroups()
+    local rank = {}
+    for index, name in ipairs(cfg.profOrder) do rank[name] = index end
+    for index, group in ipairs(groups) do group.position = index end
+    table.sort(groups, function(a, b)
+        local ra, rb = rank[a.name], rank[b.name]
+        if ra or rb then
+            if ra and rb then return ra < rb end
+            return ra ~= nil
+        end
+        return a.position < b.position
+    end)
+    local column = 0
+    for _, group in ipairs(groups) do
+        local window = group.window
+        if window and cfg.profExcluded[window.spell] then window = nil end
+        local skills = {}
+        for _, entry in ipairs(group.skills) do
+            if not cfg.profExcluded[entry.spell] then table.insert(skills, entry) end
+        end
+        if window or #skills > 0 then
             if window then
-                window.col, window.row = column, 1
+                window.col, window.row, window.profession = column, 1, group.name
                 table.insert(profSpells, window)
             end
             for k, entry in ipairs(skills) do
-                entry.col, entry.row = column + k - 1, 2
+                entry.col, entry.row, entry.profession = column + k - 1, 2, group.name
                 table.insert(profSpells, entry)
             end
             column = column + math.max(1, #skills)
         end
     end
+end
+
+-- Mit Shift herausgezogen: Knopf nicht mehr zeigen (bis man den Zauber wieder hineinzieht)
+function ns.ProfRemove(spell)
+    if InCombatLockdown() then
+        ns.Print(L("NOT_IN_COMBAT"))
+        return
+    end
+    ProfConfig().profExcluded[spell] = true
+    ns.RequestLayout()
+end
+
+-- Berufs-Zauber hineingezogen: wieder zeigen und seinen Beruf an die Spalte setzen, auf die er fiel
+function ns.ProfInsert(spell, targetCol)
+    if InCombatLockdown() then
+        ns.Print(L("NOT_IN_COMBAT"))
+        return
+    end
+    local profession = ProfessionOfSpell(spell)
+    if not profession then
+        ns.Print(L("PROF_NOT_FITTING"))
+        return
+    end
+    local cfg = ProfConfig()
+    cfg.profExcluded[spell] = nil
+    -- Jetzige Reihenfolge der Berufe übernehmen (nach Spalten), dann den Beruf vor den Beruf in der Zielspalte setzen
+    local order, targetName = {}, nil
+    for _, entry in ipairs(profSpells) do
+        if entry.profession and not tContains(order, entry.profession) then table.insert(order, entry.profession) end
+        if targetCol and entry.col == targetCol and not targetName then targetName = entry.profession end
+    end
+    for _, group in ipairs(ProfessionGroups()) do
+        if not tContains(order, group.name) then table.insert(order, group.name) end
+    end
+    for index = #order, 1, -1 do
+        if order[index] == profession then table.remove(order, index) end
+    end
+    local position = #order + 1
+    for index, name in ipairs(order) do
+        if name == targetName then position = index break end
+    end
+    table.insert(order, position, profession)
+    cfg.profOrder = order
+    ns.RequestLayout()
+end
+
+function ns.ProfResetChoices()
+    local cfg = ProfConfig()
+    wipe(cfg.profExcluded)
+    wipe(cfg.profOrder)
+    ns.RequestLayout()
 end
 
 local function UpdateProfessionCooldown(button)
@@ -497,10 +610,28 @@ function ns.CreateProfessionButtons()
                 else
                     GameTooltip:SetText(self.fbEntry.spell)
                 end
+                GameTooltip:AddLine(" ")
+                GameTooltip:AddLine(L("PROF_TIP_MOVE"), 0.6, 0.6, 0.6)
+                GameTooltip:AddLine(L("PROF_TIP_REMOVE"), 0.6, 0.6, 0.6)
                 GameTooltip:Show()
             end)
             button:SetScript("OnLeave", function(self)
                 if GameTooltip:GetOwner() == self then GameTooltip:Hide() end
+            end)
+            -- Shift-Klick wirkt nichts (sonst würde man beim Herausziehen zaubern); Shift-Ziehen entfernt,
+            -- normales Ziehen nimmt den Zauber auf (zum Verschieben in der Leiste oder auf eine Aktionsleiste)
+            button:SetAttribute("shift-type1", "fbnone")
+            button:RegisterForDrag("LeftButton")
+            button:SetScript("OnDragStart", function(self)
+                local entry = self.fbEntry
+                if not entry or InCombatLockdown() then return end
+                if IsShiftKeyDown() then
+                    ns.ProfRemove(entry.spell)
+                elseif C_Spell and C_Spell.PickupSpell then
+                    C_Spell.PickupSpell(entry.spell)
+                elseif PickupSpell then
+                    PickupSpell(entry.spell)
+                end
             end)
         end
     end
@@ -764,54 +895,71 @@ function ns.UpdateOwnHotkeys()
     end
 end
 
--- Hineinziehen: Fläche über der Verpflegungsleiste, nur sichtbar, solange ein Gegenstand am Mauszeiger hängt.
--- Sie fängt auch Klicks ab, damit dabei nichts benutzt wird. Der Platz ergibt sich aus der Mausposition.
-local foodCatcher
-local function FoodDropTarget()
-    local holder = holders.food
+-- Hineinziehen: Fläche über einer Leiste, nur sichtbar, solange etwas Passendes am Mauszeiger hängt
+-- (Verpflegung: Gegenstand, Berufe: Zauber). Sie fängt auch Klicks ab, damit dabei nichts benutzt wird.
+-- Der Platz ergibt sich aus der Mausposition.
+local catchers = {} -- [Leiste] = { frame, kind, onDrop }
+local catcherWatcher
+
+-- Reihe (ab 1) und Spalte (ab 0) unter dem Mauszeiger
+local function DropTarget(key)
+    local holder = holders[key]
     if not holder or not holder:GetLeft() then return nil, nil end
-    local cfg = ns.db.bars.food
+    local cfg = ns.db.bars[key]
     local scale = holder:GetEffectiveScale()
     local x, y = GetCursorPosition()
     x, y = x / scale, y / scale
-    local step = ACTION_SIZE + (cfg.spacing or 1)
+    local step = ACTION_SIZE + ns.ButtonGap(cfg)
     local col = cfg.growX == "LEFT" and math.floor((holder:GetRight() - x) / step) or math.floor((x - holder:GetLeft()) / step)
     local rowIndex = cfg.growY == "UP" and math.floor((y - holder:GetBottom()) / step) or math.floor((holder:GetTop() - y) / step)
     return rowIndex + 1, math.max(0, col)
 end
 
-local function OnFoodDrop()
-    local kind, itemID = GetCursorInfo()
-    if kind ~= "item" or not itemID then return end
-    ClearCursor() -- der Gegenstand bleibt in der Tasche
-    local row, col = FoodDropTarget()
+local function UpdateCatchers()
+    local kind = GetCursorInfo()
+    for key, catcher in pairs(catchers) do
+        local holder = holders[key]
+        catcher.frame:SetShown(kind == catcher.kind and not InCombatLockdown() and holder ~= nil
+            and holder:IsVisible() and ns.db.bars[key].enabled)
+    end
+end
+
+local function CreateCatcher(key, kind, onDrop)
+    local holder = holders[key]
+    if catchers[key] or not holder then return end
+    local frame = CreateFrame("Frame", nil, holder, "BackdropTemplate")
+    frame:SetPoint("TOPLEFT", -2, 2)
+    frame:SetPoint("BOTTOMRIGHT", 2, -2)
+    frame:SetFrameLevel(holder:GetFrameLevel() + 20) -- über den Knöpfen
+    frame:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 })
+    frame:SetBackdropBorderColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3], 0.8)
+    frame:EnableMouse(true)
+    local function Drop()
+        local cursorKind, a, _, d = GetCursorInfo()
+        if cursorKind ~= kind then return end
+        ClearCursor() -- Gegenstand bleibt in der Tasche, Zauber im Zauberbuch
+        local row, col = DropTarget(key)
+        onDrop(cursorKind == "spell" and d or a, row, col)
+    end
+    frame:SetScript("OnReceiveDrag", Drop)
+    frame:SetScript("OnMouseUp", Drop)
+    frame:Hide()
+    catchers[key] = { frame = frame, kind = kind, onDrop = onDrop }
+    if not catcherWatcher then
+        catcherWatcher = CreateFrame("Frame")
+        catcherWatcher:RegisterEvent("CURSOR_CHANGED")
+        catcherWatcher:RegisterEvent("PLAYER_REGEN_DISABLED")
+        catcherWatcher:SetScript("OnEvent", UpdateCatchers)
+    end
+end
+
+-- Hineingezogenes einsortieren: Verpflegung nach Reihe und Platz, Berufe nach Spalte
+local function OnFoodDrop(itemID, row, col)
     if ns.db.bars.food.profRows then ns.FoodInsert(itemID, row, col) else ns.FoodInsert(itemID) end
 end
 
-local function UpdateFoodCatcher()
-    if not foodCatcher then return end
-    local kind = GetCursorInfo()
-    local holder = holders.food
-    foodCatcher:SetShown(kind == "item" and not InCombatLockdown() and holder ~= nil and holder:IsVisible()
-        and ns.db.bars.food.enabled)
-end
-
-local function CreateFoodCatcher(holder)
-    if foodCatcher then return end
-    foodCatcher = CreateFrame("Frame", nil, holder, "BackdropTemplate")
-    foodCatcher:SetPoint("TOPLEFT", -2, 2)
-    foodCatcher:SetPoint("BOTTOMRIGHT", 2, -2)
-    foodCatcher:SetFrameLevel(holder:GetFrameLevel() + 20) -- über den Knöpfen
-    foodCatcher:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 })
-    foodCatcher:SetBackdropBorderColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3], 0.8)
-    foodCatcher:EnableMouse(true)
-    foodCatcher:SetScript("OnReceiveDrag", OnFoodDrop)
-    foodCatcher:SetScript("OnMouseUp", OnFoodDrop)
-    foodCatcher:Hide()
-    local watcher = CreateFrame("Frame")
-    watcher:RegisterEvent("CURSOR_CHANGED")
-    watcher:RegisterEvent("PLAYER_REGEN_DISABLED")
-    watcher:SetScript("OnEvent", UpdateFoodCatcher)
+local function OnProfDrop(spellID, _, col)
+    if spellID then ns.ProfInsert(spellID, col) end
 end
 
 function ns.CreateFoodButtons()
@@ -859,7 +1007,6 @@ local function AssignFoodButtons(perRow)
             if entry then UpdateFoodButton(button) else button.cooldown:Clear() end
         end
     end
-    if holders.food then CreateFoodCatcher(holders.food) end
     if perRow then return math.min(FOOD_COUNT, perRow * 3) end
     return #foodItems
 end
@@ -1254,7 +1401,7 @@ local function LayoutButtons(def, cfg, holder)
     else
         for i = 1, count do slots[i] = { (i - 1) % perRow, math.floor((i - 1) / perRow) } end
     end
-    local gap = cfg.spacing or 1
+    local gap = ns.ButtonGap(cfg)
     local toLeft, toTop = cfg.growX == "LEFT", cfg.growY == "UP"
     local corner = (toTop and "BOTTOM" or "TOP") .. (toLeft and "RIGHT" or "LEFT")
     local shown = {}
@@ -1413,8 +1560,6 @@ local function VisibilityDriver(def, cfg)
     for _, entry in ipairs(HIDE_CONDITIONS) do
         if cfg[entry.key] then table.insert(parts, entry.condition .. " hide") end
     end
-    -- Allgemeine Einstellung: alle Leisten nur im Kampf zeigen
-    if ns.db.hideOutOfCombat then table.insert(parts, "[nocombat] hide") end
     if cfg.visibility == "COMBAT" then
         table.insert(parts, "[combat] show")
         table.insert(parts, "hide")
@@ -1557,6 +1702,8 @@ local function UpdateMover(def, holder)
                 x, y = cursorX + self.offsetX, cursorY + self.offsetY
             end
             self.dropX, self.dropY = nil, nil
+            -- Von Hand verschoben: nicht mehr am Chatfenster angeheftet
+            if ns.db.bars[self.key].attachChat then ns.db.bars[self.key].attachChat = "OFF" end
             -- x/y ist die Mitte; gespeichert wird der Ankerpunkt der Leiste
             ns.SetBarCenter(self.key, x, y)
             ns.RequestLayout()
@@ -1577,6 +1724,55 @@ local function UpdateMover(def, holder)
         mover:SetSize(math.max(holder:GetWidth() * holder:GetScale(), 80), math.max(holder:GetHeight() * holder:GetScale(), 20))
     end
     mover:Show()
+end
+
+-- Pfeil an der Taschenleiste zum Aus- und Einklappen der Taschen (eingeklappt bleibt der Rucksack sichtbar).
+-- Er sitzt an dem Ende, in das die Taschen wachsen; im Kampf wird erst danach umgebaut.
+function ns.UpdateBagToggle(def, cfg, holder)
+    local toggle = holder.fbBagToggle
+    if not cfg.collapsible then
+        if toggle then toggle:Hide() end
+        return
+    end
+    if not toggle then
+        toggle = CreateFrame("Button", nil, holder, "BackdropTemplate")
+        ns.Style.SetFlat(toggle, COLOR.button)
+        toggle.arrow = toggle:CreateTexture(nil, "OVERLAY")
+        toggle.arrow:SetSize(10, 10)
+        toggle.arrow:SetPoint("CENTER")
+        toggle.arrow:SetTexture("Interface\\ChatFrame\\ChatFrameExpandArrow")
+        toggle:SetScript("OnClick", function()
+            local barCfg = ns.db.bars[def.key]
+            barCfg.bagsCollapsed = not barCfg.bagsCollapsed
+            if InCombatLockdown() then ns.Print(L("COMBAT_QUEUED")) end
+            ns.RequestLayout()
+        end)
+        toggle:SetScript("OnEnter", function(self)
+            self:SetBackdropBorderColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3], 0.9)
+            local tip = ns.Style.GetTooltip()
+            tip:SetOwner(self, "ANCHOR_TOP")
+            tip:AddLine(L(ns.db.bars[def.key].bagsCollapsed and "BAGS_EXPAND" or "BAGS_COLLAPSE"))
+            tip:Show()
+        end)
+        toggle:SetScript("OnLeave", function(self)
+            self:SetBackdropBorderColor(unpack(COLOR.border))
+            ns.Style.GetTooltip():Hide()
+        end)
+        holder.fbBagToggle = toggle
+    end
+    -- Pfeil zeigt in die Richtung, in die sich die Taschen öffnen bzw. schließen
+    local toLeft = cfg.growX == "LEFT"
+    local expanding = cfg.bagsCollapsed
+    toggle:SetSize(12, SMALL_SIZE)
+    toggle:ClearAllPoints()
+    if toLeft then
+        toggle:SetPoint("RIGHT", holder, "LEFT", -2, 0)
+    else
+        toggle:SetPoint("LEFT", holder, "RIGHT", 2, 0)
+    end
+    local pointLeft = (toLeft and expanding) or (not toLeft and not expanding)
+    toggle.arrow:SetRotation(pointLeft and math.pi or 0) -- die Grafik zeigt von sich aus nach rechts
+    toggle:Show()
 end
 
 -- Erfahrungsleiste und ForeverXP: Ist ForeverXP aktiv, gehört ihm die Erfahrungsleiste. ForeverBars hält
@@ -1616,7 +1812,17 @@ function ns.ApplyLayout()
         local x, y = cfg.x, cfg.y
         if not x or not y then x, y = ns.GetBarPosition(def.key) end
         holder:ClearAllPoints()
-        holder:SetPoint(cfg.point or "CENTER", UIParent, "BOTTOMLEFT", x / scale, y / scale)
+        local chat = def.key == "micro" and cfg.attachChat ~= "OFF" and cfg.attachChat and ChatFrame1
+        if chat and cfg.attachChat == "ABOVE" then
+            -- Mikromenü über dem Chatfenster (oberhalb der Chat-Reiter), linksbündig
+            holder:SetPoint("BOTTOMLEFT", chat, "TOPLEFT", -2 / scale, 26 / scale)
+        elseif chat and cfg.attachChat == "BELOW" then
+            -- Mikromenü unter dem Chatfenster (unterhalb der Eingabezeile), linksbündig
+            holder:SetPoint("TOPLEFT", chat, "BOTTOMLEFT", -2 / scale, -32 / scale)
+        else
+            holder:SetPoint(cfg.point or "CENTER", UIParent, "BOTTOMLEFT", x / scale, y / scale)
+        end
+        if def.kind == "bags" then ns.UpdateBagToggle(def, cfg, holder) end
         -- Deckkraft; beim Einblenden per Maus übernimmt das die Überblendung (siehe UpdateFading)
         if not cfg.fadeMouseover or ns.unlocked or ns.testMode then
             holder:SetAlpha((cfg.alpha or 100) / 100)
@@ -1630,6 +1836,9 @@ function ns.ApplyLayout()
         UpdateBarFrame(def, cfg, holder)
         UpdateMover(def, holder)
     end
+    -- Flächen zum Hineinziehen (einmalig anlegen, sobald die Halter da sind)
+    CreateCatcher("food", "item", OnFoodDrop)
+    CreateCatcher("prof", "spell", OnProfDrop)
 end
 
 -- Mehrere Änderungen kurz hintereinander werden zusammengefasst; im Kampf erst danach
@@ -1688,18 +1897,25 @@ local FADE_SPEED = 4       -- Deckkraft-Änderung pro Sekunde (ganze Überblendu
 
 local function UpdateFading()
     local now = GetTime()
+    local inCombat = InCombatLockdown()
+    -- Allgemeine Einstellung: außerhalb des Kampfes alle Leisten abblenden (Maus darüber = voll sichtbar)
+    local outOfCombatDim = ns.db.hideOutOfCombat and not inCombat
     for _, def in ipairs(ns.BAR_DEFS) do
         local cfg = ns.db.bars[def.key]
         local holder = holders[def.key]
-        if holder and cfg.enabled and cfg.fadeMouseover and not ns.unlocked and not ns.testMode
-            and not ns.IsExternal(def.key) then
+        if holder and cfg.enabled and (cfg.fadeMouseover or ns.db.hideOutOfCombat) and not ns.unlocked
+            and not ns.testMode and not ns.IsExternal(def.key) then
             local full = (cfg.alpha or 100) / 100
-            local over = holder:IsMouseOver()
+            local mouseOver = holder:IsMouseOver()
                 or (SpellFlyout and SpellFlyout:IsShown() and SpellFlyout:IsMouseOver())
-                or (cfg.fadeInCombat and InCombatLockdown())
+            local over = mouseOver or (cfg.fadeInCombat and inCombat)
             if over then holder.fbLastOver = now end
             local visible = over or (now - (holder.fbLastOver or 0)) < (cfg.fadeDelay or 0)
-            local target = visible and full or math.min(full, (cfg.fadeAlpha or 0) / 100)
+            local target = full
+            if cfg.fadeMouseover and not visible then target = math.min(full, (cfg.fadeAlpha or 0) / 100) end
+            if outOfCombatDim and not mouseOver then
+                target = math.min(target, math.max(0, math.min(100, ns.db.oocAlpha or 30)) / 100)
+            end
             local current = holder.fbAlpha or target
             local step = FADE_SPEED * FADE_INTERVAL
             if current < target then
