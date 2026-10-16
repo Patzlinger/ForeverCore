@@ -99,6 +99,7 @@ ns.defaults = {
     },
     profiles = {},           -- gespeicherte Profile: [Name] = Kopie der Einstellungen (siehe Profiles.lua)
     activeProfile = "Default", -- aktives Profil; "Default" gibt es immer
+    layoutVersion = 2,         -- Stand der Standard-Anordnung (siehe MigrateLayout)
     skin = "FLAT",           -- Aussehen der Knöpfe (ns.SKINS in Bars.lua)
     hoverAlpha = 15,         -- Stärke des Hover-Leuchtens über den Knöpfen (%)
     procGlow = "FOREVER",    -- Leuchten bei Procs: "FOREVER" (goldener Rahmen), "BLIZZARD", "OFF"
@@ -162,6 +163,19 @@ local function FillDefaults(target, defaults)
 end
 ns.FillDefaults = FillDefaults
 
+-- Einmalig (ab Version 0.10.2): das Standardprofil bekommt die Vorlage "Standard (3 unten)" – alle Leisten
+-- auf Standard, Positionen werden neu berechnet. Andere gespeicherte Profile bleiben unverändert.
+local LAYOUT_VERSION = 2
+function ns.MigrateLayout(db)
+    if (db.layoutVersion or 1) >= LAYOUT_VERSION then return end
+    db.layoutVersion = LAYOUT_VERSION
+    if not db.bars then return end -- erster Start: es gelten ohnehin die Standardwerte
+    local function DefaultBars() return CopyTable(ns.defaults.bars) end
+    local defaultProfile = db.profiles and db.profiles.Default
+    if defaultProfile then defaultProfile.bars = DefaultBars() end
+    if (db.activeProfile or "Default") == "Default" then db.bars = DefaultBars() end
+end
+
 -- Ältere Einstellungen speichern die Mitte der Leiste: diese Bedeutung behalten (sonst springen Leisten),
 -- erst danach fehlende Werte aus den Standardwerten ergänzen
 function ns.MigrateBars(bars)
@@ -224,6 +238,7 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
         -- Wegen des Beta-Bugs (SavedVariables werden nicht geladen) gelten notfalls die Standardwerte
         ForeverBarsDB = ForeverBarsDB or {}
         ns.MigrateBars(ForeverBarsDB.bars)
+        ns.MigrateLayout(ForeverBarsDB)
         FillDefaults(ForeverBarsDB, ns.defaults)
         ns.db = ForeverBarsDB
         -- Frühere Einstellung "Nur bei Maus darüber" ist jetzt das Einblenden bei Maus darüber

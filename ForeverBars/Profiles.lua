@@ -94,7 +94,7 @@ end
 -- Es gibt immer ein aktives Profil. Die aktuellen Einstellungen gehören zu ihm: beim Wechseln und beim
 -- Ausloggen werden sie in das aktive Profil geschrieben. "Default" gibt es immer (Anzeige: "Standard").
 ns.DEFAULT_PROFILE = "Default"
-local NOT_IN_PROFILE = { profiles = true, activeProfile = true, version = true,
+local NOT_IN_PROFILE = { profiles = true, activeProfile = true, version = true, layoutVersion = true,
                          showMinimapButton = true, minimapAngle = true }
 
 local function Snapshot()
