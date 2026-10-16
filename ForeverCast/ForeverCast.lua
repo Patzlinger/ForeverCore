@@ -1472,9 +1472,33 @@ end
 local blizzPending = false
 local blizzHidden = false
 
+-- Im Bearbeitungsmodus zeigt Blizzard die Leiste als Vorschau an – ganz ohne Ereignisse. Deshalb zusaetzlich
+-- unsichtbar halten: Alpha 0 und gegen Zuruecksetzen absichern (SetAlpha startet keine Blizzard-Skripte,
+-- anders als Hide -> kein taint). Ihr Auswahl-Rahmen im Bearbeitungsmodus wird nicht anklickbar, damit man
+-- die unsichtbare Leiste dort nicht aus Versehen erwischt. Geht auch im Kampf (die Leiste ist nicht geschuetzt).
+local settingBlizzAlpha = false
+local function KeepBlizzardInvisible(f)
+    if not f.fcAlphaHooked then
+        f.fcAlphaHooked = true
+        hooksecurefunc(f, "SetAlpha", function(self, a)
+            if settingBlizzAlpha or not GetDB().hideBlizzard then return end
+            if a and a > 0 then
+                settingBlizzAlpha = true
+                self:SetAlpha(0)
+                settingBlizzAlpha = false
+            end
+        end)
+    end
+    settingBlizzAlpha = true
+    f:SetAlpha(0)
+    settingBlizzAlpha = false
+    if f.Selection and f.Selection.EnableMouse then f.Selection:EnableMouse(false) end
+end
+
 local function ApplyBlizzardBar()
-    if not GetDB().hideBlizzard or blizzHidden then return end
     local f = PlayerCastingBarFrame or CastingBarFrame
+    if f and GetDB().hideBlizzard then KeepBlizzardInvisible(f) end
+    if not GetDB().hideBlizzard or blizzHidden then return end
     if not f then return end
     if InCombatLockdown() then
         blizzPending = true -- im Kampf nichts an Blizzard-Fenstern aendern
@@ -1655,8 +1679,16 @@ local function Section(x, y, title, list)
         local key = opt[1]
         checkboxes[key] = UI.Check(options, x - 2, y - 22 - (i - 1) * 24, opt[2], Safe("Einstellungen", function(checked)
             GetDB()[key] = checked
-            if key == "hideBlizzard" and not checked and blizzHidden then
-                Chat(T("Die Blizzard-Zauberleiste kommt nach /reload zurück.", "The Blizzard cast bar returns after /reload."))
+            if key == "hideBlizzard" and not checked then
+                -- wieder sichtbar (z. B. im Bearbeitungsmodus); Zauber zeigt sie erst nach /reload wieder an
+                local f = PlayerCastingBarFrame or CastingBarFrame
+                if f then
+                    f:SetAlpha(1)
+                    if f.Selection and f.Selection.EnableMouse then f.Selection:EnableMouse(true) end
+                end
+                if blizzHidden then
+                    Chat(T("Die Blizzard-Zauberleiste kommt nach /reload zurück.", "The Blizzard cast bar returns after /reload."))
+                end
             end
             ApplySettings()
         end))
