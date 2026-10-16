@@ -8,7 +8,7 @@
 --     auch ohne Minimap-Knoepfe.
 --  4. Eintrag "Forever Core" im Blizzard-Optionsmenue (Reiter AddOns) mit Unterseite je Addon.
 local ADDON_NAME = ...
-local VERSION = 19
+local VERSION = 20
 if _G.ForeverHub and (_G.ForeverHub.version or 0) >= VERSION then return end
 
 local hub = { version = VERSION }
@@ -157,7 +157,141 @@ function UI.Window(name, title, width, height)
     close:SetPoint("RIGHT", -2, 0)
     close:SetScript("OnClick", function() f:Hide() end)
     f.CloseButton = close
+    -- jedes benannte Forever-Fenster ist mit der Maus skalierbar (Griff unten rechts)
+    if name then UI.MakeResizable(f) end
     return f
+end
+
+---------------------------------------------------------------------------
+-- Fenstergroesse mit der Maus: Griff unten rechts.
+--  mode "scale" (Standard): das ganze Fenster wird groesser/kleiner (Inhalt bleibt wie angeordnet)
+--  mode "size": echte Groesse aendern (fuer Fenster, deren Inhalt mitwaechst, z. B. ForeverSpellbook);
+--               opts.minW/minH/maxW/maxH, opts.onResize(w, h)
+-- Gespeichert je Fenstername in ForeverHubDB.windows; Rechtsklick auf den Griff = Standardgroesse.
+---------------------------------------------------------------------------
+local function WindowDB(name)
+    if type(_G.ForeverHubDB) ~= "table" then _G.ForeverHubDB = {} end
+    local db = _G.ForeverHubDB
+    db.windows = db.windows or {}
+    db.windows[name] = db.windows[name] or {}
+    return db.windows[name]
+end
+
+-- Fenster an seiner linken oberen Ecke festhalten (damit Skalieren/Groesse nicht "wegspringt")
+local function PinTopLeft(f)
+    local left, top = f:GetLeft(), f:GetTop()
+    if not (left and top) then return end
+    f:ClearAllPoints()
+    f:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", left, top)
+end
+
+local function CursorUI()
+    local x, y = GetCursorPosition()
+    local s = UIParent:GetEffectiveScale()
+    return x / s, y / s
+end
+
+function UI.MakeResizable(f, opts)
+    opts = opts or {}
+    local name = f:GetName()
+    if not name then return end
+    f.fcResize = { mode = opts.mode or "scale", opts = opts, defW = f:GetWidth(), defH = f:GetHeight() }
+    local info = f.fcResize
+
+    if not f.fcGrip then
+        local grip = CreateFrame("Button", nil, f)
+        grip:SetSize(14, 14) -- in der Ecke, frei von Knoepfen, die 16 px vom Rand sitzen
+        grip:SetPoint("BOTTOMRIGHT", -1, 1)
+        grip:SetFrameLevel(f:GetFrameLevel() + 20)
+        grip:SetNormalTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up")
+        grip:SetHighlightTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Highlight")
+        grip:SetPushedTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Down")
+        grip:RegisterForClicks("RightButtonUp")
+        f.fcGrip = grip
+
+        grip:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:AddLine(T("Größe ändern", "Resize"))
+            GameTooltip:AddLine(T("Ziehen: größer/kleiner · Rechtsklick: Standardgröße",
+                "Drag: bigger/smaller · Right-click: default size"), 1, 1, 1, true)
+            GameTooltip:Show()
+        end)
+        grip:SetScript("OnLeave", GameTooltip_Hide)
+
+        -- Rechtsklick: zuruecksetzen
+        grip:SetScript("OnClick", function()
+            local i = f.fcResize
+            local db = WindowDB(name)
+            PinTopLeft(f)
+            if i.mode == "size" then
+                db.w, db.h = nil, nil
+                f:SetSize(i.defW, i.defH)
+                if i.opts.onResize then i.opts.onResize(i.defW, i.defH) end
+            else
+                db.scale = nil
+                local left, top = f:GetLeft() * f:GetScale(), f:GetTop() * f:GetScale()
+                f:SetScale(1)
+                f:ClearAllPoints()
+                f:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", left, top)
+            end
+        end)
+
+        grip:SetScript("OnMouseDown", function(self, button)
+            if button ~= "LeftButton" then return end
+            local i = f.fcResize
+            PinTopLeft(f)
+            if i.mode == "size" then
+                f:SetResizable(true)
+                local o = i.opts
+                if f.SetResizeBounds then
+                    f:SetResizeBounds(o.minW or i.defW, o.minH or i.defH, o.maxW or 2000, o.maxH or 1400)
+                end
+                f:StartSizing("BOTTOMRIGHT")
+                return
+            end
+            -- Skalieren: neue Groesse aus der Mausbewegung, linke obere Ecke bleibt stehen
+            local startScale = f:GetScale()
+            local w, h = f:GetWidth() * startScale, f:GetHeight() * startScale
+            local left, top = f:GetLeft() * startScale, f:GetTop() * startScale
+            local cx, cy = CursorUI()
+            self:SetScript("OnUpdate", function()
+                local x, y = CursorUI()
+                local factor = ((w + x - cx) / w + (h + cy - y) / h) / 2
+                local s = math.max(0.6, math.min(1.6, startScale * factor))
+                f:SetScale(s)
+                f:ClearAllPoints()
+                f:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", left / s, top / s)
+            end)
+        end)
+        grip:SetScript("OnMouseUp", function(self, button)
+            if button ~= "LeftButton" then return end
+            local i = f.fcResize
+            local db = WindowDB(name)
+            if i.mode == "size" then
+                f:StopMovingOrSizing()
+                PinTopLeft(f)
+                db.w, db.h = math.floor(f:GetWidth() + 0.5), math.floor(f:GetHeight() + 0.5)
+                if i.opts.onResize then i.opts.onResize(f:GetWidth(), f:GetHeight()) end
+            else
+                self:SetScript("OnUpdate", nil)
+                db.scale = math.floor(f:GetScale() * 100 + 0.5) / 100
+            end
+        end)
+
+        -- gespeicherte Groesse beim ersten Oeffnen uebernehmen (gespeicherte Werte gibt es erst nach dem Laden)
+        f:HookScript("OnShow", function()
+            if f.fcResizeApplied then return end
+            f.fcResizeApplied = true
+            local i = f.fcResize
+            local db = WindowDB(name)
+            if i.mode == "size" and db.w and db.h then
+                f:SetSize(db.w, db.h)
+                if i.opts.onResize then i.opts.onResize(db.w, db.h) end
+            elseif i.mode == "scale" and db.scale then
+                f:SetScale(db.scale)
+            end
+        end)
+    end
 end
 
 ---------------------------------------------------------------------------

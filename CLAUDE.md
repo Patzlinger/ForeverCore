@@ -131,6 +131,12 @@ ihn identisch um. Neue Oberflächen nutzen eine dieser beiden – keine dritten 
   | accent (Gold) | 1 0.82 0 | **einzige Akzentfarbe**: Hover-Rand, Häkchen, Regler, Titellinie, Überschriften |
 - Fenster: flach und dunkel, 1-px-Rand, Titelleiste mit Logo + Titel + Schließen-Kreuz und goldener Linie unten,
   verschiebbar an der Titelleiste, mit Escape schließbar (`UISpecialFrames`)
+- **Fenstergröße mit der Maus**: jedes benannte `UI.Window` bekommt automatisch einen Griff unten rechts
+  (Skalieren 60–160 %, Rechtsklick = Standard, gespeichert in `ForeverHubDB.windows`). Fenster, deren Inhalt
+  mitwachsen kann (z. B. ForeverSpellbook), nutzen `UI.MakeResizable(f, { mode = "size", minW, minH, maxW, maxH })`
+  und ordnen ihren Inhalt bei `OnSizeChanged` neu an. Die untere rechte Ecke (ca. 16 px) frei lassen
+- Platz für Deutsch einplanen: deutsche Texte sind oft 30–40 % länger als englische – Spalten und Beschriftungen
+  mit der deutschen Fassung prüfen, nicht mit der englischen
 - Einstellungen in Abschnitte gliedern: goldene Überschrift + dezenter Kasten darum; Reiter, wenn es viele sind
 - Bedienelemente: flache Knöpfe (Hover = goldener Rand), Häkchen als kleines Kästchen mit goldener Füllung
   (Klick auf den Text zählt mit), Regler als dünne Leiste mit goldenem Griff, Auswahllisten als flache Liste mit Pfeil

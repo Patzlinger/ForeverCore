@@ -344,7 +344,8 @@ if UI.AddArrow then UI.AddArrow(optBtn) end
 local tabs = {}
 local tabHolder = CreateFrame("Frame", nil, frame)
 tabHolder:SetPoint("TOPLEFT", 10, -64)
-tabHolder:SetSize(134, H - 120)
+tabHolder:SetPoint("BOTTOMLEFT", 10, 46) -- waechst mit der Fensterhoehe
+tabHolder:SetWidth(134)
 
 local function TabButton(i)
     local b = tabs[i]
@@ -377,7 +378,7 @@ local content = CreateFrame("Frame", nil, scroll)
 content:SetSize(400, 10)
 scroll:SetScrollChild(content)
 
-local ENTRY_W, ENTRY_H = 200, 40
+local ENTRY_W, ENTRY_H = 200, 40 -- Mindestbreite eines Eintrags; breiteres Fenster = mehr Spalten
 local entries = {}
 local sectionLabels = {}
 
@@ -478,7 +479,7 @@ end
 -- Hinweisleiste unten: veraltete Raenge
 local warnBar = CreateFrame("Frame", nil, frame, "BackdropTemplate")
 warnBar:SetPoint("BOTTOMLEFT", 152, 10)
-warnBar:SetPoint("BOTTOMRIGHT", -10, 10)
+warnBar:SetPoint("BOTTOMRIGHT", -22, 10) -- Platz fuer den Groessen-Griff in der Ecke
 warnBar:SetHeight(28)
 UI.SetFlat(warnBar, UI.COLOR and UI.COLOR.panel or { 0.1, 0.1, 0.12, 0.95 })
 warnBar.text = warnBar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
@@ -559,16 +560,21 @@ function Refresh()
         b:Show()
     end
 
-    -- Inhalt
+    -- Inhalt: so viele Spalten, wie in die aktuelle Fensterbreite passen
     for _, e in ipairs(entries) do e:Hide() e.entry = nil end
     for _, s in ipairs(sectionLabels) do s:Hide() end
+    local listW = math.max(ENTRY_W, math.floor(scroll:GetWidth() or 0))
+    local cols = math.max(1, math.floor((listW + 6) / (ENTRY_W + 6)))
+    local entryW = math.floor((listW - (cols - 1) * 6) / cols)
+    content:SetWidth(listW)
     local n, y, sec, col = 0, 0, 0, 0
     local function Place(e, label, sub, color)
-        if col == 2 then y = y - ENTRY_H - 2 col = 0 end
+        if col == cols then y = y - ENTRY_H - 2 col = 0 end
         n = n + 1
         local b = Entry(n)
         b:ClearAllPoints()
-        b:SetPoint("TOPLEFT", col * (ENTRY_W + 6), y)
+        b:SetWidth(entryW)
+        b:SetPoint("TOPLEFT", col * (entryW + 6), y)
         col = col + 1
         b.entry = e
         b.icon:SetTexture(e.icon or 134400)
@@ -586,7 +592,7 @@ function Refresh()
         local fs = Section(sec)
         fs:ClearAllPoints()
         fs:SetPoint("TOPLEFT", 2, y)
-        fs:SetWidth(ENTRY_W * 2)
+        fs:SetWidth(listW - 4)
         fs:SetText(text)
         fs:Show()
         y = y - (fs:GetStringHeight() or 14) - 6
@@ -683,6 +689,21 @@ function Refresh()
     end
     content:SetHeight(math.max(10, -y + (col > 0 and ENTRY_H or 0) + 4))
 end
+
+-- Fenstergroesse mit der Maus (Griff unten rechts): Inhalt ordnet sich beim Ziehen neu an.
+-- Rechtsklick auf den Griff = Standardgroesse. Gespeichert im ForeverHub (ForeverHubDB.windows).
+if UI.MakeResizable then
+    UI.MakeResizable(frame, { mode = "size", minW = 520, minH = 380, maxW = 1400, maxH = 1000 })
+end
+local resizeQueued = false
+frame:HookScript("OnSizeChanged", function()
+    if resizeQueued then return end
+    resizeQueued = true
+    C_Timer.After(0.05, function()
+        resizeQueued = false
+        Refresh()
+    end)
+end)
 
 -- Optionen: kleines Feld am Knopf (mit Regler fuer die Durchsichtigkeit)
 local optPanel = CreateFrame("Frame", nil, frame, "BackdropTemplate")

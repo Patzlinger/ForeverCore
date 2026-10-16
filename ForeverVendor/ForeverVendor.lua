@@ -846,7 +846,8 @@ end)
 ---------------------------------------------------------------------------
 local RefreshList
 do
-local options = UI.Window("ForeverVendorOptions", T("ForeverVendor – Einstellungen", "ForeverVendor – Settings"), 650, 690)
+-- 720 breit: die deutschen Beschriftungen links sind laenger und brauchen ~370 px bis zur rechten Spalte
+local options = UI.Window("ForeverVendorOptions", T("ForeverVendor – Einstellungen", "ForeverVendor – Settings"), 720, 690)
 local controls = {}
 local function Changed() UpdateIcon() end
 
@@ -868,9 +869,10 @@ local function Slider(x, y, label, key, minV, maxV, step, opts)
 end
 local goldFormat = { width = 150, format = function(v) return string.format(T("%g Gold", "%g gold"), v) end }
 
-local L, R = 18, 338
+local L, R = 18, 398
+local LW = R - L - 30 -- Breite der linken Abschnitte
 -- linke Spalte: Verhalten
-UI.Header(options, L, -32, T("Beim Händler", "At the merchant"), 300)
+UI.Header(options, L, -32, T("Beim Händler", "At the merchant"), LW)
 Check(L - 4, -54, T("Automatisch (Umschalt beim Öffnen = diesmal nicht)", "Automatic (Shift when opening = skip once)"), "enabled")
 Check(L - 4, -78, T("Graue Gegenstände verkaufen", "Sell grey items"), "sellGrey")
 Check(L - 4, -102, T("Reparieren", "Repair"), "repair")
@@ -879,21 +881,21 @@ Check(L - 4, -150, T("Nachkaufen (Liste, Essen, Trinken, Munition)", "Restock (l
 Check(L + 16, -174, T("nicht automatisch – nur per Knopf am Händler", "not automatic – only via button at the merchant"), "askBuy")
 Check(L - 4, -198, T("Zusammenfassung im Chat", "Summary in chat"), "summary")
 
-UI.Header(options, L, -240, T("Grenzen beim Nachkaufen", "Restock limits"), 300)
+UI.Header(options, L, -240, T("Grenzen beim Nachkaufen", "Restock limits"), LW)
 Slider(L + 2, -264, T("Höchstens pro Händlerbesuch", "At most per merchant visit"), "maxSpend", 0, 20, 0.5, goldFormat)
 Slider(L + 2, -304, T("Gold-Rücklage (nie darunter)", "Gold reserve (never below)"), "reserve", 0, 100, 1, goldFormat)
 
-UI.Header(options, L, -362, T("Essen und Trinken (bestes für deine Stufe)", "Food and drink (best for your level)"), 300)
+UI.Header(options, L, -362, T("Essen und Trinken (bestes für deine Stufe)", "Food and drink (best for your level)"), LW)
 Check(L - 4, -384, T("Essen", "Food"), "food")
 Slider(L + 120, -384, T("Menge", "Amount"), "foodCount", 0, 80, 5, { width = 100 })
 Check(L - 4, -426, T("Trinken", "Drink"), "drink")
 Slider(L + 120, -426, T("Menge", "Amount"), "drinkCount", 0, 80, 5, { width = 100 })
 
-UI.Header(options, L, -486, T("Munition (Jäger)", "Ammo (hunter)"), 300)
+UI.Header(options, L, -486, T("Munition (Jäger)", "Ammo (hunter)"), LW)
 Check(L - 4, -508, T("Passend zur Waffe nachkaufen", "Restock to match your weapon"), "ammo")
 Slider(L + 2, -538, T("Menge", "Amount"), "ammoCount", 200, 3000, 200, { width = 150 })
 
-UI.Header(options, L, -598, T("Anzeige", "Display"), 300)
+UI.Header(options, L, -598, T("Anzeige", "Display"), LW)
 Check(L - 4, -620, T("Kleines Symbol anzeigen", "Show small icon"), "showIcon")
 local lockCheck = Check(L - 4, -644, T("Symbol sperren (entsperrt: ziehen)", "Lock icon (unlocked: drag)"), "locked")
 
