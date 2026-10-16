@@ -109,6 +109,7 @@ local function UpdateTabLook(tab, selected)
         local frame = _G["ChatFrame" .. tab:GetID()]
         selected = frame and frame:IsShown()
     end
+    if ns.imActive then selected = false end -- der Messenger-Reiter ist gerade der aktive
     local fs = tab:GetFontString()
     if selected then
         tab.fcFlat:SetColors({ C.header[1], C.header[2], C.header[3], 0.95 }, { C.accent[1], C.accent[2], C.accent[3], 0.75 })
@@ -184,8 +185,12 @@ local function SkinEditBox(frame)
     if not edit or edit.fcFlat then return end
     local area = CreateFrame("Frame", nil, edit)
     area:EnableMouse(false)
-    area:SetPoint("TOPLEFT", edit, "TOPLEFT", 4, -4)
-    area:SetPoint("BOTTOMRIGHT", edit, "BOTTOMRIGHT", -4, 4)
+    -- Hoehe vom Eingabefeld, Breite genau wie der Rahmen des Chatfensters (buendig links und rechts)
+    local bd = backdrops[frame]
+    area:SetPoint("TOP", edit, "TOP", 0, -4)
+    area:SetPoint("BOTTOM", edit, "BOTTOM", 0, 4)
+    area:SetPoint("LEFT", bd or edit, "LEFT", bd and 0 or 4, 0)
+    area:SetPoint("RIGHT", bd or edit, "RIGHT", bd and 0 or -4, 0)
     edit.fcFlat = FlatTextures(edit, area, "BACKGROUND")
     edit:HookScript("OnEditFocusGained", UpdateEditLook)
     edit:HookScript("OnEditFocusLost", UpdateEditLook)
@@ -242,12 +247,15 @@ local function ApplySideButtons(frame)
 end
 
 ---------------------------------------------------------------------------
--- Eigene Knopfleiste ueber dem Hauptchat (rechts oben)
+-- Eigene Knopfleiste in der obersten Zeile des Chatfensters (rechts neben den Reitern).
+-- Blizzards Reiterleiste (GENERAL_CHAT_DOCK) bekommt rechts entsprechend weniger Platz – Blizzard verteilt
+-- die Reiter dann selbst auf die verbleibende Breite (bei vielen Reitern wie gewohnt mit Ueberlauf-Pfeil).
 ---------------------------------------------------------------------------
+local TOOL_SIZE, TOOL_GAP = 18, 3
 local toolbar
 local function ToolButton(parent, icon, tip, onClick)
     local b = CreateFrame("Button", nil, parent, "BackdropTemplate")
-    b:SetSize(20, 20)
+    b:SetSize(TOOL_SIZE, TOOL_SIZE)
     UI.SetFlat(b, { C.button[1], C.button[2], C.button[3], 0.85 })
     HoverEdges(b, b)
     b.icon = b:CreateTexture(nil, "ARTWORK")
@@ -270,34 +278,64 @@ local function BuildToolbar()
     local bd = backdrops[main]
     if not bd or toolbar then return end
     toolbar = CreateFrame("Frame", "ForeverChatToolbar", UIParent)
-    toolbar:SetSize(1, 20)
-    toolbar:SetPoint("BOTTOMRIGHT", bd, "TOPRIGHT", 0, 2)
-    toolbar:SetFrameStrata("LOW")
+    toolbar:SetHeight(TOOL_SIZE)
+    -- senkrecht mittig in der Reiterzeile, rechts buendig im Rahmen
+    toolbar:SetPoint("RIGHT", bd, "TOPRIGHT", -4, -(TAB_ROOM / 2) - 1)
+    toolbar:SetFrameStrata("MEDIUM") -- wie die Reiter
     toolbar:SetAlpha(0.55)
     local buttons = {
         { "Interface\\Buttons\\UI-OptionsButton", T("ForeverChat-Einstellungen", "ForeverChat settings"),
             function() ns.ToggleOptions() end },
         { "Interface\\Buttons\\UI-GuildButton-PublicNote-Up", T("Chat kopieren", "Copy chat"),
             function() ns.ShowCopyChat() end },
-        { "Interface\\FriendsFrame\\UI-Toast-FriendOnlineIcon", T("Freunde und Gilde", "Friends and guild"),
-            function() if ToggleFriendsFrame then ToggleFriendsFrame() end end },
         { "Interface\\GossipFrame\\GossipGossipIcon", T("Kanäle", "Channels"),
             function() if ToggleChannelFrame then ToggleChannelFrame() end end },
         { "Interface\\ChatFrame\\UI-ChatIcon-ScrollEnd-Up", T("Zum Ende springen", "Jump to the end"),
             function() ns.SelectedChatFrame():ScrollToBottom() end },
     }
     local prev
+    toolbar.iconWidth = 0
     for _, def in ipairs(buttons) do
         local b = ToolButton(toolbar, def[1], def[2], def[3])
-        if prev then b:SetPoint("RIGHT", prev, "LEFT", -3, 0) else b:SetPoint("RIGHT", toolbar, "RIGHT", 0, 0) end
+        if prev then b:SetPoint("RIGHT", prev, "LEFT", -TOOL_GAP, 0) else b:SetPoint("RIGHT", toolbar, "RIGHT", 0, 0) end
         prev = b
+        toolbar.iconWidth = toolbar.iconWidth + TOOL_SIZE + (toolbar.iconWidth > 0 and TOOL_GAP or 0)
     end
-    main:HookScript("OnShow", function() if ns.GetDB().toolbar then toolbar:Show() end end)
+    toolbar.lastIcon = prev
+    -- Reiter "IM" (Messenger) links neben den Knoepfen
+    if ns.CreateIMTab then
+        toolbar.imTab = ns.CreateIMTab(toolbar)
+        toolbar.imTab:SetPoint("RIGHT", prev, "LEFT", -6, 0)
+    end
 end
+
+-- Breite der Knopfleiste (mit IM-Reiter, falls der Messenger an ist)
+local function ToolbarWidth()
+    if not toolbar or not toolbar:IsShown() then return 0 end
+    local w = toolbar.iconWidth
+    if toolbar.imTab and toolbar.imTab:IsShown() then w = w + 6 + toolbar.imTab:GetWidth() end
+    return w
+end
+
+-- Blizzards Reiterleiste rechts um die Knopfleiste kuerzen
+local function ApplyDockSpace()
+    local dock = _G.GENERAL_CHAT_DOCK
+    local primary = dock and (dock.primary or ns.MainChatFrame())
+    if not (dock and primary and primary.Background) then return end
+    local space = ToolbarWidth()
+    if space > 0 then space = space + 10 end
+    dock:SetPoint("BOTTOMRIGHT", primary.Background, "TOPRIGHT", -space, 0)
+    if _G.FCFDock_SetDirty then _G.FCFDock_SetDirty(dock) end
+end
+ns.ApplyDockSpace = ApplyDockSpace
 
 local function ApplyToolbar()
     BuildToolbar()
-    if toolbar then toolbar:SetShown(ns.GetDB().toolbar and true or false) end
+    if not toolbar then return end
+    toolbar:SetShown(ns.GetDB().toolbar and true or false)
+    if toolbar.imTab then toolbar.imTab:SetShown(ns.GetDB().messenger and true or false) end
+    toolbar:SetWidth(math.max(1, ToolbarWidth()))
+    ApplyDockSpace()
 end
 
 ---------------------------------------------------------------------------
@@ -346,6 +384,22 @@ function ns.SetupSkin()
     for _, fn in ipairs({ "FCF_OpenTemporaryWindow", "FCF_OpenNewWindow" }) do
         if _G[fn] then hooksecurefunc(fn, function() C_Timer.After(0, ns.ApplySkin) end) end
     end
+    -- Blizzard setzt die Reiterleiste beim Wechsel des Hauptfensters neu: Platz fuer die Knopfleiste erneut lassen
+    if _G.FCFDock_SetPrimary then hooksecurefunc("FCFDock_SetPrimary", function() ApplyDockSpace() end) end
+    -- Klick auf einen Blizzard-Reiter beendet die Messenger-Ansicht
+    if _G.FCF_Tab_OnClick then
+        hooksecurefunc("FCF_Tab_OnClick", function(_, button)
+            if button ~= "RightButton" and ns.HideIM then ns.HideIM() end
+        end)
+    end
+end
+
+-- alle Reiter neu einfaerben (z. B. wenn der Messenger auf- oder zugeht)
+function ns.UpdateAllTabLooks()
+    ns.ForEachChatFrame(function(frame)
+        local tab = _G[frame:GetName() .. "Tab"]
+        if tab then UpdateTabLook(tab) end
+    end)
 end
 
 ---------------------------------------------------------------------------

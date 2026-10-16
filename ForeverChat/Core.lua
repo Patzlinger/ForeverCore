@@ -34,6 +34,9 @@ ns.DEFAULTS = {
     urls = true,             -- Webadressen klickbar (Fenster zum Kopieren)
     mention = true,          -- eigenen Namen in fremden Nachrichten hervorheben
     mentionSound = false,    -- dazu ein leiser Ton
+    -- Instant Messaging (Messenger.lua)
+    messenger = true,        -- Reiter "IM": Fluestern je Person in eigenem Unterreiter
+    whispersInMain = false,  -- Fluestern zusaetzlich im normalen Chat zeigen
     -- Eingabe
     arrowHistory = true,     -- Pfeiltasten blaettern im Verlauf (ohne Alt)
     shiftScroll = true,      -- Umschalt + Mausrad = ganz nach oben/unten

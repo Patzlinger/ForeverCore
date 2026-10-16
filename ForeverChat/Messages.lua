@@ -114,6 +114,11 @@ local MENTION_EVENTS = {
 local function MessageFilter(chatFrame, event, msg, ...)
     if type(msg) ~= "string" then return false end
     local db = ns.GetDB()
+    -- Messenger an und "auch im Hauptchat" aus: Fluestern nur im IM-Reiter zeigen. Dieser Filter laeuft (wie das
+    -- Einsammeln im Messenger) nur bei lesbaren Werten – gesperrte Fluesternachrichten bleiben im Hauptchat.
+    if db.messenger and not db.whispersInMain and ns.WHISPER_EVENTS and ns.WHISPER_EVENTS[event] then
+        return true
+    end
     local changed = false
     local n = select("#", ...)
     local args = { ... } -- arg2 … arg14 (Absender, Sprache, Kanal, …)

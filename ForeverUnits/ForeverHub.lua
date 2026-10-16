@@ -14,7 +14,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 23
+local VERSION = 24
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -1828,14 +1828,19 @@ local function OpenAddon(e)
 end
 
 local function BuildHubWindow()
-    local list = {}
+    local list, cmdOf = {}, {}
     for _, k in ipairs(KNOWN) do
-        if IsInstalled(k.name) then list[#list + 1] = k.name end
+        if IsInstalled(k.name) then
+            list[#list + 1] = k.name
+            cmdOf[k.name] = k.cmd
+        end
     end
 
     -- Fussbereich: Sprache (nur deutscher Client), Verschieben/Minimap, Hinweis
     local bottomH = UI.GERMAN_CLIENT and 122 or 92
     local f = UI.Window("ForeverHubWindow", UI.NAME, 420, 26 + 12 + math.max(#list, 1) * HUB_ROW_H + bottomH)
+    -- eine Ebene unter den Addon-Fenstern (DIALOG): "Öffnen" laesst den Hub offen, das Addon-Fenster liegt darueber
+    f:SetFrameStrata("HIGH")
     hubWindow = f
     f.rows = {}
 
@@ -1858,6 +1863,13 @@ local function BuildHubWindow()
         row.label = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         row.label:SetPoint("TOPLEFT", row.icon, "TOPRIGHT", 10, 1)
         row.label:SetText(name)
+        -- Chatbefehl des Addons als Info neben dem Namen
+        if cmdOf[name] then
+            row.cmd = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+            row.cmd:SetPoint("LEFT", row.label, "RIGHT", 8, 0)
+            row.cmd:SetTextColor(0.6, 0.6, 0.6)
+            row.cmd:SetText(cmdOf[name])
+        end
         row.note = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
         row.note:SetPoint("TOPLEFT", row.label, "BOTTOMLEFT", 0, -2)
         row.note:SetPoint("RIGHT", row, "RIGHT", -100, 0)
@@ -1867,8 +1879,7 @@ local function BuildHubWindow()
         row.note:SetText(ok and notes or "")
 
         row.open = UI.Button(row, T("Öffnen", "Open"), 84, function()
-            f:Hide()
-            OpenAddon(EntryOf(name))
+            OpenAddon(EntryOf(name)) -- Hub bleibt im Hintergrund offen
         end)
         row.open:SetPoint("RIGHT", -4, 0)
         row.status = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")

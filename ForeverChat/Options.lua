@@ -2,7 +2,7 @@
 local ADDON_NAME, ns = ...
 local UI, T = ns.UI, ns.T
 
-local options = UI.Window("ForeverChatOptions", T("ForeverChat – Einstellungen", "ForeverChat – Settings"), 660, 600)
+local options = UI.Window("ForeverChatOptions", T("ForeverChat – Einstellungen", "ForeverChat – Settings"), 660, 640)
 local loaders = {} -- Funktionen, die beim Oeffnen die aktuellen Werte anzeigen
 
 local function Changed()
@@ -76,6 +76,16 @@ UI.Hint(options, L + 2, -334, 300, T("Den Hauptchat verwaltet Blizzards Bearbeit
 UI.Header(options, L, -392, T("Eingabe", "Input"), 300)
 Check(L - 4, -414, T("Pfeiltasten blättern im Verlauf (ohne Alt)", "Arrow keys browse history (no Alt)"), "arrowHistory")
 Check(L - 4, -438, T("Umschalt + Mausrad: ganz nach oben/unten", "Shift + mouse wheel: jump to top/bottom"), "shiftScroll")
+
+UI.Header(options, L, -480, T("Instant Messaging", "Instant messaging"), 300)
+Check(L - 4, -502, T("Reiter „IM“: je Person ein Unterreiter", "“IM” tab: one sub-tab per person"), "messenger", function(on)
+    if not on and ns.HideIM then ns.HideIM() end
+    Changed()
+end)
+Check(L + 16, -526, T("Flüstern zusätzlich im normalen Chat", "Also show whispers in the normal chat"), "whispersInMain")
+UI.Hint(options, L + 2, -552, 300, T("Antworten im IM-Reiter über das eigene Feld (Enter). Ist in Blizzards Chat-Einstellungen "
+    .. "„Flüstern in neuem Fenster“ an, öffnet Blizzard zusätzlich eigene Reiter.",
+    "Reply in the IM tab with its own input (Enter). If Blizzard's “whispers in new window” is on, Blizzard opens extra tabs too."))
 
 ---------------------------------------------------------------------------
 -- rechte Spalte

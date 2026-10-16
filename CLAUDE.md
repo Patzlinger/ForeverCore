@@ -106,7 +106,8 @@ Philosophie, Regeln, Design und Abläufe. Wenn etwas hier nicht steht: am besteh
      `Grid`, `AddMover`, `BeginDrag`/`EndDrag` (Raster + Einrasten), `Round`, `CenterOffset`, `COLOR`, `LOGO`, `NAME`
   2. **Sammelknopf**: ab zwei Forever-Addons werden deren Minimap-Knöpfe ausgeblendet und in einer Liste am
      Forever-Core-Knopf gesammelt (Klick wird an den Original-Knopf weitergereicht)
-  3. **Hub-Fenster** `/forever` (`/fhub`): alle installierten Forever-Addons mit "Öffnen"-Knopf ins jeweilige Menü,
+  3. **Hub-Fenster** `/forever` (`/fhub`, Ebene `HIGH`, bleibt beim Öffnen eines Addons im Hintergrund offen):
+     alle installierten Forever-Addons mit Chatbefehl und "Öffnen"-Knopf ins jeweilige Menü,
      "Alle verschieben", Minimap-Knopf ein/aus, **Sprache für alle Forever-Addons**; `/forever reset` holt Knöpfe zurück
   4. **Gemeinsamer Verschiebe-Modus** `/fmove`: entsperrt/sperrt alle angemeldeten Addons auf einmal
   5. **Blizzard-Optionsmenü** (Esc » Optionen » Reiter "AddOns"): Eintrag "Forever Core" mit Übersicht und je
@@ -337,6 +338,12 @@ Damit alle Einstellungsfenster gleich aussehen, gelten diese Maße. Quelle: `For
   - Eigene klickbare Links: `|Haddon:<Addonname>:…|h…|h`; Klicks kommen über `EventRegistry` "SetItemRef"
   - Den Hauptchat (`ChatFrame1`) verwaltet der Bearbeitungsmodus – nicht selbst verschieben
   - Nur Blizzard-Grafiken unsichtbar machen (`UI.HideBlizzard`), eigene Flächen daneben/als Zusatz-Texturen
+  - Blizzards Eingabefeld und den Merker für "Antworten" (`ChatFrameUtil.SetLastTellTarget`) nie aus Addon-Code
+    setzen: ein verunreinigtes Eingabefeld kann danach Befehle wie `/cast` blockieren. Der Messenger hat deshalb
+    ein eigenes Antwortfeld (`C_ChatInfo.SendChatMessage` auf Enter). Wird Flüstern aus dem Hauptchat gefiltert,
+    kennt Blizzards /r den Absender nicht – im IM-Reiter antworten
+  - Die Reiterleiste (`GENERAL_CHAT_DOCK`) hängt an zwei Ankern über `ChatFrame1.Background`; ForeverChat kürzt sie
+    rechts um die eigene Knopfleiste und setzt das nach `FCFDock_SetPrimary` erneut
 
 ## 15. Git-Ablauf
 - Vor dem Arbeiten: `git pull --ff-only` (bzw. `git pull --rebase`, wenn lokal schon Commits liegen)

@@ -13,5 +13,6 @@ ForeverHub.lua
 Core.lua
 Messages.lua
 Skin.lua
+Messenger.lua
 Copy.lua
 Options.lua
