@@ -161,6 +161,14 @@ ihn identisch um. Neue Oberflächen nutzen eine dieser beiden – keine dritten 
 - Schrift: Standardschriften des Clients (`STANDARD_TEXT_FONT`, `GameFont*`); Zeichen siehe Abschnitt 3
 
 ### 7.1 Menü-Aufbau im Detail (Maße aus dem ForeverQuests-Menü)
+**Umsetzung im Hub (ab v23):** `UI.MenuWindow(name, titel, untertitel, w, h)`, `UI.MenuPanel(parent, titel)`,
+`UI.MenuCheck(parent, x, y, text, get, set, tooltip)`, `UI.MenuSlider(parent, x, y, text, min, max, step, get, set)`,
+`UI.MenuDropdown(parent, x, y, text, liste, get, set)`, `UI.MenuNumber(parent, x, y, text, get, set)`,
+`UI.MenuButton(parent, text, w, h, onClick, tooltip)`, `UI.MenuSidebar(parent, x, y, bereiche, onSelect)`,
+`UI.GetTooltip()`, Maße in `UI.MENU`. Alle Bedienelemente haben `:Refresh()` und werden beim Öffnen des Fensters
+automatisch aktualisiert (`fenster:RefreshAll()`). Beispiel: ForeverVendor (Bereichsliste links, Feld rechts, Fußleiste).
+Ergänzung: Der Schließen-Knopf der Fußleiste sitzt 16 px weiter innen, weil unten rechts der Größen-Griff liegt.
+
 Damit alle Einstellungsfenster gleich aussehen, gelten diese Maße. Quelle: `ForeverQuests/Options.lua` und
 `ForeverQuests/Style.lua` (`ForeverBars/Style.lua` ist identisch). Alle Angaben in Pixeln, y nach unten negativ.
 

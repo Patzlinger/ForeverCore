@@ -14,7 +14,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 22
+local VERSION = 23
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -893,6 +893,325 @@ function UI.ChoiceMenu(owner, list, current, pick)
         return true
     end
     return false
+end
+
+---------------------------------------------------------------------------
+-- Menue-Bausteine nach CLAUDE.md 7.1 (Masse aus dem ForeverQuests-Menue, von flowfy festgelegt).
+-- Neue Einstellungsfenster werden damit gebaut; aeltere (UI.Window/UI.Header) bleiben vorerst unveraendert.
+-- Jedes Bedienelement hat :Refresh() und meldet sich beim Fenster an – beim Oeffnen zeigt es die aktuellen Werte.
+---------------------------------------------------------------------------
+UI.MENU = { pad = 12, headerHeight = 40, panelTop = -52, contentX = 14, contentY = -44, checkStep = 24,
+            sliderStep = 46, choiceStep = 30, dropdownX = 136, footerWidth = 150, footerHeight = 26,
+            sidebarWidth = 200 }
+
+local function SetAccentBorder(frame, on)
+    if on then
+        frame:SetBackdropBorderColor(C.accent[1], C.accent[2], C.accent[3], 0.9)
+    else
+        frame:SetBackdropBorderColor(C.border[1], C.border[2], C.border[3], 1)
+    end
+end
+
+-- Eigener Tooltip im Forever-Stil: dunkel, graue Raender, goldene Linie oben (Blizzards Zierrand ausgeblendet)
+local menuTip
+function UI.GetTooltip()
+    if menuTip then return menuTip end
+    local tip = CreateFrame("GameTooltip", "ForeverHubTooltip", UIParent, "GameTooltipTemplate")
+    tip:SetFrameStrata("TOOLTIP")
+    local bg = tip:CreateTexture(nil, "BACKGROUND", nil, -8)
+    bg:SetAllPoints()
+    bg:SetColorTexture(C.background[1], C.background[2], C.background[3], 0.97)
+    local function Edge(p1, p2, horizontal, color)
+        local e = tip:CreateTexture(nil, "BACKGROUND", nil, -7)
+        e:SetColorTexture(color[1], color[2], color[3], color[4] or 1)
+        e:SetPoint(p1)
+        e:SetPoint(p2)
+        if horizontal then e:SetHeight(1) else e:SetWidth(1) end
+    end
+    Edge("TOPLEFT", "TOPRIGHT", true, { C.accent[1], C.accent[2], C.accent[3], 0.7 })
+    Edge("BOTTOMLEFT", "BOTTOMRIGHT", true, C.border)
+    Edge("TOPLEFT", "BOTTOMLEFT", false, C.border)
+    Edge("TOPRIGHT", "BOTTOMRIGHT", false, C.border)
+    local function HideNineSlice(self) if self.NineSlice then self.NineSlice:Hide() end end
+    HideNineSlice(tip)
+    tip:HookScript("OnShow", HideNineSlice)
+    menuTip = tip
+    return tip
+end
+
+-- Tooltip: Text oder Funktion(tip)
+local function ShowMenuTip(owner, tooltip)
+    if not tooltip then return end
+    local tip = UI.GetTooltip()
+    tip:SetOwner(owner, "ANCHOR_RIGHT")
+    if type(tooltip) == "function" then tooltip(tip) else tip:AddLine(tooltip, 1, 1, 1, true) end
+    tip:Show()
+end
+
+local function RegisterControl(parent, control)
+    local w = parent.menuWindow or parent
+    w.menuControls = w.menuControls or {}
+    tinsert(w.menuControls, control)
+end
+
+-- Fenster: Titelleiste 40 hoch mit grossem Titel und Untertitel, nur die Titelleiste verschiebt
+function UI.MenuWindow(name, title, subtitle, width, height)
+    local f = CreateFrame("Frame", name, UIParent, "BackdropTemplate")
+    f:SetSize(width, height)
+    f:SetPoint("CENTER")
+    f:SetFrameStrata("DIALOG")
+    f:SetMovable(true)
+    f:SetClampedToScreen(true)
+    f:EnableMouse(true)
+    UI.SetFlat(f, C.background)
+    f:Hide()
+    if name then tinsert(UISpecialFrames, name) end
+
+    local header = CreateFrame("Frame", nil, f, "BackdropTemplate")
+    header:SetPoint("TOPLEFT", 1, -1)
+    header:SetPoint("TOPRIGHT", -1, -1)
+    header:SetHeight(UI.MENU.headerHeight)
+    header:SetBackdrop({ bgFile = WHITE })
+    header:SetBackdropColor(C.header[1], C.header[2], C.header[3], 1)
+    header:EnableMouse(true)
+    header:RegisterForDrag("LeftButton")
+    header:SetScript("OnDragStart", function() f:StartMoving() end)
+    header:SetScript("OnDragStop", function() f:StopMovingOrSizing() end)
+    local line = header:CreateTexture(nil, "ARTWORK")
+    line:SetPoint("BOTTOMLEFT")
+    line:SetPoint("BOTTOMRIGHT")
+    line:SetHeight(1)
+    line:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 0.6)
+    f.header = header
+
+    f.TitleText = header:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    f.TitleText:SetPoint("LEFT", 16, 0)
+    f.TitleText:SetText(title or "")
+    f.SubText = header:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    f.SubText:SetPoint("LEFT", f.TitleText, "RIGHT", 10, -1)
+    f.SubText:SetText(subtitle or "")
+    local close = CreateFrame("Button", nil, header, "UIPanelCloseButton")
+    close:SetPoint("RIGHT", -6, 0)
+    close:SetScript("OnClick", function() f:Hide() end)
+    f.CloseButton = close
+
+    f.menuWindow = f
+    function f:RefreshAll()
+        for _, c in ipairs(self.menuControls or {}) do if c.Refresh then c:Refresh() end end
+    end
+    f:HookScript("OnShow", function(self) self:RefreshAll() end)
+    f:HookScript("OnHide", UI.HideMenu) -- offene Auswahlliste schliessen
+    if name then UI.MakeResizable(f) end
+    return f
+end
+
+-- Feld (Abschnitt): Flaeche, Ueberschrift bei 14/-12, Trennlinie bei -30; Inhalt ab 14/-44
+function UI.MenuPanel(parent, title)
+    local p = CreateFrame("Frame", nil, parent, "BackdropTemplate")
+    UI.SetFlat(p, C.panel)
+    p.menuWindow = parent.menuWindow or parent
+    if title then
+        p.title = p:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        p.title:SetPoint("TOPLEFT", 14, -12)
+        p.title:SetText(title)
+        local line = p:CreateTexture(nil, "ARTWORK")
+        line:SetColorTexture(1, 1, 1, 0.08)
+        line:SetHeight(1)
+        line:SetPoint("TOPLEFT", 12, -30)
+        line:SetPoint("TOPRIGHT", -12, -30)
+    end
+    return p
+end
+
+-- Knopf: Hover = hellere Flaeche + goldener Rand, Tooltip im eigenen Stil; Hoehe 22 (Feld) bzw. 26 (Fussleiste)
+function UI.MenuButton(parent, text, width, height, onClick, tooltip)
+    local b = CreateFrame("Button", nil, parent, "BackdropTemplate")
+    b:SetSize(width, height or 22)
+    UI.SetFlat(b, C.button)
+    local label = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    label:SetPoint("CENTER")
+    b:SetFontString(label)
+    b:SetDisabledFontObject("GameFontDisableSmall")
+    b:SetText(text or "")
+    b.tooltip = tooltip
+    b:SetScript("OnEnter", function(self)
+        if not self:IsEnabled() then return end
+        self:SetBackdropColor(C.buttonHover[1], C.buttonHover[2], C.buttonHover[3], 1)
+        SetAccentBorder(self, true)
+        ShowMenuTip(self, self.tooltip)
+    end)
+    b:SetScript("OnLeave", function(self)
+        self:SetBackdropColor(C.button[1], C.button[2], C.button[3], 1)
+        SetAccentBorder(self, false)
+        UI.GetTooltip():Hide()
+    end)
+    if onClick then b:SetScript("OnClick", onClick) end
+    return b
+end
+
+-- Haekchen: Kaestchen 16, Beschriftung GameFontHighlight 8 px daneben (mit anklickbar), Hover goldener Rand
+function UI.MenuCheck(parent, x, y, label, get, set, tooltip)
+    local cb = CreateFrame("CheckButton", nil, parent, "BackdropTemplate")
+    cb:SetSize(16, 16)
+    cb:SetPoint("TOPLEFT", x, y)
+    UI.SetFlat(cb, C.input)
+    local mark = cb:CreateTexture(nil, "ARTWORK")
+    mark:SetPoint("TOPLEFT", 3, -3)
+    mark:SetPoint("BOTTOMRIGHT", -3, 3)
+    mark:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 1)
+    cb:SetCheckedTexture(mark)
+    cb.label = cb:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    cb.label:SetPoint("LEFT", cb, "RIGHT", 8, 0)
+    cb.label:SetJustifyH("LEFT")
+    cb.label:SetText(label)
+    cb.Text = cb.label
+    cb:SetHitRectInsets(0, -(cb.label:GetStringWidth() + 10), -3, -3)
+    cb:SetScript("OnEnter", function(self) SetAccentBorder(self, true) ShowMenuTip(self, tooltip) end)
+    cb:SetScript("OnLeave", function(self) SetAccentBorder(self, false) UI.GetTooltip():Hide() end)
+    cb:SetScript("OnClick", function(self) if set then set(self:GetChecked() and true or false) end end)
+    function cb:Refresh() if get then self:SetChecked(get() and true or false) end end
+    RegisterControl(parent, cb)
+    return cb
+end
+
+-- Zahl anzeigen: ganze Zahlen ohne Nachkommastellen
+local function FormatNumber(v)
+    if math.abs(v - math.floor(v + 0.5)) < 0.001 then return tostring(math.floor(v + 0.5)) end
+    return string.format("%.1f", v)
+end
+
+-- Zahlenfeld 50 x 20: Enter uebernimmt (auf min/max begrenzt), Escape verwirft
+local function MenuNumberBox(parent, get, set, minV, maxV, step)
+    local e = UI.EditBox(parent, 50, 20)
+    e:SetJustifyH("CENTER")
+    local function Apply(self)
+        local text = (self:GetText() or ""):gsub(",", ".") -- Komma als Dezimalzeichen erlauben
+        local v = tonumber(text)
+        if v then
+            if step and step > 0 then v = math.floor(v / step + 0.5) * step end
+            if minV then v = math.max(minV, v) end
+            if maxV then v = math.min(maxV, v) end
+            set(v)
+        end
+        self:SetText(FormatNumber(get() or 0))
+        self:ClearFocus()
+    end
+    e:SetScript("OnEnterPressed", Apply)
+    e:SetScript("OnEscapePressed", function(self) self:SetText(FormatNumber(get() or 0)) self:ClearFocus() end)
+    return e
+end
+
+-- Regler: graue Beschriftung, 18 px darunter die Leiste (230 breit), rechts daneben (12 px) das Zahlenfeld
+function UI.MenuSlider(parent, x, y, label, minV, maxV, step, get, set, opts)
+    opts = opts or {}
+    local title = parent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    title:SetPoint("TOPLEFT", x, y)
+    title:SetTextColor(0.75, 0.75, 0.75)
+    title:SetText(label)
+    local s = CreateFrame("Slider", nil, parent)
+    s:SetOrientation("HORIZONTAL")
+    s:SetSize(opts.width or 230, 16)
+    s:SetPoint("TOPLEFT", x, y - 18)
+    UI.StyleSlider(s)
+    s:SetMinMaxValues(minV, maxV)
+    s:SetValueStep(step)
+    if s.SetObeyStepOnDrag then s:SetObeyStepOnDrag(true) end
+    s.title = title
+    local box = MenuNumberBox(parent, get, function(v) s:SetValue(v) end, minV, maxV, step)
+    box:SetPoint("LEFT", s, "RIGHT", 12, 0)
+    s.box = box
+    s:SetScript("OnValueChanged", function(self, value)
+        value = math.floor(value / step + 0.5) * step
+        box:SetText(FormatNumber(value))
+        if self.loading or self.lastValue == value then return end
+        self.lastValue = value
+        set(value)
+    end)
+    function s:Refresh()
+        local v = get() or minV
+        self.loading = true
+        self.lastValue = v
+        self:SetValue(v)
+        box:SetText(FormatNumber(v))
+        self.loading = false
+    end
+    RegisterControl(parent, s)
+    return s
+end
+
+-- Auswahlfeld: Beschriftung links, Knopf 136 px weiter rechts (158 x 22) mit Pfeil; Liste im Forever-Stil
+-- list = { { key = …, label = … }, … }
+function UI.MenuDropdown(parent, x, y, label, list, get, set, width)
+    local b = UI.MenuButton(parent, "", width or 158, 22)
+    b:SetPoint("TOPLEFT", x + UI.MENU.dropdownX, y)
+    UI.AddArrow(b)
+    local fs = parent:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    fs:SetPoint("LEFT", b, "LEFT", -UI.MENU.dropdownX, 0)
+    fs:SetText(label)
+    b.label = fs
+    local function LabelOf(key)
+        for _, c in ipairs(list) do if c.key == key then return c.label end end
+        return tostring(key or "")
+    end
+    b:SetScript("OnClick", function(self)
+        local items = {}
+        for _, c in ipairs(list) do
+            items[#items + 1] = { radio = true, text = c.label, checked = function() return get() == c.key end,
+                onClick = function() set(c.key) self:Refresh() end }
+        end
+        UI.ShowMenu(self, items, { align = "LEFT" })
+    end)
+    function b:Refresh() self:SetText(LabelOf(get())) end
+    RegisterControl(parent, b)
+    return b
+end
+
+-- Zahl mit Beschriftung (z. B. X/Y-Position): Beschriftung GameFontHighlight, Zahlenfeld 50 x 20 daneben
+function UI.MenuNumber(parent, x, y, label, get, set, minV, maxV)
+    local fs = parent:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    fs:SetPoint("TOPLEFT", x, y - 3)
+    fs:SetText(label)
+    local box = MenuNumberBox(parent, get, set, minV, maxV, 1)
+    box:SetPoint("LEFT", fs, "RIGHT", 8, 0)
+    function box:Refresh() self:SetText(FormatNumber(get() or 0)) end
+    RegisterControl(parent, box)
+    return box
+end
+
+-- Bereichsliste links (grosse Menues): Eintraege 20 hoch im 22er-Raster, gewaehlter Eintrag gold
+-- items = { { key = …, label = … } }; onSelect(key)
+function UI.MenuSidebar(parent, x, y, items, onSelect, width)
+    local list = CreateFrame("Frame", nil, parent)
+    list:SetPoint("TOPLEFT", x, y)
+    list:SetSize(width or UI.MENU.sidebarWidth, #items * 22)
+    list.buttons = {}
+    for i, item in ipairs(items) do
+        local b = UI.MenuButton(list, item.label, width or UI.MENU.sidebarWidth, 20)
+        b:SetPoint("TOPLEFT", 0, -(i - 1) * 22)
+        local fs = b:GetFontString()
+        fs:ClearAllPoints()
+        fs:SetPoint("LEFT", 10, 0)
+        fs:SetPoint("RIGHT", -8, 0)
+        fs:SetJustifyH("LEFT")
+        b.key = item.key
+        b:SetScript("OnClick", function() list:Select(item.key) end)
+        local leave = b:GetScript("OnLeave")
+        b:SetScript("OnLeave", function(self)
+            leave(self)
+            if list.selected == self.key then SetAccentBorder(self, true) end
+        end)
+        list.buttons[i] = b
+    end
+    function list:Select(key)
+        self.selected = key
+        for _, b in ipairs(self.buttons) do
+            local on = b.key == key
+            SetAccentBorder(b, on)
+            b:GetFontString():SetTextColor(on and C.accent[1] or 1, on and C.accent[2] or 1, on and C.accent[3] or 1)
+        end
+        if onSelect then onSelect(key) end
+    end
+    return list
 end
 
 -- Minimap-Knopf im gleichen Look fuer alle Forever-Addons
