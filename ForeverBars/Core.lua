@@ -141,6 +141,8 @@ ns.defaults.bars.prof.scale = 80
 -- Verpflegungsleiste: gespiegelt zur Berufeleiste rechts neben den Aktionsleisten, gleiche Größe, mit Rahmen
 ns.defaults.bars.food.buttons = 12 -- festes Raster: 4 breit, 3 Reihen (Essen, Getränke, Fläschchen)
 ns.defaults.bars.food.perRow = 4
+ns.defaults.bars.food.foodExcluded = {} -- mit Shift herausgezogene Gegenstände
+ns.defaults.bars.food.foodOrder = {}    -- je Reihe die selbst einsortierte Reihenfolge
 ns.defaults.bars.food.point = "BOTTOMLEFT"
 ns.defaults.bars.food.frame = true
 ns.defaults.bars.food.scale = 80
@@ -318,5 +320,11 @@ end
 BINDING_HEADER_FOREVERBARS = L("BINDING_HEADER")
 BINDING_NAME_FOREVERBARS_OPTIONS = L("BINDING_OPTIONS")
 BINDING_NAME_FOREVERBARS_UNLOCK = L("BINDING_UNLOCK")
+-- Verpflegungsleiste: je Platz eine Belegung (siehe Bindings.xml); bei 4 je Reihe: 1-4 Essen, 5-8 Getränke,
+-- 9-12 Fläschchen/Tränke
+BINDING_HEADER_FOREVERBARS_FOOD = L("BINDING_HEADER_FOOD")
+for i = 1, 18 do
+    _G["BINDING_NAME_CLICK ForeverBarsFoodButton" .. i .. ":LeftButton"] = L("BINDING_FOOD", i)
+end
 function ForeverBars_ToggleOptions() if ns.ToggleOptions then ns.ToggleOptions() end end
 function ForeverBars_ToggleUnlock() if ns.SetUnlocked then ns.SetUnlocked(not ns.unlocked) end end

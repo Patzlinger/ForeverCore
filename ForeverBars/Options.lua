@@ -362,6 +362,12 @@ local function CreateOptions()
     options.keyringCheck = CreateCheckbox(layoutPage, L("OPT_KEYRING"), RIGHT_X, -216,
         function() return SelectedConfig().keyring end,
         function(value) SelectedConfig().keyring = value; Changed() end)
+    -- Nur Verpflegungsleiste: herausgezogene Gegenstände und eigene Reihenfolge zurücksetzen
+    options.foodResetButton = CreateSearchButton(layoutPage, L("BTN_FOOD_RESET"), 170, 20, function()
+        ns.FoodResetChoices()
+        ns.Print(L("FOOD_RESET_DONE"))
+    end, L("TIP_FOOD_RESET"))
+    options.foodResetButton:SetPoint("TOPLEFT", RIGHT_X, -214)
     -- Rahmen um die Leiste (wie die Fenster in ForeverQuests)
     CreateCheckbox(layoutPage, L("OPT_FRAME"), RIGHT_X, -244,
         function() return SelectedConfig().frame end,
@@ -1031,6 +1037,7 @@ function ns.RefreshOptions()
     -- Berufe in Spalten: Breite ergibt sich aus den Berufen; Verpflegung: "pro Reihe" = Breite des Rasters
     options.perRowSlider:SetShown(hasButtons and not (def.kind == "prof" and SelectedConfig().profRows))
     options.keyringCheck:SetShown(def.kind == "bags" and ns.HasKeyring())
+    options.foodResetButton:SetShown(def.kind == "food")
     for _, control in ipairs(controls) do
         control.Refresh()
     end

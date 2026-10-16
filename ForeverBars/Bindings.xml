@@ -7,4 +7,23 @@
 	<Binding name="FOREVERBARS_UNLOCK" category="ADDONS">
 		ForeverBars_ToggleUnlock()
 	</Binding>
+	<!-- Verpflegungsleiste: ein Platz je Belegung (Namen setzt Bars.lua: BINDING_NAME_CLICK ...) -->
+	<Binding name="CLICK ForeverBarsFoodButton1:LeftButton" header="FOREVERBARS_FOOD" category="ADDONS"/>
+	<Binding name="CLICK ForeverBarsFoodButton2:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK ForeverBarsFoodButton3:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK ForeverBarsFoodButton4:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK ForeverBarsFoodButton5:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK ForeverBarsFoodButton6:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK ForeverBarsFoodButton7:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK ForeverBarsFoodButton8:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK ForeverBarsFoodButton9:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK ForeverBarsFoodButton10:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK ForeverBarsFoodButton11:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK ForeverBarsFoodButton12:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK ForeverBarsFoodButton13:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK ForeverBarsFoodButton14:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK ForeverBarsFoodButton15:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK ForeverBarsFoodButton16:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK ForeverBarsFoodButton17:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK ForeverBarsFoodButton18:LeftButton" category="ADDONS"/>
 </Bindings>

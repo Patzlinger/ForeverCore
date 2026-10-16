@@ -586,11 +586,30 @@ local function IsDrink(itemID)
     return false
 end
 
--- Taschen durchsuchen. Jeder Eintrag bekommt row (1 = Essen, 2 = Getränk, 3 = Fläschchen/Elixier/Trank) und
--- col (Platz in der Reihe, höchste benötigte Stufe zuerst). perRow (optional) = höchstens so viele je Reihe.
+-- In welche Reihe gehört ein Gegenstand? 1 = Essen, 2 = Getränk, 3 = Fläschchen/Elixier/Trank, nil = gar nicht
+local function FoodRow(itemID)
+    local _, _, _, _, _, classID, subclassID = ItemInfoInstant(itemID)
+    if classID ~= CONSUMABLE_CLASS then return nil end
+    if subclassID == FOOD_SUBCLASS then return IsDrink(itemID) and 2 or 1 end
+    if FLASK_SUBCLASSES[subclassID] then return 3 end
+end
+
+-- Eigene Reihenfolge und entfernte Gegenstände (gespeichert in der Leiste, also je Profil)
+local function FoodConfig()
+    local cfg = ns.db.bars.food
+    cfg.foodExcluded = cfg.foodExcluded or {}
+    cfg.foodOrder = cfg.foodOrder or {}
+    for row = 1, 3 do cfg.foodOrder[row] = cfg.foodOrder[row] or {} end
+    return cfg
+end
+
+-- Taschen durchsuchen. Jeder Eintrag bekommt row (Reihe, siehe FoodRow) und col (Platz in der Reihe):
+-- zuerst die selbst einsortierten Gegenstände in ihrer Reihenfolge, dann alle übrigen (höchste benötigte Stufe
+-- zuerst); mit Shift herausgezogene fehlen. perRow (optional) = höchstens so viele je Reihe.
 -- Rückgabe: Liste (nach Reihen) und "Fingerabdruck"
 local foodLimit -- zuletzt verwendete Grenze je Reihe (damit der Vergleich bei Taschenänderungen passt)
 local function CollectFood(perRow)
+    local cfg = FoodConfig()
     local groups, seen = { {}, {}, {} }, {}
     local numSlots = C_Container and C_Container.GetContainerNumSlots or GetContainerNumSlots
     local itemAt = C_Container and C_Container.GetContainerItemID or GetContainerItemID
@@ -600,14 +619,9 @@ local function CollectFood(perRow)
             local itemID = itemAt(bag, slot)
             if itemID and not seen[itemID] then
                 seen[itemID] = true
-                local _, _, _, _, icon, classID, subclassID = ItemInfoInstant(itemID)
-                local row
-                if classID == CONSUMABLE_CLASS and subclassID == FOOD_SUBCLASS then
-                    row = IsDrink(itemID) and 2 or 1
-                elseif classID == CONSUMABLE_CLASS and FLASK_SUBCLASSES[subclassID] then
-                    row = 3
-                end
+                local row = not cfg.foodExcluded[itemID] and FoodRow(itemID)
                 if row then
+                    local icon = select(5, ItemInfoInstant(itemID))
                     local level = 0
                     if C_Item and C_Item.GetItemInfo then
                         level = select(5, C_Item.GetItemInfo(itemID)) or 0 -- benötigte Stufe
@@ -618,8 +632,16 @@ local function CollectFood(perRow)
         end
     end
     local list, ids = {}, {}
-    for _, group in ipairs(groups) do
+    for row, group in ipairs(groups) do
+        -- Platz in der eigenen Reihenfolge (nicht einsortierte kommen danach)
+        local rank = {}
+        for index, itemID in ipairs(cfg.foodOrder[row]) do rank[itemID] = index end
         table.sort(group, function(a, b)
+            local ra, rb = rank[a.item], rank[b.item]
+            if ra or rb then
+                if ra and rb then return ra < rb end
+                return ra ~= nil
+            end
             if a.level ~= b.level then return a.level > b.level end
             return a.item < b.item
         end)
@@ -631,6 +653,62 @@ local function CollectFood(perRow)
         end
     end
     return list, table.concat(ids, ",")
+end
+
+-- Gegenstand in seine Reihe einsortieren (wieder anzeigen, falls er entfernt war). col = gewünschter Platz in
+-- der Reihe (nil = ans Ende). Passt er nicht in die Leiste, Hinweis im Chat.
+function ns.FoodInsert(itemID, targetRow, targetCol)
+    if InCombatLockdown() then
+        ns.Print(L("NOT_IN_COMBAT"))
+        return
+    end
+    local row = FoodRow(itemID)
+    if not row then
+        ns.Print(L("FOOD_NOT_FITTING"))
+        return
+    end
+    local cfg = FoodConfig()
+    cfg.foodExcluded[itemID] = nil
+    for r = 1, 3 do
+        for index = #cfg.foodOrder[r], 1, -1 do
+            if cfg.foodOrder[r][index] == itemID then table.remove(cfg.foodOrder[r], index) end
+        end
+    end
+    -- Die jetzige Anzeige der Reihe als Reihenfolge übernehmen, damit der gewünschte Platz stimmt
+    local order = {}
+    for _, entry in ipairs((CollectFood())) do
+        if entry.row == row and entry.item ~= itemID then table.insert(order, entry.item) end
+    end
+    -- Nur in der passenden Reihe gilt der Platz; sonst ans Ende der richtigen Reihe
+    local position = (targetRow == row and targetCol) and math.min(targetCol + 1, #order + 1) or (#order + 1)
+    table.insert(order, position, itemID)
+    cfg.foodOrder[row] = order
+    if targetRow and targetRow ~= row then ns.Print(L("FOOD_OTHER_ROW")) end
+    ns.RequestLayout()
+end
+
+-- Mit Shift herausgezogen: nicht mehr anzeigen (bis man ihn wieder hineinzieht)
+function ns.FoodRemove(itemID)
+    if InCombatLockdown() then
+        ns.Print(L("NOT_IN_COMBAT"))
+        return
+    end
+    local cfg = FoodConfig()
+    cfg.foodExcluded[itemID] = true
+    for r = 1, 3 do
+        for index = #cfg.foodOrder[r], 1, -1 do
+            if cfg.foodOrder[r][index] == itemID then table.remove(cfg.foodOrder[r], index) end
+        end
+    end
+    ns.RequestLayout()
+end
+
+-- Entfernte Gegenstände wieder anzeigen und eigene Reihenfolge vergessen
+function ns.FoodResetChoices()
+    local cfg = FoodConfig()
+    wipe(cfg.foodExcluded)
+    for row = 1, 3 do wipe(cfg.foodOrder[row]) end
+    ns.RequestLayout()
 end
 
 local function UpdateFoodButton(button)
@@ -659,6 +737,9 @@ local function CreateOwnButton(name, showTooltip)
     button.cooldown:SetAllPoints(button.icon)
     button.Count = button:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
     button.Count:SetPoint("BOTTOMRIGHT", -2, 2)
+    -- Tastenbelegung (Text setzt UpdateOwnHotkeys; Schrift und Platz wie bei den Aktionsknöpfen)
+    button.HotKey = button:CreateFontString(nil, "OVERLAY", "NumberFontNormalSmallGray")
+    button.HotKey:SetPoint("TOPRIGHT", -2, -3)
     button:SetScript("OnEnter", function(self)
         local mode = ns.db.buttonTooltip
         if mode == "NEVER" or (mode == "NOCOMBAT" and InCombatLockdown()) or not self.fbEntry then return end
@@ -672,22 +753,102 @@ local function CreateOwnButton(name, showTooltip)
     return button
 end
 
-function ns.CreateFoodButtons()
+-- Tastenbelegung auf eigenen Knöpfen anzeigen (belegt über Blizzards Tastaturbelegung > AddOns)
+function ns.UpdateOwnHotkeys()
     for i = 1, FOOD_COUNT do
-        local name = "ForeverBarsFoodButton" .. i
-        if not _G[name] then
-            CreateOwnButton(name, function(entry) GameTooltip:SetItemByID(entry.item) end)
+        local button = _G["ForeverBarsFoodButton" .. i]
+        if button then
+            local key = GetBindingKey and GetBindingKey("CLICK ForeverBarsFoodButton" .. i .. ":LeftButton")
+            button.HotKey:SetText(key and GetBindingText and GetBindingText(key, true) or "")
         end
     end
 end
 
--- Knöpfe belegen (nur außerhalb des Kampfes); Rückgabe: Anzahl belegter Knöpfe
+-- Hineinziehen: Fläche über der Verpflegungsleiste, nur sichtbar, solange ein Gegenstand am Mauszeiger hängt.
+-- Sie fängt auch Klicks ab, damit dabei nichts benutzt wird. Der Platz ergibt sich aus der Mausposition.
+local foodCatcher
+local function FoodDropTarget()
+    local holder = holders.food
+    if not holder or not holder:GetLeft() then return nil, nil end
+    local cfg = ns.db.bars.food
+    local scale = holder:GetEffectiveScale()
+    local x, y = GetCursorPosition()
+    x, y = x / scale, y / scale
+    local step = ACTION_SIZE + (cfg.spacing or 1)
+    local col = cfg.growX == "LEFT" and math.floor((holder:GetRight() - x) / step) or math.floor((x - holder:GetLeft()) / step)
+    local rowIndex = cfg.growY == "UP" and math.floor((y - holder:GetBottom()) / step) or math.floor((holder:GetTop() - y) / step)
+    return rowIndex + 1, math.max(0, col)
+end
+
+local function OnFoodDrop()
+    local kind, itemID = GetCursorInfo()
+    if kind ~= "item" or not itemID then return end
+    ClearCursor() -- der Gegenstand bleibt in der Tasche
+    local row, col = FoodDropTarget()
+    if ns.db.bars.food.profRows then ns.FoodInsert(itemID, row, col) else ns.FoodInsert(itemID) end
+end
+
+local function UpdateFoodCatcher()
+    if not foodCatcher then return end
+    local kind = GetCursorInfo()
+    local holder = holders.food
+    foodCatcher:SetShown(kind == "item" and not InCombatLockdown() and holder ~= nil and holder:IsVisible()
+        and ns.db.bars.food.enabled)
+end
+
+local function CreateFoodCatcher(holder)
+    if foodCatcher then return end
+    foodCatcher = CreateFrame("Frame", nil, holder, "BackdropTemplate")
+    foodCatcher:SetPoint("TOPLEFT", -2, 2)
+    foodCatcher:SetPoint("BOTTOMRIGHT", 2, -2)
+    foodCatcher:SetFrameLevel(holder:GetFrameLevel() + 20) -- über den Knöpfen
+    foodCatcher:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 })
+    foodCatcher:SetBackdropBorderColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3], 0.8)
+    foodCatcher:EnableMouse(true)
+    foodCatcher:SetScript("OnReceiveDrag", OnFoodDrop)
+    foodCatcher:SetScript("OnMouseUp", OnFoodDrop)
+    foodCatcher:Hide()
+    local watcher = CreateFrame("Frame")
+    watcher:RegisterEvent("CURSOR_CHANGED")
+    watcher:RegisterEvent("PLAYER_REGEN_DISABLED")
+    watcher:SetScript("OnEvent", UpdateFoodCatcher)
+end
+
+function ns.CreateFoodButtons()
+    for i = 1, FOOD_COUNT do
+        local name = "ForeverBarsFoodButton" .. i
+        if not _G[name] then
+            local button = CreateOwnButton(name, function(entry)
+                GameTooltip:SetItemByID(entry.item)
+                GameTooltip:AddLine(" ")
+                GameTooltip:AddLine(L("FOOD_TIP_REMOVE"), 0.6, 0.6, 0.6)
+                GameTooltip:AddLine(L("FOOD_TIP_ADD"), 0.6, 0.6, 0.6)
+            end)
+            -- Shift-Klick benutzt nichts (sonst würde man beim Herausziehen essen); Shift-Ziehen entfernt
+            button:SetAttribute("shift-type1", "fbnone")
+            button:RegisterForDrag("LeftButton")
+            button:SetScript("OnDragStart", function(self)
+                if IsShiftKeyDown() and self.fbEntry then ns.FoodRemove(self.fbEntry.item) end
+            end)
+        end
+    end
+    ns.UpdateOwnHotkeys()
+end
+
+-- Knöpfe belegen (nur außerhalb des Kampfes); Rückgabe: Anzahl genutzter Plätze.
+-- Nach Reihen getrennt hat jeder Platz einen festen Knopf (Reihe 1 = Knopf 1 … perRow usw.), damit eine
+-- Tastenbelegung immer zum selben Platz gehört; sonst der Reihe nach.
 local function AssignFoodButtons(perRow)
     foodLimit = perRow
     foodItems, foodSignature = CollectFood(perRow)
+    local bySlot = {}
+    for index, entry in ipairs(foodItems) do
+        local slot = perRow and ((entry.row - 1) * perRow + entry.col + 1) or index
+        if slot <= FOOD_COUNT then bySlot[slot] = entry end
+    end
     for i = 1, FOOD_COUNT do
         local button = _G["ForeverBarsFoodButton" .. i]
-        local entry = foodItems[i]
+        local entry = bySlot[i]
         if button then
             button.fbEntry = entry
             button:SetAttribute("type", entry and "item" or nil)
@@ -698,6 +859,8 @@ local function AssignFoodButtons(perRow)
             if entry then UpdateFoodButton(button) else button.cooldown:Clear() end
         end
     end
+    if holders.food then CreateFoodCatcher(holders.food) end
+    if perRow then return math.min(FOOD_COUNT, perRow * 3) end
     return #foodItems
 end
 
@@ -1050,17 +1213,22 @@ local function LayoutButtons(def, cfg, holder)
     elseif def.kind == "prof" then
         wanted = math.min(wanted, math.max(1, AssignProfessionButtons()))
     elseif def.kind == "food" then
-        -- In Reihen getrennt: je Reihe höchstens "Knöpfe pro Reihe"
-        wanted = math.min(wanted, math.max(1, AssignFoodButtons(cfg.profRows and math.max(1, cfg.perRow or 4) or nil)))
+        if cfg.profRows then
+            -- In Reihen getrennt: festes Raster aus 3 Reihen, je Reihe "Knöpfe pro Reihe" (höchstens 6) Plätze
+            wanted = AssignFoodButtons(math.max(1, math.min(6, cfg.perRow or 4)))
+        else
+            wanted = math.min(wanted, math.max(1, AssignFoodButtons(nil)))
+        end
     end
     local count = math.max(1, math.min(wanted, #buttons))
     local perRow = math.max(1, math.min(cfg.perRow or count, count))
+    if def.kind == "food" and cfg.profRows then perRow = math.max(1, math.min(6, cfg.perRow or 4)) end
     local rows = math.ceil(count / perRow)
-    -- Platz (Spalte, Reihe) je Knopf; wahlweise nach Reihen getrennt: Berufeleiste Fenster oben, Fertigkeit
-    -- darunter; Verpflegungsleiste Essen, Getränke, Fläschchen/Tränke. Leere Reihen fallen weg.
+    -- Platz (Spalte, Reihe) je Knopf; Berufeleiste wahlweise nach Reihen getrennt: Fenster oben, Fertigkeit
+    -- darunter (leere Reihen fallen weg). Die Verpflegung hat feste Plätze und nutzt das normale Raster.
     local slots = {}
-    if (def.kind == "prof" or def.kind == "food") and cfg.profRows then
-        local entries = def.kind == "prof" and profSpells or foodItems
+    if def.kind == "prof" and cfg.profRows then
+        local entries = profSpells
         local used, maxColumn = {}, 0
         for i = 1, count do
             local entry = entries[i]
@@ -1069,12 +1237,10 @@ local function LayoutButtons(def, cfg, holder)
                 maxColumn = math.max(maxColumn, entry.col or 0)
             end
         end
-        -- Genutzte Reihen der Reihe nach durchnummerieren (0 = oberste). Verpflegung: festes Raster
-        -- (immer 3 Reihen, "Knöpfe pro Reihe" breit), damit die Leiste gleich groß bleibt
-        local fixed = def.kind == "food"
+        -- Genutzte Reihen der Reihe nach durchnummerieren (0 = oberste)
         local rowIndex, nextRow = {}, 0
-        for row = 1, 3 do
-            if used[row] or fixed then
+        for row = 1, 2 do
+            if used[row] then
                 rowIndex[row] = nextRow
                 nextRow = nextRow + 1
             end
@@ -1083,7 +1249,7 @@ local function LayoutButtons(def, cfg, holder)
             local entry = entries[i]
             slots[i] = { entry and entry.col or (i - 1), entry and rowIndex[entry.row or 1] or 0 }
         end
-        perRow = fixed and math.max(1, cfg.perRow or 4) or (maxColumn + 1)
+        perRow = maxColumn + 1
         rows = math.max(1, nextRow)
     else
         for i = 1, count do slots[i] = { (i - 1) % perRow, math.floor((i - 1) / perRow) } end
@@ -1124,19 +1290,23 @@ local function LayoutContainer(def, cfg, holder)
         return
     end
     frame.fbHolder = holder
-    -- Blizzards Status-Leisten (Erfahrung/Ruf) rufen bei jeder Aktualisierung
-    -- self:GetParent():CheckForLayoutChange() auf – gemeint ist der StatusTrackingBarManager, ihr
-    -- eigentlicher Elternrahmen. Der Halter reicht den Aufruf an den echten Manager weiter; ohne das gibt
-    -- es Lua-Fehler (z. B. beim Öffnen/Schließen des Bearbeitungsmodus, Blizzard-Code Zeile 228).
-    if frame.GetStatusTrackingManager and not holder.CheckForLayoutChange then
-        holder.CheckForLayoutChange = function()
-            local manager = _G.StatusTrackingBarManager
-            if manager and manager ~= holder and manager.CheckForLayoutChange then
-                pcall(manager.CheckForLayoutChange, manager)
-            end
+    -- Blizzards Status-Leisten (Erfahrung/Ruf) rufen self:GetParent():CheckForLayoutChange() auf – ihr
+    -- Elternrahmen muss der StatusTrackingBarManager bleiben. Hängt man sie in den Halter um, landet dieser
+    -- Aufruf in ForeverBars-Code und Blizzards Code läuft danach "getaintet" weiter (Fehler mit gesperrten
+    -- Werten z. B. in den Gruppenrahmen beim Öffnen des Bearbeitungsmodus). Darum werden sie nur an den
+    -- Halter angelegt, nicht umgehängt; Größe und Deckkraft bekommen sie direkt.
+    local keepParent = frame.GetStatusTrackingManager ~= nil or def.keepParent
+    frame.fbKeepParent = keepParent
+    if keepParent then
+        local manager = _G.StatusTrackingBarManager
+        if frame:GetParent() == holder and manager then frame:SetParent(manager) end
+        if not ns.IsExternal(def.key) then
+            frame:SetScale(math.max(0.3, (cfg.scale or 100) / 100))
+            frame:SetAlpha(cfg.enabled and (cfg.alpha or 100) / 100 or 0)
         end
+    elseif frame:GetParent() ~= holder then
+        frame:SetParent(holder)
     end
-    if frame:GetParent() ~= holder then frame:SetParent(holder) end
     frame.fbPositioning = true
     frame:ClearAllPoints()
     frame:SetPoint("CENTER", holder, "CENTER")
@@ -1147,7 +1317,7 @@ local function LayoutContainer(def, cfg, holder)
         local function BackToHolder(self)
             if self.fbPositioning or not self.fbHolder or InCombatLockdown() then return end
             self.fbPositioning = true
-            if self:GetParent() ~= self.fbHolder then self:SetParent(self.fbHolder) end
+            if not self.fbKeepParent and self:GetParent() ~= self.fbHolder then self:SetParent(self.fbHolder) end
             self:ClearAllPoints()
             self:SetPoint("CENTER", self.fbHolder, "CENTER")
             self.fbPositioning = false
@@ -1612,7 +1782,8 @@ function ns.SetupBars()
     -- neue oder verlernte Berufe in die Berufeleiste übernehmen
     for _, event in ipairs({ "PLAYER_REGEN_ENABLED", "PLAYER_REGEN_DISABLED", "PLAYER_ENTERING_WORLD", "EDIT_MODE_LAYOUTS_UPDATED",
         "UPDATE_SHAPESHIFT_FORMS", "UI_SCALE_CHANGED", "DISPLAY_SIZE_CHANGED",
-        "SKILL_LINES_CHANGED", "SPELLS_CHANGED", "SPELL_UPDATE_COOLDOWN", "BAG_UPDATE_DELAYED", "BAG_UPDATE_COOLDOWN" }) do
+        "SKILL_LINES_CHANGED", "SPELLS_CHANGED", "SPELL_UPDATE_COOLDOWN", "BAG_UPDATE_DELAYED", "BAG_UPDATE_COOLDOWN",
+        "UPDATE_BINDINGS" }) do
         pcall(events.RegisterEvent, events, event)
     end
     events:SetScript("OnEvent", function(_, event)
@@ -1627,6 +1798,8 @@ function ns.SetupBars()
             ns.OnBagsChanged()
         elseif event == "BAG_UPDATE_COOLDOWN" then
             ns.UpdateFoodButtons()
+        elseif event == "UPDATE_BINDINGS" then
+            ns.UpdateOwnHotkeys()
         else
             ns.RequestLayout()
         end
