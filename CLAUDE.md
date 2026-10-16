@@ -216,6 +216,13 @@ ihn identisch um. Neue Oberflächen nutzen eine dieser beiden – keine dritten 
 - **ForeverBars ↔ ForeverSpellbook**: ForeverSpellbook legt einen Klick-Knopf über den Zauberbuch-Knopf im
   Mikromenü; ForeverBars verschiebt das Mikromenü – der Knopf hängt am Mikromenü-Knopf und wandert mit
 - **ForeverBars ↔ Bartender4**: läuft Bartender4, lässt ForeverBars die Leisten in Ruhe
+- **ForeverBars ↔ Bearbeitungsmodus**: öffnet der Spieler Blizzards Bearbeitungsmodus, entsperrt ForeverBars seine
+  Leisten (Blizzard kann sie nicht greifen) und sperrt sie beim Schließen wieder. Laut flowfy lösen Hooks/Callbacks
+  des Bearbeitungsmodus in Forever nicht aus – deshalb wird nur nachgesehen, ob `EditModeManagerFrame` sichtbar ist.
+  Eine spätere gemeinsame Lösung im Hub (alle Forever-Rahmen im Bearbeitungsmodus entsperren) muss das genauso machen
+  und ForeverBars dann einbeziehen statt doppelt zu entsperren
+- **ForeverBars Proc-Leuchten**: blendet Blizzards Leuchten per `SetAlpha(0)` aus einem `hooksecurefunc` heraus aus
+  (taint-frei, gleiches Verfahren wie ForeverXP/ForeverCast)
 - **ForeverQuests**: ersetzt den Blizzard-Questtracker
 
 ## 15. Git-Ablauf
