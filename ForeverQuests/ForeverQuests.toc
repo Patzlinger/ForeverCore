@@ -1,11 +1,14 @@
 ## Interface: 16001
-## Title: ForeverQuests (Beta)
+## Title: ForeverQuests |cff8a8a8a(Beta)|r
 ## Notes: Replacement for the Blizzard quest tracker
 ## Notes-deDE: Ersatz für den Blizzard-Questtracker
+## IconTexture: Interface\AddOns\ForeverQuests\Media\ForeverCore
+## Category: Forever Core
 ## Author: flowfy
 ## Version: 0.27.2
-## SavedVariables: ForeverQuestsDB
+## SavedVariables: ForeverQuestsDB, ForeverHubDB
 
+ForeverHub.lua
 Locales.lua
 ForeverQuests.lua
 Style.lua
@@ -14,3 +17,4 @@ Tracker.lua
 Options.lua
 Minimap.lua
 Dungeons.lua
+HubLink.lua

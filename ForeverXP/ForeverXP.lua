@@ -1385,6 +1385,7 @@ C_Timer.NewTicker(REFRESH, function()
 end)
 
 SLASH_FOREVERXP1 = "/fxp"
+SLASH_FOREVERXP2 = "/foreverxp"
 SlashCmdList["FOREVERXP"] = function(msg)
     msg = strtrim(msg or ""):lower()
     if msg == "reset" then

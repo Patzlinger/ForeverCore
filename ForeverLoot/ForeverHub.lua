@@ -7,7 +7,7 @@
 --  3. Hub-Fenster (/forever): Liste aller Forever-Addons mit direktem Weg in ihr Menue –
 --     auch ohne Minimap-Knoepfe.
 local ADDON_NAME = ...
-local VERSION = 16
+local VERSION = 17
 if _G.ForeverHub and (_G.ForeverHub.version or 0) >= VERSION then return end
 
 local hub = { version = VERSION }
@@ -957,11 +957,14 @@ end
 ---------------------------------------------------------------------------
 -- 2. Sammelknopf
 ---------------------------------------------------------------------------
--- Bekannte Forever-Addons und der Name ihres Minimap-Knopfs
+-- Bekannte Forever-Addons und der Name ihres Minimap-Knopfs (Reihenfolge = Reihenfolge in Liste und Hub-Fenster).
+-- Neues Addon: hier eintragen; sein Minimap-Knopf muss so heissen und mit Linksklick das Menue oeffnen.
 local KNOWN = {
     { name = "ForeverFrames", button = "ForeverFramesMinimapButton" },
     { name = "ForeverUnits",  button = "ForeverUnitsMinimapButton" },
     { name = "ForeverCast",   button = "ForeverCastMinimapButton" },
+    { name = "ForeverBars",   button = "ForeverBarsMinimapButton" },
+    { name = "ForeverQuests", button = "ForeverQuestsMinimapButton" },
     { name = "ForeverLoot",   button = "ForeverLootMinimapButton" },
     { name = "ForeverXP",     button = "ForeverXPMinimapButton" },
     { name = "ForeverBuffs",  button = "ForeverBuffsMinimapButton" },

@@ -2034,6 +2034,7 @@ end)
 -- Slash-Befehl
 ---------------------------------------------------------------------------
 SLASH_FOREVERCAST1 = "/fcast"
+SLASH_FOREVERCAST2 = "/forevercast"
 SlashCmdList["FOREVERCAST"] = Safe("Befehl", function(msg)
     msg = strtrim(msg or ""):lower()
     if msg == "lock" then

@@ -799,6 +799,7 @@ local mm = UI.MinimapButton({
 events:HookScript("OnEvent", function(_, event) if event == "PLAYER_LOGIN" then mm.UpdatePosition() end end)
 
 SLASH_FOREVERBUFFS1 = "/fbuffs"
+SLASH_FOREVERBUFFS2 = "/foreverbuffs"
 SlashCmdList["FOREVERBUFFS"] = function(msg)
     msg = strtrim(msg or ""):lower()
     if msg == "lock" or msg == "unlock" or msg == "move" then

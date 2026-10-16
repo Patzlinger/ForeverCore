@@ -1186,6 +1186,7 @@ local mm = UI.MinimapButton({
 })
 
 SLASH_FOREVERVENDOR1 = "/fvendor"
+SLASH_FOREVERVENDOR2 = "/forevervendor"
 SlashCmdList["FOREVERVENDOR"] = function(msg)
     msg = strtrim(msg or ""):lower()
     if msg == "lock" or msg == "unlock" or msg == "move" then

@@ -855,6 +855,7 @@ local mm = UI.MinimapButton({
 
 SLASH_FOREVERSPELLBOOK1 = "/fsb"
 SLASH_FOREVERSPELLBOOK2 = "/fspellbook"
+SLASH_FOREVERSPELLBOOK3 = "/foreverspellbook"
 SlashCmdList["FOREVERSPELLBOOK"] = function(msg)
     msg = strtrim(msg or ""):lower()
     if msg == "replace" or msg == "ersetzen" then

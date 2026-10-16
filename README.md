@@ -3,12 +3,16 @@
 *Less clutter. More control. Just the essentials.*
 
 Schlanke, modulare Addons für **World of Warcraft: Forever** (Interface 16001, Retail-API).
-Autor: Patzlinger · Lizenz: MIT · CurseForge-Projekt 1743753
+Autoren: Patzlinger, flowfy · CurseForge-Projekt 1743753
 
-| Addon | Status |
-|---|---|
-| ForeverFrames, ForeverUnits, ForeverCast, ForeverLoot, ForeverXP, ForeverBuffs, ForeverVendor | im Release |
-| ForeverSpellbook | Prototyp (nicht im Release) |
+| Addon | Von | Status |
+|---|---|---|
+| ForeverFrames, ForeverUnits, ForeverCast, ForeverLoot, ForeverXP, ForeverBuffs, ForeverVendor | Patzlinger | im Release (MIT) |
+| ForeverSpellbook | Patzlinger | Prototyp (nicht im Release) |
+| ForeverQuests, ForeverBars | flowfy | im Repository, noch nicht im Release |
+
+**Regeln, Design und Abläufe stehen in [CLAUDE.md](CLAUDE.md)** – bitte vor dem ersten Arbeiten lesen.
+Im Spiel: `/forever` zeigt alle Forever-Addons, `/fmove` verschiebt alle Rahmen.
 
 ## Aufbau
 
@@ -46,8 +50,7 @@ Danach ist der AddOns-Ordner nur noch eine Verknüpfung: Was du im Repository ä
 - Größere Sachen auf einem eigenen Zweig: `git switch -c mein-thema`, hochladen, Pull Request auf GitHub
 - Kleine Fixes direkt auf `main` sind okay, wenn abgesprochen
 - **Nie** SavedVariables (`WTF\...`) oder gebaute Zips einchecken
-- Neues Addon: eigener Ordner mit `.toc`, `ForeverHub.lua` als erste Datei laden,
-  `## Category: Forever Core`, `## IconTexture`, `## Author`, `## X-License: MIT`, `LICENSE.txt`, `Media\ForeverCore.tga`
+- Neues Addon: siehe CLAUDE.md, Abschnitt 5 (Vorlage für die .toc) und 6 (Anbindung an den Hub)
 
 ## Release bauen
 
