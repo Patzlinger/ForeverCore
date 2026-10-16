@@ -5,7 +5,7 @@
 ## IconTexture: Interface\AddOns\ForeverBars\Media\ForeverCore
 ## Category: Forever Core
 ## Author: flowfy
-## Version: 0.11.1
+## Version: 0.12.0
 ## SavedVariables: ForeverBarsDB, ForeverHubDB
 
 ForeverHub.lua

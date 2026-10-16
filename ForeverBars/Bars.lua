@@ -1230,6 +1230,8 @@ local HIDE_CONDITIONS = {
 }
 
 local function VisibilityDriver(def, cfg)
+    -- Erfahrungsleiste von ForeverXP: immer da (ForeverXP regelt seine Sichtbarkeit selbst)
+    if ns.IsExternal(def.key) then return "[petbattle] hide; show" end
     if not cfg.enabled then return "hide" end
     if ns.unlocked or ns.testMode then return "show" end
     -- Haltungsleiste ohne Haltungen, Auren oder Gestalten ausblenden
@@ -1314,7 +1316,8 @@ end
 
 local function UpdateMover(def, holder)
     local mover = movers[def.key]
-    if not ns.unlocked or not ns.db.bars[def.key].enabled then
+    -- Kein Griff für die Erfahrungsleiste von ForeverXP (verschoben wird sie im ForeverXP-Menü)
+    if not ns.unlocked or not ns.db.bars[def.key].enabled or ns.IsExternal(def.key) then
         if mover then mover:Hide() end
         return
     end
@@ -1406,6 +1409,20 @@ local function UpdateMover(def, holder)
     mover:Show()
 end
 
+-- Erfahrungsleiste und ForeverXP: Ist ForeverXP aktiv, gehört ihm die Erfahrungsleiste. ForeverBars hält
+-- Blizzards Leiste nur fest an ihrem Standardplatz (oben mittig), damit ForeverXP sich mit "An Blizzards Platz"
+-- dort darüberlegt; Position, Größe und Sichtbarkeit stellt man im ForeverXP-Menü ein.
+function ns.IsExternal(key)
+    return key == "xp" and ns.xpByForeverXP == true
+end
+
+local function ExternalXPConfig()
+    local cfg = CopyTable(ns.defaults.bars.xp)
+    cfg.enabled = true
+    cfg.x, cfg.y = DefaultPosition("xp")
+    return cfg
+end
+
 function ns.ApplyLayout()
     layoutPending = false
     if ns.disabledByBartender then return end
@@ -1415,6 +1432,8 @@ function ns.ApplyLayout()
     end
     for _, def in ipairs(ns.BAR_DEFS) do
         local cfg = ns.db.bars[def.key]
+        -- Erfahrungsleiste von ForeverXP: feste Standardwerte statt der eigenen Einstellungen
+        if ns.IsExternal(def.key) then cfg = ExternalXPConfig() end
         local holder = GetHolder(def)
         HideBlizzardBars(def)
         if def.kind == "container" or def.kind == "single" then
@@ -1424,7 +1443,8 @@ function ns.ApplyLayout()
         end
         local scale = math.max(0.3, (cfg.scale or 100) / 100)
         holder:SetScale(scale)
-        local x, y = ns.GetBarPosition(def.key)
+        local x, y = cfg.x, cfg.y
+        if not x or not y then x, y = ns.GetBarPosition(def.key) end
         holder:ClearAllPoints()
         holder:SetPoint(cfg.point or "CENTER", UIParent, "BOTTOMLEFT", x / scale, y / scale)
         -- Deckkraft; beim Einblenden per Maus übernimmt das die Überblendung (siehe UpdateFading)
@@ -1501,7 +1521,8 @@ local function UpdateFading()
     for _, def in ipairs(ns.BAR_DEFS) do
         local cfg = ns.db.bars[def.key]
         local holder = holders[def.key]
-        if holder and cfg.enabled and cfg.fadeMouseover and not ns.unlocked and not ns.testMode then
+        if holder and cfg.enabled and cfg.fadeMouseover and not ns.unlocked and not ns.testMode
+            and not ns.IsExternal(def.key) then
             local full = (cfg.alpha or 100) / 100
             local over = holder:IsMouseOver()
                 or (SpellFlyout and SpellFlyout:IsShown() and SpellFlyout:IsMouseOver())
@@ -1570,7 +1591,9 @@ end
 
 function ns.SetupBars()
     ns.ready = true
-    local isLoaded = C_AddOns and C_AddOns.IsAddOnLoaded
+    -- Ist ForeverXP aktiv, gehört ihm die Erfahrungsleiste (siehe ns.IsExternal)
+    local isLoaded = C_AddOns and C_AddOns.IsAddOnLoaded or IsAddOnLoaded
+    ns.xpByForeverXP = isLoaded and isLoaded("ForeverXP") and true or false
     if isLoaded and isLoaded("Blizzard_NewPlayerExperience") then
         DisableTutorials()
     elseif NPE_LoadUI then
