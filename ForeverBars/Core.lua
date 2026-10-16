@@ -40,7 +40,8 @@ ns.BAR_DEFS = {
     { key = "stance", textKey = "BAR_STANCE", kind = "stance", buttons = "StanceButton", count = 10,
       blizzard = { "StanceBar", "StanceBarFrame" } },
     -- Berufe: eigene Knöpfe (Bars.lua), belegt mit den Berufen und Berufs-Fähigkeiten des Charakters
-    { key = "prof", textKey = "BAR_PROF", kind = "prof", buttons = "ForeverBarsProfButton", count = 12 },
+    { key = "prof", textKey = "BAR_PROF", titleKey = "PROF_FRAME_TITLE", kind = "prof",
+      buttons = "ForeverBarsProfButton", count = 12 },
     { key = "micro", textKey = "BAR_MICRO", kind = "container", frames = { "MicroMenuContainer", "MicroMenu" } },
     -- Taschen: einzelne Taschenknöpfe (Rucksack, Taschen, Reagenzientasche, Schlüsselbund) in eigener Anordnung
     { key = "bags", textKey = "BAR_BAGS", kind = "bags", blizzard = { "BagsBar" },
@@ -64,7 +65,9 @@ ns.BAR_DEFS = {
 -- Sichtbarkeit: visibility = "ALWAYS"/"COMBAT"/"NOCOMBAT"; fade* = bei Maus darüber einblenden;
 -- hide* = in bestimmten Situationen ausblenden; useCustom/custom = eigene Makro-Bedingung
 local function BarDefaults(enabled, perRow)
-    return { enabled = enabled, buttons = 12, perRow = perRow or 12, scale = 100, spacing = 4,
+    -- point: Ankerpunkt, auf den sich x/y beziehen (siehe Bars.lua)
+    return { enabled = enabled, buttons = 12, perRow = perRow or 12, scale = 100, spacing = 1, point = "CENTER",
+             profRows = true, -- nur Berufeleiste: Berufe oben, Fertigkeiten unten
              alpha = 100, visibility = "ALWAYS", growX = "RIGHT", growY = "DOWN", flyout = "UP",
              onlyBackpack = false, keyring = false,
              fadeMouseover = false, fadeInCombat = true, fadeAlpha = 0, fadeDelay = 1,
@@ -87,7 +90,7 @@ ns.defaults = {
     version = 1,
     bars = {
         bar1 = BarDefaults(true), bar2 = BarDefaults(true), bar3 = BarDefaults(true),
-        bar4 = BarDefaults(true, 1), bar5 = BarDefaults(true, 1),
+        bar4 = BarDefaults(false, 1), bar5 = BarDefaults(false, 1),
         bar6 = BarDefaults(false), bar7 = BarDefaults(false), bar8 = BarDefaults(false),
         pet = BarDefaults(true, 10), stance = BarDefaults(true, 10), prof = BarDefaults(true, 12),
         -- (Haltungsleiste: "enabled" hängt von der Klasse ab, siehe ADDON_LOADED)
@@ -119,6 +122,22 @@ ns.defaults = {
 }
 ns.defaults.bars.pet.buttons = 10
 ns.defaults.bars.stance.buttons = 10 -- Haltungsleiste zeigt immer so viele Knöpfe, wie der Charakter Haltungen hat
+-- Standard-Anordnung (Positionen in Bars.lua, DefaultPosition): Begleiter- und Haltungsleiste halb so groß,
+-- links bzw. rechts bündig über den Aktionsleisten; Berufeleiste mit Rahmen links daneben;
+-- Menü und Taschen unten rechts; Erfahrung und Ruf oben mittig
+ns.defaults.bars.pet.scale = 50
+ns.defaults.bars.pet.point = "BOTTOMLEFT"
+ns.defaults.bars.stance.scale = 50
+ns.defaults.bars.stance.point = "BOTTOMRIGHT"
+ns.defaults.bars.stance.growX = "LEFT" -- erster Knopf rechts, damit die Leiste rechtsbündig wächst
+ns.defaults.bars.prof.point = "BOTTOMRIGHT"
+ns.defaults.bars.prof.frame = true
+ns.defaults.bars.prof.growX = "LEFT"
+ns.defaults.bars.micro.point = "BOTTOMRIGHT"
+ns.defaults.bars.bags.point = "BOTTOMRIGHT"
+ns.defaults.bars.bags.growX = "LEFT"
+ns.defaults.bars.xp.point = "TOP"
+ns.defaults.bars.rep.point = "TOP"
 -- Leiste 1 macht in Fahrzeugen der Blizzard-Fahrzeugleiste Platz; die Begleiterleiste nur mit Begleiter
 ns.defaults.bars.bar1.hideVehicle = true
 ns.defaults.bars.bar1.hideOverride = true
@@ -142,6 +161,14 @@ local function FillDefaults(target, defaults)
     end
 end
 ns.FillDefaults = FillDefaults
+
+-- Ältere Einstellungen speichern die Mitte der Leiste: diese Bedeutung behalten (sonst springen Leisten),
+-- erst danach fehlende Werte aus den Standardwerten ergänzen
+function ns.MigrateBars(bars)
+    for _, cfg in pairs(bars or {}) do
+        if type(cfg) == "table" and cfg.point == nil and cfg.x ~= nil then cfg.point = "CENTER" end
+    end
+end
 
 ---------------------------------------------------------------------------
 -- Blizzard-Einstellungen (vom Spiel selbst gespeichert, daher unabhängig vom SavedVariables-Bug)
@@ -196,6 +223,7 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
         ns.defaults.bars.stance.enabled = STANCE_CLASSES[class] or false
         -- Wegen des Beta-Bugs (SavedVariables werden nicht geladen) gelten notfalls die Standardwerte
         ForeverBarsDB = ForeverBarsDB or {}
+        ns.MigrateBars(ForeverBarsDB.bars)
         FillDefaults(ForeverBarsDB, ns.defaults)
         ns.db = ForeverBarsDB
         -- Frühere Einstellung "Nur bei Maus darüber" ist jetzt das Einblenden bei Maus darüber

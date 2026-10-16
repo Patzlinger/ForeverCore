@@ -335,6 +335,10 @@ local function CreateOptions()
     options.flyoutSelector = CreateSmallSelector(layoutPage, L("OPT_FLYOUT"), RIGHT_X, -188, 170, FLYOUT_CHOICES,
         function() return SelectedConfig().flyout or "UP" end,
         function(value) SelectedConfig().flyout = value; Changed() end)
+    -- Nur Berufeleiste: Berufe oben, Fertigkeiten (Entzaubern, Angeln …) unten
+    options.profRowsCheck = CreateCheckbox(layoutPage, L("OPT_PROF_ROWS"), RIGHT_X, -192,
+        function() return SelectedConfig().profRows end,
+        function(value) SelectedConfig().profRows = value; Changed(); ns.RefreshOptions() end)
     -- Nur Taschenleiste (an der Stelle der Ausklapp-Richtung, die es nur bei Aktionsleisten gibt)
     options.backpackCheck = CreateCheckbox(layoutPage, L("OPT_ONLY_BACKPACK"), RIGHT_X, -192,
         function() return SelectedConfig().onlyBackpack end,
@@ -376,12 +380,12 @@ local function CreateOptions()
 
     -- Zentrieren: Leiste waagerecht bzw. senkrecht in die Bildschirmmitte setzen
     CreateSearchButton(layoutPage, L("BTN_CENTER_X"), 170, 22, function()
-        SelectedConfig().x = math.floor(UIParent:GetWidth() / 2 + 0.5)
+        ns.SetBarCenter(selectedKey, UIParent:GetWidth() / 2, nil)
         Changed()
         ns.RefreshOptions()
     end):SetPoint("TOPLEFT", RIGHT_X, -326)
     CreateSearchButton(layoutPage, L("BTN_CENTER_Y"), 170, 22, function()
-        SelectedConfig().y = math.floor(UIParent:GetHeight() / 2 + 0.5)
+        ns.SetBarCenter(selectedKey, nil, UIParent:GetHeight() / 2)
         Changed()
         ns.RefreshOptions()
     end):SetPoint("TOPLEFT", RIGHT_X, -352)
@@ -703,13 +707,9 @@ local function CreateOptions()
     CreateSelector(displayPage, L("OPT_SKIN"), 14, -154, 140, skinChoices,
         function() return ns.db.skin end,
         function(value) ns.db.skin = value; ns.UpdateAllButtons() end)
-    CreateSelector(displayPage, L("OPT_PROC_GLOW"), 360, -154, 150, {
-            { value = "FOREVER", textKey = "GLOW_FOREVER" },
-            { value = "BLIZZARD", textKey = "GLOW_BLIZZARD" },
-            { value = "OFF", textKey = "GLOW_OFF" },
-        },
+    CreateSelector(displayPage, L("OPT_PROC_GLOW"), 360, -154, 150, ns.GLOW_STYLES,
         function() return ns.db.procGlow end,
-        function(value) ns.db.procGlow = value end)
+        function(value) ns.db.procGlow = value; ns.RefreshGlows() end)
     CreateSlider(displayPage, L("OPT_ZOOM"), 14, -182, 160,
         function() return 0 end, function() return 30 end,
         function() return ns.db.iconZoom end,
@@ -973,12 +973,13 @@ function ns.RefreshOptions()
     end
     -- Taschen und Haltungen: Anzahl ergibt sich von selbst
     options.buttonsSlider:SetShown(hasButtons and def.kind ~= "bags" and def.kind ~= "stance")
-    options.perRowSlider:SetShown(hasButtons)
     options.spacingSlider:SetShown(hasButtons)
     options.growXSelector:SetShown(hasButtons)
     options.growYSelector:SetShown(hasButtons)
     options.flyoutSelector:SetShown(def.kind == "action")
     options.backpackCheck:SetShown(def.kind == "bags")
+    options.profRowsCheck:SetShown(def.kind == "prof")
+    options.perRowSlider:SetShown(hasButtons and not (def.kind == "prof" and SelectedConfig().profRows))
     options.keyringCheck:SetShown(def.kind == "bags" and ns.HasKeyring())
     for _, control in ipairs(controls) do
         control.Refresh()

@@ -6,7 +6,7 @@ local L = ns.L
 -- Wichtig: Aktionsknöpfe sind geschützt - Anordnung, Größe und Position nur außerhalb des Kampfes ändern.
 
 local ACTION_SIZE = 36   -- Kantenlänge der Aktionsknöpfe
-local SMALL_SIZE = 30    -- Begleiter- und Haltungsknöpfe
+local SMALL_SIZE = 30    -- Taschenknöpfe (Begleiter/Haltung haben Aktionsgröße und werden über "Größe" verkleinert)
 local GRID_REASON = 2048 -- eigene Kennung für "leere Plätze zeigen"
 local MOVER_COLOR = { 1, 0.82, 0 }
 
@@ -74,27 +74,80 @@ function ns.HasKeyring()
 end
 
 ---------------------------------------------------------------------------
--- Standardpositionen (Mitte der Leiste, gemessen von unten links)
+-- Positionen. Gespeichert wird, wo der Ankerpunkt der Leiste liegt (cfg.point, z. B. "CENTER" oder
+-- "BOTTOMRIGHT"), gemessen von unten links. So bleibt z. B. die Haltungsleiste rechtsbündig, auch wenn
+-- sich die Zahl ihrer Knöpfe ändert.
 ---------------------------------------------------------------------------
+
+-- Lage eines Ankerpunkts relativ zur Mitte (-1 = links/unten, 1 = rechts/oben)
+local function PointFactors(point)
+    point = point or "CENTER"
+    local fx = point:find("LEFT") and -1 or (point:find("RIGHT") and 1 or 0)
+    local fy = point:find("TOP") and 1 or (point:find("BOTTOM") and -1 or 0)
+    return fx, fy
+end
+
+-- Standard-Anordnung: drei Aktionsleisten unten mittig aneinander, darüber links die Begleiterleiste
+-- (bündig zum ersten Knopf) und rechts die Haltungsleiste (bündig zum letzten Knopf), links daneben die
+-- Berufeleiste, unten rechts Menü und Taschen übereinander, oben mittig Erfahrung und Ruf.
+local EDGE = 4         -- Abstand zum Bildschirmrand
+local BAR_GAP = 1      -- Abstand zwischen aneinanderliegenden Leisten
+local SIDE_GAP = 6     -- Abstand der Berufeleiste zu den Aktionsleisten
+local FRAME_SPACE = 4  -- Rand des Rahmens um eine Leiste (siehe UpdateBarFrame)
 
 local function DefaultPosition(key)
     local width, height = UIParent:GetWidth(), UIParent:GetHeight()
-    local step = ACTION_SIZE + 8
-    local base = 46 -- unterste Aktionsleiste; darunter Erfahrungs- und Rufleiste
+    local bars = ns.db.bars
+    local function Scale(barKey) return math.max(0.3, (bars[barKey].scale or 100) / 100) end
+    local function HolderHeight(barKey, fallback)
+        local holder = holders[barKey]
+        if holder and holder:GetHeight() > 1 then return holder:GetHeight() * holder:GetScale() end
+        return fallback
+    end
+    local scale = Scale("bar1")
+    local barWidth = (12 * ACTION_SIZE + 11 * (bars.bar1.spacing or 1)) * scale
+    local barHeight = ACTION_SIZE * scale
+    local left, right = width / 2 - barWidth / 2, width / 2 + barWidth / 2
+    local function BarCenter(row) return EDGE + barHeight / 2 + row * (barHeight + BAR_GAP) end
+    local stackTop = EDGE + 3 * barHeight + 2 * BAR_GAP           -- Oberkante der drei Aktionsleisten
+    local smallRow = ACTION_SIZE * Scale("pet")                    -- Höhe der Begleiter-/Haltungsreihe
+    local aboveSmall = stackTop + BAR_GAP + smallRow + BAR_GAP    -- darüber beginnen Leisten 6-8
+    local microHeight = HolderHeight("micro", 40)
+    local xpHeight = HolderHeight("xp", 12)
     local positions = {
-        bar1 = { width / 2, base }, bar2 = { width / 2, base + step }, bar3 = { width / 2, base + step * 2 },
-        bar6 = { width / 2, base + step * 3 }, bar7 = { width / 2, base + step * 4 }, bar8 = { width / 2, base + step * 5 },
-        bar4 = { width - 30, height / 2 }, bar5 = { width - 30 - step, height / 2 },
-        pet = { width / 2 - 140, base + step * 3 }, stance = { width / 2 + 140, base + step * 3 },
-        prof = { width / 2 - 420, base + step },
-        micro = { width - 170, 22 }, bags = { width - 110, 62 }, vehicle = { width / 2 - 300, base + 20 },
-        xp = { width / 2, 8 }, rep = { width / 2, 20 }, queue = { width - 290, 120 },
+        bar1 = { width / 2, BarCenter(0) }, bar2 = { width / 2, BarCenter(1) }, bar3 = { width / 2, BarCenter(2) },
+        bar6 = { width / 2, aboveSmall + barHeight / 2 },
+        bar7 = { width / 2, aboveSmall + barHeight * 1.5 + BAR_GAP },
+        bar8 = { width / 2, aboveSmall + barHeight * 2.5 + BAR_GAP * 2 },
+        bar4 = { width - 30, height / 2 }, bar5 = { width - 30 - ACTION_SIZE - 8, height / 2 },
+        pet = { left, stackTop + BAR_GAP },     -- BOTTOMLEFT
+        stance = { right, stackTop + BAR_GAP }, -- BOTTOMRIGHT
+        prof = { left - SIDE_GAP - FRAME_SPACE, EDGE + FRAME_SPACE }, -- BOTTOMRIGHT (Rahmen eingerechnet)
+        micro = { width - EDGE, EDGE },                        -- BOTTOMRIGHT
+        bags = { width - EDGE, EDGE + microHeight + 2 },       -- BOTTOMRIGHT
+        xp = { width / 2, height - EDGE },                     -- TOP
+        rep = { width / 2, height - EDGE - xpHeight - 2 },     -- TOP
+        vehicle = { width / 2, aboveSmall + 20 }, queue = { width - 290, 120 },
     }
     local position = positions[key] or { width / 2, height / 2 }
     return position[1], position[2]
 end
 
 ns.DefaultPosition = DefaultPosition
+
+-- Mitte einer Leiste setzen (Ziehen, "Zentrieren"); gespeichert wird der Ankerpunkt
+function ns.SetBarCenter(key, centerX, centerY)
+    local cfg = ns.db.bars[key]
+    local holder = holders[key]
+    local fx, fy = PointFactors(cfg.point)
+    local halfWidth, halfHeight = 0, 0
+    if holder then
+        halfWidth = holder:GetWidth() * holder:GetScale() / 2
+        halfHeight = holder:GetHeight() * holder:GetScale() / 2
+    end
+    if centerX then cfg.x = math.floor(centerX + fx * halfWidth + 0.5) end
+    if centerY then cfg.y = math.floor(centerY + fy * halfHeight + 0.5) end
+end
 
 function ns.GetBarPosition(key)
     local cfg = ns.db.bars[key]
@@ -341,7 +394,7 @@ end
 ---------------------------------------------------------------------------
 
 local PROF_COUNT = 12
-local profSpells = {} -- [i] = { spell = Zauber-ID oder Name, icon = Symbol }
+local profSpells = {} -- [i] = { spell = Zauber-ID oder Name, icon = Symbol, row = 1 Beruf / 2 Fertigkeit }
 
 -- Zauber an einer Stelle im Zauberbuch (neue und alte Schnittstelle); nur aktive Zauber
 local function SpellBookSpell(slot)
@@ -360,29 +413,38 @@ local function SpellIcon(spellID)
     return GetSpellTexture and GetSpellTexture(spellID)
 end
 
--- Liste der Berufs-Knöpfe neu ermitteln (Hauptberufe, Archäologie, Angeln, Kochen, Erste Hilfe)
+-- Liste der Berufs-Knöpfe neu ermitteln (Hauptberufe, Archäologie, Angeln, Kochen, Erste Hilfe).
+-- Reihe 1: die Berufe selbst (erste Fähigkeit öffnet das Berufsfenster), Reihe 2: weitere Fertigkeiten
+-- (Entzaubern, Schmelzen, Kräutersuche …) und Angeln (GetProfessions liefert es an 4. Stelle).
+local FISHING_SLOT = 4
 local function CollectProfessionSpells()
     wipe(profSpells)
     if not GetProfessions or not GetProfessionInfo then return end
     local indices = { GetProfessions() }
     local seen = {}
+    local top, bottom = {}, {}
     for i = 1, 6 do
         local index = indices[i]
         if index then
             local name, icon, _, _, numSpells, offset = GetProfessionInfo(index)
-            local added = false
+            local first = true
             for s = 1, numSpells or 0 do
                 local spellID, spellIcon = SpellBookSpell((offset or 0) + s)
                 if spellID and not seen[spellID] then
                     seen[spellID] = true
-                    added = true
-                    table.insert(profSpells, { spell = spellID, icon = spellIcon or SpellIcon(spellID) or icon })
+                    local entry = { spell = spellID, icon = spellIcon or SpellIcon(spellID) or icon }
+                    table.insert((first and i ~= FISHING_SLOT) and top or bottom, entry)
+                    first = false
                 end
             end
             -- Ohne eigene Fähigkeit im Zauberbuch: den Beruf über seinen Namen öffnen
-            if not added and name then table.insert(profSpells, { spell = name, icon = icon }) end
+            if first and name then
+                table.insert(i ~= FISHING_SLOT and top or bottom, { spell = name, icon = icon })
+            end
         end
     end
+    for _, entry in ipairs(top) do entry.row = 1; table.insert(profSpells, entry) end
+    for _, entry in ipairs(bottom) do entry.row = 2; table.insert(profSpells, entry) end
 end
 
 local function UpdateProfessionCooldown(button)
@@ -459,35 +521,143 @@ end
 -- oder lässt Blizzards Leuchten stehen. Es wird nichts selbst berechnet.
 ---------------------------------------------------------------------------
 
+-- Stile des Leuchtens (alle eigenen in Gold, der einzigen Akzentfarbe). "BLIZZARD" lässt Blizzards
+-- Leuchten stehen; für den Testmodus gibt es davon eine eigene Nachbildung.
+ns.GLOW_STYLES = {
+    { value = "FOREVER", textKey = "GLOW_FOREVER" },   -- goldener Rahmen, pulsierend
+    { value = "SOFT", textKey = "GLOW_SOFT" },         -- weicher goldener Schein um den Knopf
+    { value = "PIXEL", textKey = "GLOW_PIXEL" },       -- feine goldene Linie, schnell blinkend
+    { value = "CORNERS", textKey = "GLOW_CORNERS" },   -- goldene Ecken
+    { value = "FLASH", textKey = "GLOW_FLASH" },       -- Symbol blitzt hell auf
+    { value = "BLIZZARD", textKey = "GLOW_BLIZZARD" },
+    { value = "OFF", textKey = "GLOW_OFF" },
+}
+
+local BLIZZARD_PROC_ATLAS = "UI-HUD-ActionBar-Proc-Loop-Flipbook"
+
+local function HasAtlas(name)
+    return C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(name) ~= nil
+end
+
+local function GoldTexture(parent, layer)
+    local texture = parent:CreateTexture(nil, layer or "OVERLAY")
+    texture:SetColorTexture(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3], 1)
+    return texture
+end
+
 local function GetGlow(button)
     if button.fbGlow then return button.fbGlow end
     local glow = CreateFrame("Frame", nil, button, "BackdropTemplate")
-    glow:SetPoint("TOPLEFT", -2, 2)
-    glow:SetPoint("BOTTOMRIGHT", 2, -2)
+    glow:SetAllPoints()
     glow:SetFrameLevel(button:GetFrameLevel() + 5)
-    glow:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 2 })
-    glow:SetBackdropBorderColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3], 1)
     glow:EnableMouse(false)
+    local parts = {}
+
+    -- Goldener Rahmen (2 px, etwas außerhalb) bzw. feine Linie (1 px, auf dem Rand)
+    local frame = CreateFrame("Frame", nil, glow, "BackdropTemplate")
+    frame:SetPoint("TOPLEFT", -2, 2)
+    frame:SetPoint("BOTTOMRIGHT", 2, -2)
+    frame:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 2 })
+    frame:SetBackdropBorderColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3], 1)
+    parts.FOREVER = { frame }
+    local pixel = CreateFrame("Frame", nil, glow, "BackdropTemplate")
+    pixel:SetAllPoints()
+    pixel:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 })
+    pixel:SetBackdropBorderColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3], 1)
+    parts.PIXEL = { pixel }
+
+    -- Weicher Schein: Blizzard-Knopfrand als heller Hof in Gold
+    local soft = glow:CreateTexture(nil, "OVERLAY")
+    soft:SetTexture("Interface\\Buttons\\UI-ActionButton-Border")
+    soft:SetBlendMode("ADD")
+    soft:SetVertexColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3], 1)
+    soft:SetPoint("CENTER")
+    soft:SetSize(ACTION_SIZE * 1.8, ACTION_SIZE * 1.8)
+    parts.SOFT = { soft }
+
+    -- Ecken: je zwei kurze goldene Striche
+    local corners = {}
+    for _, corner in ipairs({ "TOPLEFT", "TOPRIGHT", "BOTTOMLEFT", "BOTTOMRIGHT" }) do
+        local fx, fy = PointFactors(corner)
+        local across = GoldTexture(glow)
+        across:SetSize(10, 2)
+        across:SetPoint(corner, glow, corner, fx, fy)
+        local down = GoldTexture(glow)
+        down:SetSize(2, 10)
+        down:SetPoint(corner, glow, corner, fx, fy)
+        table.insert(corners, across)
+        table.insert(corners, down)
+    end
+    parts.CORNERS = corners
+
+    -- Aufblitzen: helle Fläche über dem Symbol
+    local flash = glow:CreateTexture(nil, "OVERLAY")
+    flash:SetColorTexture(1, 0.95, 0.7, 0.55)
+    flash:SetBlendMode("ADD")
+    flash:SetAllPoints(button.icon or button.Icon or glow)
+    parts.FLASH = { flash }
+
+    -- Nachbildung von Blizzards Leuchten (nur Testmodus): die Blizzard-Grafik, sonst ein ähnlicher Schein
+    local blizzard = glow:CreateTexture(nil, "OVERLAY")
+    blizzard:SetPoint("CENTER")
+    blizzard:SetSize(ACTION_SIZE * 1.4, ACTION_SIZE * 1.4)
+    local blizzardAnim = blizzard:CreateAnimationGroup()
+    blizzardAnim:SetLooping("REPEAT")
+    if HasAtlas(BLIZZARD_PROC_ATLAS) then
+        blizzard:SetAtlas(BLIZZARD_PROC_ATLAS)
+        local flip = blizzardAnim:CreateAnimation("FlipBook")
+        flip:SetFlipBookRows(6)
+        flip:SetFlipBookColumns(5)
+        flip:SetFlipBookFrames(30)
+        flip:SetDuration(1)
+    else
+        blizzard:SetTexture("Interface\\SpellActivationOverlay\\IconAlert")
+        blizzard:SetTexCoord(0.0078125, 0.5078125, 0.27734375, 0.52734375)
+        blizzard:SetBlendMode("ADD")
+        local fade = blizzardAnim:CreateAnimation("Alpha")
+        fade:SetFromAlpha(1)
+        fade:SetToAlpha(0.4)
+        fade:SetDuration(0.5)
+        blizzardAnim:SetLooping("BOUNCE")
+    end
+    parts.BLIZZARD = { blizzard }
+    glow.blizzardAnim = blizzardAnim
+
+    -- Pulsieren für alle eigenen Stile (feine Linie und Aufblitzen etwas schneller)
     local pulse = glow:CreateAnimationGroup()
     pulse:SetLooping("BOUNCE")
-    local fade = pulse:CreateAnimation("Alpha")
-    fade:SetFromAlpha(1)
-    fade:SetToAlpha(0.3)
-    fade:SetDuration(0.5)
+    glow.fade = pulse:CreateAnimation("Alpha")
+    glow.fade:SetFromAlpha(1)
+    glow.fade:SetToAlpha(0.3)
+    glow.fade:SetDuration(0.5)
     glow.pulse = pulse
+
+    glow.parts = parts
     glow:Hide()
     button.fbGlow = glow
     return glow
 end
 
-local function ShowGlow(button, on)
+-- style = einer der Stile oben oder nil (aus)
+local function ShowGlow(button, style)
     local glow = GetGlow(button)
-    if on then
-        glow:Show()
-        glow.pulse:Play()
-    else
-        glow.pulse:Stop()
+    glow.pulse:Stop()
+    glow.blizzardAnim:Stop()
+    for key, list in pairs(glow.parts) do
+        for _, part in ipairs(list) do part:SetShown(key == style) end
+    end
+    if not style or not glow.parts[style] then
         glow:Hide()
+        return
+    end
+    glow:Show()
+    if style == "BLIZZARD" then
+        glow.blizzardAnim:Play()
+    else
+        local fast = style == "PIXEL" or style == "FLASH"
+        glow.fade:SetDuration(fast and 0.3 or 0.5)
+        glow.fade:SetToAlpha(style == "FLASH" and 0 or 0.3)
+        glow.pulse:Play()
     end
 end
 
@@ -497,14 +667,15 @@ local function OnAlertShown(button)
     local style = ns.db.procGlow
     local alert = button.SpellActivationAlert or button.overlay
     if alert then alert:SetAlpha(style == "BLIZZARD" and 1 or 0) end
-    ShowGlow(button, style == "FOREVER")
+    -- Bei "Wie Blizzard" zeigt Blizzard selbst das Leuchten, bei "Aus" nichts
+    ShowGlow(button, (style ~= "BLIZZARD" and style ~= "OFF") and style or nil)
 end
 
 local function OnAlertHidden(button)
     if not button then return end
     button.fbAlertActive = nil
     -- Im Testmodus leuchtet der Knopf weiter
-    if button.fbGlow and not button.fbTestGlow then ShowGlow(button, false) end
+    if button.fbGlow and not button.fbTestGlow then ShowGlow(button, nil) end
 end
 
 ---------------------------------------------------------------------------
@@ -540,13 +711,17 @@ end
 
 local function ApplyTestEffects(on)
     for i, button in ipairs(TestButtons()) do
-        -- Jeder dritte Knopf leuchtet (im eigenen Stil, falls gewählt), jeder vierte (versetzt) zeigt eine Abklingzeit
-        local glow = on and i % 3 == 1 and ns.db.procGlow == "FOREVER"
+        -- Jeder dritte Knopf leuchtet im gewählten Stil ("Wie Blizzard" als Nachbildung),
+        -- jeder vierte (versetzt) zeigt eine Abklingzeit
+        local style = ns.db.procGlow
+        local glow = on and i % 3 == 1 and style ~= "OFF"
         button.fbTestGlow = glow or nil
         if glow then
-            ShowGlow(button, true)
-        elseif not button.fbAlertActive or ns.db.procGlow ~= "FOREVER" then
-            ShowGlow(button, false)
+            ShowGlow(button, style)
+        elseif button.fbAlertActive and style ~= "BLIZZARD" and style ~= "OFF" then
+            ShowGlow(button, style) -- echter Proc läuft gerade
+        else
+            ShowGlow(button, nil)
         end
         if on and i % 4 == 2 then
             TestCooldown(button):SetCooldown(GetTime(), TEST_COOLDOWN)
@@ -574,8 +749,16 @@ function ns.SetTestMode(on)
     -- Nach dem Anordnen, damit die Knöpfe schon in den Leisten liegen
     C_Timer.After(0.1, function() ApplyTestEffects(ns.testMode) end)
     ns.Print(L(ns.testMode and "TEST_ON" or "TEST_OFF"))
-    if ns.testMode and ns.db.procGlow ~= "FOREVER" then ns.Print(L("TEST_GLOW_HINT")) end
+    if ns.testMode and ns.db.procGlow == "OFF" then ns.Print(L("TEST_GLOW_HINT")) end
     if ns.RefreshOptions then ns.RefreshOptions() end
+end
+
+-- Stil gewechselt: laufende Vorschau bzw. echtes Leuchten sofort im neuen Stil zeigen
+function ns.RefreshGlows()
+    if ns.testMode then ApplyTestEffects(true) end
+    for _, button in ipairs(TestButtons()) do
+        if button.fbAlertActive and not button.fbTestGlow then OnAlertShown(button) end
+    end
 end
 
 local function HookProcGlow()
@@ -627,9 +810,9 @@ local function UpdateBarFrame(def, cfg, holder)
     frame.header:SetShown(withTitle)
     frame.line:SetShown(withTitle)
     frame.title:SetShown(withTitle)
-    -- Eigener Titel aus dem Menü, sonst der Name der Leiste
+    -- Eigener Titel aus dem Menü, sonst der Standardtitel der Leiste (z. B. "Berufe") bzw. ihr Name
     local titleText = strtrim(cfg.frameTitleText or "")
-    frame.title:SetText(titleText ~= "" and titleText or L(def.textKey))
+    frame.title:SetText(titleText ~= "" and titleText or L(def.titleKey or def.textKey))
     frame:ClearAllPoints()
     frame:SetPoint("TOPLEFT", holder, "TOPLEFT", -FRAME_PAD, FRAME_PAD + (withTitle and FRAME_TITLE + 1 or 0))
     frame:SetPoint("BOTTOMRIGHT", holder, "BOTTOMRIGHT", FRAME_PAD, -FRAME_PAD)
@@ -657,7 +840,7 @@ end
 -- von oben nach unten bzw. unten nach oben (der erste Knopf sitzt in der Ecke, von der aus es wächst).
 local function LayoutButtons(def, cfg, holder)
     local buttons = GetButtons(def, cfg)
-    local size = (def.kind == "action" or def.kind == "prof") and ACTION_SIZE or SMALL_SIZE
+    local size = def.kind == "bags" and SMALL_SIZE or ACTION_SIZE
     local wanted = def.bagButtons and #buttons or (cfg.buttons or def.count)
     -- Haltungen: immer genau so viele Plätze, wie der Charakter hat; Berufe: höchstens so viele
     if def.kind == "stance" then
@@ -667,7 +850,23 @@ local function LayoutButtons(def, cfg, holder)
     end
     local count = math.max(1, math.min(wanted, #buttons))
     local perRow = math.max(1, math.min(cfg.perRow or count, count))
-    local gap = cfg.spacing or 4
+    local rows = math.ceil(count / perRow)
+    -- Platz (Spalte, Reihe) je Knopf; Berufeleiste wahlweise in zwei Reihen: Berufe oben, Fertigkeiten unten
+    local slots = {}
+    if def.kind == "prof" and cfg.profRows then
+        local columns, hasTop = { 0, 0 }, profSpells[1] and profSpells[1].row == 1
+        for i = 1, count do
+            local row = (profSpells[i] and profSpells[i].row or 1) - (hasTop and 1 or 2)
+            row = math.max(0, row)
+            slots[i] = { columns[row + 1], row }
+            columns[row + 1] = columns[row + 1] + 1
+        end
+        perRow = math.max(1, columns[1], columns[2])
+        rows = columns[2] > 0 and 2 or 1
+    else
+        for i = 1, count do slots[i] = { (i - 1) % perRow, math.floor((i - 1) / perRow) } end
+    end
+    local gap = cfg.spacing or 1
     local toLeft, toTop = cfg.growX == "LEFT", cfg.growY == "UP"
     local corner = (toTop and "BOTTOM" or "TOP") .. (toLeft and "RIGHT" or "LEFT")
     local shown = {}
@@ -677,7 +876,7 @@ local function LayoutButtons(def, cfg, holder)
             button:SetParent(holder)
             button:SetSize(size, size)
             button:ClearAllPoints()
-            local column, row = (i - 1) % perRow, math.floor((i - 1) / perRow)
+            local column, row = slots[i][1], slots[i][2]
             button:SetPoint(corner, holder, corner,
                 column * (size + gap) * (toLeft and -1 or 1), row * (size + gap) * (toTop and 1 or -1))
             -- Ausklapp-Richtung von Zauber-Gruppen (z. B. Portale); nur Aktionsknöpfe
@@ -692,7 +891,6 @@ local function LayoutButtons(def, cfg, holder)
     for _, button in ipairs(GetAllButtons(def)) do
         if not shown[button] then button:SetParent(hiddenParent) end
     end
-    local rows = math.ceil(count / perRow)
     holder:SetSize(math.max(1, perRow * size + (perRow - 1) * gap), math.max(1, rows * size + (rows - 1) * gap))
 end
 
@@ -812,6 +1010,8 @@ local HIDE_CONDITIONS = {
 local function VisibilityDriver(def, cfg)
     if not cfg.enabled then return "hide" end
     if ns.unlocked or ns.testMode then return "show" end
+    -- Haltungsleiste ohne Haltungen, Auren oder Gestalten ausblenden
+    if def.kind == "stance" and (GetNumShapeshiftForms and GetNumShapeshiftForms() or 0) == 0 then return "hide" end
     -- Eigene Bedingung ersetzt alle anderen Einstellungen
     local custom = cfg.useCustom and strtrim(cfg.custom or "")
     if custom and custom ~= "" then return custom end
@@ -962,9 +1162,8 @@ local function UpdateMover(def, holder)
                 x, y = cursorX + self.offsetX, cursorY + self.offsetY
             end
             self.dropX, self.dropY = nil, nil
-            local cfg = ns.db.bars[self.key]
-            cfg.x = math.floor(x + 0.5)
-            cfg.y = math.floor(y + 0.5)
+            -- x/y ist die Mitte; gespeichert wird der Ankerpunkt der Leiste
+            ns.SetBarCenter(self.key, x, y)
             ns.RequestLayout()
             if ns.RefreshOptions then ns.RefreshOptions() end
         end)
@@ -1005,7 +1204,7 @@ function ns.ApplyLayout()
         holder:SetScale(scale)
         local x, y = ns.GetBarPosition(def.key)
         holder:ClearAllPoints()
-        holder:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x / scale, y / scale)
+        holder:SetPoint(cfg.point or "CENTER", UIParent, "BOTTOMLEFT", x / scale, y / scale)
         -- Deckkraft; beim Einblenden per Maus übernimmt das die Überblendung (siehe UpdateFading)
         if not cfg.fadeMouseover or ns.unlocked or ns.testMode then
             holder:SetAlpha((cfg.alpha or 100) / 100)

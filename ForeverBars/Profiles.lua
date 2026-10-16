@@ -9,11 +9,11 @@ local L = ns.L
 ---------------------------------------------------------------------------
 
 ns.PRESETS = {
-    { key = "STANDARD", textKey = "PRESET_STANDARD" }, -- Standard: drei Leisten unten, zwei senkrecht rechts
-    { key = "THREE_BOTTOM", textKey = "PRESET_THREE_BOTTOM" }, -- drei Leisten unten, keine rechts
-    { key = "TWO_TWO", textKey = "PRESET_TWO_TWO" },   -- zwei Leisten unten, zwei senkrecht rechts
-    { key = "SINGLE", textKey = "PRESET_SINGLE" },     -- eine Leiste unten, eine senkrecht rechts
-    { key = "COMPACT", textKey = "PRESET_COMPACT" },   -- kleiner, Zusatzleisten nur bei Maus darüber
+    { key = "STANDARD", textKey = "PRESET_STANDARD" },             -- Standard: drei Leisten unten (wie neues Profil)
+    { key = "STANDARD_RIGHT", textKey = "PRESET_STANDARD_RIGHT" }, -- drei unten, zwei senkrecht rechts
+    { key = "TWO_TWO", textKey = "PRESET_TWO_TWO" },               -- zwei Leisten unten, zwei senkrecht rechts
+    { key = "SINGLE", textKey = "PRESET_SINGLE" },                 -- eine Leiste unten, eine senkrecht rechts
+    { key = "COMPACT", textKey = "PRESET_COMPACT" },               -- kleiner, Menü/Taschen nur bei Maus darüber
 }
 
 local function Bars() return ns.db.bars end
@@ -25,14 +25,6 @@ local function ResetAllBars()
     end
 end
 
--- Leiste im Raster über Leiste 1 einsetzen (Reihe 0 = unterste)
-local function Stack(key, row)
-    local x, y = ns.DefaultPosition("bar1")
-    local step = 36 + 8
-    Bars()[key].x = math.floor(x + 0.5)
-    Bars()[key].y = math.floor(y + row * step + 0.5)
-end
-
 function ns.ApplyPreset(key)
     if InCombatLockdown() then
         ns.Print(L("NOT_IN_COMBAT"))
@@ -40,34 +32,32 @@ function ns.ApplyPreset(key)
     end
     ResetAllBars()
     local bars = Bars()
-    if key == "THREE_BOTTOM" then
-        bars.bar4.enabled = false
-        bars.bar5.enabled = false
+    if key == "STANDARD_RIGHT" then
+        bars.bar4.enabled = true
+        bars.bar5.enabled = true
     elseif key == "TWO_TWO" then
         bars.bar3.enabled = false
+        bars.bar4.enabled = true
+        bars.bar5.enabled = true
     elseif key == "SINGLE" then
         bars.bar2.enabled = false
         bars.bar3.enabled = false
-        bars.bar5.enabled = false
+        bars.bar4.enabled = true
     elseif key == "COMPACT" then
-        -- etwas kleiner, Zusatzleisten und Menü/Taschen erscheinen erst bei Maus darüber (im Kampf voll sichtbar)
-        for _, barKey in ipairs({ "bar1", "bar2", "bar3", "bar4", "bar5", "pet", "stance" }) do
-            bars[barKey].scale = 85
-        end
-        for _, barKey in ipairs({ "bar4", "bar5", "micro", "bags" }) do
+        -- etwas kleiner, Menü und Taschen erscheinen erst bei Maus darüber (im Kampf voll sichtbar)
+        for _, barKey in ipairs({ "bar1", "bar2", "bar3", "prof" }) do bars[barKey].scale = 85 end
+        for _, barKey in ipairs({ "pet", "stance" }) do bars[barKey].scale = 43 end
+        for _, barKey in ipairs({ "micro", "bags" }) do
             bars[barKey].fadeMouseover = true
             bars[barKey].fadeAlpha = 0
             bars[barKey].fadeDelay = 1
         end
     end
-    -- Positionen: Leisten 1-3 gestapelt, Rest an den Standardplätzen
+    -- Positionen der Standard-Anordnung neu berechnen (Leisten 1-3 unten aneinander, Rest drumherum)
     for barKey, cfg in pairs(bars) do
         cfg.x, cfg.y = nil, nil
         ns.GetBarPosition(barKey)
     end
-    Stack("bar1", 0)
-    Stack("bar2", 1)
-    Stack("bar3", 2)
     ns.RequestLayout()
     ns.UpdateAllButtons()
     ns.Print(L("PRESET_DONE"))
@@ -154,7 +144,8 @@ function ns.LoadProfile(name)
             ns.db[key] = type(value) == "table" and CopyTable(value) or value
         end
     end
-    -- Ältere Profile kennen neuere Einstellungen nicht: aus den Standardwerten ergänzen
+    -- Ältere Profile kennen neuere Einstellungen nicht: umrechnen und aus den Standardwerten ergänzen
+    ns.MigrateBars(ns.db.bars)
     ns.FillDefaults(ns.db, ns.defaults)
     ns.db.activeProfile = name
     ns.RequestLayout()
