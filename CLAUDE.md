@@ -101,11 +101,12 @@ Philosophie, Regeln, Design und Abläufe. Wenn etwas hier nicht steht: am besteh
   2. **Sammelknopf**: ab zwei Forever-Addons werden deren Minimap-Knöpfe ausgeblendet und in einer Liste am
      Forever-Core-Knopf gesammelt (Klick wird an den Original-Knopf weitergereicht)
   3. **Hub-Fenster** `/forever` (`/fhub`): alle installierten Forever-Addons mit "Öffnen"-Knopf ins jeweilige Menü,
-     "Alle verschieben", Minimap-Knopf ein/aus; `/forever reset` holt Knöpfe zurück
+     "Alle verschieben", Minimap-Knopf ein/aus, **Sprache für alle Forever-Addons**; `/forever reset` holt Knöpfe zurück
   4. **Gemeinsamer Verschiebe-Modus** `/fmove`: entsperrt/sperrt alle angemeldeten Addons auf einmal
 - Damit ein Addon voll eingebunden ist:
-  - Minimap-Knopf mit globalem Namen `Forever<Name>MinimapButton`, **Linksklick öffnet das Menü**, Rechtsklick frei
-    (meist: entsperren/sperren bzw. ein-/ausblenden); in `KNOWN` eintragen
+  - Minimap-Knopf **immer über `UI.MinimapButton({...})`** bauen, globaler Name `Forever<Name>MinimapButton`,
+    **Linksklick öffnet das Menü**, Rechtsklick frei (meist: entsperren/sperren bzw. ein-/ausblenden); in `KNOWN` eintragen.
+    Die Vorlage bringt Aussehen, Ziehen um die Minimap und den Tooltip-Hinweis "Ziehen" mit
   - für `/fmove`: `UI.RegisterMovable("ForeverName", isLocked, setLocked)` – `isLocked()` liefert true/false,
     `setLocked(locked)` sperrt bzw. entsperrt (inkl. Menü aktualisieren). Addons mit eigener Stil-Datei melden sich
     in einer kleinen `HubLink.lua` an (siehe ForeverQuests/ForeverBars)
@@ -131,13 +132,21 @@ ihn identisch um. Neue Oberflächen nutzen eine dieser beiden – keine dritten 
 - Tooltips kurz; eigene Tooltips im gleichen Stil (dunkel, goldene Linie oben)
 - Minimap-Knopf: runder Standard-Look (31 px, Tracking-Rand), ziehbar um die Minimap
 - Anzeigen im Spiel (Leisten, Balken, Symbole): dezent, eher klein, halbtransparente dunkle Flächen, keine Blizzard-Schnörkel
-- Chat-Ausgabe: `Addonname: Text` mit farbigem Namen, sparsam (nur Bestätigungen und Fehlerhinweise)
+- Chat-Ausgabe: `Addonname: Text`, Name in Gold `|cffffcc00` (wie `UI.Chat`), sparsam (nur Bestätigungen und Fehlerhinweise)
 - Schrift: Standardschriften des Clients (`STANDARD_TEXT_FONT`, `GameFont*`); Zeichen siehe Abschnitt 3
 
 ## 8. Sprache
-- Jede sichtbare Zeichenkette zweisprachig: **Deutsch und Englisch**. Deutscher Client = Deutsch, sonst Englisch
-- Zwei erlaubte Wege: `T("Deutsch", "English")` aus dem Hub (Patzlingers Addons) oder `Locales.lua` mit
-  Schlüsseln und `ns.L("KEY")` (flowfys Addons, mit Sprachwahl im Menü). Innerhalb eines Addons nur einen Weg nutzen
+- Jede sichtbare Zeichenkette zweisprachig: **Deutsch und Englisch**
+- **Eine Sprachwahl für alle** (im Hub-Fenster `/forever`, gespeichert in `ForeverHubDB.language`):
+  Deutsch gibt es nur auf einem deutschen Client, dort kann man auf Englisch umstellen; sonst immer Englisch.
+  Abfrage: `UI.GetLanguage()` → `"deDE"`/`"enUS"`. Wirkt nach `/reload` (ForeverQuests wechselt sofort)
+  - Für die Anzeigesprache fragt kein Addon `GetLocale()` selbst ab, sondern den Hub (`UI.T`, `UI.GetLanguage`);
+    `GetLocale()` nur dort, wo es um die Sprache der Spieldaten geht (z. B. Questnamen vergleichen)
+  - Eigene Sprachauswahl in einem Addon-Menü (wie bei ForeverQuests) muss in `ForeverHubDB.language` schreiben
+- Zwei erlaubte Wege für Texte: `T("Deutsch", "English")` aus dem Hub (Patzlingers Addons) oder `Locales.lua` mit
+  Schlüsseln und `ns.L("KEY")` (flowfys Addons), das die Sprache über `UI.GetLanguage()` bestimmt. Innerhalb eines
+  Addons nur einen Weg nutzen
+- Wegen des SavedVariables-Bugs kann die Sprachwahl in der Beta nach dem Login wieder auf "Automatisch" stehen
 - Kommentare im Code auf Deutsch, kurz, erklären das *Warum*; Umlaute in Kommentaren sind erlaubt
 
 ## 9. Einstellungen

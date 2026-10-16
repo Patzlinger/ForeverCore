@@ -204,11 +204,16 @@ local STRINGS = {
     },
 }
 
-local active = GetLocale() == "deDE" and STRINGS.deDE or STRINGS.enUS
+-- Aktive Sprache: gemeinsame Sprachwahl aller Forever-Addons (ForeverHub, /forever), sonst wie der Client
+local function Active()
+    local UI = _G.ForeverHub and _G.ForeverHub.UI
+    local language = UI and UI.GetLanguage and UI.GetLanguage() or (GetLocale() == "deDE" and "deDE" or "enUS")
+    return STRINGS[language] or STRINGS.enUS
+end
 
 -- Text zum Schlüssel; zusätzliche Werte werden wie bei string.format eingesetzt
 function ns.L(key, ...)
-    local text = active[key] or STRINGS.enUS[key] or key
+    local text = Active()[key] or STRINGS.enUS[key] or key
     if select("#", ...) > 0 then
         return string.format(text, ...)
     end

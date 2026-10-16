@@ -7,7 +7,7 @@
 --  3. Hub-Fenster (/forever): Liste aller Forever-Addons mit direktem Weg in ihr Menue –
 --     auch ohne Minimap-Knoepfe.
 local ADDON_NAME = ...
-local VERSION = 17
+local VERSION = 18
 if _G.ForeverHub and (_G.ForeverHub.version or 0) >= VERSION then return end
 
 local hub = { version = VERSION }
@@ -19,10 +19,25 @@ _G.ForeverHub = hub
 local UI = {}
 hub.UI = UI
 
--- Sprache: deutscher Client auf Deutsch, alle anderen auf Englisch
-UI.IS_DE = GetLocale() == "deDE"
-function UI.T(de, en) return UI.IS_DE and de or en end
+-- Sprache (gemeinsam fuer alle Forever-Addons): Deutsch gibt es nur auf einem deutschen Client; dort laesst
+-- sich im Hub-Fenster (/forever) Englisch waehlen. Gespeichert in ForeverHubDB.language ("deDE"/"enUS",
+-- nil = automatisch), wirksam nach /reload. UI.GetLanguage() -> "deDE" oder "enUS".
+UI.GERMAN_CLIENT = GetLocale() == "deDE"
+function UI.GetLanguage()
+    if not UI.GERMAN_CLIENT then return "enUS" end
+    local db = _G.ForeverHubDB
+    if type(db) == "table" and db.language == "enUS" then return "enUS" end
+    return "deDE"
+end
+UI.IS_DE = UI.GetLanguage() == "deDE"
+function UI.T(de, en) return UI.GetLanguage() == "deDE" and de or en end
 local T = UI.T
+-- ForeverHubDB kommt erst mit dem ersten geladenen Forever-Addon: IS_DE danach nachziehen
+do
+    local f = CreateFrame("Frame")
+    f:RegisterEvent("ADDON_LOADED")
+    f:SetScript("OnEvent", function() UI.IS_DE = UI.GetLanguage() == "deDE" end)
+end
 
 -- Forever-Core-Logo (liegt in jedem Forever-Addon unter Media\)
 UI.LOGO = "Interface\\AddOns\\" .. tostring(ADDON_NAME) .. "\\Media\\ForeverCore"
@@ -610,7 +625,8 @@ end
 
 -- Minimap-Knopf im gleichen Look fuer alle Forever-Addons
 -- o = { name, icon, title, angle = function() -> Grad, setAngle = function(Grad),
---       onClick = function(button, mouseButton), lines = function() -> { "Linksklick: …", … } }
+--       onClick = function(button, mouseButton), lines = function() -> { "Linksklick: …", … },
+--       texCoord = { l, r, t, b } (optional, z. B. Rand von Spielsymbolen abschneiden) }
 function UI.MinimapButton(o)
     local b = CreateFrame("Button", o.name, Minimap)
     b:SetSize(31, 31)
@@ -625,6 +641,7 @@ function UI.MinimapButton(o)
     bg:SetPoint("TOPLEFT", 7, -5)
     local icon = b:CreateTexture(nil, "ARTWORK")
     icon:SetTexture(o.icon)
+    if o.texCoord then icon:SetTexCoord(unpack(o.texCoord)) end
     icon:SetSize(17, 17)
     icon:SetPoint("TOPLEFT", 7, -6)
     local border = b:CreateTexture(nil, "OVERLAY")
@@ -1214,7 +1231,9 @@ local function BuildHubWindow()
         if IsInstalled(k.name) then list[#list + 1] = k.name end
     end
 
-    local f = UI.Window("ForeverHubWindow", UI.NAME, 420, 26 + 12 + math.max(#list, 1) * HUB_ROW_H + 92)
+    -- Fussbereich: Sprache (nur deutscher Client), Verschieben/Minimap, Hinweis
+    local bottomH = UI.GERMAN_CLIENT and 122 or 92
+    local f = UI.Window("ForeverHubWindow", UI.NAME, 420, 26 + 12 + math.max(#list, 1) * HUB_ROW_H + bottomH)
     hubWindow = f
     f.rows = {}
 
@@ -1274,8 +1293,40 @@ local function BuildHubWindow()
     local line = f:CreateTexture(nil, "ARTWORK")
     line:SetColorTexture(C.border[1], C.border[2], C.border[3], 1)
     line:SetHeight(1)
-    line:SetPoint("BOTTOMLEFT", 10, 82)
-    line:SetPoint("BOTTOMRIGHT", -10, 82)
+    line:SetPoint("BOTTOMLEFT", 10, bottomH - 10)
+    line:SetPoint("BOTTOMRIGHT", -10, bottomH - 10)
+
+    -- Sprache fuer alle Forever-Addons (wirkt nach dem Neuladen)
+    local lang
+    if UI.GERMAN_CLIENT then
+        local LANGS = {
+            { key = "AUTO", label = T("Automatisch (Client)", "Automatic (client)") },
+            { key = "deDE", label = "Deutsch" },
+            { key = "enUS", label = "English" },
+        }
+        local function Current() return GetDB().language or "AUTO" end
+        local function LabelOf(key)
+            for _, l in ipairs(LANGS) do if l.key == key then return l.label end end
+            return key
+        end
+        local langLabel = UI.Text(f, "label", T("Sprache", "Language"))
+        langLabel:SetPoint("BOTTOMLEFT", 16, 84)
+        lang = UI.AddArrow(UI.Button(f, "", 170))
+        lang:SetPoint("LEFT", langLabel, "RIGHT", 10, 0)
+        local reload = UI.Button(f, T("Neu laden", "Reload"), 90, function() ReloadUI() end)
+        reload:SetPoint("LEFT", lang, "RIGHT", 8, 0)
+        reload:Hide()
+        lang:SetScript("OnClick", function(self)
+            UI.ChoiceMenu(self, LANGS, Current, function(key)
+                GetDB().language = key ~= "AUTO" and key or nil
+                self:SetText(LabelOf(Current()))
+                reload:Show()
+                UI.Chat("Forever", T("Die Sprache gilt nach dem Neuladen für alle Forever-Addons.",
+                    "The language applies to all Forever addons after reloading."))
+            end)
+        end)
+        function lang.Load() lang:SetText(LabelOf(Current())) end
+    end
 
     local move = UI.Button(f, "", 150, function()
         f:Hide()
@@ -1300,6 +1351,7 @@ local function BuildHubWindow()
         for _, row in ipairs(f.rows) do row.Update() end
         move:SetText(UI.AnyUnlocked() and T("Alle sperren", "Lock all") or T("Alle verschieben", "Move all"))
         mm:SetChecked(not GetDB().hideButton)
+        if lang then lang.Load() end
     end)
 end
 

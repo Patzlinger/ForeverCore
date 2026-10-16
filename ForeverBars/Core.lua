@@ -1,9 +1,9 @@
 local addonName, ns = ...
 local L = ns.L
 
--- Vorangestellter Addon-Name für Chat-Meldungen
+-- Vorangestellter Addon-Name für Chat-Meldungen (Gold wie alle Forever-Addons)
 function ns.ChatPrefix()
-    return "|cff33ff99" .. L("ADDON_NAME") .. "|r"
+    return "|cffffcc00" .. L("ADDON_NAME") .. "|r"
 end
 
 function ns.Print(text)
