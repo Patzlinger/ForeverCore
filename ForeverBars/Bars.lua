@@ -1417,6 +1417,11 @@ local function GetHolder(def)
     return holder
 end
 
+-- Halter sofort beim Laden anlegen (nicht erst bei PLAYER_LOGIN): Blizzards Bearbeitungsmodus merkt sich im
+-- Layout Anker wie "MainStatusTrackingBarContainer an ForeverBars_xp" und wendet das Layout schon beim Laden an.
+-- Gibt es den Rahmen dann noch nicht, meldet Blizzard "Couldn't find region named 'ForeverBars_xp'".
+for _, def in ipairs(ns.BAR_DEFS) do GetHolder(def) end
+
 -- Knöpfe in Reihen anordnen. Wachstumsrichtung: von links nach rechts bzw. rechts nach links,
 -- von oben nach unten bzw. unten nach oben (der erste Knopf sitzt in der Ecke, von der aus es wächst).
 local function LayoutButtons(def, cfg, holder)
