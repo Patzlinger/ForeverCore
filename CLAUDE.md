@@ -17,6 +17,13 @@
 - WoW-Schrift kennt "→" nicht: "»" oder "–" verwenden
 - Syntax-Check: lua-language-server `--check <ordner> --checklevel=Error`
 
+## Git-Ablauf
+- Vor dem Arbeiten: `git pull --ff-only`
+- Während der Arbeit am Live-Ordner (AddOns-Verknüpfung = dieses Repository) NICHT automatisch pushen
+- Fertige Änderungen lokal committen (kurze deutsche Nachricht) ist erlaubt
+- `git push` nur auf ausdrückliches Kommando des Nutzers oder am Ende einer Session (dann kurz nachfragen bzw. ankündigen)
+- Bei Konflikten oder unerwarteten Änderungen des anderen erst nachfragen; nie force-pushen
+
 ## Release
 - `release/addons.txt` = Addons im Release; Prototypen (z. B. ForeverSpellbook) nicht eintragen, bis freigegeben
 - Alle Release-.toc: gleiche `## Version`, `## Title: <Addon> |cff8a8a8a(Beta)|r`, `## X-Curse-Project-ID: 1743753`
