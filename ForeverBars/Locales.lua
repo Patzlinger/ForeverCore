@@ -45,6 +45,9 @@ local STRINGS = {
         GLOW_SOFT = "Weicher Schein", GLOW_PIXEL = "Feine Linie", GLOW_CORNERS = "Goldene Ecken",
         GLOW_FLASH = "Aufblitzen",
         PROF_FRAME_TITLE = "Berufe", OPT_PROF_ROWS = "Berufe oben, Fertigkeiten unten",
+        BTN_RESET_ALL = "Alle Einstellungen zurücksetzen",
+        TIP_RESET_ALL = "Setzt alle Einstellungen und Positionen von ForeverBars auf Standard (zweimal klicken). Gespeicherte Profile und Blizzard-Einstellungen bleiben erhalten.",
+        RESET_ALL_DONE = "Alle Einstellungen und Positionen zurückgesetzt.",
 
         -- Menü
         OPT_TITLE = "Aktionsleisten",
@@ -171,6 +174,9 @@ local STRINGS = {
         GLOW_SOFT = "Soft shine", GLOW_PIXEL = "Thin line", GLOW_CORNERS = "Golden corners",
         GLOW_FLASH = "Flash",
         PROF_FRAME_TITLE = "Professions", OPT_PROF_ROWS = "Professions on top, skills below",
+        BTN_RESET_ALL = "Reset all settings",
+        TIP_RESET_ALL = "Resets all ForeverBars settings and positions to default (click twice). Saved profiles and Blizzard settings are kept.",
+        RESET_ALL_DONE = "All settings and positions reset.",
 
         OPT_TITLE = "Action bars",
         SEC_BARS = "Bars", SEC_BAR = "Bar settings", SEC_GENERAL = "General",

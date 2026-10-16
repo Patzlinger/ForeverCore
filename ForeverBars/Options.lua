@@ -507,6 +507,26 @@ local function CreateOptions()
     manageHint:SetJustifyH("LEFT")
     manageHint:SetText(L("OPT_MANAGE_MOVED"))
 
+    -- Alles zurücksetzen: zweimal klicken (Einstellungen und Positionen; gespeicherte Profile bleiben)
+    local resetAllButton
+    resetAllButton = CreateSearchButton(managePage, L("BTN_RESET_ALL"), 260, 24, function()
+        if resetAllButton.confirm then
+            resetAllButton.confirm = nil
+            resetAllButton:SetText(L("BTN_RESET_ALL"))
+            ns.ResetAllSettings()
+        else
+            resetAllButton.confirm = true
+            resetAllButton:SetText(L("BTN_PRESET_CONFIRM"))
+            C_Timer.After(5, function()
+                if resetAllButton.confirm then
+                    resetAllButton.confirm = nil
+                    resetAllButton:SetText(L("BTN_RESET_ALL"))
+                end
+            end)
+        end
+    end, L("TIP_RESET_ALL"))
+    resetAllButton:SetPoint("TOPLEFT", 14, -100)
+
     -- Rechts statt der Leisten-Einstellungen: "Profile" (Vorlagen, gespeicherte Profile, Export/Import)
     local profilePanel = ns.Style.CreatePanel(options, L("SEC_PROFILES"))
     profilePanel:SetAllPoints(bar)

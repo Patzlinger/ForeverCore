@@ -64,6 +64,29 @@ function ns.ApplyPreset(key)
     if ns.RefreshOptions then ns.RefreshOptions() end
 end
 
+-- Alle Einstellungen und Positionen auf Standard (gespeicherte Profile bleiben erhalten; Blizzard-Einstellungen
+-- wie Tastenbelegung oder "Beim Drücken auslösen" bleiben unverändert)
+local KEEP_ON_RESET = { profiles = true, activeProfile = true }
+
+function ns.ResetAllSettings()
+    if InCombatLockdown() then
+        ns.Print(L("NOT_IN_COMBAT"))
+        return
+    end
+    for key, value in pairs(ns.defaults) do
+        if not KEEP_ON_RESET[key] then
+            ns.db[key] = type(value) == "table" and CopyTable(value) or value
+        end
+    end
+    -- Positionen neu berechnen (Standard-Anordnung)
+    for barKey in pairs(ns.db.bars) do ns.GetBarPosition(barKey) end
+    ns.RequestLayout()
+    ns.UpdateAllButtons()
+    if ns.UpdateMinimapButton then ns.UpdateMinimapButton() end
+    ns.Print(L("RESET_ALL_DONE"))
+    if ns.RefreshOptions then ns.RefreshOptions() end
+end
+
 ---------------------------------------------------------------------------
 -- Gespeicherte Profile: Kopie aller Einstellungen unter einem Namen (ohne Minimap-Symbol und die Profile selbst)
 ---------------------------------------------------------------------------
