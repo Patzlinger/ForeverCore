@@ -1,0 +1,16 @@
+## Interface: 16001
+## Title: ForeverQuests (Beta)
+## Notes: Replacement for the Blizzard quest tracker
+## Notes-deDE: Ersatz für den Blizzard-Questtracker
+## Author: flowfy
+## Version: 0.27.2
+## SavedVariables: ForeverQuestsDB
+
+Locales.lua
+ForeverQuests.lua
+Style.lua
+Data\Dungeons.lua
+Tracker.lua
+Options.lua
+Minimap.lua
+Dungeons.lua

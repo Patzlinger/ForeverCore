@@ -1,0 +1,16 @@
+## Interface: 16001
+## Title: ForeverBars (Beta)
+## Notes: Action bars in the ForeverQuests style: size, layout, visibility and key bindings
+## Notes-deDE: Aktionsleisten im Stil von ForeverQuests: Größe, Anordnung, Sichtbarkeit und Tastenbelegung
+## Author: flowfy
+## Version: 0.8.2
+## SavedVariables: ForeverBarsDB
+## IconTexture: Interface\Icons\INV_Misc_Toy_08
+
+Locales.lua
+Core.lua
+Style.lua
+Bars.lua
+Profiles.lua
+Minimap.lua
+Options.lua

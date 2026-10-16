@@ -1,0 +1,230 @@
+local addonName, ns = ...
+local L = ns.L
+
+-- Vorangestellter Addon-Name für Chat-Meldungen
+function ns.ChatPrefix()
+    return "|cff33ff99" .. L("ADDON_NAME") .. "|r"
+end
+
+function ns.Print(text)
+    print(ns.ChatPrefix() .. ": " .. text)
+end
+
+---------------------------------------------------------------------------
+-- Die Leisten
+-- buttons  = Namensanfang der Blizzard-Knöpfe (z. B. "ActionButton" -> ActionButton1 … ActionButton12)
+-- count    = Anzahl Knöpfe
+-- kind     = "action" (Aktionsknöpfe), "pet", "stance", "container" (ganze Blizzard-Leiste), "single"
+-- blizzard = Blizzard-Leisten, die ForeverBars ausblendet (ihre Knöpfe wandern in die eigene Leiste)
+---------------------------------------------------------------------------
+
+ns.BAR_DEFS = {
+    { key = "bar1", textKey = "BAR_1", kind = "action", buttons = "ActionButton", count = 12,
+      blizzard = { "MainActionBar", "MainMenuBar" } },
+    { key = "bar2", textKey = "BAR_2", kind = "action", buttons = "MultiBarBottomLeftButton", count = 12,
+      blizzard = { "MultiBarBottomLeft" } },
+    { key = "bar3", textKey = "BAR_3", kind = "action", buttons = "MultiBarBottomRightButton", count = 12,
+      blizzard = { "MultiBarBottomRight" } },
+    { key = "bar4", textKey = "BAR_4", kind = "action", buttons = "MultiBarRightButton", count = 12,
+      blizzard = { "MultiBarRight" } },
+    { key = "bar5", textKey = "BAR_5", kind = "action", buttons = "MultiBarLeftButton", count = 12,
+      blizzard = { "MultiBarLeft" } },
+    { key = "bar6", textKey = "BAR_6", kind = "action", buttons = "MultiBar5Button", count = 12,
+      blizzard = { "MultiBar5" } },
+    { key = "bar7", textKey = "BAR_7", kind = "action", buttons = "MultiBar6Button", count = 12,
+      blizzard = { "MultiBar6" } },
+    { key = "bar8", textKey = "BAR_8", kind = "action", buttons = "MultiBar7Button", count = 12,
+      blizzard = { "MultiBar7" } },
+    { key = "pet", textKey = "BAR_PET", kind = "pet", buttons = "PetActionButton", count = 10,
+      blizzard = { "PetActionBar", "PetActionBarFrame" } },
+    { key = "stance", textKey = "BAR_STANCE", kind = "stance", buttons = "StanceButton", count = 10,
+      blizzard = { "StanceBar", "StanceBarFrame" } },
+    { key = "micro", textKey = "BAR_MICRO", kind = "container", frames = { "MicroMenuContainer", "MicroMenu" } },
+    -- Taschen: einzelne Taschenknöpfe (Rucksack, Taschen, Reagenzientasche, Schlüsselbund) in eigener Anordnung
+    { key = "bags", textKey = "BAR_BAGS", kind = "bags", blizzard = { "BagsBar" },
+      bagButtons = { "MainMenuBarBackpackButton", "CharacterBag0Slot", "CharacterBag1Slot", "CharacterBag2Slot",
+                     "CharacterBag3Slot", "CharacterReagentBag0Slot" } },
+    { key = "vehicle", textKey = "BAR_VEHICLE", kind = "single", frames = { "MainMenuBarVehicleLeaveButton" } },
+    -- Warteschlangen-Auge (Gruppensuche, Schlachtfeld); Blizzard setzt es mit UpdatePosition gern zurück
+    { key = "queue", textKey = "BAR_QUEUE", kind = "single", frames = { "QueueStatusButton" },
+      hookMethods = { "UpdatePosition" }, minSize = 45 },
+    -- Erfahrung und Ruf: Blizzard zeigt in der ersten Statusleiste beim Leveln die Erfahrung,
+    -- in der zweiten den beobachteten Ruf (ältere Namen als Ersatz)
+    { key = "xp", textKey = "BAR_XP", kind = "container",
+      frames = { "MainStatusTrackingBarContainer", "MainMenuExpBar" } },
+    { key = "rep", textKey = "BAR_REP", kind = "container",
+      frames = { "SecondaryStatusTrackingBarContainer", "ReputationWatchBar" } },
+}
+
+-- Standardwerte je Leiste. x/y = nil: Standardposition (wird beim ersten Anzeigen berechnet)
+-- visibility: "ALWAYS", "COMBAT" (nur im Kampf), "NOCOMBAT" (nur außerhalb), "MOUSEOVER"
+-- growX/growY: Wachstumsrichtung ("RIGHT"/"LEFT", "DOWN"/"UP"); flyout: Ausklapp-Richtung von Zauber-Gruppen
+-- Sichtbarkeit: visibility = "ALWAYS"/"COMBAT"/"NOCOMBAT"; fade* = bei Maus darüber einblenden;
+-- hide* = in bestimmten Situationen ausblenden; useCustom/custom = eigene Makro-Bedingung
+local function BarDefaults(enabled, perRow)
+    return { enabled = enabled, buttons = 12, perRow = perRow or 12, scale = 100, spacing = 4,
+             alpha = 100, visibility = "ALWAYS", growX = "RIGHT", growY = "DOWN", flyout = "UP",
+             onlyBackpack = false, keyring = false,
+             fadeMouseover = false, fadeInCombat = true, fadeAlpha = 0, fadeDelay = 1,
+             hideVehicle = false, hideOverride = false, hidePossess = false,
+             hidePet = false, hideNoPet = false, hideStance = false,
+             useCustom = false, custom = "",
+             -- Seitenwechsel (nur Aktionsleisten): Seite mit Strg/Alt/Shift (0 = aus), je Gestalt/Haltung,
+             -- oder eigene Bedingung
+             pageCtrl = 0, pageAlt = 0, pageShift = 0, stancePages = {},
+             usePagingCustom = false, pagingCustom = "" }
+end
+
+-- Schriftarten, die in jedem WoW-Client vorhanden sind
+ns.FONTS = {
+    { key = "STANDARD", textKey = "FONT_STANDARD", path = STANDARD_TEXT_FONT },
+    { key = "ARIALN",   text = "Arial Narrow", path = "Fonts\\ARIALN.TTF" },
+    { key = "SKURRI",   text = "Skurri",       path = "Fonts\\skurri.ttf" },
+    { key = "MORPHEUS", text = "Morpheus",     path = "Fonts\\MORPHEUS.TTF" },
+}
+
+ns.defaults = {
+    version = 1,
+    bars = {
+        bar1 = BarDefaults(true), bar2 = BarDefaults(true), bar3 = BarDefaults(true),
+        bar4 = BarDefaults(true, 1), bar5 = BarDefaults(true, 1),
+        bar6 = BarDefaults(false), bar7 = BarDefaults(false), bar8 = BarDefaults(false),
+        pet = BarDefaults(true, 10), stance = BarDefaults(true, 10),
+        micro = BarDefaults(true), bags = BarDefaults(true), vehicle = BarDefaults(true),
+        xp = BarDefaults(true), rep = BarDefaults(true), queue = BarDefaults(true),
+    },
+    showHotkeys = true,
+    showMacroNames = false,
+    showCounts = true,
+    showGrid = true,
+    snap = true,             -- beim Ziehen magnetisch an anderen Leisten / der Bildschirmmitte einrasten
+    showBorder = true,       -- dünner Rand um die Knöpfe
+    showEquipped = true,     -- grüner Rand bei ausgerüsteten Gegenständen
+    iconZoom = 8,            -- Zuschnitt der Symbole in Prozent (0 = ganzes Symbol)
+    font = "STANDARD",       -- Schrift der Knopftexte
+    fontSize = 12,
+    fontOutline = "OUTLINE", -- "NONE", "OUTLINE", "THICKOUTLINE"
+    hotkeyPosition = "TOPRIGHT",
+    buttonTooltip = "ALWAYS", -- Tooltip der Knöpfe: "ALWAYS", "NOCOMBAT" (nicht im Kampf), "NEVER"
+    castVFX = true,           -- Zauber-Effekt auf den Knöpfen beim Zaubern
+    showMinimapButton = true,
+    minimapAngle = 200,       -- Position des Minimap-Symbols (Winkel in Grad)
+}
+ns.defaults.bars.pet.buttons = 10
+ns.defaults.bars.stance.buttons = 10
+-- Leiste 1 macht in Fahrzeugen der Blizzard-Fahrzeugleiste Platz; die Begleiterleiste nur mit Begleiter
+ns.defaults.bars.bar1.hideVehicle = true
+ns.defaults.bars.bar1.hideOverride = true
+ns.defaults.bars.pet.hideVehicle = true
+ns.defaults.bars.pet.hideOverride = true
+ns.defaults.bars.pet.hidePossess = true
+ns.defaults.bars.pet.hideNoPet = true
+
+-- Fehlende Werte aus den Standardwerten ergänzen (auch in verschachtelten Tabellen)
+local function FillDefaults(target, defaults)
+    for key, value in pairs(defaults) do
+        if type(value) == "table" then
+            if type(target[key]) ~= "table" then target[key] = {} end
+            FillDefaults(target[key], value)
+        elseif target[key] == nil then
+            target[key] = value
+        end
+    end
+end
+
+---------------------------------------------------------------------------
+-- Blizzard-Einstellungen (vom Spiel selbst gespeichert, daher unabhängig vom SavedVariables-Bug)
+---------------------------------------------------------------------------
+
+function ns.HasCVar(name)
+    if C_CVar and C_CVar.GetCVar then return C_CVar.GetCVar(name) ~= nil end
+    return GetCVar and GetCVar(name) ~= nil
+end
+
+function ns.GetCVarBool(name)
+    if C_CVar and C_CVar.GetCVarBool then return C_CVar.GetCVarBool(name) and true or false end
+    return GetCVarBool and GetCVarBool(name) and true or false
+end
+
+function ns.SetCVarBool(name, value)
+    local text = value and "1" or "0"
+    if C_CVar and C_CVar.SetCVar then C_CVar.SetCVar(name, text) elseif SetCVar then SetCVar(name, text) end
+end
+
+-- Zusatztaste für eine Blizzard-Aktion ("SELFCAST", "FOCUSCAST", "MOUSEOVERCAST"): "NONE", "ALT", "CTRL", "SHIFT"
+function ns.GetModifier(action)
+    local value = GetModifiedClick and GetModifiedClick(action)
+    return value and value ~= "" and value or "NONE"
+end
+
+function ns.SetModifier(action, value)
+    if not SetModifiedClick then return end
+    SetModifiedClick(action, value)
+    -- Zusatztasten gehören zu den Tastenbelegungen und müssen dort gespeichert werden
+    local save = SaveBindings or AttemptToSaveBindings
+    if save then save(GetCurrentBindingSet and GetCurrentBindingSet() or 1) end
+end
+
+function ns.ResetBar(key)
+    ns.db.bars[key] = CopyTable(ns.defaults.bars[key])
+    ns.RequestLayout()
+end
+
+---------------------------------------------------------------------------
+-- Start
+---------------------------------------------------------------------------
+
+local eventFrame = CreateFrame("Frame")
+eventFrame:RegisterEvent("ADDON_LOADED")
+eventFrame:RegisterEvent("PLAYER_LOGIN")
+eventFrame:SetScript("OnEvent", function(self, event, ...)
+    if event == "ADDON_LOADED" then
+        if ... ~= addonName then return end
+        -- Wegen des Beta-Bugs (SavedVariables werden nicht geladen) gelten notfalls die Standardwerte
+        ForeverBarsDB = ForeverBarsDB or {}
+        FillDefaults(ForeverBarsDB, ns.defaults)
+        ns.db = ForeverBarsDB
+        -- Frühere Einstellung "Nur bei Maus darüber" ist jetzt das Einblenden bei Maus darüber
+        for _, cfg in pairs(ns.db.bars) do
+            if cfg.visibility == "MOUSEOVER" then
+                cfg.visibility = "ALWAYS"
+                cfg.fadeMouseover = true
+            end
+        end
+        self:UnregisterEvent("ADDON_LOADED")
+    elseif event == "PLAYER_LOGIN" then
+        ns.CreateMinimapButton()
+        -- Läuft Bartender4, lässt ForeverBars die Leisten in Ruhe (zwei Leisten-Addons stören sich)
+        local isLoaded = C_AddOns and C_AddOns.IsAddOnLoaded or IsAddOnLoaded
+        if isLoaded and isLoaded("Bartender4") then
+            ns.disabledByBartender = true
+            ns.Print(L("BARTENDER_ACTIVE"))
+            return
+        end
+        ns.SetupBars()
+    end
+end)
+
+---------------------------------------------------------------------------
+-- Chatbefehl und Tastenkürzel
+---------------------------------------------------------------------------
+
+SLASH_FOREVERBARS1 = "/fb"
+SLASH_FOREVERBARS2 = "/foreverbars"
+SlashCmdList.FOREVERBARS = function(msg)
+    msg = strtrim(msg or ""):lower()
+    if msg == "move" or msg == "unlock" then
+        ns.SetUnlocked(not ns.unlocked)
+    elseif msg == "kb" or msg == "keybind" then
+        ns.OpenKeybindMode()
+    else
+        ns.ToggleOptions()
+    end
+end
+
+-- Blizzard-Menü "Tastaturbelegung" > "AddOns" (Belegungen stehen in Bindings.xml)
+BINDING_HEADER_FOREVERBARS = L("BINDING_HEADER")
+BINDING_NAME_FOREVERBARS_OPTIONS = L("BINDING_OPTIONS")
+BINDING_NAME_FOREVERBARS_UNLOCK = L("BINDING_UNLOCK")
+function ForeverBars_ToggleOptions() if ns.ToggleOptions then ns.ToggleOptions() end end
+function ForeverBars_ToggleUnlock() if ns.SetUnlocked then ns.SetUnlocked(not ns.unlocked) end end

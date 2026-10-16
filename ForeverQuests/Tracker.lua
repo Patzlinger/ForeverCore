@@ -1,0 +1,1513 @@
+local addonName, ns = ...
+
+local tracker, title, scrollFrame, content, overlay, filterButton, headerBar
+local menuButton, dungeonButton, unlockHint
+local lines = {}
+local boxes = {}
+local updatePending = false
+
+-- Aufgeklappt-Zustand je Quest, per Pfeil gesetzt (true/false).
+-- Fehlt ein Eintrag, gilt die Menü-Einstellung bzw. das automatische Aufklappen.
+ns.expanded = {}
+-- Zeitpunkt, zu dem eine Quest wegen Fortschritt automatisch aufgeklappt wurde
+ns.autoExpandedAt = {}
+-- Letzter bekannter Fortschritt je Quest, um Änderungen zu erkennen
+local progressSnapshots = {}
+
+-- Beste Belohnungs-Seltenheit je Quest (wird nur gespeichert, wenn alle Daten geladen waren)
+local rewardQualityCache = {}
+local waitingForItemData = false
+
+local ARROW_TEXTURE = "Interface\\ChatFrame\\ChatFrameExpandArrow"
+local ICON_SIZE = 12
+local REWARD_ICON_ATLAS = "VignetteLoot"
+local REWARD_ICON_TEXTURE = "Interface\\Icons\\INV_Box_02"
+local REWARD_ICON_SIZE = 14
+local BOX_GAP = 8     -- Abstand zwischen den Fenstern der Gebiete
+local BOX_PADDING = 6 -- Innenabstand in den Fenstern
+
+-- Feste Farben der Überschriften (Klassenquests bekommen die Klassenfarbe)
+local HEADER_COLORS = {
+    zone = { 1.00, 0.82, 0.00 },       -- Gebiete und alles andere: Gelb
+    pinned = { 1.00, 0.20, 0.20 },     -- Angeheftet: Rot
+    reputation = { 0.25, 0.55, 1.00 }, -- Ruf: Blau
+}
+
+---------------------------------------------------------------------------
+-- Blizzard-Questtracker ausblenden
+---------------------------------------------------------------------------
+
+-- Je nach Client-Version heißt der Blizzard-Tracker unterschiedlich
+local BLIZZARD_TRACKERS = { "ObjectiveTrackerFrame", "QuestWatchFrame" }
+local hookedFrames = {}
+local blizzardUpdatePending = false
+
+function ns.UpdateBlizzardTracker()
+    -- Im Kampf darf der Blizzard-Tracker nicht verändert werden (Questgegenstand-Knöpfe sind geschützt)
+    if InCombatLockdown() then
+        blizzardUpdatePending = true
+        return
+    end
+    blizzardUpdatePending = false
+
+    for _, name in ipairs(BLIZZARD_TRACKERS) do
+        local frame = _G[name]
+        if frame then
+            if not hookedFrames[frame] then
+                hookedFrames[frame] = true
+                frame:HookScript("OnShow", function(self)
+                    if not ns.db.hideBlizzard then return end
+                    if InCombatLockdown() then
+                        blizzardUpdatePending = true
+                    else
+                        self:Hide()
+                    end
+                end)
+            end
+            if ns.db.hideBlizzard then
+                frame:Hide()
+            else
+                frame:Show()
+            end
+        end
+    end
+end
+
+---------------------------------------------------------------------------
+-- Farben und Schrift
+---------------------------------------------------------------------------
+
+local fonts = {}
+
+-- Eigene Schrift-Objekte für Überschriften, Questnamen und Fortschritt
+function ns.UpdateFonts()
+    local db = ns.db
+    if not fonts.header then
+        fonts.header = CreateFont("ForeverQuestsFontHeader")
+        fonts.quest = CreateFont("ForeverQuestsFontQuest")
+        fonts.objective = CreateFont("ForeverQuestsFontObjective")
+    end
+
+    local path = STANDARD_TEXT_FONT
+    for _, font in ipairs(ns.FONTS) do
+        if font.key == db.font then
+            path = font.path
+        end
+    end
+    local flags = db.fontOutline and "OUTLINE" or ""
+    local sizes = {
+        header = db.fontSize + 1,
+        quest = db.fontSize,
+        objective = math.max(6, db.fontSize - 1),
+    }
+    for key, size in pairs(sizes) do
+        local fontObject = fonts[key]
+        -- Falls die Schriftdatei fehlt, auf die Standardschrift zurückfallen
+        if not fontObject:SetFont(path, size, flags) then
+            fontObject:SetFont(STANDARD_TEXT_FONT, size, flags)
+        end
+        fontObject:SetShadowColor(0, 0, 0, 1)
+        fontObject:SetShadowOffset(1, -1)
+    end
+end
+
+---------------------------------------------------------------------------
+-- Questtyp erkennen (Klasse / Ruf)
+---------------------------------------------------------------------------
+
+-- Klassenname (z. B. "Kriegerin") -> interner Klassenname (z. B. "WARRIOR")
+local classFiles
+local function GetClassFileForHeader(header)
+    if not classFiles then
+        classFiles = {}
+        for _, names in ipairs({ LOCALIZED_CLASS_NAMES_MALE, LOCALIZED_CLASS_NAMES_FEMALE }) do
+            if names then
+                for classFile, name in pairs(names) do
+                    classFiles[name] = classFile
+                end
+            end
+        end
+    end
+    return header and classFiles[header]
+end
+
+local factionNames = {}
+local function BuildFactionNames()
+    wipe(factionNames)
+    if C_Reputation and C_Reputation.GetNumFactions and C_Reputation.GetFactionDataByIndex then
+        for i = 1, C_Reputation.GetNumFactions() do
+            local data = C_Reputation.GetFactionDataByIndex(i)
+            if data and data.name then
+                factionNames[data.name] = true
+            end
+        end
+    end
+end
+
+local function IsReputationHeader(header)
+    return header == REPUTATION or header == "Reputation" or factionNames[header] == true
+end
+
+-- Berufe: Namen werden vom Spiel in der eingestellten Sprache geholt
+local PROFESSION_SKILL_LINES = { 171, 164, 333, 202, 182, 773, 755, 165, 186, 393, 197, 185, 129, 356, 794 }
+local professionNames
+local function IsProfessionHeader(header)
+    if not header then return false end
+    if not professionNames then
+        professionNames = {}
+        if TRADE_SKILLS then
+            professionNames[TRADE_SKILLS] = true -- "Berufe"
+        end
+        if C_TradeSkillUI and C_TradeSkillUI.GetTradeSkillDisplayName then
+            for _, skillLine in ipairs(PROFESSION_SKILL_LINES) do
+                local name = C_TradeSkillUI.GetTradeSkillDisplayName(skillLine)
+                if name and name ~= "" then
+                    professionNames[name] = true
+                end
+            end
+        end
+    end
+    return professionNames[header] == true
+end
+
+-- Blizzard-Kennzeichnung einer Quest (Dungeon, Schlachtzug, Gruppe, PvP …)
+local QUEST_TAG = Enum and Enum.QuestTag or {}
+local TAG_GROUP = QUEST_TAG.Group or 1
+local TAG_PVP = QUEST_TAG.PvP or 41
+local TAG_RAID = QUEST_TAG.Raid or 62
+local TAG_DUNGEON = QUEST_TAG.Dungeon or 81
+local TAG_HEROIC = QUEST_TAG.Heroic or 85
+local TAG_RAID10 = QUEST_TAG.Raid10 or 88
+local TAG_RAID25 = QUEST_TAG.Raid25 or 89
+
+local function GetQuestTag(questID)
+    if not C_QuestLog.GetQuestTagInfo then return nil end
+    return C_QuestLog.GetQuestTagInfo(questID)
+end
+
+-- Liefert die Typ-Kennzeichnungen einer Quest, z. B. "[Klasse]" oder "[Ruf] [Gruppe]"
+local function GetQuestTypeText(questID, header)
+    local tags = {}
+    if header then
+        if GetClassFileForHeader(header) then
+            table.insert(tags, ns.L("TAG_CLASS"))
+        elseif IsReputationHeader(header) then
+            table.insert(tags, ns.L("TAG_REPUTATION"))
+        elseif IsProfessionHeader(header) then
+            table.insert(tags, ns.L("TAG_PROFESSION"))
+        end
+    end
+    if C_QuestLog.GetQuestTagInfo then
+        local tagInfo = C_QuestLog.GetQuestTagInfo(questID)
+        if tagInfo and tagInfo.tagName and tagInfo.tagName ~= "" then
+            table.insert(tags, "[" .. tagInfo.tagName .. "]")
+        end
+    end
+    return table.concat(tags, " ")
+end
+
+-- Farbe einer Überschrift: Angeheftet rot, Ruf blau, Klasse in Klassenfarbe, alles andere gelb
+local function GetHeaderColor(group)
+    if group.pinned then
+        return unpack(HEADER_COLORS.pinned)
+    end
+    local header = group.header
+    if not header then
+        return unpack(HEADER_COLORS.zone)
+    end
+    local classFile = GetClassFileForHeader(header)
+    if classFile then
+        local color = (C_ClassColor and C_ClassColor.GetClassColor(classFile))
+            or (RAID_CLASS_COLORS and RAID_CLASS_COLORS[classFile])
+        if color then
+            return color.r, color.g, color.b
+        end
+    end
+    if IsReputationHeader(header) then
+        return unpack(HEADER_COLORS.reputation)
+    end
+    return unpack(HEADER_COLORS.zone)
+end
+
+---------------------------------------------------------------------------
+-- Belohnungen
+---------------------------------------------------------------------------
+
+-- Höchste Seltenheit unter den Gegenstandsbelohnungen einer Quest (-1 = keine Gegenstände)
+local function GetBestRewardQuality(questID)
+    local cached = rewardQualityCache[questID]
+    if cached then return cached end
+
+    local best, complete = -1, true
+    local function Check(name, quality, itemID)
+        if not name or quality == nil or quality < 0 then
+            -- Gegenstandsdaten noch nicht geladen: anfordern und später erneut prüfen
+            complete = false
+            if itemID and C_Item and C_Item.RequestLoadItemDataByID then
+                C_Item.RequestLoadItemDataByID(itemID)
+            end
+        elseif quality > best then
+            best = quality
+        end
+    end
+
+    -- Die Auswahl-Belohnungen werden für die "ausgewählte" Quest abgefragt;
+    -- danach wird die vorherige Auswahl wiederhergestellt
+    local previous = C_QuestLog.GetSelectedQuest()
+    C_QuestLog.SetSelectedQuest(questID)
+    for i = 1, GetNumQuestLogRewards(questID) do
+        local name, _, _, quality, _, itemID = GetQuestLogRewardInfo(i, questID)
+        Check(name, quality, itemID)
+    end
+    for i = 1, GetNumQuestLogChoices(questID) do
+        local name, _, _, quality, _, itemID = GetQuestLogChoiceInfo(i)
+        Check(name, quality, itemID)
+    end
+    C_QuestLog.SetSelectedQuest(previous or 0)
+
+    if complete then
+        rewardQualityCache[questID] = best
+    else
+        waitingForItemData = true
+    end
+    return best
+end
+
+---------------------------------------------------------------------------
+-- Auf-/Zuklappen
+---------------------------------------------------------------------------
+
+function ns.IsExpanded(questID)
+    local value = ns.expanded[questID]
+    if value ~= nil then
+        return value
+    end
+    if ns.autoExpandedAt[questID] then
+        return true
+    end
+    return not ns.db.hideObjectives
+end
+
+-- Merkt sich den Fortschritt einer Quest und klappt sie auf, wenn er sich geändert hat
+local function CheckProgress(questID, objectives, isComplete)
+    local parts = { isComplete and "1" or "0" }
+    for _, objective in ipairs(objectives) do
+        table.insert(parts, (objective.numFulfilled or 0) .. (objective.finished and "f" or ""))
+    end
+    local snapshot = table.concat(parts, ",")
+    local previous = progressSnapshots[questID]
+    progressSnapshots[questID] = snapshot
+    if previous and previous ~= snapshot then
+        -- Von Hand aufgeklappte Quests bleiben offen, alle anderen klappen automatisch auf
+        if ns.expanded[questID] ~= true then
+            ns.expanded[questID] = nil
+            ns.autoExpandedAt[questID] = GetTime()
+        end
+    end
+end
+
+-- Läuft regelmäßig: klappt Quests wieder ein, die seit der im Menü eingestellten Zeit keinen Fortschritt hatten
+local function CheckAutoCollapse()
+    local now, changed = GetTime(), false
+    local seconds = (ns.db.autoCollapseMinutes or 5) * 60
+    for questID, expandedAt in pairs(ns.autoExpandedAt) do
+        if now - expandedAt >= seconds then
+            ns.autoExpandedAt[questID] = nil
+            changed = true
+        end
+    end
+    if changed then
+        ns.RequestUpdate()
+    end
+end
+
+---------------------------------------------------------------------------
+-- Rechtsklick-Menü einer Quest
+---------------------------------------------------------------------------
+
+local function AbandonQuest(questID)
+    if QuestMapQuestOptions_AbandonQuest then
+        -- Blizzard-Funktion, inklusive Sicherheitsabfrage
+        QuestMapQuestOptions_AbandonQuest(questID)
+    else
+        C_QuestLog.SetSelectedQuest(questID)
+        C_QuestLog.SetAbandonQuest()
+        StaticPopup_Show("ABANDON_QUEST", C_QuestLog.GetTitleForQuestID(questID) or "")
+    end
+end
+
+local function ShareQuest(questID)
+    if QuestMapQuestOptions_ShareQuest then
+        QuestMapQuestOptions_ShareQuest(questID)
+    else
+        C_QuestLog.SetSelectedQuest(questID)
+        QuestLogPushQuest()
+    end
+end
+
+local function TogglePinned(questID)
+    if ns.db.pinned[questID] then
+        ns.db.pinned[questID] = nil
+    else
+        ns.db.pinned[questID] = true
+    end
+    ns.UpdateTracker()
+end
+
+-- Rechtsklick-Menü im eigenen flachen Stil (siehe Style.ShowMenu), an der Mausposition
+local function OpenQuestMenu(owner, questID)
+    local items = {
+        { title = C_QuestLog.GetTitleForQuestID(questID) or "Quest" },
+        {
+            -- Questdetails auf der Karte (geht im Kampf nicht)
+            text = ns.L("MENU_DETAILS"),
+            disabled = InCombatLockdown() or not QuestMapFrame_OpenToQuestDetails,
+            onClick = function() QuestMapFrame_OpenToQuestDetails(questID) end,
+        },
+        {
+            text = ns.L(ns.db.pinned[questID] and "MENU_UNPIN" or "MENU_PIN"),
+            onClick = function() TogglePinned(questID) end,
+        },
+        {
+            -- Teilen geht nur in einer Gruppe und nur bei teilbaren Quests
+            text = ns.L("MENU_SHARE"),
+            disabled = not (IsInGroup() and C_QuestLog.IsPushableQuest(questID)),
+            onClick = function() ShareQuest(questID) end,
+        },
+    }
+    if C_QuestLog.GetQuestWatchType(questID) then
+        table.insert(items, {
+            text = ns.L("MENU_UNTRACK"),
+            onClick = function() C_QuestLog.RemoveQuestWatch(questID) end,
+        })
+    end
+    table.insert(items, { divider = true })
+    table.insert(items, {
+        text = ns.L("MENU_ABANDON"),
+        color = { 1, 0.3, 0.3 },
+        onClick = function() AbandonQuest(questID) end,
+    })
+    ns.Style.ShowMenu(owner, items, { atCursor = true })
+end
+
+---------------------------------------------------------------------------
+-- Zeilen und Rahmen im Tracker
+---------------------------------------------------------------------------
+
+-- Eingeklappte Gebiete (nur für diese Sitzung): [Schlüssel] = true
+ns.collapsedGroups = {}
+
+local function ToggleGroup(groupKey)
+    ns.collapsedGroups[groupKey] = not ns.collapsedGroups[groupKey] or nil
+    ns.UpdateTracker()
+end
+
+---------------------------------------------------------------------------
+-- Tooltip einer Quest im Tracker: Beschreibung, Ziele und Belohnungen
+---------------------------------------------------------------------------
+
+local TOOLTIP_DESCRIPTION_LENGTH = 300 -- längere Beschreibungen werden gekürzt
+
+local function QualityHex(quality)
+    local color = quality and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[quality]
+    return color and color.hex or "|cffffffff"
+end
+
+local function RewardText(name, texture, count, quality)
+    local text = (texture and ("|T" .. texture .. ":14:14:0:0|t ") or "") .. QualityHex(quality) .. name .. "|r"
+    if count and count > 1 then text = text .. " |cffaaaaaax" .. count .. "|r" end
+    return text
+end
+
+-- Belohnungen einer Quest in den Tooltip schreiben: feste Gegenstände, Auswahl, Geld, Erfahrung.
+-- Gibt true zurück, wenn es Belohnungen gab.
+local function AddRewardLines(tooltip, questID)
+    -- Die Auswahl-Belohnungen gelten für die "ausgewählte" Quest; danach Auswahl zurücksetzen
+    local previous = C_QuestLog.GetSelectedQuest()
+    C_QuestLog.SetSelectedQuest(questID)
+    local rewardLines, choiceLines = {}, {}
+    for i = 1, GetNumQuestLogRewards(questID) do
+        local name, texture, count, quality = GetQuestLogRewardInfo(i, questID)
+        if name then table.insert(rewardLines, RewardText(name, texture, count, quality)) end
+    end
+    for i = 1, GetNumQuestLogChoices(questID) do
+        local name, texture, count, quality = GetQuestLogChoiceInfo(i)
+        if name then table.insert(choiceLines, RewardText(name, texture, count, quality)) end
+    end
+    C_QuestLog.SetSelectedQuest(previous or 0)
+    local money = GetQuestLogRewardMoney and GetQuestLogRewardMoney(questID) or 0
+    local xp = GetQuestLogRewardXP and GetQuestLogRewardXP(questID) or 0
+    if #rewardLines == 0 and #choiceLines == 0 and money == 0 and xp == 0 then return false end
+
+    tooltip:AddLine(" ")
+    tooltip:AddLine(ns.L("TIP_REWARDS"), 1, 0.82, 0)
+    for _, line in ipairs(rewardLines) do tooltip:AddLine(line) end
+    if #choiceLines > 0 then
+        tooltip:AddLine(ns.L("TIP_CHOICES"), 0.75, 0.75, 0.75)
+        for _, line in ipairs(choiceLines) do tooltip:AddLine("  " .. line) end
+    end
+    if money > 0 then
+        tooltip:AddLine(GetMoneyString and GetMoneyString(money) or GetCoinTextureString(money), 1, 1, 1)
+    end
+    if xp > 0 then
+        tooltip:AddLine(ns.L("TIP_XP", BreakUpLargeNumbers and BreakUpLargeNumbers(xp) or xp), 0.6, 0.6, 1)
+    end
+    return true
+end
+
+-- Tooltip der Beutetruhe: nur Questname und Belohnungen
+local function ShowRewardTooltip(owner, questID)
+    local tooltip = ns.Style.GetTooltip()
+    tooltip:SetOwner(owner, "ANCHOR_LEFT")
+    tooltip:AddLine(C_QuestLog.GetTitleForQuestID(questID) or ("Quest " .. questID), 1, 0.82, 0)
+    AddRewardLines(tooltip, questID)
+    tooltip:AddLine(" ")
+    tooltip:AddLine(ns.L("TIP_REWARD_CHEST"), 0.5, 0.5, 0.5, true)
+    tooltip:Show()
+end
+
+local function ShowQuestTooltip(owner, questID)
+    local tooltip = ns.Style.GetTooltip()
+    tooltip:SetOwner(owner, "ANCHOR_LEFT")
+    local logIndex = C_QuestLog.GetLogIndexForQuestID(questID)
+    local info = logIndex and C_QuestLog.GetInfo(logIndex)
+
+    -- Titel in Schwierigkeitsfarbe mit Level
+    local r, g, b = 1, 0.82, 0
+    if info and info.level and GetQuestDifficultyColor then
+        local color = GetQuestDifficultyColor(info.level)
+        r, g, b = color.r, color.g, color.b
+    end
+    local questTitle = C_QuestLog.GetTitleForQuestID(questID) or ("Quest " .. questID)
+    if info and info.level and info.level > 0 then questTitle = questTitle .. " (" .. info.level .. ")" end
+    tooltip:AddLine(questTitle, r, g, b)
+
+    -- Beschreibung und Kurzziel stehen bei der "ausgewählten" Quest; danach Auswahl zurücksetzen
+    local previous = C_QuestLog.GetSelectedQuest()
+    C_QuestLog.SetSelectedQuest(questID)
+    local description, objectiveText
+    if GetQuestLogQuestText then
+        description, objectiveText = GetQuestLogQuestText(logIndex)
+    end
+    if objectiveText and objectiveText ~= "" then
+        tooltip:AddLine(objectiveText, 1, 1, 1, true)
+    end
+    if description and description ~= "" then
+        if #description > TOOLTIP_DESCRIPTION_LENGTH then
+            -- Am Ende kein halbes Umlaut-Zeichen stehen lassen
+            description = description:sub(1, TOOLTIP_DESCRIPTION_LENGTH):gsub("[\192-\255][\128-\191]*$", "") .. "…"
+        end
+        tooltip:AddLine(" ")
+        tooltip:AddLine(description, 0.7, 0.7, 0.7, true)
+    end
+
+    -- Ziele mit Fortschritt
+    local objectives = C_QuestLog.GetQuestObjectives(questID) or {}
+    if C_QuestLog.IsComplete(questID) then
+        tooltip:AddLine(" ")
+        tooltip:AddLine(ns.L("READY_TO_TURN_IN"), 0, 1, 0)
+    elseif #objectives > 0 then
+        tooltip:AddLine(" ")
+        for _, objective in ipairs(objectives) do
+            if objective.text and objective.text ~= "" then
+                local shade = objective.finished and 0.5 or 1
+                tooltip:AddLine("- " .. objective.text, shade, shade, shade, true)
+            end
+        end
+    end
+
+    C_QuestLog.SetSelectedQuest(previous or 0)
+
+    AddRewardLines(tooltip, questID)
+    tooltip:AddLine(" ")
+    tooltip:AddLine(ns.L("TIP_QUEST_HINT"), 0.5, 0.5, 0.5, true)
+    tooltip:Show()
+end
+
+local function OnLineEnter(self)
+    if self.questID then
+        -- Im Menü abschaltbar
+        if ns.db.showQuestTooltip then ShowQuestTooltip(self, self.questID) end
+    elseif self.groupKey then
+        ns.Style.GetTooltip():SetOwner(self, "ANCHOR_LEFT")
+        ns.Style.GetTooltip():AddLine(ns.L("TIP_GROUP_TOGGLE"), 1, 1, 1)
+        ns.Style.GetTooltip():Show()
+    end
+end
+
+local function OnLineClick(self, button)
+    -- Klick auf die Titelleiste eines Gebiets: ein-/ausklappen
+    if self.groupKey then
+        if button == "LeftButton" then ToggleGroup(self.groupKey) end
+        return
+    end
+    local questID = self.questID
+    if not questID then return end
+    -- Shift-Klick auf das Symbol des Questgegenstands: Gegenstand im Chat verlinken
+    local item = self.questItem
+    if item and item:IsShown() and item.link and item:IsMouseOver(3, -3, -3, 3) and IsModifiedClick() then
+        HandleModifiedItemClick(item.link)
+        return
+    end
+    if button == "RightButton" then
+        OpenQuestMenu(self, questID)
+    elseif IsShiftKeyDown() then
+        -- Shift + Linksklick: Quest nicht mehr verfolgen
+        if C_QuestLog.GetQuestWatchType(questID) then
+            C_QuestLog.RemoveQuestWatch(questID)
+        end
+    else
+        -- Linksklick: Quest auf- bzw. zuklappen (Questdetails gibt es im Rechtsklick-Menü)
+        ns.expanded[questID] = not ns.IsExpanded(questID)
+        ns.autoExpandedAt[questID] = nil
+        ns.UpdateTracker()
+    end
+end
+
+local function OnArrowClick(self)
+    local groupKey = self:GetParent().groupKey
+    if groupKey then
+        ToggleGroup(groupKey)
+        return
+    end
+    local questID = self:GetParent().questID
+    if not questID then return end
+    ns.expanded[questID] = not ns.IsExpanded(questID)
+    ns.autoExpandedAt[questID] = nil
+    ns.UpdateTracker()
+end
+
+-- Tooltip des Questgegenstands (item = das Symbol mit .link und .logIndex)
+local function ShowQuestItemTooltip(owner, item)
+    local tip = ns.Style.GetTooltip()
+    tip:SetOwner(owner, "ANCHOR_LEFT")
+    -- 1. Spielfunktion für Questgegenstände, 2. Gegenstand über die ID, 3. Link; jeweils abgesichert
+    local shown = false
+    if item.logIndex and tip.SetQuestLogSpecialItem then
+        shown = pcall(tip.SetQuestLogSpecialItem, tip, item.logIndex) and tip:NumLines() > 0
+    end
+    local itemID = item.link and tonumber(item.link:match("item:(%d+)"))
+    if not shown and itemID and tip.SetItemByID then
+        shown = pcall(tip.SetItemByID, tip, itemID) and tip:NumLines() > 0
+    end
+    if not shown and item.link and tip.SetHyperlink then
+        shown = pcall(tip.SetHyperlink, tip, item.link) and tip:NumLines() > 0
+    end
+    if not shown then
+        -- Notlösung: wenigstens der Name aus dem Link
+        tip:AddLine(item.link and item.link:match("%[(.-)%]") or "?", 1, 1, 1)
+    end
+    tip:AddLine(ns.L("TIP_QUEST_ITEM"), 0.6, 0.8, 1, true)
+    tip:Show()
+end
+
+-- Liegt die Maus gerade auf diesem Symbol? (rein nach Position, mit etwas Rand)
+local function IsOverIcon(icon)
+    return icon and icon:IsShown() and icon:IsMouseOver(3, -3, -3, 3)
+end
+
+-- Solange die Maus über einer Questzeile ist: prüfen, ob sie auf Gegenstand oder Truhe liegt,
+-- und den passenden Tooltip zeigen. (Die kleinen Symbole bekommen die Maus nicht immer selbst.)
+local function OnLineUpdate(self)
+    local mode = "line"
+    if IsOverIcon(self.questItem) then
+        mode = "item"
+    elseif IsOverIcon(self.rewardIcon) then
+        mode = "chest"
+    end
+    if mode == self.hoverMode then return end
+    self.hoverMode = mode
+    if mode == "item" then
+        ShowQuestItemTooltip(self, self.questItem)
+    elseif mode == "chest" and self.questID then
+        ShowRewardTooltip(self, self.questID)
+    else
+        ns.Style.GetTooltip():Hide()
+        OnLineEnter(self)
+    end
+end
+
+-- /fq maus: zeigt, welches Fenster die Maus gerade bekommt und wie es um die Questgegenstand-Symbole steht
+-- (zur Fehlersuche: Maus auf das Symbol legen, dann den Befehl mit Enter abschicken)
+function ns.DebugMouse()
+    local prefix = ns.ChatPrefix() .. ": "
+    local foci = GetMouseFoci and GetMouseFoci() or { GetMouseFocus and GetMouseFocus() }
+    local names = {}
+    for _, frame in ipairs(foci or {}) do
+        table.insert(names, (frame.GetName and frame:GetName()) or tostring(frame))
+    end
+    print(prefix .. "Maus auf: " .. (#names > 0 and table.concat(names, ", ") or "nichts"))
+    local found = false
+    for index, line in ipairs(lines) do
+        local item = line.questItem
+        if line:IsShown() and item and item:IsShown() then
+            found = true
+            print(prefix .. string.format("Zeile %d: Symbol sichtbar, Maus drauf: %s, Zeile Maus drauf: %s, Zeile Maus an: %s, Ebenen Zeile/Symbol: %d/%d, Link: %s",
+                index, tostring(item:IsMouseOver(3, -3, -3, 3)), tostring(line:IsMouseOver()),
+                tostring(line:IsMouseEnabled()), line:GetFrameLevel(), item:GetFrameLevel(), tostring(item.link)))
+        end
+    end
+    if not found then print(prefix .. "Kein Questgegenstand-Symbol im Tracker sichtbar.") end
+end
+
+-- Tooltip nur ausblenden, wenn er zu diesem Element gehört. Sonst würde z. B. die Questzeile beim
+-- Wechsel der Maus auf ihr Symbol (Questgegenstand, Truhe, Auge) dessen gerade gezeigten Tooltip schließen.
+local function HideOwnTooltip(self)
+    local tip = ns.Style.GetTooltip()
+    if tip:GetOwner() == self then tip:Hide() end
+end
+
+local function GetLine(index)
+    local line = lines[index]
+    if not line then
+        line = CreateFrame("Button", "ForeverQuestsTrackerLine" .. index, content)
+        line:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+        line:SetScript("OnClick", OnLineClick)
+        -- Beim Darüberfahren: Tooltip der Zeile; solange die Maus drauf ist, wird auf die Symbole geachtet
+        line:SetScript("OnEnter", function(self)
+            self.hoverMode = nil
+            self:SetScript("OnUpdate", OnLineUpdate)
+            OnLineUpdate(self)
+        end)
+        line:SetScript("OnLeave", function(self)
+            self:SetScript("OnUpdate", nil)
+            self.hoverMode = nil
+            HideOwnTooltip(self)
+        end)
+
+        -- Kleine Beutetruhe rechts für Quests mit guten Belohnungen.
+        -- Bevorzugt die Schatztruhe von der Karte; falls es die nicht gibt, ein Kisten-Symbol.
+        -- Als kleiner Knopf, damit die Truhe beim Darüberfahren die Belohnungen zeigt
+        local chest = CreateFrame("Button", "ForeverQuestsTrackerChest" .. index, line)
+        chest:SetSize(REWARD_ICON_SIZE, REWARD_ICON_SIZE)
+        chest:SetPoint("TOPRIGHT", line, "TOPRIGHT", 0, 0)
+        chest:SetHitRectInsets(-3, -3, -3, -3)
+        chest.icon = chest:CreateTexture(nil, "OVERLAY")
+        chest.icon:SetAllPoints()
+        if not chest.icon:SetAtlas(REWARD_ICON_ATLAS) then
+            chest.icon:SetTexture(REWARD_ICON_TEXTURE)
+            chest.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92) -- Symbolrand abschneiden
+        end
+        chest:SetScript("OnEnter", function(self)
+            local questID = self:GetParent().questID
+            if questID then ShowRewardTooltip(self, questID) end
+        end)
+        chest:SetScript("OnLeave", HideOwnTooltip)
+        -- Klick auf die Truhe wirkt wie ein Klick auf die Questzeile (Details, Menü …)
+        chest:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+        chest:SetScript("OnClick", function(self, button) OnLineClick(self:GetParent(), button) end)
+        line.rewardIcon = chest
+
+        line.text = line:CreateFontString(nil, "OVERLAY")
+        line.text:SetPoint("TOPLEFT")
+        line.text:SetJustifyH("LEFT")
+        line.text:SetWordWrap(true)
+
+        -- Hover-Effekt: Zeile beim Darüberfahren leicht hell hinterlegen (inkl. Pfeil links).
+        -- Zeigt sich nur bei anklickbaren Zeilen (Quests und Gebiets-Titelleisten).
+        local highlight = line:CreateTexture(nil, "HIGHLIGHT")
+        highlight:SetPoint("TOPLEFT", -(ICON_SIZE + 5), 1)
+        highlight:SetPoint("BOTTOMRIGHT", 3, -1)
+        highlight:SetColorTexture(1, 1, 1, 0.07)
+        line.highlight = highlight
+
+        -- Questgegenstand: kleines Symbol rechts (nur Hinweis mit Tooltip, kein Knopf -
+        -- Gegenstände benutzen geht im Kampf nur über geschützte Blizzard-Knöpfe)
+        -- Mit Namen, damit es im Blizzard-Werkzeug /fstack erkennbar ist
+        local item = CreateFrame("Button", "ForeverQuestsTrackerItem" .. index, line)
+        item:SetSize(REWARD_ICON_SIZE, REWARD_ICON_SIZE)
+        item:SetHitRectInsets(-3, -3, -3, -3) -- etwas größere Fläche für die Maus
+        item.icon = item:CreateTexture(nil, "ARTWORK")
+        item.icon:SetAllPoints()
+        item.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+        item:SetScript("OnEnter", function(self) ShowQuestItemTooltip(self, self) end)
+        item:SetScript("OnLeave", HideOwnTooltip)
+        -- Shift-Klick: Gegenstand im Chat verlinken
+        item:SetScript("OnClick", function(self)
+            if self.link and IsModifiedClick() then HandleModifiedItemClick(self.link) end
+        end)
+        item:Hide()
+        line.questItem = item
+
+        -- Kleiner Pfeil links neben dem Questnamen
+        local arrow = CreateFrame("Button", nil, line)
+        arrow:SetSize(ICON_SIZE, ICON_SIZE)
+        arrow:SetPoint("TOPRIGHT", line, "TOPLEFT", -3, 0)
+        arrow.icon = arrow:CreateTexture(nil, "ARTWORK")
+        arrow.icon:SetAllPoints()
+        arrow.icon:SetTexture(ARROW_TEXTURE)
+        arrow:SetScript("OnClick", OnArrowClick)
+        arrow:SetScript("OnEnter", function(self) self.icon:SetVertexColor(1, 1, 0.5) end)
+        arrow:SetScript("OnLeave", function(self) self.icon:SetVertexColor(1, 1, 1) end)
+        line.arrow = arrow
+
+        -- Nur bei Titelleisten: Auge der Gruppensuche direkt hinter dem Namen (wenn das Gebiet ein Dungeon ist)
+        -- und danach ein Zusatztext (Anzahl der Quests)
+        local eye = CreateFrame("Button", nil, line)
+        eye:SetSize(ICON_SIZE + 6, ICON_SIZE + 6)
+        -- Klickfläche rundherum etwas größer als das Symbol, damit es sich leicht treffen lässt
+        eye:SetHitRectInsets(-8, -8, -6, -6) -- links/rechts 8, oben/unten 6 Pixel über das Symbol hinaus
+        eye.icon = eye:CreateTexture(nil, "ARTWORK")
+        eye.icon:SetAllPoints()
+        if ns.SetEyeTexture then ns.SetEyeTexture(eye.icon) end
+        eye:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
+        eye:SetScript("OnClick", function(self)
+            if self.dungeon and ns.OpenInGroupFinder then ns.OpenInGroupFinder(self.dungeon) end
+        end)
+        eye:SetScript("OnEnter", function(self)
+            ns.Style.GetTooltip():SetOwner(self, "ANCHOR_LEFT")
+            ns.Style.GetTooltip():AddLine(ns.L("TIP_LFG"), 1, 1, 1)
+            ns.Style.GetTooltip():Show()
+        end)
+        eye:SetScript("OnLeave", HideOwnTooltip)
+        eye:Hide()
+        line.eye = eye
+        line.suffix = line:CreateFontString(nil, "OVERLAY")
+
+        lines[index] = line
+    end
+    -- Zeilen liegen über den Rahmen
+    line:SetFrameLevel(content:GetFrameLevel() + 5)
+    return line
+end
+
+-- Fügt eine Zeile ein und gibt die neue Y-Position (Abstand von oben) zurück.
+-- opts (optional):
+--   questID   = Quest dieser Zeile (macht sie anklickbar)
+--   groupKey  = Titelleiste eines Gebiets (Klick klappt das Gebiet ein/aus)
+--   arrow     = nil: kein Pfeil, true: aufgeklappt (nach unten), false: eingeklappt (nach rechts)
+--   reward    = Seltenheit der besten Belohnung, wenn eine Truhe angezeigt werden soll, sonst nil
+--   questItem = { link = Gegenstandslink, icon = Symbol } für den Questgegenstand, sonst nil
+local function AddLine(index, y, x, width, text, fontObject, r, g, b, opts)
+    opts = opts or {}
+    local line = GetLine(index)
+    width = math.max(1, width)
+    -- Mit Truhe und/oder Questgegenstand bleibt rechts etwas Platz frei
+    local iconCount = (opts.reward and 1 or 0) + (opts.questItem and 1 or 0)
+    local textWidth = math.max(1, width - iconCount * (REWARD_ICON_SIZE + 4) - (iconCount > 0 and 2 or 0))
+    line.text:SetFontObject(fontObject)
+    line.text:SetTextColor(r, g, b)
+    line.text:SetWidth(textWidth)
+    line.text:SetText(text)
+    local height = line.text:GetStringHeight() + 2
+    if iconCount > 0 then
+        height = math.max(height, REWARD_ICON_SIZE)
+    end
+
+    -- Hervorhebung nur bis vor die Symbole rechts (Truhe, Questgegenstand)
+    line.highlight:ClearAllPoints()
+    line.highlight:SetPoint("TOPLEFT", line, "TOPLEFT", -(ICON_SIZE + 5), 1)
+    line.highlight:SetPoint("BOTTOMRIGHT", line, "BOTTOMRIGHT",
+        iconCount > 0 and -(iconCount * (REWARD_ICON_SIZE + 4) + 2) or 3, -1)
+
+    -- Questgegenstand: ganz rechts bzw. links neben der Truhe
+    if opts.questItem then
+        local item = line.questItem
+        item.link = opts.questItem.link
+        item.logIndex = opts.questItem.logIndex
+        item.icon:SetTexture(opts.questItem.icon or 134400)
+        item:ClearAllPoints()
+        item:SetPoint("TOPRIGHT", line, "TOPRIGHT", opts.reward and -(REWARD_ICON_SIZE + 4) or 0, 0)
+        item:SetFrameLevel(line:GetFrameLevel() + 2)
+        item:Show()
+    else
+        line.questItem:Hide()
+    end
+    line:ClearAllPoints()
+    line:SetPoint("TOPLEFT", content, "TOPLEFT", x, -y)
+    line:SetSize(width, height)
+    line.questID = opts.questID
+    line.groupKey = opts.groupKey
+    line:EnableMouse(opts.questID ~= nil or opts.groupKey ~= nil)
+
+    if opts.arrow == nil then
+        line.arrow:Hide()
+    else
+        line.arrow.icon:SetRotation(opts.arrow and -math.pi / 2 or 0)
+        line.arrow:Show()
+    end
+
+    line.rewardIcon:SetShown(opts.reward ~= nil)
+    line.rewardIcon:SetFrameLevel(line:GetFrameLevel() + 2)
+
+    -- Auge (Dungeon) und Zusatztext direkt hinter dem Text der ersten Zeile
+    local textEnd = math.min(line.text:GetStringWidth(), textWidth)
+    if opts.eyeDungeon then
+        line.eye.dungeon = opts.eyeDungeon
+        line.eye:ClearAllPoints()
+        line.eye:SetPoint("TOPLEFT", line.text, "TOPLEFT", textEnd + 3, 3)
+        -- Über allen Zeilen und Rahmen, damit keine andere Zeile die Maus abfängt
+        line.eye:SetFrameLevel(line:GetFrameLevel() + 10)
+        line.eye:Show()
+        textEnd = textEnd + 3 + line.eye:GetWidth()
+    else
+        line.eye:Hide()
+    end
+    if opts.suffix then
+        line.suffix:SetFontObject(fontObject)
+        line.suffix:SetText(opts.suffix)
+        line.suffix:ClearAllPoints()
+        line.suffix:SetPoint("TOPLEFT", line.text, "TOPLEFT", textEnd + 4, 0)
+        line.suffix:Show()
+    else
+        line.suffix:Hide()
+    end
+
+    line:Show()
+    return y + height
+end
+
+-- Eigenes kleines "Fenster" je Gebiet/Kategorie im Stil des Dungeonfensters:
+-- dunkles Feld mit grauem Rand, oben eine Titelleiste mit farbiger Linie darunter.
+-- Die Hintergrund-Transparenz kommt aus dem Menü.
+local function GetBox(index, alpha)
+    local box = boxes[index]
+    if not box then
+        box = CreateFrame("Frame", nil, content, "BackdropTemplate")
+        box:SetBackdrop(ns.Style.BACKDROP)
+        box.header = box:CreateTexture(nil, "ARTWORK", nil, -1)
+        box.header:SetPoint("TOPLEFT", 1, -1)
+        box.header:SetPoint("TOPRIGHT", -1, -1)
+        box.accent = box:CreateTexture(nil, "ARTWORK", nil, 1)
+        box.accent:SetHeight(1)
+        box.accent:SetPoint("TOPLEFT", box.header, "BOTTOMLEFT")
+        box.accent:SetPoint("TOPRIGHT", box.header, "BOTTOMRIGHT")
+        boxes[index] = box
+    end
+    local color = ns.Style.COLOR
+    box:SetBackdropColor(color.panel[1], color.panel[2], color.panel[3], alpha)
+    box:SetBackdropBorderColor(color.border[1], color.border[2], color.border[3], math.max(alpha, 0.3))
+    box.header:SetColorTexture(color.header[1], color.header[2], color.header[3], math.max(alpha, 0.15))
+    box:SetFrameLevel(content:GetFrameLevel() + 1)
+    return box
+end
+
+---------------------------------------------------------------------------
+-- Tracker-Inhalt aufbauen
+---------------------------------------------------------------------------
+
+---------------------------------------------------------------------------
+-- Filter
+---------------------------------------------------------------------------
+
+local function HasTag(questID, ...)
+    local tagInfo = GetQuestTag(questID)
+    if not tagInfo then return false end
+    for i = 1, select("#", ...) do
+        if tagInfo.tagID == select(i, ...) then
+            return true
+        end
+    end
+    return false
+end
+
+-- Jeder Filter prüft eine Quest (info = Questlog-Eintrag, header = Gebiet/Kategorie)
+ns.FILTERS = {
+    { key = "DEFAULT", textKey = "FILTER_DEFAULT", test = function() return true end },
+    { key = "ALL", textKey = "FILTER_ALL", test = function() return true end },
+    { key = "ZONE", textKey = "FILTER_ZONE", test = function(info, header)
+        return header ~= nil and (header == GetRealZoneText() or header == GetZoneText())
+    end },
+    { key = "DUNGEON", textKey = "FILTER_DUNGEON", test = function(info)
+        return HasTag(info.questID, TAG_DUNGEON, TAG_HEROIC)
+    end },
+    { key = "RAID", textKey = "FILTER_RAID", test = function(info)
+        return HasTag(info.questID, TAG_RAID, TAG_RAID10, TAG_RAID25)
+    end },
+    { key = "GROUP", textKey = "FILTER_GROUP", test = function(info)
+        local tagInfo = GetQuestTag(info.questID)
+        return (tagInfo and (tagInfo.tagID == TAG_GROUP or tagInfo.isElite))
+            or (info.suggestedGroup or 0) > 1
+    end },
+    { key = "PVP", textKey = "FILTER_PVP", test = function(info)
+        return HasTag(info.questID, TAG_PVP)
+    end },
+    { key = "CLASS", textKey = "FILTER_CLASS", test = function(info, header)
+        return GetClassFileForHeader(header) ~= nil
+    end },
+    { key = "PROFESSION", textKey = "FILTER_PROFESSION", test = function(info, header)
+        return IsProfessionHeader(header)
+    end },
+    { key = "REPUTATION", textKey = "FILTER_REPUTATION", test = function(info, header)
+        return header ~= nil and IsReputationHeader(header)
+    end },
+    { key = "COMPLETE", textKey = "FILTER_COMPLETE", test = function(info)
+        return C_QuestLog.IsComplete(info.questID)
+    end },
+    { key = "REWARD", textKey = "FILTER_REWARD", test = function(info)
+        return GetBestRewardQuality(info.questID) >= math.max(2, ns.db.rewardHighlight)
+    end },
+    { key = "PINNED", textKey = "FILTER_PINNED", test = function(info)
+        return ns.db.pinned[info.questID] == true
+    end },
+}
+
+-- Name der Instanz, in der der Spieler gerade ist (nil = keine Instanz)
+local function GetCurrentInstanceName()
+    local inInstance, instanceType = IsInInstance()
+    if not inInstance or instanceType == "none" then
+        return nil
+    end
+    return (GetInstanceInfo())
+end
+
+-- Wird automatisch benutzt, wenn man eine Instanz betritt (Option im Menü)
+local INSTANCE_FILTER = {
+    key = "INSTANCE",
+    textKey = "FILTER_INSTANCE",
+    test = function(info, header)
+        -- Quest steht unter der Instanz als Überschrift oder hat Ziele auf der aktuellen Karte
+        if info.isOnMap then return true end
+        return header ~= nil and (header == GetCurrentInstanceName() or header == GetRealZoneText())
+    end,
+}
+
+-- Gewählte Filter (mehrere möglich) in der Reihenfolge der Liste; leer = Standard
+local function GetSelectedFilters()
+    if type(ns.db.filters) ~= "table" then ns.db.filters = {} end
+    local list = {}
+    for _, filter in ipairs(ns.FILTERS) do
+        if filter.key ~= "DEFAULT" and ns.db.filters[filter.key] then
+            table.insert(list, filter)
+        end
+    end
+    return list
+end
+
+-- Aktive Filter und Art: "INSTANCE" (automatisch im Dungeon), "CUSTOM" (selbst gewählt) oder "DEFAULT"
+local function GetActiveFilters()
+    if ns.db.instanceFilter and GetCurrentInstanceName() then
+        return { INSTANCE_FILTER }, "INSTANCE"
+    end
+    local list = GetSelectedFilters()
+    return list, #list > 0 and "CUSTOM" or "DEFAULT"
+end
+
+-- Eine Quest wird gezeigt, wenn sie zu mindestens einem der gewählten Filter passt
+local function PassesFilters(filters, info, header)
+    if #filters == 0 then return true end
+    for _, filter in ipairs(filters) do
+        if filter.test(info, header) then return true end
+    end
+    return false
+end
+
+-- Namen der aktiven Filter für den Tooltip, z. B. "Dungeon, Gruppe"
+local function GetActiveFilterText()
+    local filters, mode = GetActiveFilters()
+    if mode == "DEFAULT" then return ns.L("FILTER_DEFAULT") end
+    local names = {}
+    for _, filter in ipairs(filters) do
+        table.insert(names, ns.L(filter.textKey))
+    end
+    return table.concat(names, ", ")
+end
+
+-- "Standard" hebt alle Filter auf, jeder andere Eintrag wird an- bzw. abgehakt
+local function ToggleFilter(key)
+    GetSelectedFilters() -- legt die Liste bei Bedarf an
+    if key == "DEFAULT" then
+        wipe(ns.db.filters)
+    else
+        ns.db.filters[key] = not ns.db.filters[key] or nil
+    end
+    ns.UpdateTracker()
+end
+
+-- Filter-Liste im eigenen flachen Stil (siehe Style.ShowMenu); bleibt beim Anhaken offen
+local function OpenFilterMenu(owner)
+    GetSelectedFilters()
+    local items = { { title = ns.L("FILTER_TITLE") } }
+    for _, filter in ipairs(ns.FILTERS) do
+        table.insert(items, {
+            checkbox = true,
+            text = ns.L(filter.textKey),
+            checked = function()
+                if filter.key == "DEFAULT" then return next(ns.db.filters) == nil end
+                return ns.db.filters[filter.key] == true
+            end,
+            onClick = function() ToggleFilter(filter.key) end,
+        })
+    end
+    table.insert(items, { divider = true })
+    table.insert(items, {
+        checkbox = true,
+        text = ns.L("FILTER_INSTANCE_TOGGLE"),
+        checked = function() return ns.db.instanceFilter end,
+        onClick = function()
+            ns.db.instanceFilter = not ns.db.instanceFilter
+            ns.UpdateTracker()
+            if ns.RefreshOptions then ns.RefreshOptions() end
+        end,
+    })
+    ns.Style.ShowMenu(owner, items)
+end
+
+---------------------------------------------------------------------------
+-- Quests sammeln
+---------------------------------------------------------------------------
+
+-- Sammelt die anzuzeigenden Quests, gruppiert nach Gebiet (Überschrift im Questlog).
+-- Angeheftete Quests kommen in einen eigenen Rahmen ganz oben.
+local function CollectGroups()
+    local db = ns.db
+    local groups = {}
+    local pinnedGroup = { header = ns.L("PINNED"), pinned = true, quests = {} }
+    local currentHeader
+    local filters, filterMode = GetActiveFilters()
+    -- Ein gesetzter Filter durchsucht das ganze Questlog, nicht nur verfolgte Quests
+    local useTrackedOnly = db.onlyTracked and filterMode == "DEFAULT"
+    for i = 1, C_QuestLog.GetNumQuestLogEntries() do
+        local info = C_QuestLog.GetInfo(i)
+        if info then
+            if info.isHeader then
+                currentHeader = info.title
+            elseif not info.isHidden and info.questID and info.questID > 0
+                and PassesFilters(filters, info, currentHeader) then
+                info.zoneHeader = currentHeader
+                if db.pinned[info.questID] then
+                    -- Angeheftete Quests werden immer angezeigt, auch wenn sie nicht verfolgt werden
+                    table.insert(pinnedGroup.quests, info)
+                elseif not useTrackedOnly or C_QuestLog.GetQuestWatchType(info.questID) ~= nil then
+                    local group = groups[#groups]
+                    -- Ohne Gebietsanzeige landen alle Quests in einem einzigen Rahmen
+                    if not group or (db.showZones and group.header ~= currentHeader) then
+                        group = { header = currentHeader, quests = {} }
+                        table.insert(groups, group)
+                    end
+                    table.insert(group.quests, info)
+                end
+            end
+        end
+    end
+    if #pinnedGroup.quests > 0 then
+        table.insert(groups, 1, pinnedGroup)
+    end
+    return groups
+end
+
+function ns.UpdateTracker()
+    updatePending = false
+    if not tracker then return end
+    local db = ns.db
+
+    ns.UpdateFonts()
+    BuildFactionNames()
+    local contentWidth = math.max(1, tracker:GetWidth() - 12)
+    content:SetWidth(contentWidth)
+
+    local padding = BOX_PADDING
+    local alpha = 1 - db.backgroundTransparency / 100
+
+    local innerX = padding + 2
+    local innerWidth = contentWidth - 2 * innerX
+    -- Platz links für den Pfeil
+    local iconSpace = ICON_SIZE + 4
+    local nameX = innerX + iconSpace
+    local nameWidth = innerWidth - iconSpace
+    local objectiveX = nameX + 8
+    local objectiveWidth = nameWidth - 8
+
+    local groups = CollectGroups()
+    local y, index, count = 0, 0, 0
+
+    for groupIndex, group in ipairs(groups) do
+        local boxTop = y
+        local hr, hg, hb = GetHeaderColor(group)
+        local box = GetBox(groupIndex, alpha)
+
+        -- Titelleiste des Fensters (Gebiet, Klasse, Ruf oder "Angeheftet") mit Anzahl der Quests.
+        -- Klick darauf oder auf den Pfeil klappt das Gebiet ein bzw. aus.
+        local collapsed = false
+        if db.showZones or group.pinned then
+            local groupKey = group.pinned and "#PINNED" or (group.header or "#OTHER")
+            collapsed = ns.collapsedGroups[groupKey] == true
+            index = index + 1
+            -- Ist das Gebiet ein Dungeon aus den Dungeon-Daten, steht das Auge der Gruppensuche dahinter
+            local eyeDungeon = not group.pinned and ns.FindDungeonForHeader and ns.FindDungeonForHeader(group.header) or nil
+            y = AddLine(index, y + 5, nameX, nameWidth, group.header or ns.L("OTHER"), fonts.header, hr, hg, hb, {
+                groupKey = groupKey,
+                arrow = not collapsed,
+                eyeDungeon = eyeDungeon,
+                suffix = "|cff8a8a8a" .. #group.quests .. "|r",
+            })
+            y = y + 4
+            box.header:SetHeight(math.max(1, y - boxTop - 1))
+            box.header:Show()
+            -- Linie unter der Titelleiste in der Farbe der Kategorie
+            box.accent:SetColorTexture(hr, hg, hb, 0.7)
+            box.accent:Show()
+            y = y + 3
+        else
+            box.header:Hide()
+            box.accent:Hide()
+            y = y + padding
+        end
+
+        for _, info in ipairs(group.quests) do
+            local questID = info.questID
+            count = count + 1
+
+            local isComplete = C_QuestLog.IsComplete(questID)
+            local objectives = C_QuestLog.GetQuestObjectives(questID) or {}
+            CheckProgress(questID, objectives, isComplete)
+
+            -- Eingeklapptes Gebiet: Quests werden mitgezählt, aber nicht angezeigt
+            if not collapsed then
+
+            -- Questname, eingefärbt nach Schwierigkeit, mit Level dahinter
+            local r, g, b = 1, 1, 1
+            if info.level and GetQuestDifficultyColor then
+                local color = GetQuestDifficultyColor(info.level)
+                r, g, b = color.r, color.g, color.b
+            end
+            local name = info.title or ("Quest " .. questID)
+            if info.level and info.level > 0 then
+                name = name .. " (" .. info.level .. ")"
+            end
+            if db.showQuestType then
+                local typeText = GetQuestTypeText(questID, info.zoneHeader)
+                if typeText ~= "" then
+                    name = name .. " |cff88ccff" .. typeText .. "|r"
+                end
+            end
+            if isComplete then
+                name = name .. " |cff00ff00" .. ns.L("COMPLETE_TAG") .. "|r"
+            end
+
+            -- Truhe anzeigen, wenn die beste Belohnung selten genug ist
+            local rewardQuality = nil
+            if db.rewardHighlight > 0 then
+                local quality = GetBestRewardQuality(questID)
+                if quality >= db.rewardHighlight then
+                    rewardQuality = quality
+                end
+            end
+
+            -- Questgegenstand (benutzbarer Gegenstand zur Quest), falls es einen gibt
+            local questItem = nil
+            local logIndex = GetQuestLogSpecialItemInfo and C_QuestLog.GetLogIndexForQuestID(questID)
+            if logIndex then
+                local itemLink, itemIcon, _, showWhenComplete = GetQuestLogSpecialItemInfo(logIndex)
+                if itemLink and (not isComplete or showWhenComplete) then
+                    questItem = { link = itemLink, icon = itemIcon, logIndex = logIndex }
+                end
+            end
+
+            -- Welche Fortschrittszeilen gibt es?
+            local details = {}
+            if isComplete then
+                table.insert(details, { text = "- " .. ns.L("READY_TO_TURN_IN"), r = 0, g = 1, b = 0 })
+            else
+                for _, objective in ipairs(objectives) do
+                    if objective.text and objective.text ~= "" then
+                        local shade = objective.finished and 0.5 or 0.85
+                        table.insert(details, { text = "- " .. objective.text, r = shade, g = shade, b = shade })
+                    end
+                end
+            end
+
+            local arrowState = nil
+            local expanded = false
+            if #details > 0 then
+                expanded = ns.IsExpanded(questID)
+                arrowState = expanded
+            end
+
+            index = index + 1
+            y = AddLine(index, y + 2, nameX, nameWidth, name, fonts.quest, r, g, b, {
+                questID = questID,
+                arrow = arrowState,
+                reward = rewardQuality,
+                questItem = questItem,
+            })
+
+            if expanded then
+                for _, detail in ipairs(details) do
+                    index = index + 1
+                    y = AddLine(index, y, objectiveX, objectiveWidth, detail.text, fonts.objective,
+                        detail.r, detail.g, detail.b)
+                end
+            end
+            end -- if not collapsed
+        end
+
+        y = y + padding
+        box:ClearAllPoints()
+        box:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -boxTop)
+        box:SetSize(contentWidth, y - boxTop)
+        box:Show()
+        y = y + BOX_GAP
+    end
+
+    -- Filter-Knopf grün bei gewähltem Filter, orange beim automatischen Instanz-Filter
+    local _, filterMode = GetActiveFilters()
+    local filterActive = filterMode ~= "DEFAULT"
+    if filterMode == "INSTANCE" then
+        filterButton:SetText("|cffff9900" .. ns.L("BTN_FILTER") .. "|r")
+    elseif filterActive then
+        filterButton:SetText("|cff00ff00" .. ns.L("BTN_FILTER") .. "|r")
+    else
+        filterButton:SetText(ns.L("BTN_FILTER"))
+    end
+
+    if count == 0 then
+        index = index + 1
+        local text
+        if filterMode == "INSTANCE" then
+            text = ns.L("EMPTY_INSTANCE")
+        elseif filterActive then
+            text = ns.L("EMPTY_FILTER")
+        elseif db.onlyTracked then
+            text = ns.L("EMPTY_TRACKED")
+        else
+            text = ns.L("EMPTY_LOG")
+        end
+        y = AddLine(index, y, 0, contentWidth, text, fonts.objective, 0.6, 0.6, 0.6)
+    end
+
+    -- Übrige Zeilen und Rahmen aus vorherigen Durchläufen verstecken
+    for i = index + 1, #lines do
+        lines[i]:Hide()
+    end
+    for i = #groups + 1, #boxes do
+        boxes[i]:Hide()
+    end
+
+    title:SetText(ns.L("TRACKER_TITLE") .. "  |cff8a8a8a" .. count .. "|r")
+    -- Titelleiste folgt der eingestellten Hintergrund-Transparenz
+    local headerColor = ns.Style.COLOR.header
+    headerBar:SetBackdropColor(headerColor[1], headerColor[2], headerColor[3], math.max(alpha, 0.15))
+    content:SetHeight(math.max(1, y))
+
+    -- Scrollposition begrenzen, falls die Liste kürzer geworden ist
+    local maxScroll = math.max(0, y - scrollFrame:GetHeight())
+    if scrollFrame:GetVerticalScroll() > maxScroll then
+        scrollFrame:SetVerticalScroll(maxScroll)
+    end
+end
+
+-- Mehrere Ereignisse kurz hintereinander werden zu einer Aktualisierung zusammengefasst
+function ns.RequestUpdate()
+    if updatePending or not tracker then return end
+    updatePending = true
+    C_Timer.After(0.1, ns.UpdateTracker)
+end
+
+---------------------------------------------------------------------------
+-- Position, Größe, Entsperren, Ein-/Ausblenden
+---------------------------------------------------------------------------
+
+-- Tracker zeigen oder verstecken (per Rechtsklick auf den Minimap-Button oder im Kampf)
+function ns.UpdateVisibility()
+    if not tracker then return end
+    local db = ns.db
+    local hiddenByCombat = db.hideInCombat and ns.inCombat
+    tracker:SetShown(not db.trackerHidden and not hiddenByCombat)
+end
+
+function ns.ApplyLayout()
+    if not tracker then return end
+    local db = ns.db
+    if db.x == nil or db.y == nil then
+        db.x = math.floor(UIParent:GetWidth() - db.width - 40)
+        db.y = math.floor(UIParent:GetHeight() - 220)
+    end
+    tracker:ClearAllPoints()
+    tracker:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", db.x, db.y)
+    tracker:SetSize(db.width, db.height)
+    ns.UpdateVisibility()
+    ns.RequestUpdate()
+end
+
+function ns.ToggleTracker()
+    ns.db.trackerHidden = not ns.db.trackerHidden
+    ns.UpdateVisibility()
+end
+
+-- Nach Ziehen/Größenänderung mit der Maus die neuen Werte übernehmen
+local function SaveFromFrame()
+    tracker:StopMovingOrSizing()
+    local db = ns.db
+    db.x = math.floor(tracker:GetLeft() + 0.5)
+    db.y = math.floor(tracker:GetTop() + 0.5)
+    db.width = math.floor(tracker:GetWidth() + 0.5)
+    db.height = math.floor(tracker:GetHeight() + 0.5)
+    ns.ApplyLayout()
+    if ns.RefreshOptions then ns.RefreshOptions() end
+end
+
+function ns.SetUnlocked(unlocked)
+    ns.unlocked = unlocked
+    if overlay then
+        overlay:SetShown(unlocked)
+    end
+end
+
+function ns.ResetPosition()
+    local db = ns.db
+    db.x, db.y = nil, nil
+    db.width = ns.defaults.width
+    db.height = ns.defaults.height
+    ns.ApplyLayout()
+    if ns.RefreshOptions then ns.RefreshOptions() end
+end
+
+-- Beim Umschalten der Grundeinstellung gilt sie wieder für alle Quests
+function ns.ResetExpanded()
+    wipe(ns.expanded)
+    wipe(ns.autoExpandedAt)
+end
+
+-- Nach einem Sprachwechsel: feste Beschriftungen des Trackers neu setzen
+function ns.UpdateTrackerTexts()
+    if not tracker then return end
+    dungeonButton:SetText(ns.L("BTN_DUNGEONS"))
+    menuButton:SetText(ns.L("BTN_MENU"))
+    unlockHint:SetText(ns.L("UNLOCK_HINT"))
+    ns.UpdateTracker() -- setzt auch Titel, Filter-Knopf und alle Zeilen
+end
+
+---------------------------------------------------------------------------
+-- Tracker-Fenster erstellen
+---------------------------------------------------------------------------
+
+function ns.CreateTracker()
+    if tracker then return end
+
+    tracker = CreateFrame("Frame", "ForeverQuestsTracker", UIParent)
+    -- Über den Aktionsleisten (z. B. Bartender4), damit deren - auch leere/unsichtbare - Knöpfe
+    -- nicht die Maus über dem Tracker abfangen. Menüs, Dungeonfenster und Tooltips liegen noch höher.
+    tracker:SetFrameStrata("HIGH")
+    tracker:SetMovable(true)
+    tracker:SetResizable(true)
+    tracker:SetResizeBounds(200, 100, 800, 1200)
+    tracker:SetClampedToScreen(true)
+    tracker:SetScript("OnSizeChanged", ns.RequestUpdate)
+
+    local Style = ns.Style
+
+    -- Titelleiste mit goldener Linie, wie beim Dungeon-Fenster
+    headerBar = CreateFrame("Frame", nil, tracker, "BackdropTemplate")
+    headerBar:SetPoint("TOPLEFT")
+    headerBar:SetPoint("TOPRIGHT")
+    headerBar:SetHeight(26)
+    headerBar:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8" })
+    headerBar:SetBackdropColor(unpack(Style.COLOR.header))
+    local accentLine = headerBar:CreateTexture(nil, "ARTWORK")
+    accentLine:SetPoint("BOTTOMLEFT")
+    accentLine:SetPoint("BOTTOMRIGHT")
+    accentLine:SetHeight(1)
+    accentLine:SetColorTexture(Style.COLOR.accent[1], Style.COLOR.accent[2], Style.COLOR.accent[3], 0.6)
+
+    -- Knöpfe rechts in der Titelleiste: Dungeons, Filter, Menü
+    -- Texte kommen aus Locales.lua; Tooltips werden erst beim Anzeigen übersetzt
+    dungeonButton = Style.CreateButton(headerBar, ns.L("BTN_DUNGEONS"), 62, 18,
+        function() ns.ToggleDungeons() end, function(tooltip) tooltip:AddLine(ns.L("TIP_DUNGEONS")) end)
+    dungeonButton:SetPoint("RIGHT", -4, 0)
+
+    filterButton = Style.CreateButton(headerBar, ns.L("BTN_FILTER"), 42, 18, OpenFilterMenu, function(tooltip)
+        tooltip:AddLine(ns.L("FILTER_TITLE"))
+        tooltip:AddLine(ns.L("TIP_FILTER_ACTIVE", GetActiveFilterText()), 1, 1, 1, true)
+    end)
+    filterButton:SetPoint("RIGHT", dungeonButton, "LEFT", -4, 0)
+
+    menuButton = Style.CreateButton(headerBar, ns.L("BTN_MENU"), 42, 18,
+        function() ns.ToggleOptions() end, function(tooltip) tooltip:AddLine(ns.L("TIP_MENU")) end)
+    menuButton:SetPoint("RIGHT", filterButton, "LEFT", -4, 0)
+
+    title = headerBar:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    title:SetPoint("LEFT", 8, 0)
+    title:SetPoint("RIGHT", menuButton, "LEFT", -6, 0)
+    title:SetJustifyH("LEFT")
+    title:SetWordWrap(false)
+    title:SetTextColor(1, 1, 1)
+
+    -- Scrollbereich: Inhalt, der nicht in die Höhe passt, ist per Mausrad erreichbar
+    scrollFrame = CreateFrame("ScrollFrame", nil, tracker)
+    scrollFrame:SetPoint("TOPLEFT", 6, -32)
+    scrollFrame:SetPoint("BOTTOMRIGHT", -6, 6)
+    scrollFrame:EnableMouseWheel(true)
+    scrollFrame:SetScript("OnMouseWheel", function(self, delta)
+        local maxScroll = math.max(0, content:GetHeight() - self:GetHeight())
+        local newScroll = self:GetVerticalScroll() - delta * 30
+        self:SetVerticalScroll(math.min(maxScroll, math.max(0, newScroll)))
+    end)
+
+    content = CreateFrame("Frame", nil, scrollFrame)
+    content:SetSize(1, 1)
+    scrollFrame:SetScrollChild(content)
+
+    -- Überlagerung im entsperrten Zustand: zum Verschieben und Größe ändern
+    overlay = CreateFrame("Frame", nil, tracker, "BackdropTemplate")
+    overlay:SetAllPoints()
+    overlay:SetFrameLevel(tracker:GetFrameLevel() + 20)
+    -- Entsperrt: goldener Rahmen und leicht getönter Hintergrund
+    Style.SetFlat(overlay, { 0.10, 0.10, 0.12, 0.75 },
+        { Style.COLOR.accent[1], Style.COLOR.accent[2], Style.COLOR.accent[3], 1 })
+    overlay:EnableMouse(true)
+    overlay:RegisterForDrag("LeftButton")
+    overlay:SetScript("OnDragStart", function() tracker:StartMoving() end)
+    overlay:SetScript("OnDragStop", SaveFromFrame)
+
+    unlockHint = overlay:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    unlockHint:SetPoint("CENTER")
+    unlockHint:SetText(ns.L("UNLOCK_HINT"))
+
+    local grip = CreateFrame("Button", nil, overlay)
+    grip:SetSize(16, 16)
+    grip:SetPoint("BOTTOMRIGHT", -3, 3)
+    grip:SetNormalTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up")
+    grip:SetHighlightTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Highlight")
+    grip:SetPushedTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Down")
+    grip:SetScript("OnMouseDown", function() tracker:StartSizing("BOTTOMRIGHT") end)
+    grip:SetScript("OnMouseUp", SaveFromFrame)
+
+    overlay:Hide()
+
+    ns.inCombat = UnitAffectingCombat("player")
+
+    -- Ereignisse, bei denen sich die Questliste oder die Sichtbarkeit ändern kann
+    local events = {
+        "QUEST_LOG_UPDATE", "QUEST_WATCH_LIST_CHANGED", "QUEST_ACCEPTED", "QUEST_REMOVED",
+        "QUEST_TURNED_IN", "UNIT_QUEST_LOG_CHANGED", "PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA",
+        "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "GET_ITEM_INFO_RECEIVED",
+    }
+    for _, event in ipairs(events) do
+        tracker:RegisterEvent(event)
+    end
+    tracker:SetScript("OnEvent", function(self, event, ...)
+        if event == "PLAYER_REGEN_DISABLED" then
+            -- Kampfbeginn
+            ns.inCombat = true
+            ns.UpdateVisibility()
+            return
+        elseif event == "PLAYER_REGEN_ENABLED" then
+            -- Kampfende
+            ns.inCombat = false
+            ns.UpdateVisibility()
+            if blizzardUpdatePending then
+                ns.UpdateBlizzardTracker()
+            end
+        elseif event == "GET_ITEM_INFO_RECEIVED" then
+            -- Nur reagieren, wenn wir auf Daten für Questbelohnungen warten
+            if not waitingForItemData then return end
+            waitingForItemData = false
+        elseif event == "QUEST_REMOVED" or event == "QUEST_TURNED_IN" then
+            -- Abgegebene oder abgebrochene Quests vergessen
+            local questID = ...
+            if questID then
+                ns.db.pinned[questID] = nil
+                ns.expanded[questID] = nil
+                ns.autoExpandedAt[questID] = nil
+                progressSnapshots[questID] = nil
+                rewardQualityCache[questID] = nil
+            end
+        end
+        ns.RequestUpdate()
+    end)
+
+    C_Timer.NewTicker(10, CheckAutoCollapse)
+
+    ns.ApplyLayout()
+end

@@ -1,0 +1,10 @@
+<!-- Tastenkürzel für das Blizzard-Menü "Tastaturbelegung" (Bereich AddOns).
+     Diese Datei lädt das Spiel automatisch; die Namen kommen aus Core.lua (BINDING_NAME_...). -->
+<Bindings>
+	<Binding name="FOREVERBARS_OPTIONS" header="FOREVERBARS" category="ADDONS">
+		ForeverBars_ToggleOptions()
+	</Binding>
+	<Binding name="FOREVERBARS_UNLOCK" category="ADDONS">
+		ForeverBars_ToggleUnlock()
+	</Binding>
+</Bindings>

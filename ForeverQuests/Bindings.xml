@@ -1,0 +1,13 @@
+<!-- Tastenkürzel für das Blizzard-Menü "Tastaturbelegung" (Bereich AddOns).
+     Diese Datei lädt das Spiel automatisch; die Namen kommen aus ForeverQuests.lua (BINDING_NAME_...). -->
+<Bindings>
+	<Binding name="FOREVERQUESTS_TRACKER" header="FOREVERQUESTS" category="ADDONS">
+		ForeverQuests_ToggleTracker()
+	</Binding>
+	<Binding name="FOREVERQUESTS_DUNGEONS" category="ADDONS">
+		ForeverQuests_ToggleDungeons()
+	</Binding>
+	<Binding name="FOREVERQUESTS_OPTIONS" category="ADDONS">
+		ForeverQuests_ToggleOptions()
+	</Binding>
+</Bindings>
