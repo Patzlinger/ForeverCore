@@ -330,6 +330,11 @@ Damit alle Einstellungsfenster gleich aussehen, gelten diese Maße. Quelle: `For
   des Bearbeitungsmodus in Forever nicht aus – deshalb wird nur nachgesehen, ob `EditModeManagerFrame` sichtbar ist.
   Eine spätere gemeinsame Lösung im Hub (alle Forever-Rahmen im Bearbeitungsmodus entsperren) muss das genauso machen
   und ForeverBars dann einbeziehen statt doppelt zu entsperren
+- **Bearbeitungsmodus speichert Anker an Addon-Rahmen**: Legt ein Addon ein Blizzard-Element per `SetPoint` an einen
+  eigenen Rahmen (z. B. die Erfahrungsleiste an `ForeverBars_xp`), merkt sich Blizzards Layout diesen Anker und wendet
+  ihn schon beim Laden an. Solche Rahmen deshalb **sofort beim Laden der Datei** anlegen (nicht erst bei
+  `PLAYER_LOGIN`), sonst kommt "Couldn't find region named …". Wer das Addon später entfernt, setzt das Element im
+  Bearbeitungsmodus einmal zurück, damit der Verweis aus dem Layout verschwindet
 - **ForeverBars Proc-Leuchten**: blendet Blizzards Leuchten per `SetAlpha(0)` aus einem `hooksecurefunc` heraus aus
   (taint-frei, gleiches Verfahren wie ForeverXP/ForeverCast)
 - **ForeverQuests**: ersetzt den Blizzard-Questtracker
