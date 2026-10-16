@@ -1,4 +1,4 @@
-# Baut den Release-Stand: Addon-Ordner, Einzel-Zips und Gesamt-Zip.
+﻿# Baut den Release-Stand: Addon-Ordner, Einzel-Zips und Gesamt-Zip.
 #   .\tools\build-release.ps1                       -> Version aus den .toc, Ziel ..\_Forever-Release-<Version>
 #   .\tools\build-release.ps1 -ReleaseDir D:\irgendwo
 # Fremde Zips im Zielordner (z. B. eigene Sicherungen) werden nie angefasst.
@@ -54,7 +54,7 @@ $copied = foreach ($a in $addons) {
 }
 New-Zip (Join-Path $ReleaseDir "ForeverCore-$Version.zip") $copied @(Join-Path $root 'release\README.txt')
 
-Copy-Item (Join-Path $root 'release\README.txt'), (Join-Path $root 'release\Changelog-CurseForge.txt') $ReleaseDir -Force
+Copy-Item (Join-Path $root 'release\README.txt'), (Join-Path $root 'release\Changelog-CurseForge.txt'), (Join-Path $root 'release\Description-CurseForge.txt') $ReleaseDir -Force
 New-Item -ItemType Directory -Force (Join-Path $ReleaseDir 'Logo') | Out-Null
 Copy-Item (Join-Path $root 'release\Logo\*') (Join-Path $ReleaseDir 'Logo') -Force
 

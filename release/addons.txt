@@ -6,3 +6,5 @@ ForeverLoot
 ForeverXP
 ForeverBuffs
 ForeverVendor
+ForeverSpellbook
+ForeverChat

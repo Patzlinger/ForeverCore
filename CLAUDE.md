@@ -18,8 +18,8 @@ Philosophie, Regeln, Design und Abläufe. Wenn etwas hier nicht steht: am besteh
 | Addon | Verantwortlich | Status |
 |---|---|---|
 | ForeverFrames, ForeverUnits, ForeverCast, ForeverLoot, ForeverXP, ForeverBuffs, ForeverVendor | Patzlinger | im Release |
-| ForeverSpellbook | Patzlinger | Prototyp |
-| ForeverChat | Patzlinger | Prototyp (seit 2026-10-17) |
+| ForeverSpellbook | Patzlinger | im Release (seit 0.32b) |
+| ForeverChat | Patzlinger | im Release (seit 0.32b) |
 | ForeverQuests | flowfy | im Repository, noch nicht im Release |
 | ForeverBars | flowfy | im Repository, noch nicht im Release |
 | `Shared/ForeverHub.lua`, `tools/`, `release/` | gemeinsam | – |
@@ -365,10 +365,11 @@ Damit alle Einstellungsfenster gleich aussehen, gelten diese Maße. Quelle: `For
   ggf. `git restore .`
 
 ## 16. Release
-- `release/addons.txt` = Addons im Release; Prototypen (z. B. ForeverSpellbook) erst nach Freigabe eintragen
-- Alle Release-Addons tragen dieselbe `## Version` (Suite-Version, z. B. `0.3b`); `tools/build-release.ps1` prüft das
+- `release/addons.txt` = Addons im Release; Prototypen erst nach Freigabe eintragen
+- Alle Release-Addons tragen dieselbe `## Version` (Suite-Version, z. B. `0.32b`); `tools/build-release.ps1` prüft das
 - Alle Release-.toc: `## Title: <Addon> |cff8a8a8a(Beta)|r`, `## X-Curse-Project-ID: 1743753`, `## X-License: MIT`
 - `release/README.txt` (DE/EN, kommt ins Gesamt-Zip) bei neuen Befehlen/Funktionen anpassen
 - `release/Changelog-CurseForge.txt` = Englisch, für Spieler geschrieben; wandert nicht ins Zip
+- `release/Description-CurseForge.txt` = Text der CurseForge-Hauptseite (Englisch, Markdown); bei neuen Addons/Funktionen anpassen, nicht ins Zip
 - Bauen mit `tools/build-release.ps1` (Hub-Abgleich, Versionsprüfung, Addon-Ordner, Einzel-Zips, Gesamt-Zip);
   fremde Zips im Zielordner werden nie angefasst

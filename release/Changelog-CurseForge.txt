@@ -1,5 +1,41 @@
 # Forever Core – Changelog
 
+## 0.32b – October 17, 2026
+
+### New
+- **New addon: ForeverChat – your chat, just cleaner.** It keeps Blizzard's chat (whispers, channels, links and communities all work as usual) and gives it the Forever Core look.
+  - A very transparent window with flat tabs. You can adjust its opacity and the border.
+  - A small button bar right in the tab row: jump to the newest line, channels, copy chat, settings and a lock.
+  - Player names in class colors, with their level in front when it's known (from your group, guild, friends, /who, target and mouseover).
+  - Shorter channel names ("[2. Trade]" instead of "[2. Trade - City]"), clickable web links you can copy, and your own name highlighted when someone mentions you.
+  - **Instant messaging:** an "IM" tab with one sub-tab per person you're whispering with. Unread messages make the tab blink gold. You type in the same input line as always.
+  - The input line only shows up while you're typing or hovering over it (you can turn that off).
+  - Copy the whole chat into a window to select text (/fchat copy, or right-click the minimap entry).
+  - Text size, timestamps and soft chat colors in the settings. The colors can be reset at any time.
+  - To move the main chat, click the lock. This opens Blizzard's Edit Mode, and closing it locks the chat again.
+  - Settings: /fchat
+- **New addon: ForeverSpellbook – a compact spellbook.** Tabs for General, your class and pets, plus a search across everything.
+  - It tells you when your action bars still have a lower rank of a spell and updates them with a single click.
+  - "Trainer" shows what's coming next and what it costs, after you visit your class trainer once.
+  - Click or drag a spell onto your bars, or shift-click it to link it in chat.
+  - It can turn transparent while you move or fight.
+  - It replaces Blizzard's spellbook key (P) if you like. Settings: /fsb
+- **Forever Core Hub:** type **/forever** (or /fhub) for a list of all your Forever Core addons, with their chat commands and an "Open" button that takes you straight to their settings. This is handy if you hide minimap buttons.
+- **Blizzard options:** "Forever Core" now has its own entry under Esc » Options » AddOns, with one page per addon. /forever options jumps straight there. You'll also find Forever Core in the addon menu next to the minimap.
+- **Resizable windows:** drag the corner of any Forever Core settings window to make it bigger or smaller. The spellbook grows with more columns.
+
+### Improved
+- The window you opened or clicked last now always stays on top, so settings windows no longer overlap each other.
+- Opening an addon from the hub keeps the hub open in the background.
+- ForeverCast: Blizzard's cast bar now stays hidden in Edit Mode as well.
+- ForeverVendor: the draggable bag icon is now optional and off by default. The settings window is wider, so no German text is cut off any more.
+- New installs start with all frames locked, so nothing gets moved by accident. Use /fmove to unlock them.
+- Less work in the background: several addons now react to game events instead of checking on a timer.
+
+### Fixed
+- ForeverSpellbook: no more error in combat when "transparent while moving" is on.
+- ForeverSpellbook: the pet tab is now simply labeled "Pets".
+
 ## 0.3b – October 16, 2026
 
 ### New

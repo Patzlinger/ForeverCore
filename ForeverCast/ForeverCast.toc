@@ -4,7 +4,7 @@
 ## Category: Forever Core
 ## Notes: Minimalist cast bar with ping, lag zone, spell queue window and GCD display
 ## Notes-deDE: Minimalistische Zauberleiste mit Ping, Lag-Bereich, Spell-Queue-Fenster und GCD-Anzeige
-## Version: 0.3b
+## Version: 0.32b
 ## X-Curse-Project-ID: 1743753
 ## Author: Patzlinger
 ## X-License: MIT

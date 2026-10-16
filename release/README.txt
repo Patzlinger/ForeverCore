@@ -1,7 +1,7 @@
 Forever Core – für World of Warcraft: Forever (Interface 16001)
 ===============================================================
 Less clutter. More control. Just the essentials.
-Version 0.3b (Beta) · by Patzlinger · MIT License
+Version 0.32b (Beta) · by Patzlinger · MIT License
 
 DEUTSCH
 -------
@@ -29,9 +29,19 @@ Die Addons (jedes funktioniert auch einzeln):
   ForeverVendor  Händler-Helfer: verkauft Graues, repariert auf Wunsch und kauft Reagenzien,
                  Essen/Trinken, Munition und eine eigene Liste nach – mit Fenster am Händler
                  (Einkaufsliste + Kaufen-Knopf). Automatik erst einschalten, dann läuft alles. /fvendor
+  ForeverChat    Blizzards Chat im Forever-Stil: durchsichtiges Fenster, flache Reiter, Knopfleiste
+                 in der Reiterzeile, Klassenfarben und Stufen bei Namen, kurze Kanalnamen, klickbare
+                 Links, Erwähnungen hervorgehoben, IM-Reiter mit einem Unterreiter je Person,
+                 Eingabezeile nur beim Schreiben, Chat kopieren. /fchat (kopieren: /fchat copy)
+  ForeverSpellbook  Kompaktes Zauberbuch mit Suche, Hinweis auf niedrigere Ränge in den Leisten
+                 (mit Ersetzen-Knopf) und Vorschau, was beim Lehrer noch kommt. Ersetzt auf
+                 Wunsch die Zauberbuch-Taste (P). /fsb
 
 Minimap: Sind mindestens zwei Forever-Addons installiert, werden ihre Minimap-Knöpfe
-in einem gemeinsamen Zahnrad-Knopf gesammelt.
+in einem gemeinsamen Zahnrad-Knopf gesammelt. Forever Core steht außerdem im Addon-Menü an der Minimap.
+
+Fenster: Alle Forever-Einstellungsfenster lassen sich an der Ecke unten rechts größer und
+kleiner ziehen; das zuletzt geöffnete Fenster liegt immer oben.
 
 Forever Core Hub: /forever (oder /fhub) öffnet ein Fenster mit allen Forever-Addons –
 ein Klick auf "Öffnen" führt direkt ins Menü des Addons. Dort lässt sich auch der
@@ -43,9 +53,6 @@ Alles verschieben: /fmove (oder Rechtsklick auf den Sammelknopf) entsperrt alle 
 Forever-Addons auf einmal – mit Raster und Einrasten (Umschalt = frei). Nochmal /fmove sperrt alle.
 
 Sprache: Deutscher Client = Deutsch, alle anderen = Englisch.
-
-Hinweis zur Beta: Derzeit werden gespeicherte Einstellungen beim Login teils nicht
-geladen (bekannter Fehler des Forever-Beta-Clients, nicht der Addons).
 
 
 ENGLISH
@@ -74,9 +81,19 @@ The addons (each one also works on its own):
   ForeverVendor  Merchant helper: sells junk, repairs on request and restocks reagents,
                  food/drink, ammo and your own list – with a window at the merchant
                  (shopping list + buy button). Turn the automation on and it does the rest. /fvendor
+  ForeverChat    Blizzard's chat in the Forever look: transparent window, flat tabs, button bar
+                 in the tab row, class colors and levels for names, short channel names, clickable
+                 links, highlighted mentions, IM tab with one sub-tab per person, input line only
+                 while typing, copy chat. /fchat (copy: /fchat copy)
+  ForeverSpellbook  Compact spellbook with search, a note when your bars have a lower rank
+                 (with a replace button) and a preview of what your trainer has next.
+                 Can replace the spellbook key (P). /fsb
 
 Minimap: with two or more Forever addons installed, their minimap buttons are
-collected in one shared gear button.
+collected in one shared gear button. Forever Core is also listed in the addon menu at the minimap.
+
+Windows: drag the bottom-right corner of any Forever settings window to resize it;
+the window you opened last always stays on top.
 
 Forever Core Hub: /forever (or /fhub) opens a window listing all Forever addons –
 click "Open" to go straight to that addon's settings. The minimap button can be hidden
@@ -88,6 +105,3 @@ Move everything: /fmove (or right-click the collector button) unlocks all active
 addons at once – with grid and snapping (Shift = free). /fmove again locks them all.
 
 Language: German client = German, all others = English.
-
-Beta note: saved settings are currently sometimes not loaded at login
-(a known bug of the Forever beta client, not of the addons).

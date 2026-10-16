@@ -4,7 +4,7 @@
 ## Category: Forever Core
 ## Notes: Shows who chose need, greed or pass on loot rolls – with roll and winner
 ## Notes-deDE: Zeigt bei Würfel-Drops, wer Bedarf, Gier oder Passen gewählt hat – mit Wurf und Gewinner
-## Version: 0.3b
+## Version: 0.32b
 ## X-Curse-Project-ID: 1743753
 ## Author: Patzlinger
 ## X-License: MIT

@@ -4,7 +4,7 @@
 ## Category: Forever Core
 ## Notes: Minimalist XP display with XP/hour, time to level-up and XP from completed quests
 ## Notes-deDE: Minimalistische XP-Anzeige mit XP/Stunde, Zeit bis Level-Up und XP aus fertigen Quests
-## Version: 0.3b
+## Version: 0.32b
 ## X-Curse-Project-ID: 1743753
 ## Author: Patzlinger
 ## X-License: MIT

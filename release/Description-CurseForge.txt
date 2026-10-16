@@ -1,0 +1,95 @@
+# Forever Core
+
+*Less clutter. More control. Just the essentials.*
+
+Forever Core is a small set of lightweight addons for **World of Warcraft: Forever**. They cover the basics, look clean and stay out of your way. Use one, a few or all of them, because each one works on its own.
+
+All addons share one flat, dark look with gold accents. They're available in English and German.
+
+---
+
+## The addons
+
+**ForeverFrames – party and raid frames**
+- Clean, compact frames with click casting
+- Incoming heals and shields at a glance
+- Debuffs with their dispel type, so you know what you can remove
+- Your HoTs and those of other players
+- Pet frames with an aggro border
+- Icons for incoming resurrections and summons
+- Optional: sort your group by role
+- Settings: /ff
+
+**ForeverUnits – player, target, target of target, focus and pet**
+- Class icon or portrait, level and elite/rare marker
+- PvP and resting icons
+- Optional DoT bars for your target and focus, great for Warlocks and Shadow Priests. You can detach them and place them anywhere.
+- Takes over the ForeverFrames look with a single click
+- Settings: /fu
+
+**ForeverCast – cast bar**
+- A clean cast bar with your latency, lag zone and spell queue window
+- Shows the global cooldown
+- Settings: /fcast
+
+**ForeverLoot – loot rolls**
+- See who picked Need, Greed or Pass, what everyone rolled and who won
+- Disappears on its own a few seconds after the result
+- Settings: /floot
+
+**ForeverXP – experience bar**
+- A slim bar in Blizzard style that takes the place of the default XP bar
+- Your level, XP per hour, time to level-up, and the XP your completed quests will give you
+- Hover over it to see mobs and quests left until level-up, plus rested XP
+- Prefer a box? The classic style is still there
+- Settings: /fxp
+
+**ForeverBuffs – buffs and consumables**
+- Shows a small icon only when something is missing
+- Your own buffs, and whether the highest rank is active. Click an icon to cast it.
+- Group buffs: who is missing your buffs, and which buffs your group could give you
+- Food and drink in your bags, and whether there is something better for your level
+- Your own list, e.g. "Healing Potion:3", plus ammo, soul shards, poisons/oils and weapon imbues
+- Settings: /fbuffs
+
+**ForeverVendor – merchant helper**
+- Sells your grey items and repairs if you want (guild bank first, if you like)
+- Restocks class reagents, the best food and drink for your level, fitting ammo and your own list
+- A small window at the merchant shows your shopping list with prices. One click on "Buy" and you're done.
+- A spending limit per visit and a gold reserve keep your wallet safe
+- Settings: /fvendor
+
+**ForeverChat – your chat, just cleaner** *(new)*
+- Keeps Blizzard's chat (whispers, channels, links and communities work as usual), with a transparent window and flat tabs
+- A small button bar right in the tab row
+- Player names in class colors with their level
+- Short channel names, clickable web links and highlighted mentions of your name
+- Instant messaging: an "IM" tab with one sub-tab per person, which blinks gold when you have unread messages
+- The input line only shows up while you're typing
+- Copy the whole chat with one click
+- Settings: /fchat
+
+**ForeverSpellbook – compact spellbook** *(new)*
+- All your spells in tabs, with a search
+- Tells you when your bars still have a lower rank of a spell, and fixes it with one click
+- Shows what your trainer has next and what it costs
+- Can replace the spellbook key (P)
+- Settings: /fsb
+
+---
+
+## Made to work together
+- **One minimap button:** with two or more Forever Core addons, their buttons are bundled into a single Forever Core button.
+- **Forever Core Hub:** type **/forever** for a list of all your Forever Core addons, with their commands and a button that takes you straight to their settings. You'll also find Forever Core in Blizzard's options (Esc » Options » AddOns) and in the addon menu at the minimap.
+- **Move everything at once:** type **/fmove** to unlock all frames together, then place them with a grid and snapping (hold Shift to move freely). Type /fmove again to lock them.
+- **Exact positions:** X/Y fields for pixel-perfect placement.
+- **Resizable windows:** drag the corner of any settings window, and the window you opened last always stays on top.
+
+---
+
+## Good to know
+- This is a **beta**. Thanks for helping us test it!
+- Built for World of Warcraft: Forever, and it respects its combat restrictions. There's no rotation help or automation in combat.
+
+## Found a bug or have an idea?
+We'd love to hear from you! The addon **BugSack** shows the exact error, so please include it in your report.
