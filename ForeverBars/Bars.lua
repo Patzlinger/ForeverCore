@@ -414,37 +414,52 @@ local function SpellIcon(spellID)
 end
 
 -- Liste der Berufs-Knöpfe neu ermitteln (Hauptberufe, Archäologie, Angeln, Kochen, Erste Hilfe).
--- Reihe 1: die Berufe selbst (erste Fähigkeit öffnet das Berufsfenster), Reihe 2: weitere Fertigkeiten
--- (Entzaubern, Schmelzen, Kräutersuche …) und Angeln (GetProfessions liefert es an 4. Stelle).
-local FISHING_SLOT = 4
+-- Je Beruf eine Spalte: oben das Berufsfenster, darunter seine Fertigkeit (Entzaubern, Schmelzen …);
+-- hat ein Beruf mehrere Fertigkeiten, bekommen die weiteren eigene Spalten (oben frei).
+-- Jeder Eintrag bekommt col (Spalte ab 0) und row (1 = Fenster, 2 = Fertigkeit).
+local FISHING_SLOT = 4 -- GetProfessions liefert Angeln an 4. Stelle
 local function CollectProfessionSpells()
     wipe(profSpells)
     if not GetProfessions or not GetProfessionInfo then return end
     local indices = { GetProfessions() }
     local seen = {}
-    local top, bottom = {}, {}
+    local column = 0
     for i = 1, 6 do
         local index = indices[i]
         if index then
             local name, icon, _, _, numSpells, offset = GetProfessionInfo(index)
-            local first = true
+            local spells = {}
             for s = 1, numSpells or 0 do
                 local spellID, spellIcon = SpellBookSpell((offset or 0) + s)
                 if spellID and not seen[spellID] then
                     seen[spellID] = true
-                    local entry = { spell = spellID, icon = spellIcon or SpellIcon(spellID) or icon }
-                    table.insert((first and i ~= FISHING_SLOT) and top or bottom, entry)
-                    first = false
+                    table.insert(spells, { spell = spellID, icon = spellIcon or SpellIcon(spellID) or icon })
                 end
             end
-            -- Ohne eigene Fähigkeit im Zauberbuch: den Beruf über seinen Namen öffnen
-            if first and name then
-                table.insert(i ~= FISHING_SLOT and top or bottom, { spell = name, icon = icon })
+            local window, skills = nil, {}
+            if i == FISHING_SLOT then
+                -- Angeln: die Fertigkeit (Auswerfen) trägt das Symbol des Berufs, das Fenster ein anderes
+                for _, entry in ipairs(spells) do
+                    if not window and entry.icon ~= icon then window = entry else table.insert(skills, entry) end
+                end
+            else
+                -- Sonst öffnet die erste Fähigkeit das Berufsfenster, die weiteren sind Fertigkeiten
+                window = table.remove(spells, 1)
+                skills = spells
             end
+            -- Ohne eigene Fähigkeit im Zauberbuch: den Beruf über seinen Namen öffnen
+            if not window and #skills == 0 and name then window = { spell = name, icon = icon } end
+            if window then
+                window.col, window.row = column, 1
+                table.insert(profSpells, window)
+            end
+            for k, entry in ipairs(skills) do
+                entry.col, entry.row = column + k - 1, 2
+                table.insert(profSpells, entry)
+            end
+            column = column + math.max(1, #skills)
         end
     end
-    for _, entry in ipairs(top) do entry.row = 1; table.insert(profSpells, entry) end
-    for _, entry in ipairs(bottom) do entry.row = 2; table.insert(profSpells, entry) end
 end
 
 local function UpdateProfessionCooldown(button)
@@ -851,18 +866,25 @@ local function LayoutButtons(def, cfg, holder)
     local count = math.max(1, math.min(wanted, #buttons))
     local perRow = math.max(1, math.min(cfg.perRow or count, count))
     local rows = math.ceil(count / perRow)
-    -- Platz (Spalte, Reihe) je Knopf; Berufeleiste wahlweise in zwei Reihen: Berufe oben, Fertigkeiten unten
+    -- Platz (Spalte, Reihe) je Knopf; Berufeleiste wahlweise in zwei Reihen: Fenster oben, Fertigkeit darunter
     local slots = {}
     if def.kind == "prof" and cfg.profRows then
-        local columns, hasTop = { 0, 0 }, profSpells[1] and profSpells[1].row == 1
+        local hasTop, hasBottom, maxColumn = false, false, 0
         for i = 1, count do
-            local row = (profSpells[i] and profSpells[i].row or 1) - (hasTop and 1 or 2)
-            row = math.max(0, row)
-            slots[i] = { columns[row + 1], row }
-            columns[row + 1] = columns[row + 1] + 1
+            local entry = profSpells[i]
+            if entry then
+                if entry.row == 1 then hasTop = true else hasBottom = true end
+                maxColumn = math.max(maxColumn, entry.col or 0)
+            end
         end
-        perRow = math.max(1, columns[1], columns[2])
-        rows = columns[2] > 0 and 2 or 1
+        for i = 1, count do
+            local entry = profSpells[i]
+            local row = entry and entry.row or 1
+            -- Gibt es nur eine der beiden Reihen, rückt sie nach oben
+            slots[i] = { entry and entry.col or (i - 1), (hasTop and row == 2) and 1 or 0 }
+        end
+        perRow = maxColumn + 1
+        rows = (hasTop and hasBottom) and 2 or 1
     else
         for i = 1, count do slots[i] = { (i - 1) % perRow, math.floor((i - 1) / perRow) } end
     end

@@ -45,7 +45,8 @@ function ns.ApplyPreset(key)
         bars.bar4.enabled = true
     elseif key == "COMPACT" then
         -- etwas kleiner, Menü und Taschen erscheinen erst bei Maus darüber (im Kampf voll sichtbar)
-        for _, barKey in ipairs({ "bar1", "bar2", "bar3", "prof" }) do bars[barKey].scale = 85 end
+        for _, barKey in ipairs({ "bar1", "bar2", "bar3" }) do bars[barKey].scale = 85 end
+        bars.prof.scale = 68
         for _, barKey in ipairs({ "pet", "stance" }) do bars[barKey].scale = 43 end
         for _, barKey in ipairs({ "micro", "bags" }) do
             bars[barKey].fadeMouseover = true

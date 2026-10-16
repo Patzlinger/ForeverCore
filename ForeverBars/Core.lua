@@ -99,7 +99,7 @@ ns.defaults = {
     },
     profiles = {},           -- gespeicherte Profile: [Name] = Kopie der Einstellungen (siehe Profiles.lua)
     activeProfile = "Default", -- aktives Profil; "Default" gibt es immer
-    layoutVersion = 2,         -- Stand der Standard-Anordnung (siehe MigrateLayout)
+    layoutVersion = 3,         -- Stand der Standard-Anordnung (siehe MigrateLayout)
     skin = "FLAT",           -- Aussehen der Knöpfe (ns.SKINS in Bars.lua)
     hoverAlpha = 15,         -- Stärke des Hover-Leuchtens über den Knöpfen (%)
     procGlow = "FOREVER",    -- Leuchten bei Procs: "FOREVER" (goldener Rahmen), "BLIZZARD", "OFF"
@@ -133,6 +133,7 @@ ns.defaults.bars.stance.point = "BOTTOMRIGHT"
 ns.defaults.bars.stance.growX = "LEFT" -- erster Knopf rechts, damit die Leiste rechtsbündig wächst
 ns.defaults.bars.prof.point = "BOTTOMRIGHT"
 ns.defaults.bars.prof.frame = true
+ns.defaults.bars.prof.scale = 80
 ns.defaults.bars.prof.growX = "LEFT"
 ns.defaults.bars.micro.point = "BOTTOMRIGHT"
 ns.defaults.bars.bags.point = "BOTTOMRIGHT"
@@ -163,17 +164,27 @@ local function FillDefaults(target, defaults)
 end
 ns.FillDefaults = FillDefaults
 
--- Einmalig (ab Version 0.10.2): das Standardprofil bekommt die Vorlage "Standard (3 unten)" – alle Leisten
--- auf Standard, Positionen werden neu berechnet. Andere gespeicherte Profile bleiben unverändert.
-local LAYOUT_VERSION = 2
+-- Einmalige Anpassungen des Standardprofils (andere gespeicherte Profile bleiben unverändert):
+--   2 (0.10.2): Vorlage "Standard (3 unten)" – alle Leisten auf Standard, Positionen neu berechnet
+--   3 (0.10.3): Berufeleiste kleiner (80 %), Position neu berechnet
+local LAYOUT_VERSION = 3
 function ns.MigrateLayout(db)
-    if (db.layoutVersion or 1) >= LAYOUT_VERSION then return end
+    local version = db.layoutVersion or 1
+    if version >= LAYOUT_VERSION then return end
     db.layoutVersion = LAYOUT_VERSION
     if not db.bars then return end -- erster Start: es gelten ohnehin die Standardwerte
-    local function DefaultBars() return CopyTable(ns.defaults.bars) end
-    local defaultProfile = db.profiles and db.profiles.Default
-    if defaultProfile then defaultProfile.bars = DefaultBars() end
-    if (db.activeProfile or "Default") == "Default" then db.bars = DefaultBars() end
+    -- Betroffen: das gespeicherte Standardprofil und, falls es aktiv ist, die aktuellen Einstellungen
+    local targets = {}
+    if db.profiles and db.profiles.Default and db.profiles.Default.bars then table.insert(targets, db.profiles.Default) end
+    if (db.activeProfile or "Default") == "Default" then table.insert(targets, db) end
+    for _, target in ipairs(targets) do
+        if version < 2 then
+            target.bars = CopyTable(ns.defaults.bars)
+        elseif version < 3 and target.bars.prof then
+            target.bars.prof.scale = ns.defaults.bars.prof.scale
+            target.bars.prof.x, target.bars.prof.y = nil, nil
+        end
+    end
 end
 
 -- Ältere Einstellungen speichern die Mitte der Leiste: diese Bedeutung behalten (sonst springen Leisten),
