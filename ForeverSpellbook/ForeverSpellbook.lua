@@ -739,7 +739,18 @@ optPanel:SetScript("OnShow", function() for _, load in ipairs(optControls) do lo
 optBtn:SetScript("OnClick", function() optPanel:SetShown(not optPanel:IsShown()) end)
 frame:HookScript("OnHide", function() optPanel:Hide() end)
 
--- Durchsichtig beim Bewegen und/oder im Kampf (Maus ueber dem Fenster = voll sichtbar)
+-- Durchsichtig beim Bewegen und/oder im Kampf (Maus ueber dem Fenster = voll sichtbar).
+-- Bewegung kommt aus Blizzards Ereignissen statt aus GetUnitSpeed: die Geschwindigkeit ist im Kampf ein
+-- gesperrter Wert ("secret"), den man nicht vergleichen darf.
+local playerMoving = false
+local moveEvents = CreateFrame("Frame")
+moveEvents:RegisterEvent("PLAYER_STARTED_MOVING")
+moveEvents:RegisterEvent("PLAYER_STOPPED_MOVING")
+moveEvents:RegisterEvent("PLAYER_ENTERING_WORLD")
+moveEvents:SetScript("OnEvent", function(_, event)
+    playerMoving = event == "PLAYER_STARTED_MOVING"
+end)
+
 local fadeElapsed = 0
 frame:HookScript("OnUpdate", function(self, elapsed)
     fadeElapsed = fadeElapsed + elapsed
@@ -747,7 +758,7 @@ frame:HookScript("OnUpdate", function(self, elapsed)
     local step = fadeElapsed * 4
     fadeElapsed = 0
     local d = GetDB()
-    local moving = d.fadeMoving and ((IsPlayerMoving and IsPlayerMoving()) or ((GetUnitSpeed and GetUnitSpeed("player") or 0) > 0))
+    local moving = d.fadeMoving and playerMoving
     local fighting = d.fadeCombat and InCombatLockdown()
     local target = ((moving or fighting) and not self:IsMouseOver()) and ((d.fadeAlpha or 45) / 100) or 1
     local a = self:GetAlpha()

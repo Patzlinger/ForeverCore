@@ -34,6 +34,9 @@ Philosophie, Regeln, Design und Abläufe. Wenn etwas hier nicht steht: am besteh
   - Neue Namensräume nutzen (`C_AddOns`, `C_Spell`, `C_SpellBook`, `C_Container`, `C_CVar` …), mit Rückfall auf alte Funktionen, wo sinnvoll
 - Midnight-Restriktionen ("secret values" im Kampf): keine Rechnungen/Vergleiche mit gesperrten Werten,
   Werte nur direkt weiterreichen (z. B. an StatusBars, Aura-Container); **keine Rotationslogik**
+  - Auch scheinbar harmlose Werte sind im Kampf gesperrt, z. B. `GetUnitSpeed("player")` (Fehler "attempt to compare
+    a secret number value"). Lieber Ereignisse nutzen (Bewegung: `PLAYER_STARTED_MOVING`/`PLAYER_STOPPED_MOVING`)
+    und in `OnUpdate`/Tickern nie gesperrte Werte vergleichen – dort entstehen sonst Fehler in jedem Bild
 - SavedVariables funktionieren normal (wir gehen vom Live-Betrieb aus): Einstellungen werden gespeichert und beim
   Login geladen. Standardwerte trotzdem sinnvoll wählen (erster Start, neue Einstellungen nach einem Update)
 - Forever-Namen haben Vor- und Nachnamen: Chat liefert evtl. "Vorname Nachname", die Gruppenliste nur den Vornamen –
