@@ -1,0 +1,19 @@
+## Interface: 16001
+## Title: ForeverFrames |cff8a8a8a(Beta)|r
+## IconTexture: Interface\AddOns\ForeverFrames\Media\ForeverCore
+## Category: Forever Core
+## Notes: Slim party and raid frames in the style of Cell, with click casting
+## Notes-deDE: Schlanke Gruppen- und Raidrahmen im Stil von Cell, mit Klick-Zaubern
+## Version: 0.3b
+## X-Curse-Project-ID: 1743753
+## Author: Patzlinger
+## X-License: MIT
+## SavedVariables: ForeverFramesDB, ForeverHubDB
+
+ForeverHub.lua
+Core.lua
+Frames.lua
+Auras.lua
+Pets.lua
+ClickCast.lua
+Options.lua

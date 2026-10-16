@@ -1,0 +1,928 @@
+-- ForeverSpellbook: kompaktes Zauberbuch (Prototyp)
+--  * Reiter je Zauberbuch-Abschnitt (Allgemein, Klasse, Begleiter), Suche ueber alle Abschnitte
+--  * Hinweis, wenn in den Aktionsleisten ein niedrigerer Rang liegt – mit "Ersetzen"-Knopf
+--  * "Beim Lehrer": was noch kommt (wird beim Besuch des Klassenlehrers ausgelesen) und
+--    noch nicht gelernte Zauber, falls das Zauberbuch sie mit "ab Stufe X" fuehrt
+-- Zauber werden per Klick oder Ziehen in die Leiste gelegt, Umschalt-Klick fuegt den Link in den Chat ein.
+local ADDON_NAME = ...
+local UI = ForeverHub.UI -- gemeinsamer Stil aller Forever-Addons (ForeverHub.lua)
+local T = UI.T
+
+---------------------------------------------------------------------------
+-- Einstellungen (wegen des Beta-Bugs bei jedem Zugriff pruefen)
+---------------------------------------------------------------------------
+local DEFAULTS = {
+    replaceBlizzard = true,  -- Taste fuers Zauberbuch (P) oeffnet dieses Fenster
+    allRanks = false,        -- alle Raenge zeigen (sonst nur den hoechsten)
+    warnOutdated = true,     -- Hinweis auf niedrigere Raenge in den Aktionsleisten
+    fadeMoving = true,       -- beim Bewegen durchsichtig
+    fadeCombat = true,       -- im Kampf durchsichtig
+    fadeAlpha = 45,          -- Sichtbarkeit dann (Prozent)
+    minimapAngle = 220,
+}
+local db
+local function GetDB()
+    if type(_G.ForeverSpellbookDB) ~= "table" then _G.ForeverSpellbookDB = db or {} end
+    db = _G.ForeverSpellbookDB
+    for k, v in pairs(DEFAULTS) do
+        if db[k] == nil then db[k] = v end
+    end
+    return db
+end
+local charDB
+local function GetCharDB()
+    if type(_G.ForeverSpellbookCharDB) ~= "table" then _G.ForeverSpellbookCharDB = charDB or {} end
+    charDB = _G.ForeverSpellbookCharDB
+    return charDB
+end
+
+local function Chat(text) UI.Chat("ForeverSpellbook", text) end
+local issecret = issecretvalue or function() return false end
+
+local function Money(copper)
+    copper = math.max(0, math.floor(copper or 0))
+    local f = (C_CurrencyInfo and C_CurrencyInfo.GetCoinTextureString) or GetCoinTextureString
+    if f then
+        local ok, s = pcall(f, copper)
+        if ok and s then return s end
+    end
+    return tostring(copper) .. "c"
+end
+
+local function Level()
+    local l = UnitLevel("player")
+    return (type(l) == "number" and not issecret(l)) and l or 1
+end
+
+-- Rang als Zahl aus "Rang 3" / "Rank 3"
+local function RankNumber(text)
+    if type(text) ~= "string" or issecret(text) then return nil end
+    return tonumber(text:match("(%d+)"))
+end
+
+local function SpellSubtext(id)
+    return C_Spell and C_Spell.GetSpellSubtext and C_Spell.GetSpellSubtext(id)
+end
+
+---------------------------------------------------------------------------
+-- Zauberbuch auslesen
+---------------------------------------------------------------------------
+local BANK_PLAYER = Enum and Enum.SpellBookSpellBank and Enum.SpellBookSpellBank.Player or 0
+local BANK_PET = Enum and Enum.SpellBookSpellBank and Enum.SpellBookSpellBank.Pet or 1
+local TYPE_FUTURE = Enum and Enum.SpellBookItemType and Enum.SpellBookItemType.FutureSpell
+local TYPE_FLYOUT = Enum and Enum.SpellBookItemType and Enum.SpellBookItemType.Flyout
+
+local lines = {} -- { name, icon, spells = { entry, ... } }
+
+local function ReadItem(slot, bank)
+    local item = C_SpellBook.GetSpellBookItemInfo(slot, bank)
+    if not item or not item.name or issecret(item.name) then return nil end
+    local e = {
+        slot = slot, bank = bank, id = item.spellID or item.actionID, name = item.name,
+        icon = item.iconID, sub = item.subName, passive = item.isPassive,
+        future = TYPE_FUTURE ~= nil and item.itemType == TYPE_FUTURE,
+        flyout = TYPE_FLYOUT ~= nil and item.itemType == TYPE_FLYOUT,
+    }
+    if (not e.sub or e.sub == "") and e.id then e.sub = SpellSubtext(e.id) end
+    e.rank = RankNumber(e.sub)
+    if e.future and C_SpellBook.GetSpellBookItemLevelLearned then
+        local ok, lvl = pcall(C_SpellBook.GetSpellBookItemLevelLearned, slot, bank)
+        if ok and type(lvl) == "number" then e.learnLevel = lvl end
+    end
+    return e
+end
+
+local function Collect()
+    wipe(lines)
+    if not (C_SpellBook and C_SpellBook.GetNumSpellBookSkillLines) then return end
+    for i = 1, C_SpellBook.GetNumSpellBookSkillLines() do
+        local info = C_SpellBook.GetSpellBookSkillLineInfo(i)
+        if info and not info.shouldHide and (info.numSpellBookItems or 0) > 0 then
+            local line = { name = info.name, icon = info.iconID, spells = {} }
+            for s = info.itemIndexOffset + 1, info.itemIndexOffset + info.numSpellBookItems do
+                local e = ReadItem(s, BANK_PLAYER)
+                if e then line.spells[#line.spells + 1] = e end
+            end
+            lines[#lines + 1] = line
+        end
+    end
+    if C_SpellBook.HasPetSpells then
+        local n, petName = C_SpellBook.HasPetSpells()
+        if n and n > 0 then
+            local line = { name = petName or T("Begleiter", "Pet"), icon = 132599, spells = {}, pet = true }
+            for s = 1, n do
+                local e = ReadItem(s, BANK_PET)
+                if e then line.spells[#line.spells + 1] = e end
+            end
+            lines[#lines + 1] = line
+        end
+    end
+end
+
+-- hoechster gelernter Rang je Zaubername (fuer den Rang-Vergleich)
+local function BestRanks()
+    local best = {}
+    for _, line in ipairs(lines) do
+        for _, e in ipairs(line.spells) do
+            if not e.future and not e.passive and e.rank then
+                local b = best[e.name]
+                if not b or e.rank > b.rank then best[e.name] = e end
+            end
+        end
+    end
+    return best
+end
+
+-- Nur den hoechsten Rang zeigen (es sei denn, "alle Raenge" ist an); noch nicht Gelerntes ans Ende
+local function VisibleSpells(spells)
+    local all = GetDB().allRanks
+    local top = {}
+    for _, e in ipairs(spells) do
+        if not e.future then
+            local cur = top[e.name]
+            if not cur or (e.rank or 0) > (cur.rank or 0) then top[e.name] = e end
+        end
+    end
+    local learned, future = {}, {}
+    for _, e in ipairs(spells) do
+        if e.future then
+            future[#future + 1] = e
+        elseif all or top[e.name] == e then
+            learned[#learned + 1] = e
+        end
+    end
+    table.sort(future, function(a, b)
+        if (a.learnLevel or 0) ~= (b.learnLevel or 0) then return (a.learnLevel or 0) < (b.learnLevel or 0) end
+        return (a.slot or 0) < (b.slot or 0)
+    end)
+    for _, e in ipairs(future) do learned[#learned + 1] = e end
+    return learned
+end
+
+---------------------------------------------------------------------------
+-- Aktionsleisten: liegt irgendwo ein niedrigerer Rang?
+---------------------------------------------------------------------------
+local function OutdatedSlots()
+    local out = {}
+    if InCombatLockdown() or not GetActionInfo then return out end
+    local best = BestRanks()
+    for slot = 1, 180 do
+        local ok, kind, id = pcall(GetActionInfo, slot)
+        if ok and kind == "spell" and id and not issecret(id) then
+            local name = C_Spell.GetSpellName and C_Spell.GetSpellName(id)
+            local b = name and best[name]
+            if b and b.id ~= id then
+                local r = RankNumber(SpellSubtext(id))
+                if r and r < b.rank then
+                    out[#out + 1] = { slot = slot, id = id, rank = r, best = b }
+                end
+            end
+        end
+    end
+    return out
+end
+
+local function PickupEntry(e)
+    if e.slot and C_SpellBook and C_SpellBook.PickupSpellBookItem then
+        C_SpellBook.PickupSpellBookItem(e.slot, e.bank)
+    elseif e.id and C_Spell and C_Spell.PickupSpell then
+        C_Spell.PickupSpell(e.id)
+    end
+end
+
+-- veraltete Raenge in den Leisten durch den hoechsten ersetzen (nur ausserhalb des Kampfs)
+local function ReplaceOutdated()
+    if InCombatLockdown() then Chat(T("Im Kampf nicht möglich.", "Not possible in combat.")) return end
+    local list, n = OutdatedSlots(), 0
+    for _, o in ipairs(list) do
+        ClearCursor()
+        PickupEntry(o.best)
+        local ok = pcall(PlaceAction, o.slot)
+        ClearCursor()
+        if ok then n = n + 1 end
+    end
+    Chat(string.format(T("%d Zauber in deinen Leisten auf den höchsten Rang gebracht.", "%d spells on your bars updated to the highest rank."), n))
+end
+
+---------------------------------------------------------------------------
+-- Lehrer auslesen (beim Besuch): was gibt es, ab welcher Stufe, was kostet es
+---------------------------------------------------------------------------
+local scanning = false
+local function ScanTrainer()
+    if scanning or not (GetNumTrainerServices and GetTrainerServiceInfo) then return end
+    if IsTradeskillTrainer and IsTradeskillTrainer() then return end -- nur Klassenlehrer
+    scanning = true
+    -- Blizzards Filter kurz auf "alles zeigen", danach wiederherstellen
+    local saved = {}
+    if GetTrainerServiceTypeFilter and SetTrainerServiceTypeFilter then
+        for _, f in ipairs({ "available", "unavailable", "used" }) do
+            saved[f] = GetTrainerServiceTypeFilter(f)
+            pcall(SetTrainerServiceTypeFilter, f, 1)
+        end
+    end
+    local list = {}
+    for i = 1, (GetNumTrainerServices() or 0) do
+        local name, rank, category = GetTrainerServiceInfo(i)
+        if name and category and category ~= "header" then
+            list[#list + 1] = {
+                name = name, rank = rank, category = category,
+                level = GetTrainerServiceLevelReq and GetTrainerServiceLevelReq(i) or 0,
+                cost = GetTrainerServiceCost and GetTrainerServiceCost(i) or 0,
+                icon = GetTrainerServiceIcon and GetTrainerServiceIcon(i),
+            }
+        end
+    end
+    if SetTrainerServiceTypeFilter then
+        for f, v in pairs(saved) do pcall(SetTrainerServiceTypeFilter, f, v and 1 or 0) end
+    end
+    scanning = false
+    if #list > 0 then
+        GetCharDB().trainer = { list = list, level = Level(), time = time() }
+    end
+end
+
+-- Liste fuer "Beim Lehrer": noch nicht gelernte Lehrer-Eintraege, sonst die "ab Stufe X"-Eintraege
+local function UpcomingList()
+    local out, level = {}, Level()
+    local tr = GetCharDB().trainer
+    local known = {}
+    for _, line in ipairs(lines) do
+        for _, e in ipairs(line.spells) do
+            if not e.future then known[e.name .. "|" .. tostring(e.rank or "")] = true end
+        end
+    end
+    if tr and tr.list then
+        for _, s in ipairs(tr.list) do
+            local learned = s.category == "used" or known[s.name .. "|" .. tostring(RankNumber(s.rank) or "")]
+            if not learned then
+                out[#out + 1] = { name = s.name, sub = s.rank, icon = s.icon, level = s.level or 0, cost = s.cost or 0,
+                    now = (s.level or 0) <= level, trainer = true }
+            end
+        end
+    else
+        for _, line in ipairs(lines) do
+            for _, e in ipairs(line.spells) do
+                if e.future then
+                    out[#out + 1] = { name = e.name, sub = e.sub, icon = e.icon, level = e.learnLevel or 0,
+                        now = (e.learnLevel or 0) <= level, id = e.id }
+                end
+            end
+        end
+    end
+    table.sort(out, function(a, b)
+        if a.level ~= b.level then return a.level < b.level end
+        return a.name < b.name
+    end)
+    return out, tr
+end
+
+---------------------------------------------------------------------------
+-- WhatsTraining (falls installiert): dessen Daten ueber die offizielle Schnittstelle WT_API
+---------------------------------------------------------------------------
+local function WTInstalled() return type(_G.WT_API) == "table" end
+local function WTData()
+    local api = _G.WT_API
+    if not (WTInstalled() and api.IsReady and api.GetSpells) then return nil end
+    local okReady, ready = pcall(api.IsReady)
+    if not (okReady and ready) then return nil end
+    local ok, spells = pcall(api.GetSpells)
+    if not ok or type(spells) ~= "table" then return nil end
+    local S = api.Status or {}
+    local groups = { now = {}, nextLevel = {}, later = {}, missing = {} }
+    for _, s in ipairs(spells) do
+        local st = s.status
+        local bucket = ((st == S.AVAILABLE or st == S.WEAPON_AVAILABLE) and groups.now)
+            or ((st == S.NEXTLEVEL or st == S.WEAPON_NEXTLEVEL) and groups.nextLevel)
+            or ((st == S.NOTLEVEL or st == S.WEAPON_NOTLEVEL) and groups.later)
+            or ((st == S.MISSINGREQS or st == S.MISSINGTALENT) and groups.missing)
+        if bucket and s.name then
+            bucket[#bucket + 1] = { name = s.name, sub = s.subText, icon = s.icon, level = s.level or 0, cost = s.cost or 0,
+                link = s.link, id = type(s.id) == "number" and s.id or nil, trainer = true, wt = true,
+                now = bucket == groups.now }
+        end
+    end
+    for _, list in pairs(groups) do
+        table.sort(list, function(a, b)
+            if a.level ~= b.level then return a.level < b.level end
+            return a.name < b.name
+        end)
+    end
+    return groups
+end
+
+---------------------------------------------------------------------------
+-- Fenster
+---------------------------------------------------------------------------
+local W, H = 600, 470
+local frame = UI.Window("ForeverSpellbookFrame", T("Zauberbuch", "Spellbook"), W, H)
+local view = 1          -- Reiter-Nummer, "upcoming" = Beim Lehrer
+local query = ""
+local Refresh, ApplyBinding, SpellbookKeys, UpdateMicro -- weiter unten
+
+-- Suche
+local search = UI.EditBox(frame, 200, 22)
+search:SetPoint("TOPLEFT", 154, -34)
+local searchHint = search:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+searchHint:SetPoint("LEFT", 8, 0)
+searchHint:SetText(T("Zauber suchen …", "Search spells …"))
+search:SetScript("OnTextChanged", function(self)
+    query = strtrim(self:GetText() or ""):lower()
+    searchHint:SetShown(query == "" and not self:HasFocus())
+    if Refresh then Refresh() end
+end)
+search:HookScript("OnEditFocusGained", function() searchHint:Hide() end)
+search:HookScript("OnEditFocusLost", function() searchHint:SetShown(query == "") end)
+search:SetScript("OnEscapePressed", function(self) self:SetText("") self:ClearFocus() end)
+search:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
+
+-- Optionen (kleines Menue)
+local optBtn = UI.Button(frame, T("Optionen", "Options"), 90)
+optBtn:SetPoint("TOPRIGHT", -12, -34)
+if UI.AddArrow then UI.AddArrow(optBtn) end
+
+-- Reiter links
+local tabs = {}
+local tabHolder = CreateFrame("Frame", nil, frame)
+tabHolder:SetPoint("TOPLEFT", 10, -64)
+tabHolder:SetSize(134, H - 120)
+
+local function TabButton(i)
+    local b = tabs[i]
+    if b then return b end
+    b = UI.Button(tabHolder, "", 134)
+    b:SetHeight(24)
+    b.icon = b:CreateTexture(nil, "OVERLAY")
+    b.icon:SetSize(16, 16)
+    b.icon:SetPoint("LEFT", 6, 0)
+    b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    local fs = b:GetFontString()
+    fs:ClearAllPoints()
+    fs:SetPoint("LEFT", b.icon, "RIGHT", 6, 0)
+    fs:SetPoint("RIGHT", -6, 0)
+    fs:SetJustifyH("LEFT")
+    fs:SetWordWrap(false)
+    tabs[i] = b
+    return b
+end
+
+-- Inhalt: zwei Spalten mit Bildlauf
+local listBox = UI.Box(frame, 0.35)
+listBox:SetPoint("TOPLEFT", 152, -64)
+listBox:SetPoint("BOTTOMRIGHT", -10, 46)
+local okScroll, scroll = pcall(CreateFrame, "ScrollFrame", nil, listBox, "UIPanelScrollFrameTemplate")
+if not okScroll then scroll = CreateFrame("ScrollFrame", nil, listBox, "ScrollFrameTemplate") end
+scroll:SetPoint("TOPLEFT", 6, -6)
+scroll:SetPoint("BOTTOMRIGHT", -26, 6)
+local content = CreateFrame("Frame", nil, scroll)
+content:SetSize(400, 10)
+scroll:SetScrollChild(content)
+
+local ENTRY_W, ENTRY_H = 200, 40
+local entries = {}
+local sectionLabels = {}
+
+local function EntryTooltip(self)
+    local e = self.entry
+    if not e then return end
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    if e.link and GameTooltip.SetHyperlink and pcall(GameTooltip.SetHyperlink, GameTooltip, e.link) then
+        -- Tooltip ueber den Link (WhatsTraining)
+    elseif e.slot and GameTooltip.SetSpellBookItem then
+        GameTooltip:SetSpellBookItem(e.slot, e.bank)
+    elseif e.id and GameTooltip.SetSpellByID then
+        GameTooltip:SetSpellByID(e.id)
+    else
+        GameTooltip:AddLine(e.name)
+        if e.sub and e.sub ~= "" then GameTooltip:AddLine(e.sub, 0.7, 0.7, 0.7) end
+    end
+    if e.outdated then
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine(string.format(T("In deinen Leisten liegt noch Rang %d.", "Your bars still have rank %d."), e.outdated), 1, 0.4, 0.3)
+    end
+    if e.trainer then
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine(string.format(T("Beim Lehrer ab Stufe %d · %s", "At the trainer from level %d · %s"), e.level, Money(e.cost)), 1, 0.82, 0)
+    end
+    if not e.trainer and not e.future and not e.passive then
+        GameTooltip:AddLine(T("Klick oder Ziehen: in die Leiste legen · Umschalt-Klick: Link", "Click or drag: put on a bar · Shift-click: link"), 0.6, 0.6, 0.6, true)
+    end
+    GameTooltip:Show()
+end
+
+local function Entry(i)
+    local b = entries[i]
+    if b then return b end
+    b = CreateFrame("Button", nil, content)
+    b:SetSize(ENTRY_W, ENTRY_H)
+    b:RegisterForClicks("AnyUp")
+    b:RegisterForDrag("LeftButton")
+    local hl = b:CreateTexture(nil, "HIGHLIGHT")
+    hl:SetAllPoints()
+    hl:SetColorTexture(1, 1, 1, 0.06)
+    b.border = b:CreateTexture(nil, "BACKGROUND")
+    b.border:SetSize(36, 36)
+    b.border:SetPoint("LEFT", 2, 0)
+    b.border:SetColorTexture(0, 0, 0, 1)
+    b.icon = b:CreateTexture(nil, "ARTWORK")
+    b.icon:SetPoint("TOPLEFT", b.border, "TOPLEFT", 1, -1)
+    b.icon:SetPoint("BOTTOMRIGHT", b.border, "BOTTOMRIGHT", -1, 1)
+    b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    b.warn = b:CreateTexture(nil, "OVERLAY")
+    b.warn:SetSize(14, 14)
+    b.warn:SetPoint("TOPRIGHT", b.border, "TOPRIGHT", 3, 3)
+    b.warn:SetTexture("Interface\\Buttons\\UI-MicroStream-Yellow")
+    b.name = b:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    b.name:SetPoint("TOPLEFT", b.border, "TOPRIGHT", 8, -3)
+    b.name:SetPoint("RIGHT", -4, 0)
+    b.name:SetJustifyH("LEFT")
+    b.name:SetWordWrap(false)
+    b.sub = b:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    b.sub:SetPoint("TOPLEFT", b.name, "BOTTOMLEFT", 0, -3)
+    b.sub:SetPoint("RIGHT", -4, 0)
+    b.sub:SetJustifyH("LEFT")
+    b.sub:SetWordWrap(false)
+    b:SetScript("OnEnter", EntryTooltip)
+    b:SetScript("OnLeave", GameTooltip_Hide)
+    local function Pick(self)
+        local e = self.entry
+        if not e or e.trainer or e.future or e.passive then return end
+        PickupEntry(e)
+    end
+    b:SetScript("OnDragStart", Pick)
+    b:SetScript("OnClick", function(self)
+        local e = self.entry
+        if not e then return end
+        if IsModifiedClick and IsModifiedClick("CHATLINK") and e.id and C_Spell and C_Spell.GetSpellLink then
+            local link = C_Spell.GetSpellLink(e.id)
+            if link then
+                if ChatEdit_InsertLink then ChatEdit_InsertLink(link)
+                elseif ChatFrameUtil and ChatFrameUtil.InsertLink then ChatFrameUtil.InsertLink(link) end
+            end
+            return
+        end
+        Pick(self)
+    end)
+    entries[i] = b
+    return b
+end
+
+local function Section(i)
+    local fs = sectionLabels[i]
+    if fs then return fs end
+    fs = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    fs:SetJustifyH("LEFT")
+    sectionLabels[i] = fs
+    return fs
+end
+
+-- Hinweisleiste unten: veraltete Raenge
+local warnBar = CreateFrame("Frame", nil, frame, "BackdropTemplate")
+warnBar:SetPoint("BOTTOMLEFT", 152, 10)
+warnBar:SetPoint("BOTTOMRIGHT", -10, 10)
+warnBar:SetHeight(28)
+UI.SetFlat(warnBar, UI.COLOR and UI.COLOR.panel or { 0.1, 0.1, 0.12, 0.95 })
+warnBar.text = warnBar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+warnBar.text:SetPoint("LEFT", 10, 0)
+warnBar.text:SetPoint("RIGHT", -110, 0)
+warnBar.text:SetJustifyH("LEFT")
+warnBar.text:SetWordWrap(false)
+local replaceBtn = UI.Button(warnBar, T("Ersetzen", "Replace"), 92, function()
+    ReplaceOutdated()
+    C_Timer.After(0.3, function() if Refresh then Refresh() end end)
+end)
+replaceBtn:SetPoint("RIGHT", -4, 0)
+warnBar:SetScript("OnEnter", function(self)
+    if not self.list or #self.list == 0 then return end
+    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    GameTooltip:AddLine(T("Niedrigere Ränge in deinen Leisten", "Lower ranks on your bars"))
+    for _, o in ipairs(self.list) do
+        GameTooltip:AddDoubleLine(o.best.name, string.format(T("Rang %d » %d", "Rank %d » %d"), o.rank, o.best.rank), 1, 1, 1, 1, 0.82, 0)
+    end
+    GameTooltip:Show()
+end)
+warnBar:SetScript("OnLeave", GameTooltip_Hide)
+
+-- Ansicht neu aufbauen
+local outdatedBySpell = {}
+function Refresh()
+    if not frame:IsShown() then return end
+    Collect()
+    local d = GetDB()
+
+    -- veraltete Raenge
+    local outdated = d.warnOutdated and OutdatedSlots() or {}
+    wipe(outdatedBySpell)
+    for _, o in ipairs(outdated) do
+        outdatedBySpell[o.best.name] = math.min(outdatedBySpell[o.best.name] or 99, o.rank)
+    end
+    warnBar.list = outdated
+    if #outdated > 0 then
+        warnBar.text:SetText("|cffffd100" .. string.format(T("%d Zauber in deinen Leisten haben einen niedrigeren Rang", "%d spells on your bars have a lower rank"), #outdated) .. "|r")
+        replaceBtn:Show()
+    else
+        warnBar.text:SetText(T("Alle Zauber in deinen Leisten haben den höchsten Rang.", "All spells on your bars have the highest rank."))
+        replaceBtn:Hide()
+    end
+    warnBar:SetShown(d.warnOutdated and true or false)
+
+    -- Reiter
+    local upcoming, tr = UpcomingList()
+    local nowCount, nowCost = 0, 0
+    for _, u in ipairs(upcoming) do
+        if u.now then nowCount = nowCount + 1 nowCost = nowCost + (u.cost or 0) end
+    end
+    local tabList = {}
+    for i, line in ipairs(lines) do tabList[#tabList + 1] = { key = i, label = line.name, icon = line.icon } end
+    tabList[#tabList + 1] = { key = "upcoming", label = T("Beim Lehrer", "Trainer") .. (nowCount > 0 and (" |cff33ff33(" .. nowCount .. ")|r") or ""),
+        icon = 136243 }
+    local wtGroups = WTData()
+    if WTInstalled() then
+        local c = wtGroups and #wtGroups.now or 0
+        tabList[#tabList + 1] = { key = "wt", label = "What's Training" .. (c > 0 and (" |cff33ff33(" .. c .. ")|r") or ""), icon = 134939 }
+    end
+    if view ~= "upcoming" and view ~= "wt" and not lines[view] then view = 1 end
+    if view == "wt" and not WTInstalled() then view = 1 end
+    for _, b in ipairs(tabs) do b:Hide() end
+    for i, tab in ipairs(tabList) do
+        local b = TabButton(i)
+        b:ClearAllPoints()
+        b:SetPoint("TOPLEFT", 0, -(i - 1) * 27 - ((tab.key == "upcoming" or tab.key == "wt") and 10 or 0))
+        b:SetText(tab.label)
+        b.icon:SetTexture(tab.icon or 134400)
+        b:SetEnabled(view ~= tab.key or query ~= "")
+        b:SetScript("OnClick", function()
+            view = tab.key
+            search:SetText("")
+            search:ClearFocus()
+            Refresh()
+        end)
+        b:Show()
+    end
+
+    -- Inhalt
+    for _, e in ipairs(entries) do e:Hide() e.entry = nil end
+    for _, s in ipairs(sectionLabels) do s:Hide() end
+    local n, y, sec, col = 0, 0, 0, 0
+    local function Place(e, label, sub, color)
+        if col == 2 then y = y - ENTRY_H - 2 col = 0 end
+        n = n + 1
+        local b = Entry(n)
+        b:ClearAllPoints()
+        b:SetPoint("TOPLEFT", col * (ENTRY_W + 6), y)
+        col = col + 1
+        b.entry = e
+        b.icon:SetTexture(e.icon or 134400)
+        b.icon:SetDesaturated(e.future or (e.trainer and not e.now) or false)
+        b.name:SetText(label)
+        b.sub:SetText(sub or "")
+        if color then b.name:SetTextColor(color[1], color[2], color[3]) else b.name:SetTextColor(1, 1, 1) end
+        b.warn:SetShown(e.outdated ~= nil)
+        b:Show()
+    end
+    local function NewSection(text)
+        if col > 0 then y = y - ENTRY_H - 2 col = 0 end -- angefangene Reihe abschliessen
+        if n > 0 or sec > 0 then y = y - 8 end
+        sec = sec + 1
+        local fs = Section(sec)
+        fs:ClearAllPoints()
+        fs:SetPoint("TOPLEFT", 2, y)
+        fs:SetWidth(ENTRY_W * 2)
+        fs:SetText(text)
+        fs:Show()
+        y = y - (fs:GetStringHeight() or 14) - 6
+    end
+    local function SpellLine(e)
+        local sub = e.sub
+        if e.passive then sub = (sub and sub ~= "" and (sub .. " · ") or "") .. T("Passiv", "Passive") end
+        if e.future then sub = e.learnLevel and string.format(T("ab Stufe %d", "from level %d"), e.learnLevel) or T("noch nicht gelernt", "not learned yet") end
+        e.outdated = outdatedBySpell[e.name]
+        if e.outdated then sub = (sub or "") .. "  |cffff6644" .. T("Leiste veraltet", "bar outdated") .. "|r" end
+        Place(e, e.name, sub, e.future and { 0.6, 0.6, 0.6 } or nil)
+    end
+
+    if query ~= "" then
+        -- Suche ueber alle Abschnitte
+        for _, line in ipairs(lines) do
+            local hits = {}
+            for _, e in ipairs(VisibleSpells(line.spells)) do
+                if e.name:lower():find(query, 1, true) then hits[#hits + 1] = e end
+            end
+            if #hits > 0 then
+                NewSection(line.name)
+                for _, e in ipairs(hits) do SpellLine(e) end
+            end
+        end
+        if n == 0 and sec == 0 then
+            NewSection(T("Nichts gefunden.", "Nothing found."))
+        end
+    elseif view == "upcoming" then
+        if tr then
+            NewSection(string.format(T("Beim Lehrer – zuletzt besucht auf Stufe %d", "Trainer – last visited at level %d"), tr.level or 0))
+        elseif #upcoming > 0 then
+            NewSection(T("Noch nicht gelernt (laut Zauberbuch)", "Not learned yet (from the spellbook)"))
+        else
+            NewSection(T("Besuche einmal deinen Klassenlehrer – dann steht hier, was noch kommt.", "Visit your class trainer once – then this shows what's coming."))
+        end
+        if nowCount > 0 then
+            NewSection(string.format(T("Jetzt lernbar: %d · zusammen %s", "Learnable now: %d · total %s"), nowCount, Money(nowCost)))
+            for _, u in ipairs(upcoming) do
+                if u.now then Place(u, u.name, (u.sub and u.sub ~= "" and (u.sub .. " · ") or "") .. Money(u.cost), { 0.4, 1, 0.4 }) end
+            end
+        end
+        local lastLevel
+        for _, u in ipairs(upcoming) do
+            if not u.now then
+                if u.level ~= lastLevel then
+                    lastLevel = u.level
+                    NewSection(string.format(T("Stufe %d", "Level %d"), u.level))
+                end
+                local cost = u.trainer and Money(u.cost) or nil
+                Place(u, u.name, (u.sub and u.sub ~= "" and u.sub or "") .. (cost and ("  ·  " .. cost) or ""), { 0.75, 0.75, 0.75 })
+            end
+        end
+    elseif view == "wt" then
+        local function WTLine(u, color)
+            local parts = {}
+            if u.sub and u.sub ~= "" then parts[#parts + 1] = u.sub end
+            if (u.cost or 0) > 0 then parts[#parts + 1] = Money(u.cost) end
+            parts[#parts + 1] = string.format(T("Stufe %d", "Level %d"), u.level)
+            Place(u, u.name, table.concat(parts, "  ·  "), color)
+        end
+        if not wtGroups then
+            NewSection(T("What's Training lädt noch …", "What's Training is still loading …"))
+        else
+            local total = 0
+            for _, u in ipairs(wtGroups.now) do total = total + (u.cost or 0) end
+            if #wtGroups.now > 0 then
+                NewSection(string.format(T("Jetzt lernbar: %d · zusammen %s", "Learnable now: %d · total %s"), #wtGroups.now, Money(total)))
+                for _, u in ipairs(wtGroups.now) do WTLine(u, { 0.4, 1, 0.4 }) end
+            end
+            if #wtGroups.nextLevel > 0 then
+                NewSection(T("Nächste Stufe", "Next level"))
+                for _, u in ipairs(wtGroups.nextLevel) do WTLine(u, { 1, 0.82, 0 }) end
+            end
+            local lastLevel
+            for _, u in ipairs(wtGroups.later) do
+                if u.level ~= lastLevel then
+                    lastLevel = u.level
+                    NewSection(string.format(T("Stufe %d", "Level %d"), u.level))
+                end
+                WTLine(u, { 0.75, 0.75, 0.75 })
+            end
+            if #wtGroups.missing > 0 then
+                NewSection(T("Voraussetzung fehlt (Talent oder früherer Rang)", "Missing requirement (talent or earlier rank)"))
+                for _, u in ipairs(wtGroups.missing) do WTLine(u, { 0.55, 0.55, 0.55 }) end
+            end
+            if sec == 0 then NewSection(T("Laut What's Training gibt es gerade nichts Neues.", "According to What's Training there is nothing new right now.")) end
+        end
+    else
+        local line = lines[view]
+        if line then
+            for _, e in ipairs(VisibleSpells(line.spells)) do SpellLine(e) end
+        end
+    end
+    content:SetHeight(math.max(10, -y + (col > 0 and ENTRY_H or 0) + 4))
+end
+
+-- Optionen: kleines Feld am Knopf (mit Regler fuer die Durchsichtigkeit)
+local optPanel = CreateFrame("Frame", nil, frame, "BackdropTemplate")
+UI.Hud(optPanel, 0.97)
+optPanel:SetSize(300, 214)
+optPanel:SetPoint("TOPRIGHT", optBtn, "BOTTOMRIGHT", 0, -4)
+optPanel:SetFrameLevel(frame:GetFrameLevel() + 30)
+optPanel:EnableMouse(true)
+optPanel:Hide()
+local optControls = {}
+local function OptCheck(y, label, key, after)
+    local cb = UI.Check(optPanel, 10, y, label, function(checked)
+        GetDB()[key] = checked
+        if after then after() end
+        Refresh()
+    end)
+    optControls[#optControls + 1] = function() cb:SetChecked(GetDB()[key] and true or false) end
+end
+OptCheck(-8, T("Alle Ränge zeigen", "Show all ranks"), "allRanks")
+OptCheck(-32, T("Hinweis auf niedrigere Ränge in den Leisten", "Note lower ranks on your bars"), "warnOutdated")
+OptCheck(-56, T("Blizzard-Zauberbuch ersetzen (Taste, Mini-Menü)", "Replace Blizzard spellbook (key, micro menu)"), "replaceBlizzard", function()
+    if ApplyBinding then ApplyBinding() end
+    if UpdateMicro then UpdateMicro() end
+end)
+OptCheck(-88, T("Beim Bewegen durchsichtig", "Transparent while moving"), "fadeMoving")
+OptCheck(-112, T("Im Kampf durchsichtig", "Transparent in combat"), "fadeCombat")
+local alphaSlider = UI.Slider(optPanel, 16, -144, T("Sichtbarkeit dann", "Visibility then"), 10, 100, 5, function(v)
+    GetDB().fadeAlpha = v
+end, { width = 170, unit = " %" })
+optControls[#optControls + 1] = function() alphaSlider:Load(GetDB().fadeAlpha) end
+optPanel:SetScript("OnShow", function() for _, load in ipairs(optControls) do load() end end)
+optBtn:SetScript("OnClick", function() optPanel:SetShown(not optPanel:IsShown()) end)
+frame:HookScript("OnHide", function() optPanel:Hide() end)
+
+-- Durchsichtig beim Bewegen und/oder im Kampf (Maus ueber dem Fenster = voll sichtbar)
+local fadeElapsed = 0
+frame:HookScript("OnUpdate", function(self, elapsed)
+    fadeElapsed = fadeElapsed + elapsed
+    if fadeElapsed < 0.05 then return end
+    local step = fadeElapsed * 4
+    fadeElapsed = 0
+    local d = GetDB()
+    local moving = d.fadeMoving and ((IsPlayerMoving and IsPlayerMoving()) or ((GetUnitSpeed and GetUnitSpeed("player") or 0) > 0))
+    local fighting = d.fadeCombat and InCombatLockdown()
+    local target = ((moving or fighting) and not self:IsMouseOver()) and ((d.fadeAlpha or 45) / 100) or 1
+    local a = self:GetAlpha()
+    if math.abs(a - target) <= step then
+        self:SetAlpha(target)
+    else
+        self:SetAlpha(a + (target > a and step or -step))
+    end
+end)
+frame:HookScript("OnShow", function()
+    frame:SetAlpha(1)
+    search:SetText("")
+    Refresh()
+end)
+frame:HookScript("OnHide", function() if UI.HideMenu then UI.HideMenu() end end)
+
+local function Toggle()
+    frame:SetShown(not frame:IsShown())
+end
+
+---------------------------------------------------------------------------
+-- Taste des Blizzard-Zauberbuchs uebernehmen (Override-Bindung, nur ausserhalb des Kampfs)
+---------------------------------------------------------------------------
+local toggleBtn = CreateFrame("Button", "ForeverSpellbookToggle", UIParent)
+toggleBtn:SetScript("OnClick", Toggle)
+local bindOwner = CreateFrame("Frame")
+-- alle Tastenbelegungen, die Blizzards Zauberbuch oeffnen (der Name der Belegung unterscheidet sich je Client)
+function SpellbookKeys()
+    local out = {}
+    if not (GetNumBindings and GetBinding) then return out end
+    for i = 1, GetNumBindings() do
+        local command, _, key1, key2 = GetBinding(i)
+        if type(command) == "string" and command:upper():find("SPELLBOOK") then
+            if key1 then out[#out + 1] = { key = key1, command = command } end
+            if key2 then out[#out + 1] = { key = key2, command = command } end
+        end
+    end
+    return out
+end
+
+local bindPending, lastBindSig = false, nil
+function ApplyBinding()
+    if InCombatLockdown() then bindPending = true return end
+    bindPending = false
+    local keys = {}
+    if GetDB().replaceBlizzard then
+        for _, k in ipairs(SpellbookKeys()) do keys[#keys + 1] = k.key end
+    end
+    local sig = table.concat(keys, ",")
+    if sig == lastBindSig then return end
+    lastBindSig = sig
+    ClearOverrideBindings(bindOwner)
+    for _, key in ipairs(keys) do SetOverrideBindingClick(bindOwner, false, key, "ForeverSpellbookToggle") end
+end
+
+-- Zauberbuch-Knopf im Mini-Menue: ein eigener, unsichtbarer Knopf liegt darueber und oeffnet
+-- dieses Fenster. Blizzards Knopf selbst wird nicht veraendert (kein "taint").
+-- Welcher Knopf? Der eigene Zauberbuch-Knopf – oder Retails kombinierter Knopf, aber nur, wenn es
+-- zusaetzlich einen eigenen Talente-Knopf gibt (sonst waeren die Talente nicht mehr erreichbar).
+local function MicroButtons()
+    if _G.SpellbookMicroButton then return { "SpellbookMicroButton" } end
+    if _G.PlayerSpellsMicroButton and _G.TalentMicroButton then return { "PlayerSpellsMicroButton" } end
+    return {}
+end
+local microOverlays = {}
+function UpdateMicro()
+    for _, name in ipairs(MicroButtons()) do
+        local mb = _G[name]
+        if mb then
+            local o = microOverlays[name]
+            if not o then
+                o = CreateFrame("Button", nil, UIParent)
+                o:SetAllPoints(mb)
+                o:RegisterForClicks("AnyUp")
+                o:SetScript("OnClick", function() frame:SetShown(not frame:IsShown()) end)
+                local hl = o:CreateTexture(nil, "HIGHLIGHT")
+                hl:SetTexture("Interface\\Buttons\\UI-MicroButton-Hilight")
+                hl:SetBlendMode("ADD")
+                hl:SetAllPoints()
+                o:SetScript("OnEnter", function(self)
+                    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                    GameTooltip:AddLine(T("Zauberbuch", "Spellbook"))
+                    GameTooltip:AddLine("ForeverSpellbook", 0.6, 0.6, 0.6)
+                    GameTooltip:Show()
+                end)
+                o:SetScript("OnLeave", GameTooltip_Hide)
+                mb:HookScript("OnShow", UpdateMicro)
+                mb:HookScript("OnHide", UpdateMicro)
+                microOverlays[name] = o
+            end
+            o:SetFrameStrata(mb:GetFrameStrata())
+            o:SetFrameLevel(mb:GetFrameLevel() + 10)
+            o:SetShown(GetDB().replaceBlizzard and mb:IsVisible() and true or false)
+        end
+    end
+end
+
+---------------------------------------------------------------------------
+-- Hinweis, wenn ein neuer Rang gelernt wurde, die Leiste aber noch den alten hat
+---------------------------------------------------------------------------
+local notified = {}
+local function CheckNewRanks()
+    if not GetDB().warnOutdated or InCombatLockdown() then return end
+    Collect()
+    for _, o in ipairs(OutdatedSlots()) do
+        local key = o.best.name .. ":" .. o.best.rank
+        if not notified[key] then
+            notified[key] = true
+            Chat(string.format(T("%s Rang %d gelernt – in deiner Leiste liegt noch Rang %d. Im Zauberbuch: \"Ersetzen\".",
+                "%s rank %d learned – your bar still has rank %d. In the spellbook: \"Replace\"."), o.best.name, o.best.rank, o.rank))
+        end
+    end
+end
+
+---------------------------------------------------------------------------
+-- Minimap-Knopf und Befehle
+---------------------------------------------------------------------------
+local mm = UI.MinimapButton({
+    name = "ForeverSpellbookMinimapButton",
+    icon = "Interface\\Icons\\INV_Misc_Book_09",
+    title = "ForeverSpellbook",
+    angle = function() return GetDB().minimapAngle end,
+    setAngle = function(a) GetDB().minimapAngle = a end,
+    onClick = function() Toggle() end,
+    lines = function() return { T("Klick: Zauberbuch öffnen/schließen", "Click: open/close spellbook") } end,
+})
+
+SLASH_FOREVERSPELLBOOK1 = "/fsb"
+SLASH_FOREVERSPELLBOOK2 = "/fspellbook"
+SlashCmdList["FOREVERSPELLBOOK"] = function(msg)
+    msg = strtrim(msg or ""):lower()
+    if msg == "replace" or msg == "ersetzen" then
+        ReplaceOutdated()
+    elseif msg == "status" then
+        local parts = {}
+        for _, k in ipairs(SpellbookKeys()) do
+            local now = GetBindingAction and GetBindingAction(k.key, true) or "?"
+            parts[#parts + 1] = k.key .. " (" .. k.command .. " » " .. tostring(now) .. ")"
+        end
+        Chat("Tasten: " .. (#parts > 0 and table.concat(parts, ", ") or "keine gefunden"))
+        local mbs = {}
+        for _, name in ipairs({ "SpellbookMicroButton", "PlayerSpellsMicroButton", "TalentMicroButton" }) do
+            if _G[name] then mbs[#mbs + 1] = name .. (microOverlays[name] and microOverlays[name]:IsShown() and " (ersetzt)" or "") end
+        end
+        Chat("Mini-Menü: " .. (#mbs > 0 and table.concat(mbs, ", ") or "-") .. " · WhatsTraining: " .. tostring(_G.WT_API ~= nil))
+    else
+        Toggle()
+    end
+end
+
+---------------------------------------------------------------------------
+-- Ereignisse
+---------------------------------------------------------------------------
+local events = CreateFrame("Frame")
+for _, e in ipairs({ "PLAYER_LOGIN", "PLAYER_REGEN_ENABLED", "UPDATE_BINDINGS", "SPELLS_CHANGED",
+    "LEARNED_SPELL_IN_SKILL_LINE", "LEARNED_SPELL_IN_TAB", "ACTIONBAR_SLOT_CHANGED", "TRAINER_SHOW",
+    "TRAINER_UPDATE", "PLAYER_LEVEL_UP" }) do
+    pcall(events.RegisterEvent, events, e)
+end
+local pending = false
+local function Soon(fn)
+    if pending then return end
+    pending = true
+    C_Timer.After(0.4, function()
+        pending = false
+        local ok, err = pcall(fn)
+        if not ok then
+            local handler = geterrorhandler and geterrorhandler()
+            if handler then pcall(handler, err) end
+        end
+    end)
+end
+events:SetScript("OnEvent", function(_, event)
+    if event == "PLAYER_LOGIN" then
+        mm.UpdatePosition()
+        ApplyBinding()
+        UpdateMicro()
+        C_Timer.After(2, function() if not InCombatLockdown() then ApplyBinding() end UpdateMicro() end)
+        -- WhatsTraining meldet, wenn seine Daten bereit sind bzw. sich aendern
+        local api = _G.WT_API
+        if WTInstalled() and api.RegisterCallback and api.Event then
+            local owner = {}
+            for _, ev in ipairs({ api.Event.READY, api.Event.SPELLS_CHANGED, api.Event.LEVEL_CHANGED, api.Event.IGNORED_CHANGED }) do
+                if ev then pcall(api.RegisterCallback, owner, ev, function() Soon(Refresh) end) end
+            end
+        end
+    elseif event == "PLAYER_REGEN_ENABLED" then
+        if bindPending then ApplyBinding() end
+    elseif event == "UPDATE_BINDINGS" then
+        -- eigene Override-Bindungen loesen das Ereignis ebenfalls aus: nur bei echten Aenderungen neu setzen
+        if not InCombatLockdown() then C_Timer.After(0, function() if not InCombatLockdown() then ApplyBinding() end end) end
+    elseif event == "TRAINER_SHOW" or event == "TRAINER_UPDATE" then
+        if not scanning then Soon(function() ScanTrainer() Refresh() end) end
+    elseif event == "LEARNED_SPELL_IN_SKILL_LINE" or event == "LEARNED_SPELL_IN_TAB" then
+        C_Timer.After(1, function() pcall(CheckNewRanks) end)
+        Soon(Refresh)
+    else
+        Soon(Refresh)
+    end
+end)

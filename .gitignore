@@ -1,0 +1,13 @@
+# Gebaute Pakete / Release-Ausgabe
+dist/
+*.zip
+
+# Spielstände und Einstellungen gehören nie ins Repository
+WTF/
+SavedVariables/
+
+# Editor / System
+.vscode/
+*.bak
+Thumbs.db
+desktop.ini

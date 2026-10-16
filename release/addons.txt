@@ -1,0 +1,8 @@
+# Addons, die ins Release (Ordner + Zips) kommen. Prototypen hier NICHT eintragen.
+ForeverFrames
+ForeverUnits
+ForeverCast
+ForeverLoot
+ForeverXP
+ForeverBuffs
+ForeverVendor

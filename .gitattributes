@@ -1,0 +1,7 @@
+# Text einheitlich speichern, unter Windows mit CRLF auschecken
+* text=auto eol=crlf
+
+*.tga binary
+*.png binary
+*.blp binary
+*.zip binary

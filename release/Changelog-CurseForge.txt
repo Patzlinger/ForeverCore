@@ -1,0 +1,103 @@
+# Forever Core – Changelog
+
+## 0.3b – October 16, 2026
+
+### New
+- **New addon: ForeverVendor – your merchant helper.** Sells your grey items, repairs if you want (guild bank first, if you like) and restocks what you need: class reagents like Ankhs, the best food and drink for your level, ammo that fits your weapon, and your own list.
+  - Add items by name, item ID, shift-click or simply drag them onto the + button.
+  - A small window next to the merchant shows what happens automatically and your shopping list with prices – one click on "Buy" and you're done.
+  - Nothing happens until you turn the automation on – then it sells junk, repairs and restocks for you. Prefer to decide yourself? Switch restocking to "only via button". A spending limit per visit and a gold reserve keep your wallet safe. Hold Shift when talking to a merchant to skip it once.
+  - Day to day it's just a small bag icon – click it for an overview of what you're running low on.
+- **A fresh look:** all settings windows got a new flat, dark design with gold accents. Options are now grouped into tidy sections, checkboxes, sliders and dropdowns all match.
+- **ForeverXP – a new XP bar in Blizzard style:** a slim bar with rounded ends and a subtle gold border that takes the place of the default XP bar. Your action bars stay exactly where they were.
+  - At a glance: your level, XP per hour, your XP and percentage, time to level-up and the XP your completed quests will give you.
+  - Hover over the bar for more: mobs and quests left until level-up, XP still needed, rested XP – plus the familiar detailed tooltip, shown where your tooltips usually appear.
+  - Same colors as before: purple for your XP, gold for completed quests, blue for rested XP.
+  - Choose texture, font, outline and font size. Text that doesn't fit is shortened or hidden – never cut off.
+  - Keep it at Blizzard's spot (length adjusts automatically, height adjustable) or place it anywhere with your own size.
+  - Prefer the old style? The classic box is still available in the settings (/fxp).
+
+### Improved
+- ForeverXP no longer fades in combat by default (you can turn it back on) and starts locked.
+- The addon list now marks all Forever Core addons as beta.
+- Better update detection in the CurseForge app.
+
+### Fixed
+- ForeverBuffs: if a missing buff is cast on you during a fight, its icon turns green with a check mark again.
+
+## 0.2b – October 15, 2026
+
+### New
+- **Move everything at once:** type **/fmove** – or right-click the Forever Core minimap button – to unlock all your Forever Core addons together. Drag them where you want, then /fmove again locks them all.
+- **Line things up easily:** while moving, a grid helps you place your frames, and frames snap neatly to each other, to the center of the screen and to the grid. A yellow line shows where they snap. Hold **Shift** to move freely.
+- **Exact positions:** ForeverFrames, ForeverUnits and ForeverCast now have X/Y fields in their settings, so you can place them pixel-perfect.
+- Frames snap across addons: put your cast bar right under your player frame, or your raid frames flush against your unit frames.
+- **ForeverBuffs:** the bar now has its own anchor – unlock it with /fbuffs lock (or right-click its minimap entry) and drag it anywhere. /fbuffs reset brings it back.
+- **ForeverBuffs in combat:** if a missing buff is cast on you during a fight (e.g. Battle Shout at the pull), its icon turns green with a check mark right away.
+- **ForeverUnits:** the DoT bars can now be detached from the frame and placed freely. They are turned on for target and focus by default.
+
+### Improved
+- ForeverBuffs stays visible in combat by default (you can still hide it in the settings).
+- ForeverBuffs now tracks Battle Shout and shaman weapon imbues more reliably.
+- ForeverBuffs no longer asks for food or drink at very low levels.
+- ForeverFrames: no more empty gaps between players when nobody in the group has a pet.
+
+### Fixed
+- ForeverFrames: "Players side by side" no longer arranges the frames like a staircase.
+- ForeverUnits: the anchor for detached DoT bars now shows up when you unlock the frames.
+- ForeverBuffs: shaman weapon imbues were sometimes shown as missing although they were active.
+## 0.1b – October 14, 2026
+
+Welcome to the first public beta of **Forever Core** for World of Warcraft: Forever!
+
+*Less clutter. More control. Just the essentials.*
+
+Forever Core is a small set of lightweight addons that cover the basics, look clean, and stay out of your way. Use one, a few, or all of them – each works on its own.
+
+### What's included
+
+**ForeverFrames – party and raid frames**
+- Clean, compact frames with click casting
+- Incoming heals and shields at a glance
+- Debuffs with dispel type, so you know what you can remove
+- Your HoTs and those of other players in the group
+- Pet frames with an aggro border
+- Icons for incoming resurrections and summons
+- Optional: sort your group by role
+
+**ForeverUnits – player, target, target of target, focus and pet**
+- Class icon or portrait, level and elite/rare marker
+- PvP and resting icons
+- Optional DoT bars for your target and focus – great for Warlocks and Shadow Priests
+- Can match the look of ForeverFrames with a single click
+
+**ForeverCast – cast bar**
+- A clean cast bar with your latency and spell queue window
+- Shows the global cooldown
+
+**ForeverLoot – loot rolls**
+- See who picked Need, Greed or Pass, what everyone rolled, and who won
+- Disappears on its own a few seconds after the result
+
+**ForeverXP – experience tracking**
+- XP per hour and estimated time to your next level
+- See how much XP your finished quests are worth before you turn them in
+
+**ForeverBuffs – buffs and consumables**
+- Shows a small icon only when something is missing – never in your way (can be hidden in combat)
+- Your own buffs, and whether the highest rank is active – click an icon to cast it
+- Group buffs: who is missing your Fortitude, Intellect or Mark of the Wild, and which buffs your group could give you
+- Food and drink in your bags – and whether there is something better for your level
+- Add your own list, e.g. "Healing Potion:3", plus ammo, soul shards, weapon poisons/oils and shaman weapon imbues
+With two or more Forever Core addons installed, their minimap buttons are bundled into a single Forever Core button.
+
+Available in English and German.
+
+### Good to know
+- This is a beta – thanks for helping us test it!
+- WoW: Forever is a beta too. Sometimes it forgets your settings after logging in. This is a game issue, and your settings come back once it is fixed.
+- The DoT bars are still experimental and may look slightly different depending on your game version.
+- HoTs from other players are recognized for the most common spells. If one is missing, let us know which one.
+
+### Found a bug or have an idea?
+We'd love to hear from you! The addon **BugSack** shows the exact error, so please include it in your report.

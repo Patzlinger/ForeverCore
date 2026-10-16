@@ -1,0 +1,15 @@
+## Interface: 16001
+## Title: ForeverSpellbook |cff8a8a8a(Beta)|r
+## IconTexture: Interface\AddOns\ForeverSpellbook\Media\ForeverCore
+## Category: Forever Core
+## Notes: Compact spellbook with search, outdated-rank reminder and a preview of what your trainer has next
+## Notes-deDE: Kompaktes Zauberbuch mit Suche, Hinweis auf veraltete Ränge in den Leisten und Vorschau, was beim Lehrer noch kommt
+## Version: 0.3b
+## Author: Patzlinger
+## X-License: MIT
+## X-Curse-Project-ID: 1743753
+## SavedVariables: ForeverSpellbookDB, ForeverHubDB
+## SavedVariablesPerCharacter: ForeverSpellbookCharDB
+
+ForeverHub.lua
+ForeverSpellbook.lua
