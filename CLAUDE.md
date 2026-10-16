@@ -294,8 +294,11 @@ Damit alle Einstellungsfenster gleich aussehen, gelten diese Maße. Quelle: `For
 
 ## 14. Bekannte Wechselwirkungen
 - **ForeverBars ↔ ForeverXP**: ForeverBars setzt die Blizzard-XP-Leiste (`MainStatusTrackingBarContainer`) in
-  seinen Halter "xp"; ForeverXP macht sie unsichtbar (Alpha 0) und legt seinen Balken genau darüber – der
-  ForeverXP-Balken folgt also der Position, die man in ForeverBars für "Erfahrung" einstellt
+  seinen Halter "xp"; ForeverXP macht sie unsichtbar (Alpha 0) und legt seinen Balken genau darüber.
+  Ist ForeverXP aktiv (ab ForeverBars 0.12.0), gehört ihm die Erfahrungsleiste: ForeverBars hält Blizzards Leiste
+  fest am Standardplatz (oben mittig, ohne Griff, ohne Größe/Sichtbarkeit aus den eigenen Einstellungen) und
+  verweist im Menü mit einem Knopf auf `/fxp`. Position, Größe und Sichtbarkeit stellt man nur in ForeverXP ein
+  (Standard "An Blizzards Platz" = oben mittig)
 - **ForeverBars ↔ ForeverSpellbook**: ForeverSpellbook legt einen Klick-Knopf über den Zauberbuch-Knopf im
   Mikromenü; ForeverBars verschiebt das Mikromenü – der Knopf hängt am Mikromenü-Knopf und wandert mit
 - **ForeverBars ↔ Bartender4**: läuft Bartender4, lässt ForeverBars die Leisten in Ruhe
