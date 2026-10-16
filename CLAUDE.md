@@ -33,8 +33,8 @@ Philosophie, Regeln, Design und Abläufe. Wenn etwas hier nicht steht: am besteh
   - Neue Namensräume nutzen (`C_AddOns`, `C_Spell`, `C_SpellBook`, `C_Container`, `C_CVar` …), mit Rückfall auf alte Funktionen, wo sinnvoll
 - Midnight-Restriktionen ("secret values" im Kampf): keine Rechnungen/Vergleiche mit gesperrten Werten,
   Werte nur direkt weiterreichen (z. B. an StatusBars, Aura-Container); **keine Rotationslogik**
-- Bekannter Beta-Bug: **SavedVariables werden beim Login teils nicht geladen** → Standardwerte müssen immer
-  sinnvoll sein, fehlende Werte beim Laden aus den Defaults ergänzen (nie davon ausgehen, dass gespeicherte Werte da sind)
+- SavedVariables funktionieren normal (wir gehen vom Live-Betrieb aus): Einstellungen werden gespeichert und beim
+  Login geladen. Standardwerte trotzdem sinnvoll wählen (erster Start, neue Einstellungen nach einem Update)
 - Forever-Namen haben Vor- und Nachnamen: Chat liefert evtl. "Vorname Nachname", die Gruppenliste nur den Vornamen –
   Namen abgleichen statt direkt vergleichen
 - WoW-Schrift kennt "→" nicht (wird zum Kasten): in Anzeige-Texten "»" oder "–" verwenden; "≈ · – … —" funktionieren
@@ -150,13 +150,15 @@ ihn identisch um. Neue Oberflächen nutzen eine dieser beiden – keine dritten 
   - Eigene Sprachauswahl in einem Addon-Menü (wie bei ForeverQuests) muss in `ForeverHubDB.language` schreiben
 - Zwei erlaubte Wege für Texte: `T("Deutsch", "English")` aus dem Hub (Patzlingers Addons) oder `Locales.lua` mit
   Schlüsseln und `ns.L("KEY")` (flowfys Addons), das die Sprache über `UI.GetLanguage()` bestimmt. Innerhalb eines
-  Addons nur einen Weg nutzen
-- Wegen des SavedVariables-Bugs kann die Sprachwahl in der Beta nach dem Login wieder auf "Automatisch" stehen
-- Kommentare im Code auf Deutsch, kurz, erklären das *Warum*; Umlaute in Kommentaren sind erlaubt
+  Addons nur einen Weg nutzen- Kommentare im Code auf Deutsch, kurz, erklären das *Warum*; Umlaute in Kommentaren sind erlaubt
 
 ## 9. Einstellungen
 - Eine SavedVariable pro Addon (`Forever<Name>DB`), bei Bedarf zusätzlich pro Charakter (`…CharDB`)
-- Defaults in einer Tabelle; beim Laden fehlende Werte ergänzen (auch verschachtelt), Tabellen kopieren (`CopyTable`)
+- Defaults in einer Tabelle; beim Laden (`ADDON_LOADED`) fehlende Werte ergänzen (auch verschachtelt), Tabellen
+  kopieren (`CopyTable`) – so bekommen auch Spieler mit älteren gespeicherten Einstellungen neue Optionen
+- Gespeicherte Werte erst nach `ADDON_LOADED` lesen (beim Ausführen der Addon-Dateien sind sie noch nicht da)
+- Ändert sich die Bedeutung einer Einstellung, alte Werte beim Laden umrechnen statt sie stillschweigend zu verwerfen
+  (Beispiel: ForeverBars wandelt die frühere Sichtbarkeit "MOUSEOVER" um)
 - Einstellungen wirken sofort (kein "Übernehmen"-Knopf), ein "Zurücksetzen" pro Bereich ist gern gesehen
 - Blizzard-Einstellungen (CVars, Tastenbelegung) nur auf ausdrücklichen Wunsch des Spielers ändern
 
