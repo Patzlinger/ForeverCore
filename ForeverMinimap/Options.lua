@@ -57,7 +57,7 @@ local function Build()
     r.Check(T("Ruhegebiet: „zZ“ hinter dem Namen", "Resting area: \"zZ\" after the name"), "restInfo")
     r.Check(T("Schwierigkeit in Instanzen", "Difficulty in instances"), "difficulty")
     r.Check(T("Haltbarkeit unter 30 % (Amboss)", "Durability below 30 % (anvil)"), "durability")
-    r.Check(T("Warteschlangen-Auge in der Leiste", "Queue eye in the bar"), "queueDock",
+    r.Check(T("Warteschlangen-Auge unten rechts in der Karte", "Queue eye in the bottom right of the map"), "queueDock",
         T("Solange ForeverBars das Auge nicht in seiner eigenen Leiste führt.", "As long as ForeverBars does not show the eye in its own bar."))
     r.Check(T("Klick auf den Zonennamen: Weltkarte", "Click on the zone name: world map"), "barClickMap")
 

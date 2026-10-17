@@ -299,8 +299,10 @@ local function UpdateDurability()
 end
 
 ---------------------------------------------------------------------------
--- Warteschlangen-Auge: in der Leiste, solange ForeverBars es nicht in seiner eigenen Leiste fuehrt
+-- Warteschlangen-Auge: ganz unten rechts in der Karte (Blizzard zeigt es nur, solange man in einer Suche oder
+-- Warteschlange ist), solange ForeverBars es nicht in seiner eigenen Leiste fuehrt
 ---------------------------------------------------------------------------
+local EYE = 28 -- Groesse des Auges in der Karte
 local function BarsOwnsQueue()
     if not (C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("ForeverBars")) then return false end
     local bdb = _G.ForeverBarsDB
@@ -312,19 +314,24 @@ local function QueueDocked()
     return DB().queueDock and _G.QueueStatusButton ~= nil and not BarsOwnsQueue()
 end
 
-local queueX = -40 -- Platz in der Leiste (von rechts), wird beim Anordnen gesetzt
 local function PlaceQueue()
     local q = _G.QueueStatusButton
-    if not (q and bar and QueueDocked()) then return end
+    if not (q and QueueDocked()) then return end
     q.fmmPlacing = true
     if q.SetIgnoreParentAlpha then q:SetIgnoreParentAlpha(true) end -- Elternrahmen (z. B. Mikromenue) evtl. unsichtbar
     local pScale = (q:GetParent() and q:GetParent():GetEffectiveScale()) or 1
-    q:SetScale((MARK + 4) * bar:GetEffectiveScale() / (math.max(1, q:GetWidth()) * pScale))
-    local k = bar:GetEffectiveScale() / q:GetEffectiveScale()
+    q:SetScale(EYE * Minimap:GetEffectiveScale() / (math.max(1, q:GetWidth()) * pScale))
+    local k = Minimap:GetEffectiveScale() / q:GetEffectiveScale()
     q:ClearAllPoints()
-    q:SetPoint("RIGHT", bar, "RIGHT", queueX * k, 0)
-    q:SetFrameStrata(bar:GetFrameStrata())
-    q:SetFrameLevel(bar:GetFrameLevel() + 4)
+    if IsRound() then
+        -- runde Karte: auf dem Kreisrand unten rechts (45 Grad), das Auge liegt ganz in der Karte
+        local off = (Minimap:GetWidth() / 2 - EYE / 2 - 2) * 0.7071
+        q:SetPoint("CENTER", Minimap, "CENTER", off * k, -off * k)
+    else
+        q:SetPoint("BOTTOMRIGHT", Minimap, "BOTTOMRIGHT", -3 * k, 3 * k)
+    end
+    q:SetFrameStrata(Minimap:GetFrameStrata())
+    q:SetFrameLevel(Minimap:GetFrameLevel() + 10)
     q.fmmPlacing = false
 end
 
@@ -471,18 +478,12 @@ local function BuildBar()
     pingText:Hide()
 end
 
--- Anzeigen rechts in der Leiste anordnen: Uhr ganz rechts, davor Warteschlange und Haltbarkeit (nah an der Uhr);
+-- Anzeigen rechts in der Leiste anordnen: Uhr ganz rechts, davor die Haltbarkeit (nah an der Uhr);
 -- liefert den freien Rand fuer weitere Knoepfe und den Zonennamen
 local function LayoutBar()
     local d = DB()
     local x = -7
     if d.clock then x = x - (bar.clock:GetStringWidth() + 6) end
-    local q = _G.QueueStatusButton
-    if q and QueueDocked() and q:IsShown() then
-        queueX = x
-        PlaceQueue()
-        x = x - (MARK + 4) - 3
-    end
     if bar.dura:IsShown() then
         bar.dura:ClearAllPoints()
         bar.dura:SetPoint("RIGHT", bar, "RIGHT", x, 0)
@@ -504,15 +505,21 @@ local function PendingInvites()
     return C_Calendar and C_Calendar.GetNumPendingInvites and (C_Calendar.GetNumPendingInvites() or 0) or 0
 end
 
+-- Neue Post: kein Knopf in der Leiste, sondern eine Kachel in der Ecke unten neben der Knopfleiste (links bzw. rechts,
+-- je nach Seite der Leiste), genau zwischen Leiste und angedocktem Mikromenue; nur sichtbar, solange Post da ist
+local MAIL_DEF = {
+    key = "mail", icon = "Interface\\Icons\\INV_Letter_15",
+    tip = function()
+        GameTooltip:AddLine(T("Neue Post", "New mail"))
+        if GetLatestThreeSenders then
+            for _, sender in ipairs({ GetLatestThreeSenders() }) do GameTooltip:AddLine(sender, 1, 1, 1) end
+        end
+    end,
+    shown = HasMail, alert = HasMail,
+}
+local mailButton
+
 local TOOL_DEFS = {
-    { key = "mail", icon = "Interface\\Icons\\INV_Letter_15",
-      tip = function()
-          GameTooltip:AddLine(T("Neue Post", "New mail"))
-          if GetLatestThreeSenders then
-              for _, sender in ipairs({ GetLatestThreeSenders() }) do GameTooltip:AddLine(sender, 1, 1, 1) end
-          end
-      end,
-      shown = HasMail, alert = HasMail },
     -- Fernglas fuellt sein Symbol mehr aus als die anderen: etwas mehr Innenabstand
     { key = "tracking", icon = "Interface\\Icons\\INV_Misc_Spyglass_03", inset = 4,
       tip = function() GameTooltip:AddLine(T("Verfolgung", "Tracking")) GameTooltip:AddLine(T("Auch: Rechtsklick auf die Minimap", "Also: right-click the minimap"), 0.6, 0.6, 0.6) end,
@@ -881,6 +888,61 @@ local function LayoutRound(items, side)
     return positions, more, rings * (ITEM + GAP) + 10
 end
 
+-- Mikromenue von ForeverBars, wenn es unter der Karte angedockt ist
+local function DockedMicroMenu()
+    local bars = _G.ForeverBarsDB and _G.ForeverBarsDB.bars
+    local micro = _G.ForeverBars_micro
+    if not (bars and bars.micro and bars.micro.enabled and bars.micro.dockMinimap) then return nil end
+    if not (micro and micro:IsShown() and (micro:GetHeight() or 0) > 1) then return nil end
+    return micro
+end
+
+-- Post-Kachel: zwischen Knopfleiste und Mikromenue exakt in die Ecke (oben bei der Leiste, 4 px darunter wie das
+-- Mikromenue, seitlich bis zum Rand der Karte, so hoch wie das Mikromenue). Rund oder ohne Leiste/Mikromenue: kleine
+-- Kachel in der Kartenecke unten (auf der Seite der Leiste).
+local MAIL_GAP = 4
+local MAIL_FREE = 24
+local function PlaceMail(side, bottomRef)
+    local b = mailButton
+    if not b then return end
+    if not HasMail() then b:Hide() return end
+    local d = DB()
+    local w, h
+    b:ClearAllPoints()
+    if not IsRound() and strip and strip:IsShown() then
+        local micro = DockedMicroMenu()
+        h = micro and (micro:GetHeight() * micro:GetEffectiveScale() / Minimap:GetEffectiveScale()) or BAR_H
+        w = strip:GetWidth() + MAIL_GAP - 1
+        if side == "RIGHT" then
+            b:SetPoint("TOPRIGHT", strip, "BOTTOMRIGHT", 0, -MAIL_GAP)
+            b:SetPoint("TOPLEFT", bottomRef, "BOTTOMRIGHT", 1, -MAIL_GAP)
+        else
+            b:SetPoint("TOPLEFT", strip, "BOTTOMLEFT", 0, -MAIL_GAP)
+            b:SetPoint("TOPRIGHT", bottomRef, "BOTTOMLEFT", -1, -MAIL_GAP)
+        end
+        b:SetHeight(h)
+    else
+        w, h = MAIL_FREE, MAIL_FREE
+        b:SetSize(w, h)
+        if IsRound() then
+            local off = (Minimap:GetWidth() / 2 - MAIL_FREE / 2 - 2) * 0.7071
+            b:SetPoint("CENTER", Minimap, "CENTER", side == "RIGHT" and off or -off, -off)
+        else
+            b:SetPoint(side == "RIGHT" and "BOTTOMRIGHT" or "BOTTOMLEFT", Minimap, side == "RIGHT" and "BOTTOMRIGHT" or "BOTTOMLEFT",
+                side == "RIGHT" and -3 or 3, 3)
+        end
+    end
+    -- Symbol quadratisch in der Mitte der Kachel
+    local s = math.max(8, math.min(w, h) - 4)
+    b.icon:ClearAllPoints()
+    b.icon:SetPoint("CENTER")
+    b.icon:SetSize(s, s)
+    b:SetAlpha(1)
+    b.alert = true
+    StyleItem(b, IsRound(), true)
+    b:Show()
+end
+
 -- Knoepfe anordnen und ein-/ausblenden (Post/Einladung: goldener Rand, auch ohne Maus sichtbar)
 function ns.UpdateTools()
     if not strip then return end
@@ -995,6 +1057,8 @@ function ns.UpdateTools()
     strip:SetWidth(width)
     strip:SetShown(useStrip and #items > 0)
     strip:SetAlpha(show and 1 or 0)
+    PlaceMail(side, bottomRef)
+    PlaceQueue()
     -- Flaeche und Rand einstellbar durchsichtig (rund: keine Flaeche – die Knoepfe sitzen frei am Bogen)
     local a = round and 0 or (d.stripAlpha or 50) / 100
     strip:SetBackdropColor(C.header[1], C.header[2], C.header[3], a)
@@ -1169,6 +1233,10 @@ function ns.SetupMap()
     BuildBar()
     BuildStrip()
     for _, def in ipairs(TOOL_DEFS) do tools[#tools + 1] = ToolButton(def) end
+    mailButton = ToolButton(MAIL_DEF)
+    mailButton:Hide()
+    -- Mikromenue (ForeverBars) angedockt/geloest/anders gross: Post-Kachel neu einpassen
+    if UI.On then UI.On("ForeverBars.Layout", function() ns.UpdateTools() end) end
 
     -- Blizzard setzt Form und Rahmen neu, wenn sich "Minimap drehen" aendert: danach wieder anwenden
     if _G.MinimapCluster and _G.MinimapCluster.UpdateMinimapConfig then

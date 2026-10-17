@@ -404,7 +404,9 @@ Damit alle Einstellungsfenster gleich aussehen, gelten diese Maße. Quelle: `For
   Blizzard setzt die Form bei "Minimap drehen" neu (`MinimapCluster:UpdateMinimapConfig`) – ForeverMinimap hängt sich
   dort an. Position und Größe verwaltet Blizzards Bearbeitungsmodus. Das Warteschlangen-Auge (`QueueStatusButton`)
   gehört ForeverBars nur, wenn dessen Warteschlangen-Leiste an ist; sonst lässt Bars es in Ruhe und ForeverMinimap
-  zeigt es klein in seiner Leiste (prüft `ForeverBarsDB.bars.queue.enabled`; beide halten es per SetPoint-Hook, nie gleichzeitig)
+  zeigt es ganz unten rechts in der Karte (rund: auf dem Kreisrand; prüft `ForeverBarsDB.bars.queue.enabled`; beide halten es
+  per SetPoint-Hook, nie gleichzeitig). Neue Post: eigene Kachel in der Ecke unten neben der Knopfleiste, exakt zwischen Leiste
+  und dem unter der Karte angedockten Mikromenü von ForeverBars (Höhe = Mikromenü, Signal `ForeverBars.Layout`)
 - **Hub ↔ Details!**: Skin "Forever Core" über `Details:InstallSkin` (`no_cache`, nichts in Details' Speicher). Knopf im Hub:
   `SaveProfile("Forever Core")` = Kopie des aktuellen Details-Profils, `ApplyProfile` (gilt je Charakter), dort Skin für alle
   Fenster; vorheriges Profil in `ForeverHubDB.detailsPrevious`, zweiter Klick wechselt zurück. Details-Ordner nie ändern
