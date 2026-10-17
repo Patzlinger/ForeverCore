@@ -42,9 +42,7 @@ local function CreateOptions()
     UI.Header(options, x, -40, L("SEC_GENERAL"), W - 32)
     Check(options, x, -62, L("OPT_REPLACE"), "replaceBlizzard")
     UI.Hint(options, x + 28, -86, W - 60, L("OPT_REPLACE_HINT"))
-    local lock = UI.Check(options, x, -118, L("OPT_LOCK"), function(checked) ns.SetLocked(checked) end)
-    lock.Refresh = function() lock:SetChecked(ns.db.locked and true or false) end
-    controls[#controls + 1] = lock
+    Check(options, x, -118, L("OPT_BAGBAR"), "showBagBar")
 
     UI.Header(options, x, -156, L("SEC_LOOK"), W - 32)
     Slider(options, x + 4, -180, L("OPT_COLUMNS"), "columns", 4, 24, 1, { width = 200 })

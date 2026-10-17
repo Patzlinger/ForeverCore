@@ -8,9 +8,10 @@
 ## Version: 0.44b
 ## Dependencies: ForeverCore
 ## Group: ForeverCore
-## SavedVariables: ForeverBagsDB, ForeverHubDB
+## SavedVariables: ForeverBagsDB, ForeverBagsData, ForeverHubDB
 
 Locales.lua
 Core.lua
+Data.lua
 Bags.lua
 Options.lua

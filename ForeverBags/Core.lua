@@ -1,15 +1,16 @@
 local addonName, ns = ...
 
 -- ForeverBags: alle Taschen in einem schlanken Fenster im Forever-Stil.
--- Core.lua: Standardwerte, Start, Chatbefehl, Minimap-Knopf, Anbindung an den Hub (Profile, /fmove).
+-- Core.lua: Standardwerte, Start, Chatbefehl, Minimap-Knopf, Anbindung an den Hub (Profile).
 
 local L = ns.L
 local UI = ForeverHub.UI
 
 ns.defaults = {
     replaceBlizzard = true, -- Blizzards Taschenfenster ersetzen (B, Rucksack-Knopf, Händler usw. öffnen dann dieses)
-    locked = true,          -- Fenster gesperrt (Forever-Regel: alles startet gesperrt; entsperren per Menü oder /fmove)
-    pos = nil,              -- { x, y }: untere rechte Ecke ab der unteren rechten Bildschirmecke; nil = Standard
+    -- (kein Sperren: das Taschenfenster lässt sich an der Titelleiste immer verschieben – wie Blizzards Taschen)
+    showBagBar = false,     -- Leiste mit den angelegten Taschen im Fenster (Knopf in der Werkzeugzeile)
+    pos = nil,            -- { x, y }: untere rechte Ecke ab der unteren rechten Bildschirmecke; nil = Standard
     columns = 10,           -- Taschenplätze pro Reihe
     spacing = 2,            -- Abstand zwischen den Plätzen (px)
     qualityBorder = true,   -- Rand in Qualitätsfarbe (grün, blau, episch …)
@@ -61,22 +62,6 @@ local function CreateMinimapButton()
 end
 
 ---------------------------------------------------------------------------
--- Entsperren/Sperren (auch über den gemeinsamen Verschiebe-Modus /fmove)
----------------------------------------------------------------------------
-function ns.SetLocked(locked, quiet)
-    ns.db.locked = locked and true or false
-    if not quiet then ns.Print(L(ns.db.locked and "BAGS_LOCKED" or "BAGS_UNLOCKED")) end
-    if not ns.db.locked and ns.OpenBags then ns.OpenBags() end -- beim Entsperren sieht man, was man verschiebt
-    if ns.RefreshOptions then ns.RefreshOptions() end
-end
-
-if UI.RegisterMovable then
-    UI.RegisterMovable(addonName, function() return ns.db and ns.db.locked end, function(locked)
-        ns.SetLocked(locked, true)
-    end)
-end
-
----------------------------------------------------------------------------
 -- Start
 ---------------------------------------------------------------------------
 local events = CreateFrame("Frame")
@@ -98,7 +83,7 @@ events:SetScript("OnEvent", function(self, event, arg1)
 end)
 
 ---------------------------------------------------------------------------
--- Chatbefehl: /fbags (Menü), /fbags bags (Taschen), /fbags reset (Position), /fbags move (entsperren/sperren)
+-- Chatbefehl: /fbags (Menü), /fbags bags (Taschen), /fbags reset (Position)
 ---------------------------------------------------------------------------
 SLASH_FOREVERBAGS1 = "/fbags"
 SLASH_FOREVERBAGS2 = "/foreverbags"
@@ -108,8 +93,6 @@ SlashCmdList.FOREVERBAGS = function(msg)
         ns.ToggleBags()
     elseif msg == "reset" then
         ns.ResetPosition()
-    elseif msg == "move" or msg == "lock" or msg == "unlock" then
-        ns.SetLocked(not ns.db.locked)
     else
         ns.ToggleOptions()
     end

@@ -432,7 +432,11 @@ Damit alle Einstellungsfenster gleich aussehen, gelten diese Maße. Quelle: `For
   das mit und öffnet sein Fenster. Händler, Post und Bank öffnen/schließen über `OpenAllBags`/`CloseAllBags` ebenso.
   Blizzards Umschalt-Funktionen rufen intern selbst Öffnen/Schließen auf (im selben Bild): ForeverBags merkt sich
   den Zustand vom Beginn des Bildes und schaltet genau einmal um. Suche über `C_Container.SetItemSearch` (gilt wie bei
-  Blizzard auch für die Bank), Sortieren über `C_Container.SortBags`
+  Blizzard auch für die Bank), Sortieren über `C_Container.SortBags`.
+  Das Taschenfenster ist nie gesperrt (an der Titelleiste ziehbar, ohne Raster/Hilfslinien) und meldet sich deshalb
+  nicht bei `/fmove` an. Taschen, Bank und Gold aller Charaktere liegen kontoweit in `ForeverBagsData` (eigene
+  SavedVariable, nicht über `UI.RegisterSettings` – Charakter-Daten, keine Einstellungen); die Bank wird nur gespeichert,
+  solange sie offen ist (nach `BANKFRAME_CLOSED` wäre sie leer)
 - **ForeverBars ↔ Bartender4**: läuft Bartender4, lässt ForeverBars die Leisten in Ruhe
 - **ForeverBars ↔ Bearbeitungsmodus**: öffnet der Spieler Blizzards Bearbeitungsmodus, entsperrt ForeverBars seine
   Leisten (Blizzard kann sie nicht greifen) und sperrt sie beim Schließen wieder. Laut flowfy lösen Hooks/Callbacks
