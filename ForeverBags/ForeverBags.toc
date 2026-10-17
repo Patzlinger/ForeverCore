@@ -14,4 +14,7 @@ Locales.lua
 Core.lua
 Data.lua
 Bags.lua
+Bank.lua
+GuildBank.lua
+Tooltip.lua
 Options.lua

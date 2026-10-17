@@ -26,7 +26,9 @@ local HEADER = 27         -- Titelleiste von UI.Window (26 + 1 px Rand)
 local TOOLBAR = 28        -- Zeile mit Ansicht, Suche, Taschenleiste, Sortieren
 local FOOTER = 24         -- Zeile mit freien Plätzen und Gold
 local DEFAULT_POS = { -20, 120 } -- untere rechte Ecke: 20 px vom rechten, 120 px vom unteren Rand
-local REAGENT_COLOR = { 0.25, 0.75, 0.55, 1 } -- Rand der Plätze in der Reagenzientasche
+local QUEST_COLOR = { 1, 0.9, 0.1, 1 } -- Questgegenstände: gelber, dickerer Rand
+local CURRENCY_ROW = 18   -- Zeile mit den gewählten Währungen (nur, wenn welche gewählt sind)
+ns.SLOT = SLOT
 
 local function ReagentBag() return Enum and Enum.BagIndex and Enum.BagIndex.ReagentBag end
 
@@ -38,10 +40,33 @@ local createPending = false
 -- Ansicht: nil = eigene Taschen (echt); sonst { key = "Name-Realm", kind = "bags" | "bank" }
 local view
 
+-- Randfarbe eines Platzes: Reagenzientasche in eigener (einstellbarer) Farbe, sonst grau
 local function EdgeColor(bag)
-    if bag ~= nil and bag == ReagentBag() then return REAGENT_COLOR end
+    if bag ~= nil and bag == ReagentBag() then
+        local c = ns.db and ns.db.reagentColor or { 0.25, 0.75, 0.55 }
+        return { c[1], c[2], c[3], 1 }
+    end
     return C.border
 end
+
+-- Rand neu setzen: beim Darüberfahren gold, Questgegenstand gelb und 2 px dick, sonst Farbe der Tasche
+local function ApplyEdge(button, hovered)
+    local edge = button.fbagsEdge
+    if not edge then return end
+    local size = button.fbagsQuest and 2 or 1
+    if edge.fbagsSize ~= size then
+        edge:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = size })
+        edge.fbagsSize = size
+    end
+    if hovered then
+        edge:SetBackdropBorderColor(C.accent[1], C.accent[2], C.accent[3], 0.9)
+    elseif button.fbagsQuest then
+        edge:SetBackdropBorderColor(unpack(QUEST_COLOR))
+    else
+        edge:SetBackdropBorderColor(unpack(EdgeColor(button.fbagsBag)))
+    end
+end
+ns.ApplyEdge = ApplyEdge
 
 ---------------------------------------------------------------------------
 -- Ein echter Taschenplatz
@@ -53,20 +78,16 @@ local function AddForeverLook(button, bag)
     local edge = CreateFrame("Frame", nil, button, "BackdropTemplate")
     edge:SetAllPoints()
     edge:SetFrameLevel(button:GetFrameLevel() + 2)
-    edge:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 })
     edge:EnableMouse(false)
     button.fbagsEdge = edge
     button.fbagsBag = bag
-    edge:SetBackdropBorderColor(unpack(EdgeColor(bag)))
-    button:HookScript("OnEnter", function(self)
-        self.fbagsEdge:SetBackdropBorderColor(C.accent[1], C.accent[2], C.accent[3], 0.9)
-    end)
-    button:HookScript("OnLeave", function(self)
-        self.fbagsEdge:SetBackdropBorderColor(unpack(EdgeColor(self.fbagsBag)))
-    end)
+    ApplyEdge(button, false)
+    button:HookScript("OnEnter", function(self) ApplyEdge(self, true) end)
+    button:HookScript("OnLeave", function(self) ApplyEdge(self, false) end)
 end
+ns.AddForeverLook = AddForeverLook
 
-local function StyleSlot(button, bag)
+function ns.StyleSlot(button, bag)
     -- Blizzards Platz-Rahmen ausblenden, dafür dunkle Fläche + 1-px-Rand im Forever-Stil
     local normal = button.GetNormalTexture and button:GetNormalTexture()
     if normal then normal:SetAlpha(0) end
@@ -93,14 +114,15 @@ local function CreateSlot(bag, slot)
     button:SetID(slot)
     if button.SetBagID then pcall(button.SetBagID, button, bag) end
     button:SetSize(SLOT, SLOT)
-    StyleSlot(button, bag)
+    ns.StyleSlot(button, bag)
     buttons[bag] = buttons[bag] or {}
     buttons[bag][slot] = button
     return button
 end
 
--- Anzeige eines Platzes aus den Taschendaten (geht auch im Kampf: keine geschützten Änderungen)
-local function UpdateSlot(button, bag, slot)
+-- Anzeige eines Platzes aus den Taschendaten (geht auch im Kampf: keine geschützten Änderungen).
+-- Auch für das Bankfenster (Bank.lua).
+function ns.UpdateSlot(button, bag, slot)
     local info = C_Container.GetContainerItemInfo(bag, slot)
     local texture = info and info.iconFileID
     SetItemButtonTexture(button, texture)
@@ -130,8 +152,13 @@ local function UpdateSlot(button, bag, slot)
     end
     -- Abklingzeit
     if button.UpdateCooldown then pcall(button.UpdateCooldown, button, texture) end
+    -- Questgegenstand: gelber, dickerer Rand
+    local quest = info and C_Container.GetContainerItemQuestInfo and C_Container.GetContainerItemQuestInfo(bag, slot)
+    button.fbagsQuest = quest and (quest.isQuestItem or quest.questID ~= nil) and true or false
+    ApplyEdge(button, button:IsMouseOver())
     button:Show()
 end
+local UpdateSlot = ns.UpdateSlot
 
 ---------------------------------------------------------------------------
 -- Gespeicherte Ansicht (anderer Charakter oder Bank): einfache Knöpfe, nur zum Ansehen
@@ -363,11 +390,13 @@ function ns.LayoutBags()
     local width = columns * SLOT + (columns - 1) * gap
     local height = rows * SLOT + (rows - 1) * gap
     local barSpace = showBar and (BAGSLOT + 6) or 0
+    local currencySpace = ns.UpdateCurrencies() and CURRENCY_ROW or 0
     if not InCombatLockdown() then
         content:ClearAllPoints()
         content:SetPoint("TOPLEFT", PAD, -HEADER - TOOLBAR - barSpace)
         content:SetSize(width, height)
-        window:SetSize(math.max(width + 2 * PAD, 330), HEADER + TOOLBAR + barSpace + height + FOOTER + 2 * PAD)
+        window:SetSize(math.max(width + 2 * PAD, 330),
+            HEADER + TOOLBAR + barSpace + height + currencySpace + FOOTER + 2 * PAD)
     end
     viewButton:SetText(ViewLabel())
     freeText:SetText(L("FREE_SLOTS", total - used, total))
@@ -440,12 +469,112 @@ local function MoneyTooltip(owner)
 end
 
 ---------------------------------------------------------------------------
--- Position und Verschieben (immer möglich, an der Titelleiste; ohne Raster und Hilfslinien)
+-- Währungen in der Fußzeile: die gewählten (Rechtsklick auf die Fußzeile = Auswahl). Beim ersten Start die
+-- in Blizzards Währungsfenster "im Rucksack anzeigen" markierten.
+---------------------------------------------------------------------------
+local currencyRow
+local currencyButtons = {}
+
+local function CurrencyID(index)
+    local info = C_CurrencyInfo.GetCurrencyListInfo(index)
+    if not info then return nil end
+    if info.currencyID then return info.currencyID, info end
+    local link = C_CurrencyInfo.GetCurrencyListLink and C_CurrencyInfo.GetCurrencyListLink(index)
+    return link and tonumber(link:match("currency:(%d+)")), info
+end
+
+local function SelectedCurrencies()
+    local db = ns.db
+    db.currencies = db.currencies or {}
+    if not db.currencyInit and C_CurrencyInfo and C_CurrencyInfo.GetBackpackCurrencyInfo then
+        db.currencyInit = true
+        for i = 1, 5 do
+            local info = C_CurrencyInfo.GetBackpackCurrencyInfo(i)
+            local id = info and (info.currencyTypesID or info.currencyID)
+            if id then db.currencies[id] = true end
+        end
+    end
+    local list = {}
+    if C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo then
+        for id in pairs(db.currencies) do
+            local info = C_CurrencyInfo.GetCurrencyInfo(id)
+            if info and info.name then list[#list + 1] = { id = id, info = info } end
+        end
+    end
+    table.sort(list, function(a, b) return a.info.name < b.info.name end)
+    return list
+end
+
+-- Zeile neu füllen; Rückgabe: true, wenn mindestens eine Währung gezeigt wird
+function ns.UpdateCurrencies()
+    if not currencyRow then return false end
+    local list = SelectedCurrencies()
+    local x = 0
+    for i, entry in ipairs(list) do
+        local b = currencyButtons[i]
+        if not b then
+            b = CreateFrame("Frame", nil, currencyRow)
+            b:SetHeight(CURRENCY_ROW)
+            b.text = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+            b.text:SetPoint("LEFT")
+            b:EnableMouse(true)
+            b:SetScript("OnEnter", function(self)
+                GameTooltip:SetOwner(self, "ANCHOR_TOP")
+                if GameTooltip.SetCurrencyByID then GameTooltip:SetCurrencyByID(self.id) end
+                GameTooltip:Show()
+            end)
+            b:SetScript("OnLeave", GameTooltip_Hide)
+            b:SetScript("OnMouseUp", function(self, button) if button == "RightButton" then ns.CurrencyMenu() end end)
+            currencyButtons[i] = b
+        end
+        b.id = entry.id
+        b.text:SetText(string.format("|T%s:14:14:0:0:64:64:5:59:5:59|t %s", entry.info.iconFileID or 134400,
+            BreakUpLargeNumbers and BreakUpLargeNumbers(entry.info.quantity or 0) or (entry.info.quantity or 0)))
+        b:SetWidth(b.text:GetStringWidth() + 4)
+        b:ClearAllPoints()
+        b:SetPoint("LEFT", currencyRow, "LEFT", x, 0)
+        b:Show()
+        x = x + b:GetWidth() + 10
+    end
+    for i = #list + 1, #currencyButtons do currencyButtons[i]:Hide() end
+    currencyRow:SetShown(#list > 0)
+    return #list > 0
+end
+
+-- Auswahl aller bekannten Währungen (nach Blizzards Gruppen), Häkchen = in der Fußzeile zeigen
+function ns.CurrencyMenu()
+    local items = { { title = L("CURRENCY_TITLE") } }
+    if C_CurrencyInfo and C_CurrencyInfo.GetCurrencyListSize then
+        for index = 1, C_CurrencyInfo.GetCurrencyListSize() do
+            local id, info = CurrencyID(index)
+            if info and info.isHeader then
+                items[#items + 1] = { divider = true }
+                items[#items + 1] = { title = info.name }
+            elseif id and info then
+                items[#items + 1] = { checkbox = true,
+                    text = string.format("|T%s:14:14:0:0:64:64:5:59:5:59|t %s", info.iconFileID or 134400, info.name),
+                    checked = function() return ns.db.currencies and ns.db.currencies[id] == true end,
+                    onClick = function()
+                        ns.db.currencies = ns.db.currencies or {}
+                        ns.db.currencies[id] = not ns.db.currencies[id] or nil
+                        ns.LayoutBags()
+                    end }
+            end
+        end
+    end
+    if #items == 1 then items[#items + 1] = { text = L("CURRENCY_NONE"), disabled = true } end
+    UI.ShowMenu(window, items, { atCursor = true })
+end
+
+---------------------------------------------------------------------------
+-- Position und Verschieben (immer möglich, an der Titelleiste; ohne Raster und Hilfslinien).
+-- Gespeichert in UIParent-Einheiten; beim Setzen durch die eigene Größe (Griff unten rechts) geteilt.
 ---------------------------------------------------------------------------
 local function RestorePosition()
     local pos = ns.db.pos or DEFAULT_POS
+    local scale = window:GetScale()
     window:ClearAllPoints()
-    window:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", pos[1], pos[2])
+    window:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", pos[1] / scale, pos[2] / scale)
 end
 
 local function SavePosition()
@@ -454,6 +583,35 @@ local function SavePosition()
     local s = window:GetEffectiveScale() / UIParent:GetEffectiveScale()
     ns.db.pos = { UI.Round(right * s - UIParent:GetRight()), UI.Round(bottom * s) }
     RestorePosition()
+end
+
+-- Beim Öffnen: beim Händler unter dem ForeverVendor-Fenster (bzw. rechts neben dem Händlerfenster), sonst an
+-- der Mausposition (Einstellung "openAtCursor"; aus = gespeicherte Position). Bildschirmränder hält UI.Window ein.
+local function PlaceOnOpen()
+    if not window or window.fbagsMoving then return end
+    local ws = window:GetEffectiveScale()
+    local function At(point, frame, x, y)
+        window:ClearAllPoints()
+        window:SetPoint(point, UIParent, "BOTTOMLEFT", x / ws, y / ws)
+    end
+    local merchant = _G.MerchantFrame
+    if merchant and merchant:IsShown() and merchant:GetRight() then
+        local vendor = _G.ForeverVendorMerchantPanel
+        if vendor and vendor:IsShown() and vendor:GetLeft() then
+            local vs = vendor:GetEffectiveScale()
+            At("TOPLEFT", vendor, vendor:GetLeft() * vs, vendor:GetBottom() * vs - 4 * ws)
+        else
+            local ms = merchant:GetEffectiveScale()
+            At("TOPLEFT", merchant, merchant:GetRight() * ms + 4 * ws, merchant:GetTop() * ms)
+        end
+        return
+    end
+    if ns.db.openAtCursor == false then
+        RestorePosition()
+        return
+    end
+    local x, y = GetCursorPosition()
+    At("CENTER", nil, x, y)
 end
 
 function ns.ResetPosition()
@@ -576,8 +734,28 @@ local function CreateWindow()
     moneyArea:SetScript("OnEnter", MoneyTooltip)
     moneyArea:SetScript("OnLeave", HideTip)
 
+    -- Währungen über der Fußzeile; Rechtsklick auf Fußzeile oder Währungen = Auswahl der Währungen
+    currencyRow = CreateFrame("Frame", nil, window)
+    currencyRow:SetPoint("BOTTOMLEFT", PAD, PAD + FOOTER - 4)
+    currencyRow:SetPoint("BOTTOMRIGHT", -PAD - 16, PAD + FOOTER - 4)
+    currencyRow:SetHeight(CURRENCY_ROW)
+    local footer = CreateFrame("Frame", nil, window)
+    footer:SetPoint("BOTTOMLEFT", PAD, PAD)
+    footer:SetPoint("BOTTOMRIGHT", moneyArea, "BOTTOMLEFT", -4, 0)
+    footer:SetHeight(FOOTER)
+    footer:EnableMouse(true)
+    local function FooterClick(_, button) if button == "RightButton" then ns.CurrencyMenu() end end
+    footer:SetScript("OnMouseUp", FooterClick)
+    moneyArea:SetScript("OnMouseUp", FooterClick)
+    currencyRow:EnableMouse(true)
+    currencyRow:SetScript("OnMouseUp", FooterClick)
+    footer:SetScript("OnEnter", function(self) SimpleTip(self, L("TIP_CURRENCY")) end)
+    footer:SetScript("OnLeave", HideTip)
+
     -- HookScript statt SetScript: der Hub hängt eigene Dinge an OnShow (Fenster-Stapel, Größen-Griff)
     window:HookScript("OnShow", function()
+        PlaceOnOpen()
+        C_Timer.After(0, PlaceOnOpen) -- ForeverVendor setzt sein Händler-Fenster im selben Moment
         ns.LayoutBags()
         if PlaySound and SOUNDKIT and SOUNDKIT.IG_BACKPACK_OPEN then PlaySound(SOUNDKIT.IG_BACKPACK_OPEN) end
     end)
@@ -605,6 +783,82 @@ function ns.ToggleBags()
     if not window then return end
     window:SetShown(not window:IsShown())
 end
+
+---------------------------------------------------------------------------
+-- Blizzards Bank-/Gildenbank-Fenster unsichtbar und nicht anklickbar machen (Bank.lua, GuildBank.lua).
+-- Schließen geht nicht: deren OnHide beendet den Besuch beim Bankier. Nur Deckkraft und Maus – keine
+-- geschützten Rahmen werden verändert (die überspringen wir im Kampf).
+---------------------------------------------------------------------------
+local hiddenPanels = {}
+function ns.HideBlizzardPanel(frame)
+    if not frame then return end
+    local parts = hiddenPanels[frame] or {}
+    hiddenPanels[frame] = parts
+    frame:SetAlpha(0)
+    local function Walk(f, depth)
+        if f.IsMouseEnabled and f:IsMouseEnabled() and not (InCombatLockdown() and f.IsProtected and f:IsProtected()) then
+            if pcall(f.EnableMouse, f, false) then parts[f] = true end
+        end
+        if depth < 8 then
+            for _, child in ipairs({ f:GetChildren() }) do Walk(child, depth + 1) end
+        end
+    end
+    Walk(frame, 0)
+end
+
+function ns.RestoreBlizzardPanel(frame)
+    local parts = frame and hiddenPanels[frame]
+    if not parts then return end
+    frame:SetAlpha(1)
+    for part in pairs(parts) do pcall(part.EnableMouse, part, true) end
+    hiddenPanels[frame] = nil
+end
+
+-- Kleines Fenster-Gerüst wie das Taschenfenster: Titelleiste ziehbar (Position wird gespeichert), Zahnrad
+function ns.CreateBagWindow(name, title, posKey, defaultPos)
+    local w = UI.Window(name, title, 400, 300)
+    w:SetFrameStrata("HIGH")
+    w:SetScript("OnDragStart", nil)
+    w:SetScript("OnDragStop", nil)
+    local function Restore()
+        local pos = ns.db[posKey] or defaultPos
+        local scale = w:GetScale()
+        w:ClearAllPoints()
+        w:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", pos[1] / scale, pos[2] / scale)
+    end
+    w.header:SetScript("OnDragStart", function()
+        if InCombatLockdown() then return end
+        w.fbagsMoving = true
+        w:StartMoving()
+    end)
+    w.header:SetScript("OnDragStop", function()
+        if not w.fbagsMoving then return end
+        w.fbagsMoving = nil
+        w:StopMovingOrSizing()
+        local left, top = w:GetLeft(), w:GetTop()
+        if left and top then
+            local s = w:GetEffectiveScale() / UIParent:GetEffectiveScale()
+            ns.db[posKey] = { UI.Round(left * s), UI.Round(top * s) }
+        end
+        Restore()
+    end)
+    w.RestorePosition = Restore
+    if UI.AddMover then UI.AddMover(w) end
+    local gear = CreateFrame("Button", nil, w.header)
+    gear:SetSize(16, 16)
+    gear:SetPoint("RIGHT", w.CloseButton, "LEFT", -4, 0)
+    gear.icon = gear:CreateTexture(nil, "ARTWORK")
+    gear.icon:SetAllPoints()
+    gear.icon:SetTexture("Interface\\Icons\\INV_Misc_Gear_01")
+    gear.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    gear.icon:SetAlpha(0.8)
+    gear:SetScript("OnClick", function() ns.ToggleOptions() end)
+    gear:SetScript("OnEnter", function(self) self.icon:SetAlpha(1) SimpleTip(self, L("TIP_GEAR")) end)
+    gear:SetScript("OnLeave", function(self) self.icon:SetAlpha(0.8) HideTip() end)
+    Restore()
+    return w
+end
+ns.SimpleTip, ns.HideTip = SimpleTip, HideTip
 
 ---------------------------------------------------------------------------
 -- Blizzards Taschen ersetzen
@@ -684,7 +938,8 @@ function ns.SetupBags()
     EnsureSlots() -- alle Plätze gleich beim Login anlegen: dann muss im Kampf nichts Neues entstehen
     for _, event in ipairs({ "BAG_UPDATE_DELAYED", "ITEM_LOCK_CHANGED", "BAG_UPDATE_COOLDOWN", "PLAYER_MONEY",
         "INVENTORY_SEARCH_UPDATE", "BAG_NEW_ITEMS_UPDATED", "PLAYER_REGEN_ENABLED", "BAG_CONTAINER_UPDATE",
-        "PLAYER_EQUIPMENT_CHANGED", "PLAYER_ENTERING_WORLD" }) do
+        "PLAYER_EQUIPMENT_CHANGED", "PLAYER_ENTERING_WORLD", "CURRENCY_DISPLAY_UPDATE", "QUEST_ACCEPTED",
+        "QUEST_REMOVED" }) do
         pcall(events.RegisterEvent, events, event)
     end
 end

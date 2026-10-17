@@ -15,6 +15,14 @@ ns.defaults = {
     spacing = 2,            -- Abstand zwischen den Plätzen (px)
     qualityBorder = true,   -- Rand in Qualitätsfarbe (grün, blau, episch …)
     highlightNew = true,    -- neu erhaltene Gegenstände leuchten, bis man mit der Maus darüberfährt
+    openAtCursor = true,    -- beim Öffnen an der Mausposition (beim Händler: unter ForeverVendor / neben dem Händler)
+    reagentColor = { 0.25, 0.75, 0.55 }, -- Rand der Plätze in der Reagenzientasche
+    replaceBank = true,     -- eigenes Bankfenster beim Bankier
+    bankColumns = 14,
+    replaceGuildBank = true, -- eigenes Gildenbankfenster
+    tooltipCounts = true,   -- im Gegenstands-Tooltip: wie viele jeder Charakter hat
+    currencies = {},        -- [Währungs-ID] = true: in der Fußzeile zeigen (Rechtsklick auf die Fußzeile)
+    currencyInit = false,   -- beim ersten Mal Blizzards "im Rucksack anzeigen" übernehmen
     showMinimapButton = true,
     minimapAngle = 235,
 }

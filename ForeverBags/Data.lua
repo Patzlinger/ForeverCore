@@ -92,6 +92,7 @@ function ns.SaveBags()
     if slots == 0 then return end
     c.bags = data
     c.updated = time()
+    ns.dataVersion = (ns.dataVersion or 0) + 1 -- Tooltip-Zählung neu aufbauen (Tooltip.lua)
 end
 
 local bankOpen = false
@@ -102,6 +103,7 @@ function ns.SaveBank()
     local c = Me()
     c.bank = data
     c.bankUpdated = time()
+    ns.dataVersion = (ns.dataVersion or 0) + 1
 end
 
 function ns.SaveMoney()
