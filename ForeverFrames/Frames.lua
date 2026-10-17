@@ -743,11 +743,20 @@ local READY_TEX = {
     waiting = "Interface\\RaidFrame\\ReadyCheck-Waiting",
 }
 
+-- Haken (bereit), Kreuz (nicht bereit) oder Fragezeichen (wartet). Nach dem Ende des Checks liefert Blizzard
+-- keinen Status mehr – dann bleibt der letzte stehen (wer nicht geantwortet hat, bekommt das Kreuz).
 local function UpdateReady(b)
     local v = b.ff
-    if not GetDB().readyShow or not ns.readyCheckActive then v.ready:Hide() return end
+    if not GetDB().readyShow or not ns.readyCheckActive then
+        b.ffReadyLast = nil
+        v.ready:Hide()
+        return
+    end
     local status = GetReadyCheckStatus(b.ffUnit)
-    if IsSecret(status) or not READY_TEX[status] then v.ready:Hide() return end
+    if IsSecret(status) or not READY_TEX[status] then status = nil end
+    if status then b.ffReadyLast = status else status = b.ffReadyLast end
+    if ns.readyCheckFinished and status == "waiting" then status = "notready" end
+    if not status then v.ready:Hide() return end
     v.ready:SetTexture(READY_TEX[status])
     v.ready:Show()
 end
@@ -1240,15 +1249,22 @@ local function ReadyAndIncoming(b)
     UpdateReady(b)
     UpdateIncoming(b)
 end
+local readyTimer
 ns.On("READY_CHECK", "Bereitschaftscheck", function()
-    ns.readyCheckActive = true
+    if readyTimer then readyTimer:Cancel() readyTimer = nil end
+    for _, b in ipairs(ns.buttons) do b.ffReadyLast = nil end
+    ns.readyCheckActive, ns.readyCheckFinished = true, false
     ForEachShown(ReadyAndIncoming)
 end)
-ns.On("READY_CHECK_CONFIRM", "Bereitschaftscheck", ForUnit(ReadyAndIncoming))
+-- Blizzard meldet die Antwort teils mit "raidN", obwohl der Rahmen "partyN"/"player" zeigt -> alle aktualisieren
+ns.On("READY_CHECK_CONFIRM", "Bereitschaftscheck", function() ForEachShown(ReadyAndIncoming) end)
 ns.On("READY_CHECK_FINISHED", "Bereitschaftscheck", function()
+    ns.readyCheckFinished = true
     ForEachShown(ReadyAndIncoming)
-    C_Timer.After(6, Safe("Bereitschaftscheck", function()
-        ns.readyCheckActive = false
+    if readyTimer then readyTimer:Cancel() end
+    readyTimer = C_Timer.NewTimer(6, Safe("Bereitschaftscheck", function()
+        readyTimer = nil
+        ns.readyCheckActive, ns.readyCheckFinished = false, false
         ForEachShown(ReadyAndIncoming)
     end))
 end)
