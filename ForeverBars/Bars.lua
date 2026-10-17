@@ -1013,10 +1013,26 @@ local function ShowEmptySlots(key)
     return ns.db.showGrid or slotDragActive or (GetCursorInfo() == SLOT_BARS[key].cursorKind)
 end
 
--- Knöpfe belegen (nur außerhalb des Kampfes); Rückgabe: Anzahl Plätze
+-- Wie viele Plätze die Leiste gerade zeigt. Berufe: nur bis zum letzten belegten Platz (die Leiste wächst mit
+-- den Berufen; "Anzahl Knöpfe" ist die Höchstzahl), beim Hineinziehen/Verschieben ein freier Platz mehr.
+-- Verpflegung: immer alle Plätze (festes Raster).
+local slotShown = {}
+local function ShownSlotCount(key, cfg, capacity)
+    if key ~= "prof" then return capacity end
+    local last = 0
+    for slot in pairs(cfg.slots) do
+        if slot <= capacity and slot > last then last = slot end
+    end
+    if slotDragActive or GetCursorInfo() == SLOT_BARS[key].cursorKind then last = last + 1 end
+    return math.max(1, math.min(capacity, last))
+end
+
+-- Knöpfe belegen (nur außerhalb des Kampfes); Rückgabe: Anzahl gezeigter Plätze
 function ns.AssignSlotButtons(key)
     local info = SLOT_BARS[key]
-    local cfg, count = FillSlots(key)
+    local cfg, capacity = FillSlots(key)
+    local count = ShownSlotCount(key, cfg, capacity)
+    slotShown[key] = count
     local showEmpty = ShowEmptySlots(key)
     for i = 1, info.count do
         local button = _G[info.prefix .. i]
@@ -1044,8 +1060,7 @@ end
 function ns.UpdateEmptySlots()
     if InCombatLockdown() then return end
     for key, info in pairs(SLOT_BARS) do
-        local cfg = ns.db.bars[key]
-        local count = SlotCount(key, cfg)
+        local count = slotShown[key] or SlotCount(key, ns.db.bars[key])
         local showEmpty = ShowEmptySlots(key)
         for i = 1, math.min(count, info.count) do
             local button = _G[info.prefix .. i]
@@ -1174,15 +1189,20 @@ local function DropSlot(key)
     local step = ACTION_SIZE + ns.ButtonGap(cfg)
     local col = cfg.growX == "LEFT" and math.floor((holder:GetRight() - x) / step) or math.floor((x - holder:GetLeft()) / step)
     local row = cfg.growY == "UP" and math.floor((y - holder:GetBottom()) / step) or math.floor((holder:GetTop() - y) / step)
-    local count = SlotCount(key, cfg)
+    -- Raster wie beim Anordnen: Breite = "Knöpfe pro Reihe", höchstens so viele wie gezeigte Plätze
+    local count = slotShown[key] or SlotCount(key, cfg)
     local perRow = math.max(1, math.min(cfg.perRow or count, count))
     col = math.max(0, math.min(perRow - 1, col))
     row = math.max(0, row)
     return math.min(count, row * perRow + col + 1)
 end
 
+local lastCursorKind
 local function UpdateCatchers()
     local kind = GetCursorInfo()
+    -- Zauber am Mauszeiger (bzw. wieder weg): Berufeleiste bekommt einen freien Platz dazu (bzw. wieder weg)
+    if (kind == "spell") ~= (lastCursorKind == "spell") and not InCombatLockdown() then ns.RequestLayout() end
+    lastCursorKind = kind
     for key, catcher in pairs(catchers) do
         local holder = holders[key]
         catcher.frame:SetShown(kind == catcher.kind and not InCombatLockdown() and holder ~= nil
@@ -1255,6 +1275,7 @@ function ns.StartOwnDrag(key, button)
     button:SetAlpha(0.35)
     slotDragActive = true
     ns.UpdateEmptySlots() -- leere Plätze als Ziel zeigen
+    if key == "prof" then ns.RequestLayout() end -- Berufeleiste: ein freier Platz mehr zum Ablegen
 end
 
 function ns.StopOwnDrag(button)
@@ -1265,6 +1286,7 @@ function ns.StopOwnDrag(button)
     button:SetAlpha(1)
     if not state or state.button ~= button then
         ns.UpdateEmptySlots()
+        ns.RequestLayout()
         return
     end
     if CursorOverHolder(state.key) then
@@ -1273,6 +1295,7 @@ function ns.StopOwnDrag(button)
         ns.SlotRemove(state.key, state.slot)
     end
     ns.UpdateEmptySlots()
+    ns.RequestLayout() -- den freien Platz vom Ziehen wieder entfernen
 end
 
 function ns.CreateFoodButtons()
@@ -2198,13 +2221,16 @@ function ns.ApplyLayout()
         if not x or not y then x, y = ns.GetBarPosition(def.key) end
         holder:ClearAllPoints()
         -- Am Chatfenster angeheftet (Häkchen; früher auch "unter dem Chat" – das gilt jetzt als "über dem Chat")
+        -- Bezugspunkt ist der sichtbare Hintergrund des Chatfensters (er ist etwas größer als das Textfeld),
+        -- damit die Leiste genau auf seiner Ecke sitzt
         local chat = (def.key == "micro" or def.kind == "bags") and ns.IsAttachedToChat(cfg) and ChatFrame1
+        local chatEdge = chat and (chat.Background or _G.ChatFrame1Background or chat)
         if chat and def.key == "micro" then
             -- Mikromenü über dem Chatfenster (oberhalb der Chat-Reiter), linksbündig
-            holder:SetPoint("BOTTOMLEFT", chat, "TOPLEFT", -2 / scale, 26 / scale)
+            holder:SetPoint("BOTTOMLEFT", chatEdge, "TOPLEFT", 0, 24 / scale)
         elseif chat then
-            -- Taschen über dem Chatfenster, rechtsbündig; sie klappen nach oben aus
-            holder:SetPoint("BOTTOMRIGHT", chat, "TOPRIGHT", 2 / scale, 26 / scale)
+            -- Taschen über dem Chatfenster, bündig mit der rechten Ecke; sie klappen nach oben aus
+            holder:SetPoint("BOTTOMRIGHT", chatEdge, "TOPRIGHT", 0, 24 / scale)
         else
             holder:SetPoint(cfg.point or "CENTER", UIParent, "BOTTOMLEFT", x / scale, y / scale)
         end

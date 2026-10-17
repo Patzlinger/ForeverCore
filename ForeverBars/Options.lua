@@ -322,20 +322,20 @@ local function CreateOptions()
         function() return 0 end, function() return 20 end,
         function() return SelectedConfig().spacing or 4 end,
         function(value) SelectedConfig().spacing = value; Changed() end)
-    CreateSlider(layoutPage, L("OPT_SCALE"), 14, -206, 180,
+    options.scaleSlider = CreateSlider(layoutPage, L("OPT_SCALE"), 14, -206, 180,
         function() return 50 end, function() return 200 end,
         function() return SelectedConfig().scale or 100 end,
         function(value) SelectedConfig().scale = value; Changed() end)
-    CreateSlider(layoutPage, L("OPT_ALPHA"), 14, -250, 180,
+    options.alphaSlider = CreateSlider(layoutPage, L("OPT_ALPHA"), 14, -250, 180,
         function() return 0 end, function() return 100 end,
         function() return SelectedConfig().alpha or 100 end,
         function(value) SelectedConfig().alpha = value; Changed() end)
     -- Position (Mitte der Leiste, von unten links); geht auch per Ziehen im entsperrten Zustand
-    CreateSlider(layoutPage, L("OPT_POS_X"), 14, -294, 180,
+    options.posXSlider = CreateSlider(layoutPage, L("OPT_POS_X"), 14, -294, 180,
         function() return 0 end, function() return math.floor(UIParent:GetWidth()) end,
         function() return (ns.GetBarPosition(selectedKey)) end,
         function(value) SelectedConfig().x = value; Changed() end)
-    CreateSlider(layoutPage, L("OPT_POS_Y"), 14, -338, 180,
+    options.posYSlider = CreateSlider(layoutPage, L("OPT_POS_Y"), 14, -338, 180,
         function() return 0 end, function() return math.floor(UIParent:GetHeight()) end,
         function() return select(2, ns.GetBarPosition(selectedKey)) end,
         function(value) SelectedConfig().y = value; Changed() end)
@@ -384,7 +384,7 @@ local function CreateOptions()
     end, L("TIP_FOOD_RESET"))
     options.foodResetButton:SetPoint("TOPLEFT", RIGHT_X, -214)
     -- Rahmen um die Leiste (wie die Fenster in ForeverQuests)
-    CreateCheckbox(layoutPage, L("OPT_FRAME"), RIGHT_X, -244,
+    options.frameCheck = CreateCheckbox(layoutPage, L("OPT_FRAME"), RIGHT_X, -244,
         function() return SelectedConfig().frame end,
         function(value) SelectedConfig().frame = value; Changed(); ns.RefreshOptions() end)
     options.frameTitleCheck = CreateCheckbox(layoutPage, L("OPT_FRAME_TITLE"), RIGHT_X + 16, -268,
@@ -416,12 +416,12 @@ local function CreateOptions()
     options.frameTitleBox = titleBox
 
     -- Zentrieren: Leiste waagerecht bzw. senkrecht in die Bildschirmmitte setzen
-    CreateSearchButton(layoutPage, L("BTN_CENTER_X"), 170, 22, function()
+    options.centerXButton = CreateSearchButton(layoutPage, L("BTN_CENTER_X"), 170, 22, function()
         ns.SetBarCenter(selectedKey, UIParent:GetWidth() / 2, nil)
         Changed()
         ns.RefreshOptions()
     end):SetPoint("TOPLEFT", RIGHT_X, -326)
-    CreateSearchButton(layoutPage, L("BTN_CENTER_Y"), 170, 22, function()
+    options.centerYButton = CreateSearchButton(layoutPage, L("BTN_CENTER_Y"), 170, 22, function()
         ns.SetBarCenter(selectedKey, nil, UIParent:GetHeight() / 2)
         Changed()
         ns.RefreshOptions()
@@ -1021,7 +1021,7 @@ function ns.RefreshOptions()
     end
     -- Taschen und Haltungen: Anzahl ergibt sich von selbst
     options.buttonsSlider:SetShown(hasButtons and def.kind ~= "bags" and def.kind ~= "stance")
-    options.spacingSlider:SetShown(hasButtons)
+    options.spacingSlider:SetShown(hasButtons or def.key == "micro")
     options.growXSelector:SetShown(hasButtons)
     options.growYSelector:SetShown(hasButtons)
     options.flyoutSelector:SetShown(def.kind == "action")
@@ -1033,6 +1033,19 @@ function ns.RefreshOptions()
     options.chatCheck:SetShown(def.key == "micro" or def.kind == "bags")
     options.microOwnCheck:SetShown(def.key == "micro")
     options.microGreyCheck:SetShown(def.key == "micro" and not SelectedConfig().microOwn)
+    -- Spalten im Reiter "Anordnung" lückenlos von oben nach unten anordnen
+    for _, column in ipairs(options.layoutColumns) do
+        local y = -74
+        for _, row in ipairs(column.rows) do
+            if row.spacer then
+                y = y - row.spacer
+            elseif row[1] and row[1]:IsShown() then
+                row[1]:ClearAllPoints()
+                row[1]:SetPoint("TOPLEFT", options.layoutPage, "TOPLEFT", column.x + (row[3] or 0), y)
+                y = y - row[2]
+            end
+        end
+    end
     for _, control in ipairs(controls) do
         control.Refresh()
     end
