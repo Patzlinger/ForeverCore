@@ -2398,6 +2398,7 @@ local MARKERS = {
 local MARK_ICON = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_"
 local CLEAR_ICON = "Interface\\Buttons\\UI-GroupLoot-Pass-Up"
 local GEAR_ICON = "Interface\\Icons\\INV_Misc_Gear_01"
+local MARK_SEP = 7 -- zusätzlicher Abstand vor der 4. Spalte (Bereitschaftscheck usw.) für die Trennlinie
 local FOOD_VIEWS = { unit = true, ground = true } -- "Verbrauchbares" gibt es als Ansicht nicht mehr
 
 local function PingChoices()
@@ -2515,6 +2516,9 @@ function ns.LayoutFoodMarks(cfg, holder, gap, corner, toLeft, toTop)
         for i, button in ipairs(set) do
             if key == "extra" then
                 Place(button, 3, i - 1) -- 4. Spalte, untereinander
+                -- etwas Platz für die Trennlinie zwischen Markierungen und Abfragen
+                local point, rel, relPoint, x, y = button:GetPoint(1)
+                button:SetPoint(point, rel, relPoint, x + MARK_SEP * (toLeft and -1 or 1), y)
             elseif key == view then
                 Place(button, (i - 1) % 3, math.floor((i - 1) / 3))
             else
@@ -2522,7 +2526,21 @@ function ns.LayoutFoodMarks(cfg, holder, gap, corner, toLeft, toTop)
             end
         end
     end
-    holder:SetSize(4 * ACTION_SIZE + 3 * gap, 3 * ACTION_SIZE + 2 * gap)
+    -- Trennlinie: senkrecht, mittig im Abstand vor der 4. Spalte (Ziel- und Bodenmarkierungen gleich)
+    if not holder.fbMarkLine then
+        holder.fbMarkLine = holder:CreateTexture(nil, "ARTWORK")
+        holder.fbMarkLine:SetWidth(1)
+    end
+    local line = holder.fbMarkLine
+    line:SetColorTexture(1, 1, 1, 0.18)
+    line:ClearAllPoints()
+    local first, last = sets.extra[1], sets.extra[#sets.extra]
+    local side = toLeft and "RIGHT" or "LEFT"
+    local offset = (MARK_SEP + gap) / 2 * (toLeft and 1 or -1)
+    line:SetPoint("TOP", first, "TOP" .. side, offset, 0)
+    line:SetPoint("BOTTOM", last, "BOTTOM" .. side, offset, 0)
+    line:Show()
+    holder:SetSize(4 * ACTION_SIZE + 3 * gap + MARK_SEP, 3 * ACTION_SIZE + 2 * gap)
     return true
 end
 
