@@ -22,8 +22,8 @@ Die Addons (jedes funktioniert auch einzeln, zusammen mit ForeverCore):
                  Einstellungen: /ff
   ForeverUnits   Einheitenrahmen für Spieler, Ziel, Ziel des Ziels, Fokus und Begleiter –
                  mit PvP-Symbol, Klassensymbol oder 2D-Porträt und optionalen
-                 DoT-Leisten unter Ziel/Fokus. Übernimmt auf Wunsch die Optik von
-                 ForeverFrames. Entsperrt: Raster, Einrasten, X/Y-Position. /fu
+                 DoT-Leisten unter Ziel/Fokus, Kombopunkte am Ziel (Schurke/Katze). Übernimmt
+                 auf Wunsch die Optik von ForeverFrames. Entsperrt: Raster, Einrasten, X/Y. /fu
   ForeverCast    Zauberleiste mit Ping, Lag-Bereich, Spell-Queue-Fenster und GCD.
                  Position per X/Y, Raster und Einrasten. /fcast
   ForeverLoot    Zeigt bei Würfel-Drops, wer Bedarf/Gier/Passen gewählt hat. /floot
@@ -33,7 +33,8 @@ Die Addons (jedes funktioniert auch einzeln, zusammen mit ForeverCore):
                  Dazu Erfahrungs- und Ruf-Leiste (früher ForeverXP) mit XP/Stunde, Zeit bis
                  Level-Up, Erholung, XP aus fertigen Quests und Ruf/Stunde. /fb (XP: /fxp)
   ForeverQuests  Questtracker statt Blizzards: nach Gebieten, Filter, angeheftete Quests,
-                 Belohnungstruhe, nur Instanz-Quests im Dungeon, Dungeonfenster. /fq
+                 Belohnungstruhe, nur Instanz-Quests im Dungeon, Dungeonfenster, Quests gemeinsam
+                 mit der Gruppe (Vorschlag, Fortschritt aller oben im Tracker). /fq
   ForeverMinimap Schlichte Minimap (rund oder eckig) mit Leiste für Gebiet, Uhr und Koordinaten,
                  Knöpfe nur bei Bedarf, Post-Kachel und Dungeonfinder-Auge. /fmm
   ForeverBags    Alle Taschen in einem Fenster: Suche, Sortieren, freie Plätze, Gold, eigenes Bank-
@@ -94,7 +95,8 @@ The addons (each one also works on its own, together with ForeverCore):
                  Settings: /ff
   ForeverUnits   Unit frames for player, target, target of target, focus and pet –
                  with PvP icon, class icon or 2D portrait and optional DoT bars
-                 below target/focus. Can use the ForeverFrames look.
+                 below target/focus, combo points on the target (rogue/cat). Can use the
+                 ForeverFrames look.
                  Unlocked: grid, snapping, X/Y position. /fu
   ForeverCast    Cast bar with ping, lag zone, spell queue window and GCD.
                  Position via X/Y, grid and snapping. /fcast
@@ -105,7 +107,8 @@ The addons (each one also works on its own, together with ForeverCore):
                  bars (formerly ForeverXP) with XP/hour, time to level-up, rested XP, XP from
                  completed quests and reputation/hour. /fb (XP: /fxp)
   ForeverQuests  Quest tracker instead of Blizzard's: grouped by zone, filters, pinned quests,
-                 reward chest, only instance quests in dungeons, dungeon window. /fq
+                 reward chest, only instance quests in dungeons, dungeon window, quests together
+                 with your group (suggest, everyone's progress at the top of the tracker). /fq
   ForeverMinimap Simple minimap (round or square) with a bar for zone, clock and coordinates,
                  buttons only when needed, mail tile and dungeon finder eye. /fmm
   ForeverBags    All bags in one window: search, sort, free slots, gold, own bank and guild bank

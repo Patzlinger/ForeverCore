@@ -2,13 +2,6 @@
 
 ## Unreleased
 
-### New
-- **ForeverQuests: do quests together with your group.** Right-click a quest in the tracker and pick "Suggest to group". Everyone in your group who uses ForeverQuests gets a small, quiet window next to their tracker asking whether they'd like to join, with "Join" and "No, thanks" (it goes away by itself after a minute). Everyone who joins sees the quest at the top of the tracker under "Together", with every objective and how far each member has got ("You 3/8   Anna 5/8"). Right-click the title to stop doing it together.
-- **ForeverUnits: combo points on your target** (Rogues, and Druids in cat form). By default they sit as a clear column on the outside of the target frame, right next to its portrait, filling up from gold to orange-red. Prefer something else? Choose a bar with five segments below the frame or round dots above it, change the size, or hide the empty points (General tab in /fu).
-
-### Fixed
-- ForeverBars: the marker bar and the profession bar now fold out and in during combat as well (before, the click only took effect after the fight).
-
 ## 0.44b – October 18, 2026
 
 ### Four new addons
@@ -16,14 +9,15 @@
   - Action bars, pet bar, stance bar and a totem bar for Shamans, each with its own size, layout, visibility, fading and key bindings (/fb)
   - Copy the settings of one action bar to another with one click (its position stays)
   - **Experience and reputation bars** (formerly ForeverXP): slim bars with a fine gold border, as wide as action bar 1 and right below it. XP per hour, time to level-up, rested XP and the XP your completed quests will give you. The reputation bar shows your watched faction with standing, progress, reputation per hour and the time to the next rank. Hover for more, click the reputation bar to open the reputation panel. Settings: /fb (or /fxp)
-  - **Marker bar:** target and world markers in a 3×3 grid, plus ready check, role poll and countdown, all with their own key bindings
+  - **Marker bar:** target and world markers in a 3×3 grid, plus ready check, role poll and countdown, all with their own key bindings shown on the buttons
   - Profession bar, a bag bar and a micro menu that docks right below the minimap
-  - The profession and marker bars fold into a small arrow button when you need the space
+  - The profession and marker bars fold into a small arrow button when you need the space, and fold out again even in combat
   - Leaves your bars alone if you use Bartender4
 - **ForeverQuests – a quest tracker that fits.** Replaces Blizzard's quest tracker.
   - Quests grouped by zone, with class/reputation/profession tags and a small chest for good item rewards
   - Filters (zone, dungeon, raid, group, class, profession, reputation, ready to turn in, pinned …) and "only instance quests" inside dungeons
-  - Pin your important quests to the top. Right-click a quest to share, untrack or abandon it.
+  - Pin your important quests to the top. Left-click a quest to open it in the quest log, right-click to share, untrack or abandon it.
+  - **Quest together:** right-click a quest and pick "Suggest to group". Your group mates with ForeverQuests get a small, quiet window next to their tracker asking whether they'd like to join ("Join" / "No, thanks", it goes away by itself after a minute). Everyone who joins sees the quest at the top of the tracker under "Together", with every objective and how far each member has got ("You 3/8   Anna 5/8").
   - A dungeon window with all dungeon quests, searchable
   - Sits right below the minimap and is just as wide by default
   - Settings: /fq
@@ -46,6 +40,7 @@
 - **Details! in the Forever look:** one click in the hub (/forever) gives Details! a matching skin. It creates a copy of your Details profile named "Forever Core", so your own profile stays untouched, and a second click switches back.
 - **ForeverChat: a tab for your custom channels.** Join a custom channel and a "+" button appears next to the General and Combat Log tabs. Pick a channel there and it gets its own tab ("# Name") right behind them. "Channel 5 · Name" at the top of the window shows where you are, and the input line writes to that channel. Switch to another channel with the "+" any time. Right-click the tab for the usual chat window menu, plus "Leave channel". Blizzard's overflow arrow is gone, and the "+" menu lists all your chat windows instead.
 - **ForeverFrames – separate settings for party and raid:** at the top of the settings (/ff) choose "Party" or "Raid", and every tab below sets up only those frames. The frames switch automatically when you join or leave a raid.
+- **ForeverUnits: combo points on your target** (Rogues, and Druids in cat form). A bright, glowing column right next to the target frame, just as tall as the frame, filling up from gold to orange-red. Prefer something else? Choose a bar with five segments below the frame or round dots above it, change the size, or hide the empty points (General tab in /fu).
 - **ForeverUnits: optional "Forever" skin (test).** In the Look tab you can give the unit frames the style of the Forever windows: flat bars, a slim border with a gold edge and a dark name band. Class colors, texts and all functions stay exactly as they are.
 
 ### Improved

@@ -31,6 +31,7 @@ Every addon needs the small base addon **ForeverCore**. It's included in the pac
 - Class icon or portrait, level and elite/rare marker
 - PvP and resting icons
 - Optional DoT bars for your target and focus, great for Warlocks and Shadow Priests. You can detach them and place them anywhere.
+- Combo points on your target for Rogues and Druids in cat form: a bright column next to the frame, a segmented bar or dots
 - Takes over the ForeverFrames look with a single click
 - Settings: /fu
 
@@ -58,6 +59,7 @@ Every addon needs the small base addon **ForeverCore**. It's included in the pac
 - A small chest marks quests with good item rewards
 - Filters for zone, dungeon, raid, group, class, profession, reputation and more. Inside dungeons it can show only the quests for that dungeon.
 - Pin important quests to the top, and share, untrack or abandon them with a right-click
+- **Quest together:** suggest a quest to your group. Everyone who joins sees it at the top of the tracker with the progress of all members.
 - A searchable dungeon window with all dungeon quests
 - Settings: /fq
 
