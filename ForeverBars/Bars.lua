@@ -2362,6 +2362,106 @@ function ns.WatchEditMode()
     C_Timer.NewTicker(EDIT_MODE_INTERVAL, CheckEditMode)
 end
 
+---------------------------------------------------------------------------
+-- Neue Ränge automatisch: Lernt man einen höheren Rang eines Zaubers, kommt er auf jeden Aktionsknopf, auf dem
+-- ein niedrigerer Rang dieses Zaubers liegt (gleicher Platz). Nur beim Lernen und nur für diesen Zauber – absichtlich
+-- niedrigere Ränge anderer Zauber bleiben. Rang-Erkennung wie in ForeverSpellbook (Zusatztext "Rang 3", höchster
+-- gelernter Rang aus dem Zauberbuch). Nur außerhalb des Kampfes und nur mit leerem Mauszeiger.
+---------------------------------------------------------------------------
+
+local issecret = _G.issecretvalue or function() return false end
+local pendingRanks = {}   -- [Zaubername] = true: wurde gerade gelernt
+local rankUpQueued = false
+
+local function RankNumber(text)
+    if type(text) ~= "string" or issecret(text) then return nil end
+    return tonumber(text:match("(%d+)"))
+end
+
+local function SpellSubtext(spellID)
+    return C_Spell and C_Spell.GetSpellSubtext and C_Spell.GetSpellSubtext(spellID)
+end
+
+local function LearnedSpellName(spellID)
+    local name = spellID and C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(spellID)
+    if type(name) == "string" and not issecret(name) then return name end
+end
+
+-- Höchster gelernter Rang je Zaubername aus dem Zauberbuch: { slot, bank, id, rank }
+local function BestRanks(names)
+    local best = {}
+    if not (C_SpellBook and C_SpellBook.GetNumSpellBookSkillLines and C_SpellBook.GetSpellBookItemInfo) then return best end
+    local bank = Enum and Enum.SpellBookSpellBank and Enum.SpellBookSpellBank.Player or 0
+    local future = Enum and Enum.SpellBookItemType and Enum.SpellBookItemType.FutureSpell
+    for line = 1, C_SpellBook.GetNumSpellBookSkillLines() do
+        local info = C_SpellBook.GetSpellBookSkillLineInfo(line)
+        if info and (info.numSpellBookItems or 0) > 0 then
+            for slot = info.itemIndexOffset + 1, info.itemIndexOffset + info.numSpellBookItems do
+                local item = C_SpellBook.GetSpellBookItemInfo(slot, bank)
+                local name = item and item.name
+                if name and not issecret(name) and names[name] and not item.isPassive
+                    and not (future and item.itemType == future) then
+                    local id = item.spellID or item.actionID
+                    local sub = item.subName
+                    if (not sub or sub == "") and id then sub = SpellSubtext(id) end
+                    local rank = RankNumber(sub)
+                    if rank and (not best[name] or rank > best[name].rank) then
+                        best[name] = { slot = slot, bank = bank, id = id, rank = rank }
+                    end
+                end
+            end
+        end
+    end
+    return best
+end
+
+local function UpgradeRanks()
+    rankUpQueued = false
+    if not ns.db.autoRankUp or not next(pendingRanks) then wipe(pendingRanks) return end
+    -- Im Kampf oder mit etwas am Mauszeiger: später nochmal (nach dem Kampf bzw. in einer Sekunde)
+    if InCombatLockdown() then return end
+    if GetCursorInfo() then
+        rankUpQueued = true
+        C_Timer.After(1, UpgradeRanks)
+        return
+    end
+    if not (GetActionInfo and PlaceAction and C_SpellBook and C_SpellBook.PickupSpellBookItem) then return end
+    local best = BestRanks(pendingRanks)
+    wipe(pendingRanks)
+    local count = 0
+    for slot = 1, 180 do
+        local ok, kind, id = pcall(GetActionInfo, slot)
+        if ok and kind == "spell" and id and not issecret(id) then
+            local name = LearnedSpellName(id)
+            local target = name and best[name]
+            local rank = target and RankNumber(SpellSubtext(id))
+            if target and target.id ~= id and rank and rank < target.rank then
+                ClearCursor()
+                C_SpellBook.PickupSpellBookItem(target.slot, target.bank)
+                if pcall(PlaceAction, slot) then count = count + 1 end
+                ClearCursor()
+            end
+        end
+    end
+    if count > 0 then ns.Print(L("RANK_UPGRADED", count)) end
+end
+
+-- Zauber gelernt: merken und kurz danach prüfen (das Zauberbuch ist dann schon aktualisiert)
+function ns.OnSpellLearned(spellID)
+    local name = LearnedSpellName(spellID)
+    if not name or not ns.db.autoRankUp then return end
+    pendingRanks[name] = true
+    if not rankUpQueued then
+        rankUpQueued = true
+        C_Timer.After(0.5, UpgradeRanks)
+    end
+end
+
+-- Nach dem Kampf nachholen, was währenddessen gelernt wurde
+function ns.UpgradeRanksAfterCombat()
+    if next(pendingRanks) and not rankUpQueued then UpgradeRanks() end
+end
+
 function ns.SetupBars()
     ns.ready = true
     -- Ist ForeverXP aktiv, gehört ihm die Erfahrungsleiste (siehe ns.IsExternal)
@@ -2386,15 +2486,19 @@ function ns.SetupBars()
     for _, event in ipairs({ "PLAYER_REGEN_ENABLED", "PLAYER_REGEN_DISABLED", "PLAYER_ENTERING_WORLD", "EDIT_MODE_LAYOUTS_UPDATED",
         "UPDATE_SHAPESHIFT_FORMS", "UI_SCALE_CHANGED", "DISPLAY_SIZE_CHANGED",
         "SKILL_LINES_CHANGED", "SPELLS_CHANGED", "SPELL_UPDATE_COOLDOWN", "BAG_UPDATE_DELAYED", "BAG_UPDATE_COOLDOWN",
-        "UPDATE_BINDINGS" }) do
+        "UPDATE_BINDINGS", "LEARNED_SPELL_IN_TAB", "LEARNED_SPELL_IN_SKILL_LINE" }) do
         pcall(events.RegisterEvent, events, event)
     end
-    events:SetScript("OnEvent", function(_, event)
+    events:SetScript("OnEvent", function(_, event, ...)
         if event == "PLAYER_REGEN_DISABLED" then
             -- Kampf beginnt: Testmodus beenden (Leisten werden nach dem Kampf wieder wie eingestellt)
             if ns.testMode then ns.SetTestMode(false) end
         elseif event == "PLAYER_REGEN_ENABLED" then
             if layoutPending then ns.ApplyLayout() end
+            ns.UpgradeRanksAfterCombat()
+        elseif event == "LEARNED_SPELL_IN_TAB" or event == "LEARNED_SPELL_IN_SKILL_LINE" then
+            ns.OnSpellLearned((...)) -- erster Wert: die Zauber-ID
+            ns.RequestLayout() -- Berufeleiste: neuer Berufs-Zauber
         elseif event == "SPELL_UPDATE_COOLDOWN" then
             ns.UpdateProfessionCooldowns()
         elseif event == "BAG_UPDATE_DELAYED" then

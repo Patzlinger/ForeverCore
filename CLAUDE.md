@@ -372,7 +372,11 @@ Damit alle Einstellungsfenster gleich aussehen, gelten diese Maße. Quelle: `For
   Mit den **eigenen Menüknöpfen** von ForeverBars (Standard) sind die eigenen Knöpfe nur Optik; Blizzards echte
   Menüknöpfe liegen unsichtbar (Deckkraft 0) genau darüber und bekommen den Klick selbst (Blizzards Spielmenü öffnet
   nur, wenn die Maus wirklich über seinem Knopf ist – ein weitergeleiteter Klick reicht nicht). Der Knopf von
-  ForeverSpellbook hängt am Zauberbuch-Knopf und wandert so mit
+  ForeverSpellbook hängt am Zauberbuch-Knopf und wandert so mit.
+  **Neue Ränge**: ForeverBars ("Neue Ränge automatisch in die Leisten", Standard an) ersetzt beim Lernen eines Rangs
+  (`LEARNED_SPELL_IN_TAB`/`…_IN_SKILL_LINE`, 0,5 s später) auf den Aktionsknöpfen den niedrigeren Rang genau dieses
+  Zaubers – gleiche Rang-Erkennung wie ForeverSpellbook. Dessen Hinweis "neuer Rang, Leiste hat noch den alten"
+  (1 s nach dem Lernen) findet danach nichts mehr; "Ersetzen" im Zauberbuch bleibt für alle übrigen Zauber
 - **ForeverBars ↔ Bartender4**: läuft Bartender4, lässt ForeverBars die Leisten in Ruhe
 - **ForeverBars ↔ Bearbeitungsmodus**: öffnet der Spieler Blizzards Bearbeitungsmodus, entsperrt ForeverBars seine
   Leisten (Blizzard kann sie nicht greifen) und sperrt sie beim Schließen wieder. Laut flowfy lösen Hooks/Callbacks

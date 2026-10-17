@@ -700,6 +700,10 @@ local function CreateOptions()
     CreateSelector(controlPage, L("OPT_BUTTON_TOOLTIP"), 14, -166, 170, TOOLTIP_CHOICES,
         function() return ns.db.buttonTooltip end,
         function(value) ns.db.buttonTooltip = value end)
+    -- Neuer Rang gelernt: auf den Aktionsknöpfen den niedrigeren Rang dieses Zaubers ersetzen
+    CreateCheckbox(controlPage, L("OPT_AUTO_RANK"), 360, -168,
+        function() return ns.db.autoRankUp end,
+        function(value) ns.db.autoRankUp = value end)
     local controlHint = controlPage:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     controlHint:SetPoint("TOPLEFT", 14, -200)
     controlHint:SetPoint("RIGHT", -14, 0)
