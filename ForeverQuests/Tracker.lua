@@ -1436,7 +1436,6 @@ end
 function ns.UpdateTrackerTexts()
     if not tracker then return end
     dungeonButton:SetText(ns.L("BTN_DUNGEONS"))
-    menuButton:SetText(ns.L("BTN_MENU"))
     unlockHint:SetText(ns.L("UNLOCK_HINT"))
     ns.UpdateTracker() -- setzt auch Titel, Filter-Knopf und alle Zeilen
 end
@@ -1491,9 +1490,18 @@ function ns.CreateTracker()
     end)
     filterButton:SetPoint("RIGHT", dungeonButton, "LEFT", -4, 0)
 
-    menuButton = Style.CreateButton(headerBar, ns.L("BTN_MENU"), 42, 18,
-        function() ns.ToggleOptions() end, function(tooltip) tooltip:AddLine(ns.L("TIP_MENU")) end)
+    -- Menü: quadratischer Knopf mit Zahnrad (wie der Einstellungs-Knopf von ForeverMinimap)
+    menuButton = Style.CreateButton(headerBar, "", 18, 18,
+        function() ns.ToggleOptions() end, function(tooltip)
+            tooltip:AddLine(ns.L("BTN_MENU"))
+            tooltip:AddLine(ns.L("TIP_MENU"), 1, 1, 1, true)
+        end)
     menuButton:SetPoint("RIGHT", filterButton, "LEFT", -4, 0)
+    local gear = menuButton:CreateTexture(nil, "ARTWORK")
+    gear:SetPoint("TOPLEFT", 2, -2)
+    gear:SetPoint("BOTTOMRIGHT", -2, 2)
+    gear:SetTexture("Interface\\Icons\\INV_Misc_Gear_01")
+    gear:SetTexCoord(0.08, 0.92, 0.08, 0.92)
 
     title = headerBar:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     title:SetPoint("LEFT", 8, 0)

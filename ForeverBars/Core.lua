@@ -102,7 +102,7 @@ ns.defaults = {
         xp = BarDefaults(true), rep = BarDefaults(true), queue = BarDefaults(true),
     },
     -- (Profile verwaltet seit 0.41b ForeverCore – je Charakter, siehe RegisterSettings am Ende dieser Datei)
-    layoutVersion = 17,  -- Stand der Standard-Anordnung (siehe MigrateLayout)
+    layoutVersion = 18,-- Stand der Standard-Anordnung (siehe MigrateLayout)
     skin = "FLAT",           -- Aussehen der Knöpfe (ns.SKINS in Bars.lua)
     hoverAlpha = 15,         -- Stärke des Hover-Leuchtens über den Knöpfen (%)
     procGlow = "FOREVER",    -- Leuchten bei Procs: "FOREVER" (goldener Rahmen), "BLIZZARD", "OFF"
@@ -116,7 +116,7 @@ ns.defaults = {
     snap = true,             -- beim Ziehen magnetisch an anderen Leisten / der Bildschirmmitte einrasten
     showBorder = true,       -- dünner Rand um die Knöpfe
     showEquipped = true,     -- grüner Rand bei ausgerüsteten Gegenständen
-    iconZoom = 8,            -- Zuschnitt der Symbole in Prozent (0 = ganzes Symbol)
+    iconZoom = 4,            -- Zuschnitt der Symbole in Prozent (0 = ganzes Symbol)
     font = "STANDARD",       -- Schrift der Knopftexte
     fontSize = 12,
     fontOutline = "OUTLINE", -- "NONE", "OUTLINE", "THICKOUTLINE"
@@ -158,6 +158,9 @@ ns.defaults.bars.micro.spacing = 0 -- Mikromenü-Knöpfe ohne Abstand
 ns.defaults.bars.bags.point = "BOTTOMRIGHT"
 ns.defaults.bars.bags.growX = "LEFT"
 ns.defaults.bars.bags.collapsible = true   -- Pfeil zum Aus-/Einklappen der Taschen
+ns.defaults.bars.bags.enabled = false      -- Taschenleiste standardmäßig aus (Taschen öffnen per Taste B)
+-- Aktionsleisten: "100 %" sind bereits 105 % der Blizzard-Größe (siehe ns.BarScale in Bars.lua)
+for i = 1, 8 do ns.defaults.bars["bar" .. i].scale = 100 end
 ns.defaults.bars.bags.bagsCollapsed = true -- eingeklappt: nur der Rucksack
 ns.defaults.bars.prof.buttons = 12 -- 12 Plätze, 6 breit und 2 hoch, frei belegbar
 ns.defaults.bars.prof.perRow = 6
@@ -217,7 +220,8 @@ ns.FillDefaults = FillDefaults
 --  16 (0.44b+): alles 5 % größer, Abstand 1,5, Mikromenü unter der Minimap angedockt (Anheften am Chat entfällt),
 --               Positionen der Standard-Anordnung neu berechnet
 --  17 (0.44b+): Taschenleiste doppelt so groß (160 %), Rucksack mit Blizzards Symbol
-local LAYOUT_VERSION = 17
+--  18 (0.44b+): Aktionsleisten-Größe neu gezählt (105 % heißen jetzt 100 %), Symbol-Zuschnitt 4 %, Taschenleiste aus
+local LAYOUT_VERSION = 18
 -- Standardgrößen vor 16 (nur Leisten, die noch darauf stehen, wachsen mit)
 local OLD_SCALES = { pet = 56, stance = 56, prof = 80, food = 80, bags = 76, queue = 50 }
 local STANDARD_LAYOUT_BARS = { "bar1", "bar2", "bar3", "bar6", "bar7", "bar8", "pet", "stance", "prof", "food",
@@ -292,6 +296,15 @@ function ns.MigrateLayout(db)
                         bar.x, bar.y = nil, nil
                     end
                 end
+            end
+            if version < 18 then
+                for i = 1, 8 do
+                    local bar = target.bars["bar" .. i]
+                    -- 105 % (Stand 16) = neue 100 %; ältere Stände (100 %) wachsen damit ebenfalls auf 105 %
+                    if bar and (bar.scale == nil or bar.scale == 105 or bar.scale == 100) then bar.scale = 100 end
+                end
+                if target.iconZoom == nil or target.iconZoom == 8 then target.iconZoom = 4 end
+                if target.bars.bags then target.bars.bags.enabled = false end
             end
             if version < 17 and target.bars.bags then
                 local bags = target.bars.bags

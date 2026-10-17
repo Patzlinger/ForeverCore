@@ -97,10 +97,19 @@ local BAR_GAP = 1.5    -- Abstand zwischen aneinanderliegenden Leisten (wie "Abs
 local SIDE_GAP = 24    -- Abstand von Berufe-/Verpflegungsleiste zu den Aktionsleisten (Platz für den Einklapp-Pfeil)
 local FRAME_SPACE = 4  -- Rand des Rahmens um eine Leiste (siehe UpdateBarFrame)
 
+-- Tatsächliche Größe einer Leiste. Aktionsleisten: "100 %" im Menü sind 105 % der Blizzard-Knopfgröße
+-- (die Knöpfe sollten größer werden, ohne dass im Menü ein krummer Wert steht)
+local ACTION_BASE_SCALE = 1.05
+function ns.BarScale(key, cfg)
+    local def = ns.GetBarDef and ns.GetBarDef(key)
+    local base = def and def.kind == "action" and ACTION_BASE_SCALE or 1
+    return math.max(0.3, (cfg.scale or 100) / 100) * base
+end
+
 local function DefaultPosition(key)
     local width, height = UIParent:GetWidth(), UIParent:GetHeight()
     local bars = ns.db.bars
-    local function Scale(barKey) return math.max(0.3, (bars[barKey].scale or 100) / 100) end
+    local function Scale(barKey) return ns.BarScale(barKey, bars[barKey]) end
     local function HolderHeight(barKey, fallback)
         local holder = holders[barKey]
         if holder and holder:GetHeight() > 1 then return holder:GetHeight() * holder:GetScale() end
@@ -298,7 +307,7 @@ local function UpdateButtonLook(button)
     if button.Border then button.Border:SetAlpha(db.showEquipped and 1 or 0) end
     local icon = button.icon or button.Icon or (name and _G[name .. "Icon"])
     if icon then
-        local crop = math.max(0, math.min(30, db.iconZoom or 8)) / 100
+        local crop = math.max(0, math.min(30, db.iconZoom or 4)) / 100
         icon:SetTexCoord(crop, 1 - crop, crop, 1 - crop)
         local inset = db.showBorder and skin.inset or 0
         icon:ClearAllPoints()
@@ -2282,6 +2291,36 @@ function ns.UpdateCollapseArrow(def, cfg, holder)
     local ROTATION = { RIGHT = 0, LEFT = math.pi, TOP = math.pi / 2, BOTTOM = -math.pi / 2 }
     local OPPOSITE = { RIGHT = "LEFT", LEFT = "RIGHT", TOP = "BOTTOM", BOTTOM = "TOP" }
     arrow.icon:SetRotation(ROTATION[cfg.collapsed and OPPOSITE[side] or side])
+    -- Eingeklappt: Name der Leiste neben dem Pfeil (dort, wo die Leiste war); Pfeil links/rechts: Buchstaben von
+    -- oben nach unten, Pfeil oben/unten: waagerecht
+    if not arrow.label then
+        arrow.label = arrow:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        arrow.label:SetTextColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3])
+    end
+    local titleText = strtrim(cfg.frameTitleText or "")
+    local name = titleText ~= "" and titleText or L(def.titleKey or def.textKey)
+    local label = arrow.label
+    label:ClearAllPoints()
+    if cfg.collapsed then
+        local vertical = side == "LEFT" or side == "RIGHT"
+        if vertical then
+            local letters = {}
+            for char in name:gmatch("[%z\1-\127\194-\244][\128-\191]*") do letters[#letters + 1] = char end
+            label:SetText(table.concat(letters, "\n"))
+            label:SetJustifyH("CENTER")
+            label:SetSpacing(0)
+        else
+            label:SetText(name)
+        end
+        local inward = OPPOSITE[side] -- Richtung, in der die Leiste lag
+        if inward == "LEFT" then label:SetPoint("RIGHT", arrow, "LEFT", -3, 0)
+        elseif inward == "RIGHT" then label:SetPoint("LEFT", arrow, "RIGHT", 3, 0)
+        elseif inward == "TOP" then label:SetPoint("BOTTOM", arrow, "TOP", 0, 3)
+        else label:SetPoint("TOP", arrow, "BOTTOM", 0, -3) end
+        label:Show()
+    else
+        label:Hide()
+    end
     arrow:Show()
 end
 
@@ -2325,7 +2364,7 @@ function ns.ApplyLayout()
         else
             LayoutButtons(def, cfg, holder)
         end
-        local scale = math.max(0.3, (cfg.scale or 100) / 100)
+        local scale = ns.BarScale(def.key, cfg)
         holder:SetScale(scale)
         local x, y = cfg.x, cfg.y
         if not x or not y then x, y = ns.GetBarPosition(def.key) end
