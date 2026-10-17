@@ -319,8 +319,7 @@ local TOOL_DEFS = {
       click = function() ns.ToggleOptions() end },
     { key = "copy", file = "Interface\\Buttons\\UI-GuildButton-PublicNote-Up", noCrop = true, tip = T("Chat kopieren", "Copy chat"),
       click = function() ns.ShowCopyChat() end },
-    { key = "bottom", file = "Interface\\ChatFrame\\UI-ChatIcon-ScrollEnd-Up", noCrop = true, tip = T("Zum Ende springen", "Jump to the end"),
-      click = function() ns.SelectedChatFrame():ScrollToBottom() end },
+    -- (kein "Zum Ende springen": das erledigt Blizzards Pfeil unter dem Bildlauf)
     { key = "channels", file = "Interface\\ChatFrame\\UI-ChatIcon-Chat-Up", noCrop = true, tip = T("Kanäle", "Channels"),
       click = function() if ToggleChannelFrame then ToggleChannelFrame() end end },
     { key = "emotes", file = "Interface\\GossipFrame\\GossipGossipIcon", noCrop = true,
@@ -329,7 +328,7 @@ local TOOL_DEFS = {
     { key = "social", file = "Interface\\Icons\\Achievement_GuildPerk_EverybodysFriend", tip = T("Sozial (Freunde, Gilde)", "Social (friends, guild)"),
       click = function() if ToggleFriendsFrame then ToggleFriendsFrame() end end },
     { key = "tts", atlas = "chatframe-button-icon-tts", file = "Interface\\Icons\\INV_Misc_Book_11", tip = T("Vorlesen (Text zu Sprache)", "Text to speech"),
-      shown = function() return _G.TextToSpeechButton ~= nil end,
+      shown = function() return ns.GetDB().ttsButton and _G.TextToSpeechButton ~= nil end, -- optional, Standard aus
       click = function() local b = _G.TextToSpeechButton if b then b:Click() end end },
     -- Sprachchat: nur im Sprachkanal; gold, wenn stumm bzw. Ton aus
     { key = "deafen", atlas = "voicechat-icon-headphone", atlasOn = "voicechat-icon-headphone-mute", file = "Interface\\Icons\\INV_Misc_Ear_NightElf_01",

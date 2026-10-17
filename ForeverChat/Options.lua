@@ -64,6 +64,7 @@ Check(L - 4, -208, T("Eingabefeld im Forever-Stil", "Input box in Forever style"
 Check(L + 160, -208, T("nur beim Schreiben", "only while typing"), "autoHideEditBox")
 Check(L - 4, -232, T("Blizzard-Knöpfe neben dem Chat ausblenden", "Hide Blizzard buttons next to the chat"), "hideSideButtons")
 Check(L - 4, -256, T("Knopfleiste in der Reiterzeile", "Button bar in the tab row"), "toolbar")
+Check(L + 160, -232, T("mit „Vorlesen“", "with \"Text to speech\""), "ttsButton")
 
 UI.Header(options, L, -298, T("Position und Sperre", "Position and lock"), 300)
 local lockCheck = UI.Check(options, L - 4, -320, T("Chatfenster sperren", "Lock chat windows"), function(checked)
