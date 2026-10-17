@@ -102,7 +102,7 @@ ns.defaults = {
         xp = BarDefaults(true), rep = BarDefaults(true), queue = BarDefaults(true),
     },
     -- (Profile verwaltet seit 0.41b ForeverCore – je Charakter, siehe RegisterSettings am Ende dieser Datei)
-    layoutVersion = 16,    -- Stand der Standard-Anordnung (siehe MigrateLayout)
+    layoutVersion = 17,  -- Stand der Standard-Anordnung (siehe MigrateLayout)
     skin = "FLAT",           -- Aussehen der Knöpfe (ns.SKINS in Bars.lua)
     hoverAlpha = 15,         -- Stärke des Hover-Leuchtens über den Knöpfen (%)
     procGlow = "FOREVER",    -- Leuchten bei Procs: "FOREVER" (goldener Rahmen), "BLIZZARD", "OFF"
@@ -153,7 +153,7 @@ ns.defaults.bars.micro.microOwn = true
 -- dort losgelassen rastet es wieder ein)
 ns.defaults.bars.micro.dockMinimap = true
 ns.defaults.bars.micro.microGrey = true -- nur für Blizzards Mikromenü (wenn die eigenen Knöpfe aus sind)
-ns.defaults.bars.bags.scale = 80   -- Rucksack etwas größer als die Mikromenü-Knöpfe
+ns.defaults.bars.bags.scale = 160  -- Rucksack (und ausgeklappte Taschen) doppelt so groß wie früher (80 %)
 ns.defaults.bars.micro.spacing = 0 -- Mikromenü-Knöpfe ohne Abstand
 ns.defaults.bars.bags.point = "BOTTOMRIGHT"
 ns.defaults.bars.bags.growX = "LEFT"
@@ -216,7 +216,8 @@ ns.FillDefaults = FillDefaults
 --  15 (0.41b+): Warteschlangen-Auge aus und halb so groß (50 %)
 --  16 (0.44b+): alles 5 % größer, Abstand 1,5, Mikromenü unter der Minimap angedockt (Anheften am Chat entfällt),
 --               Positionen der Standard-Anordnung neu berechnet
-local LAYOUT_VERSION = 16
+--  17 (0.44b+): Taschenleiste doppelt so groß (160 %), Rucksack mit Blizzards Symbol
+local LAYOUT_VERSION = 17
 -- Standardgrößen vor 16 (nur Leisten, die noch darauf stehen, wachsen mit)
 local OLD_SCALES = { pet = 56, stance = 56, prof = 80, food = 80, bags = 76, queue = 50 }
 local STANDARD_LAYOUT_BARS = { "bar1", "bar2", "bar3", "bar6", "bar7", "bar8", "pet", "stance", "prof", "food",
@@ -291,6 +292,12 @@ function ns.MigrateLayout(db)
                         bar.x, bar.y = nil, nil
                     end
                 end
+            end
+            if version < 17 and target.bars.bags then
+                local bags = target.bars.bags
+                -- 76/80 = alte Standardgrößen (die Umrechnung auf 16 läuft gleich danach und darf nicht mehr greifen)
+                if bags.scale == nil or bags.scale == 76 or bags.scale == 80 then bags.scale = ns.defaults.bars.bags.scale end
+                bags.x, bags.y = nil, nil
             end
             if version < 16 then
                 for key, bar in pairs(target.bars) do
