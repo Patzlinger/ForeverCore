@@ -94,7 +94,7 @@ end
 -- Berufeleiste, unten rechts Menü und Taschen übereinander, oben mittig Erfahrung und Ruf.
 local EDGE = 4         -- Abstand zum Bildschirmrand
 local BAR_GAP = 1      -- Abstand zwischen aneinanderliegenden Leisten
-local SIDE_GAP = 6     -- Abstand der Berufeleiste zu den Aktionsleisten
+local SIDE_GAP = 14    -- Abstand von Berufe-/Verpflegungsleiste zu den Aktionsleisten (Platz für den Einklapp-Pfeil)
 local FRAME_SPACE = 4  -- Rand des Rahmens um eine Leiste (siehe UpdateBarFrame)
 
 local function DefaultPosition(key)
@@ -596,7 +596,18 @@ end
 ---------------------------------------------------------------------------
 
 local PROF_COUNT = 12
-local profSpells = {} -- [i] = { spell = Zauber-ID oder Name, icon = Symbol, row = 1 Beruf / 2 Fertigkeit }
+local FOOD_COUNT = 18
+
+-- Berufe- und Verpflegungsleiste: frei anordnen wie eine Aktionsleiste. Jede Leiste hat feste Plätze
+-- (cfg.slots[Platz] = Zauber bzw. Gegenstand); Knopf i zeigt Platz i, darum gehören Tastenbelegungen immer zu
+-- einem Platz. Neues wird automatisch auf freie Plätze eingetragen (Berufe: alle Berufs-Zauber, Verpflegung:
+-- Essen, Getränke, Tränke, Elixiere, Fläschchen aus den Taschen). Shift + ziehen tauscht Plätze; daneben loslassen
+-- entfernt (cfg.excluded – wird dann nicht wieder automatisch eingetragen). Hineinziehen: in die Berufeleiste nur
+-- Berufs-Zauber, in die Verpflegungsleiste beliebige Gegenstände.
+local SLOT_BARS = {
+    prof = { prefix = "ForeverBarsProfButton", count = PROF_COUNT, cursorKind = "spell" },
+    food = { prefix = "ForeverBarsFoodButton", count = FOOD_COUNT, cursorKind = "item" },
+}
 
 -- Zauber an einer Stelle im Zauberbuch (neue und alte Schnittstelle); nur aktive Zauber
 local function SpellBookSpell(slot)
@@ -615,16 +626,16 @@ local function SpellIcon(spellID)
     return GetSpellTexture and GetSpellTexture(spellID)
 end
 
--- Liste der Berufs-Knöpfe neu ermitteln (Hauptberufe, Archäologie, Angeln, Kochen, Erste Hilfe).
--- Je Beruf eine Spalte: oben das Berufsfenster, darunter seine Fertigkeit (Entzaubern, Schmelzen …);
--- hat ein Beruf mehrere Fertigkeiten, bekommen die weiteren eigene Spalten (oben frei).
--- Jeder Eintrag bekommt col (Spalte ab 0) und row (1 = Fenster, 2 = Fertigkeit).
+---------------------------------------------------------------------------
+-- Berufe: alle aktiven Berufs-Zauber des Charakters (Hauptberufe, Archäologie, Angeln, Kochen, Erste Hilfe),
+-- je Beruf zuerst das Berufsfenster, dann die Fertigkeiten (Entzaubern, Schmelzen …)
+---------------------------------------------------------------------------
+
 local FISHING_SLOT = 4 -- GetProfessions liefert Angeln an 4. Stelle
 
--- Alle Berufe des Charakters mit Fenster und Fertigkeiten (ohne Rücksicht auf Auswahl und Reihenfolge)
-local function ProfessionGroups()
-    local groups = {}
-    if not GetProfessions or not GetProfessionInfo then return groups end
+local function ProfessionSpells()
+    local list = {}
+    if not GetProfessions or not GetProfessionInfo then return list end
     local indices = { GetProfessions() }
     local seen = {}
     for i = 1, 6 do
@@ -639,231 +650,33 @@ local function ProfessionGroups()
                     table.insert(spells, { spell = spellID, icon = spellIcon or SpellIcon(spellID) or icon })
                 end
             end
-            local window, skills = nil, {}
             if i == FISHING_SLOT then
-                -- Angeln: die Fertigkeit (Auswerfen) trägt das Symbol des Berufs, das Fenster ein anderes
-                for _, entry in ipairs(spells) do
-                    if not window and entry.icon ~= icon then window = entry else table.insert(skills, entry) end
-                end
-            else
-                -- Sonst öffnet die erste Fähigkeit das Berufsfenster, die weiteren sind Fertigkeiten
-                window = table.remove(spells, 1)
-                skills = spells
+                -- Angeln: das Fenster trägt ein anderes Symbol als der Beruf (die Fertigkeit "Auswerfen" dasselbe)
+                table.sort(spells, function(a, b) return (a.icon ~= icon) and (b.icon == icon) end)
             end
             -- Ohne eigene Fähigkeit im Zauberbuch: den Beruf über seinen Namen öffnen
-            if not window and #skills == 0 and name then window = { spell = name, icon = icon } end
-            table.insert(groups, { name = name or tostring(i), window = window, skills = skills })
+            if #spells == 0 and name then spells = { { spell = name, icon = icon } } end
+            for _, entry in ipairs(spells) do table.insert(list, entry) end
         end
     end
-    return groups
+    return list
 end
 
--- Eigene Reihenfolge der Berufe und entfernte Knöpfe (gespeichert in der Leiste, also je Profil)
-local function ProfConfig()
-    local cfg = ns.db.bars.prof
-    cfg.profExcluded = cfg.profExcluded or {}
-    cfg.profOrder = cfg.profOrder or {}
-    return cfg
-end
-
--- Zu welchem Beruf gehört ein Zauber? (nil = kein Berufs-Zauber)
-local function ProfessionOfSpell(spell)
-    for _, group in ipairs(ProfessionGroups()) do
-        if group.window and group.window.spell == spell then return group.name end
-        for _, entry in ipairs(group.skills) do
-            if entry.spell == spell then return group.name end
-        end
-    end
-end
-
--- Knöpfe der Berufeleiste: Berufe in eigener Reihenfolge, mit Shift herausgezogene fehlen
-local function CollectProfessionSpells()
-    wipe(profSpells)
-    local cfg = ProfConfig()
-    local groups = ProfessionGroups()
-    local rank = {}
-    for index, name in ipairs(cfg.profOrder) do rank[name] = index end
-    for index, group in ipairs(groups) do group.position = index end
-    table.sort(groups, function(a, b)
-        local ra, rb = rank[a.name], rank[b.name]
-        if ra or rb then
-            if ra and rb then return ra < rb end
-            return ra ~= nil
-        end
-        return a.position < b.position
-    end)
-    local column = 0
-    for _, group in ipairs(groups) do
-        local window = group.window
-        if window and cfg.profExcluded[window.spell] then window = nil end
-        local skills = {}
-        for _, entry in ipairs(group.skills) do
-            if not cfg.profExcluded[entry.spell] then table.insert(skills, entry) end
-        end
-        if window or #skills > 0 then
-            if window then
-                window.col, window.row, window.profession = column, 1, group.name
-                table.insert(profSpells, window)
-            end
-            for k, entry in ipairs(skills) do
-                entry.col, entry.row, entry.profession = column + k - 1, 2, group.name
-                table.insert(profSpells, entry)
-            end
-            column = column + math.max(1, #skills)
-        end
-    end
-end
-
--- Mit Shift herausgezogen: Knopf nicht mehr zeigen (bis man den Zauber wieder hineinzieht)
-function ns.ProfRemove(spell)
-    if InCombatLockdown() then
-        ns.Print(L("NOT_IN_COMBAT"))
-        return
-    end
-    ProfConfig().profExcluded[spell] = true
-    ns.RequestLayout()
-end
-
--- Berufs-Zauber hineingezogen: wieder zeigen und seinen Beruf an die Spalte setzen, auf die er fiel
-function ns.ProfInsert(spell, targetCol)
-    if InCombatLockdown() then
-        ns.Print(L("NOT_IN_COMBAT"))
-        return
-    end
-    local profession = ProfessionOfSpell(spell)
-    if not profession then
-        ns.Print(L("PROF_NOT_FITTING"))
-        return
-    end
-    local cfg = ProfConfig()
-    cfg.profExcluded[spell] = nil
-    -- Jetzige Reihenfolge der Berufe übernehmen (nach Spalten), dann den Beruf vor den Beruf in der Zielspalte setzen
-    local order, targetName = {}, nil
-    for _, entry in ipairs(profSpells) do
-        if entry.profession and not tContains(order, entry.profession) then table.insert(order, entry.profession) end
-        if targetCol and entry.col == targetCol and not targetName then targetName = entry.profession end
-    end
-    for _, group in ipairs(ProfessionGroups()) do
-        if not tContains(order, group.name) then table.insert(order, group.name) end
-    end
-    for index = #order, 1, -1 do
-        if order[index] == profession then table.remove(order, index) end
-    end
-    local position = #order + 1
-    for index, name in ipairs(order) do
-        if name == targetName then position = index break end
-    end
-    table.insert(order, position, profession)
-    cfg.profOrder = order
-    ns.RequestLayout()
-end
-
-function ns.ProfResetChoices()
-    local cfg = ProfConfig()
-    wipe(cfg.profExcluded)
-    wipe(cfg.profOrder)
-    ns.RequestLayout()
-end
-
-local function UpdateProfessionCooldown(button)
-    local entry = button.fbEntry
-    if not entry or type(entry.spell) ~= "number" or not C_Spell or not C_Spell.GetSpellCooldown then
-        button.cooldown:Clear()
-        return
-    end
-    -- Werte unverändert an die Abklingzeit-Anzeige weiterreichen (keine eigene Rechnung)
-    local info = C_Spell.GetSpellCooldown(entry.spell)
-    if info then pcall(button.cooldown.SetCooldown, button.cooldown, info.startTime, info.duration) end
-end
-
-function ns.CreateProfessionButtons()
-    for i = 1, PROF_COUNT do
-        local name = "ForeverBarsProfButton" .. i
-        if not _G[name] then
-            local button = CreateFrame("Button", name, hiddenParent, "SecureActionButtonTemplate")
-            button:SetSize(ACTION_SIZE, ACTION_SIZE)
-            -- Beide Richtungen anmelden: welche auslöst, regelt die Blizzard-Einstellung "Beim Drücken auslösen"
-            button:RegisterForClicks("AnyUp", "AnyDown")
-            button.icon = button:CreateTexture(nil, "ARTWORK")
-            button.icon:SetAllPoints()
-            button:SetHighlightTexture("Interface\\Buttons\\WHITE8x8")
-            button:SetPushedTexture("Interface\\Buttons\\WHITE8x8")
-            button.cooldown = CreateFrame("Cooldown", nil, button, "CooldownFrameTemplate")
-            button.cooldown:SetAllPoints(button.icon)
-            button:SetScript("OnEnter", function(self)
-                local mode = ns.db.buttonTooltip
-                if mode == "NEVER" or (mode == "NOCOMBAT" and InCombatLockdown()) or not self.fbEntry then return end
-                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-                if type(self.fbEntry.spell) == "number" then
-                    GameTooltip:SetSpellByID(self.fbEntry.spell)
-                else
-                    GameTooltip:SetText(self.fbEntry.spell)
-                end
-                GameTooltip:AddLine(" ")
-                GameTooltip:AddLine(L("PROF_TIP_MOVE"), 0.6, 0.6, 0.6)
-                GameTooltip:AddLine(L("PROF_TIP_REMOVE"), 0.6, 0.6, 0.6)
-                GameTooltip:Show()
-            end)
-            button:SetScript("OnLeave", function(self)
-                if GameTooltip:GetOwner() == self then GameTooltip:Hide() end
-            end)
-            -- Shift-Klick wirkt nichts (sonst würde man beim Herausziehen zaubern); Shift-Ziehen entfernt,
-            -- normales Ziehen nimmt den Zauber auf (zum Verschieben in der Leiste oder auf eine Aktionsleiste)
-            button:SetAttribute("shift-type1", "fbnone")
-            button:RegisterForDrag("LeftButton")
-            button:SetScript("OnDragStop", function(self) ns.StopOwnDrag(self) end)
-            button:SetScript("OnDragStart", function(self)
-                local entry = self.fbEntry
-                if not entry or InCombatLockdown() then return end
-                if IsShiftKeyDown() then
-                    ns.StartOwnDrag("prof", self) -- verschieben bzw. herausziehen (siehe StopOwnDrag)
-                elseif C_Spell and C_Spell.PickupSpell then
-                    C_Spell.PickupSpell(entry.spell)
-                elseif PickupSpell then
-                    PickupSpell(entry.spell)
-                end
-            end)
-        end
-    end
-end
-
--- Knöpfe belegen (nur außerhalb des Kampfes); Rückgabe: Anzahl belegter Knöpfe
-local function AssignProfessionButtons()
-    CollectProfessionSpells()
-    for i = 1, PROF_COUNT do
-        local button = _G["ForeverBarsProfButton" .. i]
-        local entry = profSpells[i]
-        if button then
-            button.fbEntry = entry
-            button:SetAttribute("type", entry and "spell" or nil)
-            button:SetAttribute("spell", entry and entry.spell or nil)
-            button.icon:SetTexture(entry and entry.icon or nil)
-            button:SetShown(entry ~= nil)
-            UpdateProfessionCooldown(button)
-        end
-    end
-    return #profSpells
-end
-
-function ns.UpdateProfessionCooldowns()
-    for i = 1, PROF_COUNT do
-        local button = _G["ForeverBarsProfButton" .. i]
-        if button and button.fbEntry then UpdateProfessionCooldown(button) end
+-- Berufs-Zauber zu einem Zauber (oder nil, wenn es kein Berufs-Zauber des Charakters ist)
+local function ProfessionSpell(spell)
+    for _, entry in ipairs(ProfessionSpells()) do
+        if entry.spell == spell then return entry end
     end
 end
 
 ---------------------------------------------------------------------------
--- Verpflegungsleiste: eigene geschützte Knöpfe mit dem Essen und Trinken aus den Taschen
--- (Gegenstandsart "Verbrauchbar", Unterart "Speis & Trank"), höchste Stufe zuerst
+-- Verpflegung: Verbrauchbares aus den Taschen
 ---------------------------------------------------------------------------
 
-local FOOD_COUNT = 18
--- Gegenstandsart "Verbrauchbar" (0) und ihre Unterarten: 5 = Speis & Trank, 1 = Trank, 2 = Elixier, 3 = Fläschchen
+-- Gegenstandsart "Verbrauchbar" (0) und die Unterarten, die automatisch kommen:
+-- 5 = Speis & Trank, 1 = Trank, 2 = Elixier, 3 = Fläschchen
 local CONSUMABLE_CLASS = 0
-local FOOD_SUBCLASS = 5
-local FLASK_SUBCLASSES = { [1] = true, [2] = true, [3] = true }
-local foodItems = {}                   -- [i] = { item = Gegenstands-ID, icon = Symbol, row, col }
-local foodSignature = ""               -- welche Gegenstände gerade belegt sind (für Änderungen)
+local AUTO_SUBCLASSES = { [5] = 1, [3] = 2, [2] = 3, [1] = 4 } -- Reihenfolge beim automatischen Eintragen
 
 local function ItemInfoInstant(itemID)
     if C_Item and C_Item.GetItemInfoInstant then return C_Item.GetItemInfoInstant(itemID) end
@@ -875,176 +688,297 @@ local function ItemCount(itemID)
     return GetItemCount and GetItemCount(itemID) or 0
 end
 
--- Getränk oder Essen? Der Zauber eines Getränks heißt wie Blizzards "Trinken" (Zauber 430, in jeder Sprache
--- passend übersetzt). Rückfall: im Tooltip steht Mana, aber keine Gesundheit.
-local DRINK_SPELL = 430
-local function SpellName(spellID)
-    if C_Spell and C_Spell.GetSpellName then return C_Spell.GetSpellName(spellID) end
-    return GetSpellInfo and (GetSpellInfo(spellID))
+local function ItemIcon(itemID)
+    return select(5, ItemInfoInstant(itemID))
 end
 
-local drinkCache = {} -- [Gegenstand] = true/false (nur sichere Ergebnisse)
-
-local function IsDrink(itemID)
-    if drinkCache[itemID] ~= nil then return drinkCache[itemID] end
-    local getItemSpell = C_Item and C_Item.GetItemSpell or GetItemSpell
-    local spellName = getItemSpell and getItemSpell(itemID)
-    local drinkName = SpellName(DRINK_SPELL)
-    if spellName and drinkName then
-        drinkCache[itemID] = spellName == drinkName
-        return drinkCache[itemID]
-    end
-    if C_TooltipInfo and C_TooltipInfo.GetItemByID and MANA and HEALTH then
-        local data = C_TooltipInfo.GetItemByID(itemID)
-        local mana, health = false, false
-        for _, line in ipairs(data and data.lines or {}) do
-            local text = line.leftText or ""
-            if text:find(MANA, 1, true) then mana = true end
-            if text:find(HEALTH, 1, true) then health = true end
-        end
-        return mana and not health
-    end
-    return false
-end
-
--- In welche Reihe gehört ein Gegenstand? 1 = Essen, 2 = Getränk, 3 = Fläschchen/Elixier/Trank, nil = gar nicht
-local function FoodRow(itemID)
-    local _, _, _, _, _, classID, subclassID = ItemInfoInstant(itemID)
-    if classID ~= CONSUMABLE_CLASS then return nil end
-    if subclassID == FOOD_SUBCLASS then return IsDrink(itemID) and 2 or 1 end
-    if FLASK_SUBCLASSES[subclassID] then return 3 end
-end
-
--- Eigene Reihenfolge und entfernte Gegenstände (gespeichert in der Leiste, also je Profil)
-local function FoodConfig()
-    local cfg = ns.db.bars.food
-    cfg.foodExcluded = cfg.foodExcluded or {}
-    cfg.foodOrder = cfg.foodOrder or {}
-    for row = 1, 3 do cfg.foodOrder[row] = cfg.foodOrder[row] or {} end
-    return cfg
-end
-
--- Taschen durchsuchen. Jeder Eintrag bekommt row (Reihe, siehe FoodRow) und col (Platz in der Reihe):
--- zuerst die selbst einsortierten Gegenstände in ihrer Reihenfolge, dann alle übrigen (höchste benötigte Stufe
--- zuerst); mit Shift herausgezogene fehlen. perRow (optional) = höchstens so viele je Reihe.
--- Rückgabe: Liste (nach Reihen) und "Fingerabdruck"
-local foodLimit -- zuletzt verwendete Grenze je Reihe (damit der Vergleich bei Taschenänderungen passt)
-local function CollectFood(perRow)
-    local cfg = FoodConfig()
-    local groups, seen = { {}, {}, {} }, {}
+-- Alle Gegenstände in den Taschen (inBags) und die Verbrauchbaren für das automatische Eintragen (auto)
+local function BagContents()
+    local inBags, auto = {}, {}
     local numSlots = C_Container and C_Container.GetContainerNumSlots or GetContainerNumSlots
     local itemAt = C_Container and C_Container.GetContainerItemID or GetContainerItemID
-    if not numSlots or not itemAt then return {}, "" end
+    if not numSlots or not itemAt then return inBags, auto end
     for bag = 0, NUM_BAG_SLOTS or 4 do
         for slot = 1, numSlots(bag) or 0 do
             local itemID = itemAt(bag, slot)
-            if itemID and not seen[itemID] then
-                seen[itemID] = true
-                local row = not cfg.foodExcluded[itemID] and FoodRow(itemID)
-                if row then
-                    local icon = select(5, ItemInfoInstant(itemID))
+            if itemID and not inBags[itemID] then
+                inBags[itemID] = true
+                local _, _, _, _, _, classID, subclassID = ItemInfoInstant(itemID)
+                local order = classID == CONSUMABLE_CLASS and AUTO_SUBCLASSES[subclassID]
+                if order then
                     local level = 0
                     if C_Item and C_Item.GetItemInfo then
                         level = select(5, C_Item.GetItemInfo(itemID)) or 0 -- benötigte Stufe
                     end
-                    table.insert(groups[row], { item = itemID, icon = icon, level = level, row = row })
+                    table.insert(auto, { item = itemID, order = order, level = level })
                 end
             end
         end
     end
-    local list, ids = {}, {}
-    for row, group in ipairs(groups) do
-        -- Platz in der eigenen Reihenfolge (nicht einsortierte kommen danach)
-        local rank = {}
-        for index, itemID in ipairs(cfg.foodOrder[row]) do rank[itemID] = index end
-        table.sort(group, function(a, b)
-            local ra, rb = rank[a.item], rank[b.item]
-            if ra or rb then
-                if ra and rb then return ra < rb end
-                return ra ~= nil
+    -- Erst Essen/Trinken, dann Fläschchen, Elixiere, Tränke; jeweils höchste Stufe zuerst
+    table.sort(auto, function(a, b)
+        if a.order ~= b.order then return a.order < b.order end
+        if a.level ~= b.level then return a.level > b.level end
+        return a.item < b.item
+    end)
+    return inBags, auto
+end
+
+---------------------------------------------------------------------------
+-- Plätze
+---------------------------------------------------------------------------
+
+local function SlotConfig(key)
+    local cfg = ns.db.bars[key]
+    cfg.slots = cfg.slots or {}         -- [Platz] = Zauber-ID/Name bzw. Gegenstands-ID
+    cfg.slotsAuto = cfg.slotsAuto or {} -- [Platz] = true, wenn automatisch eingetragen (verschwindet mit dem Gegenstand)
+    cfg.excluded = cfg.excluded or {}   -- herausgezogen: nicht wieder automatisch eintragen
+    -- Ältere Stände: die frühere Liste der entfernten Knöpfe übernehmen, alte Reihenfolgen vergessen
+    for _, oldKey in ipairs({ "foodExcluded", "profExcluded" }) do
+        if type(cfg[oldKey]) == "table" then
+            for value in pairs(cfg[oldKey]) do cfg.excluded[value] = true end
+            cfg[oldKey] = nil
+        end
+    end
+    cfg.foodOrder, cfg.profOrder = nil, nil
+    return cfg
+end
+
+local function SlotCount(key, cfg)
+    return math.max(1, math.min(SLOT_BARS[key].count, cfg.buttons or SLOT_BARS[key].count))
+end
+
+local function FindSlot(cfg, value)
+    for slot, stored in pairs(cfg.slots) do
+        if stored == value then return slot end
+    end
+end
+
+local function FreeSlot(cfg, count)
+    for slot = 1, count do
+        if cfg.slots[slot] == nil then return slot end
+    end
+end
+
+local function SetSlot(cfg, slot, value, auto)
+    cfg.slots[slot] = value
+    cfg.slotsAuto[slot] = (value ~= nil and auto) and true or nil
+end
+
+-- Automatisch auffüllen: Berufe – verlernte entfernen, neue auf freie Plätze; Verpflegung – automatisch
+-- eingetragene, die nicht mehr in den Taschen sind, entfernen, neue Verbrauchbare auf freie Plätze
+local function FillSlots(key)
+    local cfg = SlotConfig(key)
+    local count = SlotCount(key, cfg)
+    if key == "prof" then
+        local spells = ProfessionSpells()
+        local known = {}
+        for _, entry in ipairs(spells) do known[entry.spell] = true end
+        for slot, value in pairs(cfg.slots) do
+            if not known[value] then SetSlot(cfg, slot, nil) end
+        end
+        for _, entry in ipairs(spells) do
+            if not cfg.excluded[entry.spell] and not FindSlot(cfg, entry.spell) then
+                local slot = FreeSlot(cfg, count)
+                if slot then SetSlot(cfg, slot, entry.spell, true) end
             end
-            if a.level ~= b.level then return a.level > b.level end
-            return a.item < b.item
-        end)
-        for col, entry in ipairs(group) do
-            if perRow and col > perRow then break end
-            entry.col = col - 1
-            table.insert(list, entry)
-            table.insert(ids, entry.item .. ":" .. entry.row)
+        end
+    else
+        local inBags, auto = BagContents()
+        for slot, value in pairs(cfg.slots) do
+            if cfg.slotsAuto[slot] and not inBags[value] then SetSlot(cfg, slot, nil) end
+        end
+        for _, entry in ipairs(auto) do
+            if not cfg.excluded[entry.item] and not FindSlot(cfg, entry.item) then
+                local slot = FreeSlot(cfg, count)
+                if slot then SetSlot(cfg, slot, entry.item, true) end
+            end
         end
     end
-    return list, table.concat(ids, ",")
+    return cfg, count
 end
 
--- Gegenstand in seine Reihe einsortieren (wieder anzeigen, falls er entfernt war). col = gewünschter Platz in
--- der Reihe (nil = ans Ende). Passt er nicht in die Leiste, Hinweis im Chat.
-function ns.FoodInsert(itemID, targetRow, targetCol)
+-- Was liegt auf einem Platz? (Tabelle für den Knopf: spell oder item, icon)
+local function SlotEntry(key, value)
+    if value == nil then return nil end
+    if key == "prof" then
+        local entry = ProfessionSpell(value)
+        return { spell = value, icon = entry and entry.icon or (type(value) == "number" and SpellIcon(value)) }
+    end
+    return { item = value, icon = ItemIcon(value) }
+end
+
+-- Darf das in die Leiste? Berufe: nur Berufs-Zauber; Verpflegung: jeder Gegenstand
+local function Accepts(key, value)
+    if key == "prof" then
+        if ProfessionSpell(value) then return true end
+        ns.Print(L("PROF_NOT_FITTING"))
+        return false
+    end
+    return value ~= nil
+end
+
+-- Hineingezogen bzw. verschoben: auf den Zielplatz legen. Lag der Wert schon woanders, tauschen die Plätze;
+-- war der Zielplatz belegt, wandert der bisherige Wert auf den ersten freien Platz (sonst gilt er als entfernt).
+function ns.SlotPlace(key, value, target)
     if InCombatLockdown() then
         ns.Print(L("NOT_IN_COMBAT"))
         return
     end
-    local row = FoodRow(itemID)
-    if not row then
-        ns.Print(L("FOOD_NOT_FITTING"))
-        return
-    end
-    local cfg = FoodConfig()
-    cfg.foodExcluded[itemID] = nil
-    for r = 1, 3 do
-        for index = #cfg.foodOrder[r], 1, -1 do
-            if cfg.foodOrder[r][index] == itemID then table.remove(cfg.foodOrder[r], index) end
+    if not Accepts(key, value) then return end
+    local cfg = SlotConfig(key)
+    local count = SlotCount(key, cfg)
+    target = math.max(1, math.min(count, target or FreeSlot(cfg, count) or count))
+    cfg.excluded[value] = nil
+    local from = FindSlot(cfg, value)
+    local displaced = cfg.slots[target]
+    if from == target then return end
+    if from then
+        -- Tauschen (beide gelten danach als selbst angeordnet)
+        SetSlot(cfg, from, displaced, false)
+    elseif displaced ~= nil then
+        local free = FreeSlot(cfg, count)
+        if free and free ~= target then
+            SetSlot(cfg, free, displaced, cfg.slotsAuto[target])
+        else
+            cfg.excluded[displaced] = true
         end
     end
-    -- Die jetzige Anzeige der Reihe als Reihenfolge übernehmen, damit der gewünschte Platz stimmt
-    local order = {}
-    for _, entry in ipairs((CollectFood())) do
-        if entry.row == row and entry.item ~= itemID then table.insert(order, entry.item) end
-    end
-    -- Nur in der passenden Reihe gilt der Platz; sonst ans Ende der richtigen Reihe
-    local position = (targetRow == row and targetCol) and math.min(targetCol + 1, #order + 1) or (#order + 1)
-    table.insert(order, position, itemID)
-    cfg.foodOrder[row] = order
-    if targetRow and targetRow ~= row then ns.Print(L("FOOD_OTHER_ROW")) end
+    SetSlot(cfg, target, value, false)
     ns.RequestLayout()
 end
 
--- Mit Shift herausgezogen: nicht mehr anzeigen (bis man ihn wieder hineinzieht)
-function ns.FoodRemove(itemID)
+-- Herausgezogen: Platz leeren und nicht wieder automatisch eintragen
+function ns.SlotRemove(key, slot)
     if InCombatLockdown() then
         ns.Print(L("NOT_IN_COMBAT"))
         return
     end
-    local cfg = FoodConfig()
-    cfg.foodExcluded[itemID] = true
-    for r = 1, 3 do
-        for index = #cfg.foodOrder[r], 1, -1 do
-            if cfg.foodOrder[r][index] == itemID then table.remove(cfg.foodOrder[r], index) end
-        end
-    end
+    local cfg = SlotConfig(key)
+    local value = cfg.slots[slot]
+    if value == nil then return end
+    cfg.excluded[value] = true
+    SetSlot(cfg, slot, nil)
     ns.RequestLayout()
 end
 
--- Entfernte Gegenstände wieder anzeigen und eigene Reihenfolge vergessen
-function ns.FoodResetChoices()
-    local cfg = FoodConfig()
-    wipe(cfg.foodExcluded)
-    for row = 1, 3 do wipe(cfg.foodOrder[row]) end
+-- Alles zurück auf automatisch: Plätze leeren, Entferntes wieder zulassen
+function ns.SlotReset(key)
+    local cfg = SlotConfig(key)
+    wipe(cfg.slots)
+    wipe(cfg.slotsAuto)
+    wipe(cfg.excluded)
     ns.RequestLayout()
 end
+ns.FoodResetChoices = function() ns.SlotReset("food") end
+ns.ProfResetChoices = function() ns.SlotReset("prof") end
 
-local function UpdateFoodButton(button)
+---------------------------------------------------------------------------
+-- Knöpfe
+---------------------------------------------------------------------------
+
+local function UpdateSlotButton(button)
     local entry = button.fbEntry
-    if not entry then return end
-    button.Count:SetText(ItemCount(entry.item))
-    -- Abklingzeit unverändert an die Anzeige weiterreichen (keine eigene Rechnung)
-    local getCooldown = C_Container and C_Container.GetItemCooldown or GetItemCooldown
-    if getCooldown then
-        local start, duration = getCooldown(entry.item)
-        if start then pcall(button.cooldown.SetCooldown, button.cooldown, start, duration) end
+    if not entry then
+        button.cooldown:Clear()
+        if button.Count then button.Count:SetText("") end
+        return
+    end
+    if entry.item then
+        -- Gegenstand: Anzahl in den Taschen; ist keiner mehr da, grau (wie auf einer Aktionsleiste)
+        local count = ItemCount(entry.item)
+        button.Count:SetText(count)
+        button.icon:SetDesaturated(count == 0)
+        local getCooldown = C_Container and C_Container.GetItemCooldown or GetItemCooldown
+        if getCooldown then
+            -- Werte unverändert an die Abklingzeit-Anzeige weiterreichen (keine eigene Rechnung)
+            local start, duration = getCooldown(entry.item)
+            if start then pcall(button.cooldown.SetCooldown, button.cooldown, start, duration) end
+        end
+    elseif type(entry.spell) == "number" and C_Spell and C_Spell.GetSpellCooldown then
+        local info = C_Spell.GetSpellCooldown(entry.spell)
+        if info then pcall(button.cooldown.SetCooldown, button.cooldown, info.startTime, info.duration) end
+    else
+        button.cooldown:Clear()
     end
 end
 
--- Eigener geschützter Knopf (Berufe, Verpflegung): Symbol, Abklingzeit, Anzahl, Tooltip
+-- Leere Plätze zeigen: bei "Leere Plätze zeigen", beim Verschieben und solange etwas Passendes am Mauszeiger hängt
+local slotDragActive = false
+local function ShowEmptySlots(key)
+    return ns.db.showGrid or slotDragActive or (GetCursorInfo() == SLOT_BARS[key].cursorKind)
+end
+
+-- Knöpfe belegen (nur außerhalb des Kampfes); Rückgabe: Anzahl Plätze
+function ns.AssignSlotButtons(key)
+    local info = SLOT_BARS[key]
+    local cfg, count = FillSlots(key)
+    local showEmpty = ShowEmptySlots(key)
+    for i = 1, info.count do
+        local button = _G[info.prefix .. i]
+        if button then
+            local entry = i <= count and SlotEntry(key, cfg.slots[i]) or nil
+            button.fbEntry = entry
+            button.fbSlotIndex = i
+            if key == "prof" then
+                button:SetAttribute("type", entry and "spell" or nil)
+                button:SetAttribute("spell", entry and entry.spell or nil)
+            else
+                button:SetAttribute("type", entry and "item" or nil)
+                button:SetAttribute("item", entry and ("item:" .. entry.item) or nil)
+            end
+            button.icon:SetTexture(entry and entry.icon or nil)
+            button.icon:SetDesaturated(false)
+            button:SetShown(i <= count and (entry ~= nil or showEmpty))
+            UpdateSlotButton(button)
+        end
+    end
+    return count
+end
+
+-- Leere Plätze ein-/ausblenden (z. B. Gegenstand am Mauszeiger), ohne neu anzuordnen
+function ns.UpdateEmptySlots()
+    if InCombatLockdown() then return end
+    for key, info in pairs(SLOT_BARS) do
+        local cfg = ns.db.bars[key]
+        local count = SlotCount(key, cfg)
+        local showEmpty = ShowEmptySlots(key)
+        for i = 1, math.min(count, info.count) do
+            local button = _G[info.prefix .. i]
+            if button and not button.fbEntry and button:GetParent() ~= hiddenParent then button:SetShown(showEmpty) end
+        end
+    end
+end
+
+function ns.UpdateProfessionCooldowns()
+    for i = 1, PROF_COUNT do
+        local button = _G["ForeverBarsProfButton" .. i]
+        if button and button.fbEntry then UpdateSlotButton(button) end
+    end
+end
+
+function ns.UpdateFoodButtons()
+    for i = 1, FOOD_COUNT do
+        local button = _G["ForeverBarsFoodButton" .. i]
+        if button and button.fbEntry then UpdateSlotButton(button) end
+    end
+end
+
+-- Taschen geändert: neu belegen, wenn sich die Verbrauchbaren geändert haben, sonst nur Anzahl und Abklingzeit
+local bagSignature = ""
+function ns.OnBagsChanged()
+    local _, auto = BagContents()
+    local ids = {}
+    for _, entry in ipairs(auto) do table.insert(ids, entry.item) end
+    local signature = table.concat(ids, ",")
+    if signature ~= bagSignature then
+        bagSignature = signature
+        ns.RequestLayout() -- im Kampf erst danach (geschützte Knöpfe)
+    end
+    ns.UpdateFoodButtons()
+end
+
+-- Eigener geschützter Knopf (Berufe, Verpflegung): Symbol, Abklingzeit, Anzahl, Tastenbelegung, Tooltip
 local function CreateOwnButton(name, showTooltip)
     local button = CreateFrame("Button", name, hiddenParent, "SecureActionButtonTemplate")
     button:SetSize(ACTION_SIZE, ACTION_SIZE)
@@ -1071,7 +1005,41 @@ local function CreateOwnButton(name, showTooltip)
     button:SetScript("OnLeave", function(self)
         if GameTooltip:GetOwner() == self then GameTooltip:Hide() end
     end)
+    -- Shift-Klick wirkt nichts (sonst würde man beim Verschieben zaubern/essen); Shift-Ziehen verschiebt
+    button:SetAttribute("shift-type1", "fbnone")
+    button:RegisterForDrag("LeftButton")
+    button:SetScript("OnDragStop", function(self) ns.StopOwnDrag(self) end)
     return button
+end
+
+function ns.CreateProfessionButtons()
+    for i = 1, PROF_COUNT do
+        local name = "ForeverBarsProfButton" .. i
+        if not _G[name] then
+            local button = CreateOwnButton(name, function(entry)
+                if type(entry.spell) == "number" then
+                    GameTooltip:SetSpellByID(entry.spell)
+                else
+                    GameTooltip:SetText(entry.spell)
+                end
+                GameTooltip:AddLine(" ")
+                GameTooltip:AddLine(L("PROF_TIP_MOVE"), 0.6, 0.6, 0.6)
+                GameTooltip:AddLine(L("SLOT_TIP_MOVE"), 0.6, 0.6, 0.6)
+            end)
+            -- Shift + ziehen: verschieben/entfernen; normales Ziehen legt den Zauber auf eine Aktionsleiste
+            button:SetScript("OnDragStart", function(self)
+                local entry = self.fbEntry
+                if not entry or InCombatLockdown() then return end
+                if IsShiftKeyDown() then
+                    ns.StartOwnDrag("prof", self)
+                elseif C_Spell and C_Spell.PickupSpell then
+                    C_Spell.PickupSpell(entry.spell)
+                elseif PickupSpell then
+                    PickupSpell(entry.spell)
+                end
+            end)
+        end
+    end
 end
 
 -- Tastenbelegung auf eigenen Knöpfen anzeigen (belegt über Blizzards Tastaturbelegung > AddOns)
@@ -1088,21 +1056,25 @@ end
 -- Hineinziehen: Fläche über einer Leiste, nur sichtbar, solange etwas Passendes am Mauszeiger hängt
 -- (Verpflegung: Gegenstand, Berufe: Zauber). Sie fängt auch Klicks ab, damit dabei nichts benutzt wird.
 -- Der Platz ergibt sich aus der Mausposition.
-local catchers = {} -- [Leiste] = { frame, kind, onDrop }
+local catchers = {} -- [Leiste] = { frame, kind }
 local catcherWatcher
 
--- Reihe (ab 1) und Spalte (ab 0) unter dem Mauszeiger
-local function DropTarget(key)
+-- Platz unter dem Mauszeiger (ab 1)
+local function DropSlot(key)
     local holder = holders[key]
-    if not holder or not holder:GetLeft() then return nil, nil end
+    if not holder or not holder:GetLeft() then return nil end
     local cfg = ns.db.bars[key]
     local scale = holder:GetEffectiveScale()
     local x, y = GetCursorPosition()
     x, y = x / scale, y / scale
     local step = ACTION_SIZE + ns.ButtonGap(cfg)
     local col = cfg.growX == "LEFT" and math.floor((holder:GetRight() - x) / step) or math.floor((x - holder:GetLeft()) / step)
-    local rowIndex = cfg.growY == "UP" and math.floor((y - holder:GetBottom()) / step) or math.floor((holder:GetTop() - y) / step)
-    return rowIndex + 1, math.max(0, col)
+    local row = cfg.growY == "UP" and math.floor((y - holder:GetBottom()) / step) or math.floor((holder:GetTop() - y) / step)
+    local count = SlotCount(key, cfg)
+    local perRow = math.max(1, math.min(cfg.perRow or count, count))
+    col = math.max(0, math.min(perRow - 1, col))
+    row = math.max(0, row)
+    return math.min(count, row * perRow + col + 1)
 end
 
 local function UpdateCatchers()
@@ -1112,11 +1084,13 @@ local function UpdateCatchers()
         catcher.frame:SetShown(kind == catcher.kind and not InCombatLockdown() and holder ~= nil
             and holder:IsVisible() and ns.db.bars[key].enabled)
     end
+    ns.UpdateEmptySlots()
 end
 
-local function CreateCatcher(key, kind, onDrop)
+local function CreateCatcher(key)
     local holder = holders[key]
     if catchers[key] or not holder then return end
+    local kind = SLOT_BARS[key].cursorKind
     local frame = CreateFrame("Frame", nil, holder, "BackdropTemplate")
     frame:SetPoint("TOPLEFT", -2, 2)
     frame:SetPoint("BOTTOMRIGHT", 2, -2)
@@ -1128,13 +1102,13 @@ local function CreateCatcher(key, kind, onDrop)
         local cursorKind, a, _, d = GetCursorInfo()
         if cursorKind ~= kind then return end
         ClearCursor() -- Gegenstand bleibt in der Tasche, Zauber im Zauberbuch
-        local row, col = DropTarget(key)
-        onDrop(cursorKind == "spell" and d or a, row, col)
+        local value = cursorKind == "spell" and d or a
+        if value then ns.SlotPlace(key, value, DropSlot(key)) end
     end
     frame:SetScript("OnReceiveDrag", Drop)
     frame:SetScript("OnMouseUp", Drop)
     frame:Hide()
-    catchers[key] = { frame = frame, kind = kind, onDrop = onDrop }
+    catchers[key] = { frame = frame, kind = kind }
     if not catcherWatcher then
         catcherWatcher = CreateFrame("Frame")
         catcherWatcher:RegisterEvent("CURSOR_CHANGED")
@@ -1143,9 +1117,8 @@ local function CreateCatcher(key, kind, onDrop)
     end
 end
 
--- Knöpfe der Verpflegungs- und Berufeleiste verschieben wie auf Aktionsleisten: Shift + ziehen nimmt den Knopf
--- auf (ein Symbol folgt dem Mauszeiger). Loslassen in der Leiste = verschieben, aber nur innerhalb der Kategorie
--- (Verpflegung: dieselbe Reihe, Berufe: der ganze Beruf wandert in die Zielspalte); loslassen daneben = entfernen.
+-- Verschieben wie auf Aktionsleisten: Shift + ziehen nimmt den Knopf auf (ein Symbol folgt dem Mauszeiger).
+-- Loslassen auf einem Platz der Leiste = dorthin (tauscht), loslassen daneben = entfernen.
 local dragIcon, dragState
 
 local function CursorOverHolder(key)
@@ -1155,7 +1128,8 @@ end
 
 function ns.StartOwnDrag(key, button)
     if InCombatLockdown() or not button.fbEntry then return end
-    dragState = { key = key, button = button, entry = button.fbEntry }
+    dragState = { key = key, button = button, slot = button.fbSlotIndex,
+                  value = button.fbEntry.spell or button.fbEntry.item }
     if not dragIcon then
         dragIcon = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
         dragIcon:SetSize(30, 30)
@@ -1175,42 +1149,26 @@ function ns.StartOwnDrag(key, button)
     dragIcon.icon:SetTexture(button.icon:GetTexture())
     dragIcon:Show()
     button:SetAlpha(0.35)
+    slotDragActive = true
+    ns.UpdateEmptySlots() -- leere Plätze als Ziel zeigen
 end
 
 function ns.StopOwnDrag(button)
     local state = dragState
     dragState = nil
+    slotDragActive = false
     if dragIcon then dragIcon:Hide() end
     button:SetAlpha(1)
-    if not state or state.button ~= button then return end
-    local entry = state.entry
-    if CursorOverHolder(state.key) then
-        local row, col = DropTarget(state.key)
-        if state.key == "food" then
-            if not ns.db.bars.food.profRows then
-                ns.FoodInsert(entry.item)
-            elseif row ~= entry.row then
-                ns.Print(L("FOOD_SAME_ROW")) -- nur innerhalb der eigenen Reihe (Essen, Getränke, Fläschchen)
-            else
-                ns.FoodInsert(entry.item, row, col)
-            end
-        else
-            ns.ProfInsert(entry.spell, col)
-        end
-    elseif state.key == "food" then
-        ns.FoodRemove(entry.item)
-    else
-        ns.ProfRemove(entry.spell)
+    if not state or state.button ~= button then
+        ns.UpdateEmptySlots()
+        return
     end
-end
-
--- Hineingezogenes einsortieren: Verpflegung nach Reihe und Platz, Berufe nach Spalte
-local function OnFoodDrop(itemID, row, col)
-    if ns.db.bars.food.profRows then ns.FoodInsert(itemID, row, col) else ns.FoodInsert(itemID) end
-end
-
-local function OnProfDrop(spellID, _, col)
-    if spellID then ns.ProfInsert(spellID, col) end
+    if CursorOverHolder(state.key) then
+        ns.SlotPlace(state.key, state.value, DropSlot(state.key))
+    else
+        ns.SlotRemove(state.key, state.slot)
+    end
+    ns.UpdateEmptySlots()
 end
 
 function ns.CreateFoodButtons()
@@ -1220,63 +1178,15 @@ function ns.CreateFoodButtons()
             local button = CreateOwnButton(name, function(entry)
                 GameTooltip:SetItemByID(entry.item)
                 GameTooltip:AddLine(" ")
-                GameTooltip:AddLine(L("FOOD_TIP_REMOVE"), 0.6, 0.6, 0.6)
+                GameTooltip:AddLine(L("SLOT_TIP_MOVE"), 0.6, 0.6, 0.6)
                 GameTooltip:AddLine(L("FOOD_TIP_ADD"), 0.6, 0.6, 0.6)
             end)
-            -- Shift-Klick benutzt nichts (sonst würde man beim Herausziehen essen); Shift-Ziehen entfernt
-            button:SetAttribute("shift-type1", "fbnone")
-            button:RegisterForDrag("LeftButton")
             button:SetScript("OnDragStart", function(self)
                 if IsShiftKeyDown() then ns.StartOwnDrag("food", self) end
             end)
-            button:SetScript("OnDragStop", function(self) ns.StopOwnDrag(self) end)
         end
     end
     ns.UpdateOwnHotkeys()
-end
-
--- Knöpfe belegen (nur außerhalb des Kampfes); Rückgabe: Anzahl genutzter Plätze.
--- Nach Reihen getrennt hat jeder Platz einen festen Knopf (Reihe 1 = Knopf 1 … perRow usw.), damit eine
--- Tastenbelegung immer zum selben Platz gehört; sonst der Reihe nach.
-local function AssignFoodButtons(perRow)
-    foodLimit = perRow
-    foodItems, foodSignature = CollectFood(perRow)
-    local bySlot = {}
-    for index, entry in ipairs(foodItems) do
-        local slot = perRow and ((entry.row - 1) * perRow + entry.col + 1) or index
-        if slot <= FOOD_COUNT then bySlot[slot] = entry end
-    end
-    for i = 1, FOOD_COUNT do
-        local button = _G["ForeverBarsFoodButton" .. i]
-        local entry = bySlot[i]
-        if button then
-            button.fbEntry = entry
-            button:SetAttribute("type", entry and "item" or nil)
-            button:SetAttribute("item", entry and ("item:" .. entry.item) or nil)
-            button.icon:SetTexture(entry and entry.icon or nil)
-            button.Count:SetText("")
-            button:SetShown(entry ~= nil)
-            if entry then UpdateFoodButton(button) else button.cooldown:Clear() end
-        end
-    end
-    if perRow then return math.min(FOOD_COUNT, perRow * 3) end
-    return #foodItems
-end
-
--- Taschen geändert: neu belegen, wenn sich die Auswahl geändert hat, sonst nur Anzahl und Abklingzeit
-function ns.OnBagsChanged()
-    local _, signature = CollectFood(foodLimit)
-    if signature ~= foodSignature then
-        ns.RequestLayout() -- im Kampf erst danach (geschützte Knöpfe)
-    end
-    ns.UpdateFoodButtons()
-end
-
-function ns.UpdateFoodButtons()
-    for i = 1, FOOD_COUNT do
-        local button = _G["ForeverBarsFoodButton" .. i]
-        if button and button.fbEntry then UpdateFoodButton(button) end
-    end
 end
 
 ---------------------------------------------------------------------------
@@ -1634,53 +1544,18 @@ local function LayoutButtons(def, cfg, holder)
     local buttons = GetButtons(def, cfg)
     local size = def.kind == "bags" and SMALL_SIZE or ACTION_SIZE
     local wanted = def.bagButtons and #buttons or (cfg.buttons or def.count)
-    -- Haltungen: immer genau so viele Plätze, wie der Charakter hat; Berufe: höchstens so viele
+    -- Haltungen: immer genau so viele Plätze, wie der Charakter hat; Berufe/Verpflegung: feste Plätze (frei belegbar)
     if def.kind == "stance" then
         wanted = math.max(1, GetNumShapeshiftForms and GetNumShapeshiftForms() or 0)
-    elseif def.kind == "prof" then
-        wanted = math.min(wanted, math.max(1, AssignProfessionButtons()))
-    elseif def.kind == "food" then
-        if cfg.profRows then
-            -- In Reihen getrennt: festes Raster aus 3 Reihen, je Reihe "Knöpfe pro Reihe" (höchstens 6) Plätze
-            wanted = AssignFoodButtons(math.max(1, math.min(6, cfg.perRow or 4)))
-        else
-            wanted = math.min(wanted, math.max(1, AssignFoodButtons(nil)))
-        end
+    elseif def.kind == "prof" or def.kind == "food" then
+        wanted = ns.AssignSlotButtons(def.key)
     end
     local count = math.max(1, math.min(wanted, #buttons))
     local perRow = math.max(1, math.min(cfg.perRow or count, count))
-    if def.kind == "food" and cfg.profRows then perRow = math.max(1, math.min(6, cfg.perRow or 4)) end
     local rows = math.ceil(count / perRow)
-    -- Platz (Spalte, Reihe) je Knopf; Berufeleiste wahlweise nach Reihen getrennt: Fenster oben, Fertigkeit
-    -- darunter (leere Reihen fallen weg). Die Verpflegung hat feste Plätze und nutzt das normale Raster.
+    -- Platz (Spalte, Reihe) je Knopf, Reihe für Reihe
     local slots = {}
-    if def.kind == "prof" and cfg.profRows then
-        local entries = profSpells
-        local used, maxColumn = {}, 0
-        for i = 1, count do
-            local entry = entries[i]
-            if entry then
-                used[entry.row or 1] = true
-                maxColumn = math.max(maxColumn, entry.col or 0)
-            end
-        end
-        -- Genutzte Reihen der Reihe nach durchnummerieren (0 = oberste)
-        local rowIndex, nextRow = {}, 0
-        for row = 1, 2 do
-            if used[row] then
-                rowIndex[row] = nextRow
-                nextRow = nextRow + 1
-            end
-        end
-        for i = 1, count do
-            local entry = entries[i]
-            slots[i] = { entry and entry.col or (i - 1), entry and rowIndex[entry.row or 1] or 0 }
-        end
-        perRow = maxColumn + 1
-        rows = math.max(1, nextRow)
-    else
-        for i = 1, count do slots[i] = { (i - 1) % perRow, math.floor((i - 1) / perRow) } end
-    end
+    for i = 1, count do slots[i] = { (i - 1) % perRow, math.floor((i - 1) / perRow) } end
     local gap = ns.ButtonGap(cfg)
     local toLeft, toTop = cfg.growX == "LEFT", cfg.growY == "UP"
     local corner = (toTop and "BOTTOM" or "TOP") .. (toLeft and "RIGHT" or "LEFT")
@@ -1846,6 +1721,8 @@ local function VisibilityDriver(def, cfg)
     if ns.IsExternal(def.key) then return "[petbattle] hide; show" end
     if not cfg.enabled then return "hide" end
     if ns.unlocked or ns.testMode then return "show" end
+    -- Mit dem Pfeil eingeklappt (Berufe, Verpflegung)
+    if (def.kind == "prof" or def.kind == "food") and cfg.collapseArrow and cfg.collapsed then return "hide" end
     -- Haltungsleiste ohne Haltungen, Auren oder Gestalten ausblenden
     if def.kind == "stance" and (GetNumShapeshiftForms and GetNumShapeshiftForms() or 0) == 0 then return "hide" end
     -- Eigene Bedingung ersetzt alle anderen Einstellungen
@@ -2070,6 +1947,63 @@ function ns.UpdateBagToggle(def, cfg, holder)
     toggle:Show()
 end
 
+-- Einklapp-Pfeil an Berufe- und Verpflegungsleiste: sitzt auf der Innenseite (zu den Aktionsleisten hin), so hoch
+-- wie die Leiste samt Rahmen. Ausgeklappt zeigt er nach innen ("einklappen"), eingeklappt nach außen. Eingeklappt
+-- ist die Leiste ausgeblendet (über ihre Sichtbarkeits-Bedingung, im Kampf erst danach); der Pfeil bleibt stehen.
+local ARROW_WIDTH = 10
+function ns.UpdateCollapseArrow(def, cfg, holder)
+    local arrow = holder.fbCollapseArrow
+    if not cfg.enabled or not cfg.collapseArrow then
+        if arrow then arrow:Hide() end
+        return
+    end
+    if not arrow then
+        arrow = CreateFrame("Button", nil, UIParent, "BackdropTemplate")
+        arrow:SetFrameStrata("MEDIUM")
+        ns.Style.SetFlat(arrow, COLOR.button)
+        arrow.icon = arrow:CreateTexture(nil, "OVERLAY")
+        arrow.icon:SetSize(8, 8)
+        arrow.icon:SetPoint("CENTER")
+        arrow.icon:SetTexture("Interface\\ChatFrame\\ChatFrameExpandArrow")
+        arrow:SetScript("OnClick", function()
+            local barCfg = ns.db.bars[def.key]
+            barCfg.collapsed = not barCfg.collapsed
+            if InCombatLockdown() then ns.Print(L("COMBAT_QUEUED")) end
+            ns.RequestLayout()
+        end)
+        arrow:SetScript("OnEnter", function(self)
+            self:SetBackdropBorderColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3], 0.9)
+            local tip = ns.Style.GetTooltip()
+            tip:SetOwner(self, "ANCHOR_TOP")
+            tip:AddLine(L(ns.db.bars[def.key].collapsed and "BAR_EXPAND" or "BAR_COLLAPSE"))
+            tip:Show()
+        end)
+        arrow:SetScript("OnLeave", function(self)
+            self:SetBackdropBorderColor(unpack(COLOR.border))
+            ns.Style.GetTooltip():Hide()
+        end)
+        holder.fbCollapseArrow = arrow
+    end
+    -- Innenseite: die Seite zur Bildschirmmitte hin
+    local centerX = holder:GetCenter()
+    local onLeftHalf = centerX and centerX * holder:GetEffectiveScale() < UIParent:GetWidth() * UIParent:GetEffectiveScale() / 2
+    local edge = (cfg.frame and holder.fbFrame) or holder
+    arrow:ClearAllPoints()
+    arrow:SetScale(holder:GetScale())
+    arrow:SetWidth(ARROW_WIDTH)
+    if onLeftHalf then
+        arrow:SetPoint("TOPLEFT", edge, "TOPRIGHT", 2, 0)
+        arrow:SetPoint("BOTTOMLEFT", edge, "BOTTOMRIGHT", 2, 0)
+    else
+        arrow:SetPoint("TOPRIGHT", edge, "TOPLEFT", -2, 0)
+        arrow:SetPoint("BOTTOMRIGHT", edge, "BOTTOMLEFT", -2, 0)
+    end
+    -- Die Grafik zeigt von sich aus nach rechts; ausgeklappt nach innen, eingeklappt nach außen
+    local pointRight = (onLeftHalf and not cfg.collapsed) or (not onLeftHalf and cfg.collapsed)
+    arrow.icon:SetRotation(pointRight and 0 or math.pi)
+    arrow:Show()
+end
+
 -- Erfahrungsleiste und ForeverXP: Ist ForeverXP aktiv, gehört ihm die Erfahrungsleiste. ForeverBars hält
 -- Blizzards Leiste nur fest an ihrem Standardplatz (oben mittig), damit ForeverXP sich mit "An Blizzards Platz"
 -- dort darüberlegt; Position, Größe und Sichtbarkeit stellt man im ForeverXP-Menü ein.
@@ -2132,11 +2066,12 @@ function ns.ApplyLayout()
             RegisterStateDriver(holder, "visibility", "[petbattle] hide; show")
         end
         UpdateBarFrame(def, cfg, holder)
+        if def.kind == "prof" or def.kind == "food" then ns.UpdateCollapseArrow(def, cfg, holder) end
         UpdateMover(def, holder)
     end
     -- Flächen zum Hineinziehen (einmalig anlegen, sobald die Halter da sind)
-    CreateCatcher("food", "item", OnFoodDrop)
-    CreateCatcher("prof", "spell", OnProfDrop)
+    CreateCatcher("food")
+    CreateCatcher("prof")
 end
 
 -- Mehrere Änderungen kurz hintereinander werden zusammengefasst; im Kampf erst danach

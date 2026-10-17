@@ -102,7 +102,7 @@ ns.defaults = {
         xp = BarDefaults(true), rep = BarDefaults(true), queue = BarDefaults(true),
     },
     -- (Profile verwaltet seit 0.41b ForeverCore – je Charakter, siehe RegisterSettings am Ende dieser Datei)
-    layoutVersion = 8,         -- Stand der Standard-Anordnung (siehe MigrateLayout)
+    layoutVersion = 9,         -- Stand der Standard-Anordnung (siehe MigrateLayout)
     skin = "FLAT",           -- Aussehen der Knöpfe (ns.SKINS in Bars.lua)
     hoverAlpha = 15,         -- Stärke des Hover-Leuchtens über den Knöpfen (%)
     procGlow = "FOREVER",    -- Leuchten bei Procs: "FOREVER" (goldener Rahmen), "BLIZZARD", "OFF"
@@ -139,10 +139,8 @@ ns.defaults.bars.prof.point = "BOTTOMRIGHT"
 ns.defaults.bars.prof.frame = true
 ns.defaults.bars.prof.scale = 80
 -- Verpflegungsleiste: gespiegelt zur Berufeleiste rechts neben den Aktionsleisten, gleiche Größe, mit Rahmen
-ns.defaults.bars.food.buttons = 12 -- festes Raster: 4 breit, 3 Reihen (Essen, Getränke, Fläschchen)
+ns.defaults.bars.food.buttons = 12 -- 12 Plätze, 4 breit und 3 hoch, frei belegbar
 ns.defaults.bars.food.perRow = 4
-ns.defaults.bars.food.foodExcluded = {} -- mit Shift herausgezogene Gegenstände
-ns.defaults.bars.food.foodOrder = {}    -- je Reihe die selbst einsortierte Reihenfolge
 ns.defaults.bars.food.point = "BOTTOMLEFT"
 ns.defaults.bars.food.frame = true
 ns.defaults.bars.food.scale = 80
@@ -157,8 +155,14 @@ ns.defaults.bars.bags.growX = "LEFT"
 ns.defaults.bars.bags.collapsible = true   -- Pfeil zum Aus-/Einklappen der Taschen
 ns.defaults.bars.bags.bagsCollapsed = true -- eingeklappt: nur der Rucksack
 ns.defaults.bars.micro.attachChat = "OFF"  -- Mikromenü am Chatfenster: "OFF", "ABOVE", "BELOW"
-ns.defaults.bars.prof.profExcluded = {}    -- mit Shift herausgezogene Berufs-Knöpfe
-ns.defaults.bars.prof.profOrder = {}       -- eigene Reihenfolge der Berufe
+ns.defaults.bars.prof.buttons = 12 -- 12 Plätze, 6 breit und 2 hoch, frei belegbar
+ns.defaults.bars.prof.perRow = 6
+-- Berufe und Verpflegung: belegte Plätze, automatisch eingetragene, herausgezogene; Einklapp-Pfeil
+for _, key in ipairs({ "prof", "food" }) do
+    local bar = ns.defaults.bars[key]
+    bar.slots, bar.slotsAuto, bar.excluded = {}, {}, {}
+    bar.collapseArrow, bar.collapsed = true, false
+end
 ns.defaults.bars.xp.point = "TOP"
 ns.defaults.bars.rep.point = "TOP"
 -- Leiste 1 macht in Fahrzeugen der Blizzard-Fahrzeugleiste Platz; die Begleiterleiste nur mit Begleiter
@@ -194,7 +198,9 @@ ns.FillDefaults = FillDefaults
 --   6 (0.15.0): Mikromenü und Taschenleiste kleiner (80 %), Positionen unten rechts neu berechnet
 --   7 (0.15.1): Mikromenü 40 % und schwarz-weiß, Positionen unten rechts neu berechnet
 --   8 (0.41b+): eigenes Mikromenü (Text-Knöpfe, 100 %), Positionen unten rechts neu berechnet
-local LAYOUT_VERSION = 8
+--   9 (0.41b+): Berufe/Verpflegung frei belegbar (Berufe 6 x 2, Verpflegung 4 x 3) mit Einklapp-Pfeil,
+--               Positionen neu berechnet (mehr Abstand zu den Aktionsleisten für den Pfeil)
+local LAYOUT_VERSION = 9
 local STANDARD_LAYOUT_BARS = { "bar1", "bar2", "bar3", "bar6", "bar7", "bar8", "pet", "stance", "prof", "food",
                                "micro", "bags", "xp", "rep", "vehicle" }
 function ns.MigrateLayout(db)
@@ -257,6 +263,16 @@ function ns.MigrateLayout(db)
                 end
                 micro.x, micro.y = nil, nil
                 if target.bars.bags then target.bars.bags.x, target.bars.bags.y = nil, nil end
+            end
+            if version < 9 then
+                for _, key in ipairs({ "prof", "food" }) do
+                    local bar = target.bars[key]
+                    if bar then
+                        bar.buttons = ns.defaults.bars[key].buttons
+                        bar.perRow = ns.defaults.bars[key].perRow
+                        bar.x, bar.y = nil, nil
+                    end
+                end
             end
         end
     end

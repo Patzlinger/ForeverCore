@@ -351,10 +351,10 @@ local function CreateOptions()
     options.flyoutSelector = CreateSmallSelector(layoutPage, L("OPT_FLYOUT"), RIGHT_X, -188, 170, FLYOUT_CHOICES,
         function() return SelectedConfig().flyout or "UP" end,
         function(value) SelectedConfig().flyout = value; Changed() end)
-    -- Nur Berufeleiste: Berufe oben, Fertigkeiten (Entzaubern, Angeln …) unten
-    options.profRowsCheck = CreateCheckbox(layoutPage, L("OPT_PROF_ROWS"), RIGHT_X, -192,
-        function() return SelectedConfig().profRows end,
-        function(value) SelectedConfig().profRows = value; Changed(); ns.RefreshOptions() end)
+    -- Nur Berufe- und Verpflegungsleiste: Pfeil auf der Innenseite zum Ein-/Ausklappen
+    options.collapseArrowCheck = CreateCheckbox(layoutPage, L("OPT_COLLAPSE_ARROW"), RIGHT_X, -192,
+        function() return SelectedConfig().collapseArrow end,
+        function(value) SelectedConfig().collapseArrow = value; Changed() end)
     -- Nur Taschenleiste (an der Stelle der Ausklapp-Richtung, die es nur bei Aktionsleisten gibt)
     -- Taschenleiste ausklappbar: eingeklappt nur der Rucksack, ein Pfeil klappt die Taschen aus
     options.backpackCheck = CreateCheckbox(layoutPage, L("OPT_BAGS_COLLAPSIBLE"), RIGHT_X, -192,
@@ -1024,12 +1024,8 @@ function ns.RefreshOptions()
     options.growYSelector:SetShown(hasButtons)
     options.flyoutSelector:SetShown(def.kind == "action")
     options.backpackCheck:SetShown(def.kind == "bags")
-    -- Reihen nach Art: Berufe (Fenster/Fertigkeit) bzw. Verpflegung (Essen/Getränke/Fläschchen)
-    local splitRows = def.kind == "prof" or def.kind == "food"
-    options.profRowsCheck:SetShown(splitRows)
-    options.profRowsCheck.label:SetText(L(def.kind == "food" and "OPT_FOOD_ROWS" or "OPT_PROF_ROWS"))
-    -- Berufe in Spalten: Breite ergibt sich aus den Berufen; Verpflegung: "pro Reihe" = Breite des Rasters
-    options.perRowSlider:SetShown(hasButtons and not (def.kind == "prof" and SelectedConfig().profRows))
+    options.collapseArrowCheck:SetShown(def.kind == "prof" or def.kind == "food")
+    options.perRowSlider:SetShown(hasButtons)
     options.keyringCheck:SetShown(def.kind == "bags" and ns.HasKeyring())
     options.foodResetButton:SetShown(def.kind == "food" or def.kind == "prof")
     options.chatSelector:SetShown(def.key == "micro")
