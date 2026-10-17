@@ -19,7 +19,7 @@ ns.FONTS = {
 ns.defaults = {
     version = 1,
     width = 260,
-    height = 400,
+    height = 480,
     -- x/y = nil bedeutet: Standardposition am rechten Bildschirmrand
     followMinimap = true, -- mit ForeverMinimap: direkt darunter und gleich breit (aus, sobald man den Tracker selbst zieht)
     hideBlizzard = true,
@@ -52,6 +52,16 @@ ns.defaults = {
     language = "AUTO",
 }
 
+-- Fehlende Einstellungen aus den Standardwerten ergänzen
+local function FillDefaults()
+    for key, value in pairs(ns.defaults) do
+        if ForeverQuestsDB[key] == nil then
+            -- Tabellen kopieren, damit die Standardwerte unverändert bleiben
+            ForeverQuestsDB[key] = type(value) == "table" and CopyTable(value) or value
+        end
+    end
+end
+
 local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("ADDON_LOADED")
 eventFrame:RegisterEvent("PLAYER_LOGIN")
@@ -62,16 +72,19 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
         if loadedName ~= addonName then return end
 
         ForeverQuestsDB = ForeverQuestsDB or {}
-        for key, value in pairs(ns.defaults) do
-            if ForeverQuestsDB[key] == nil then
-                -- Tabellen kopieren, damit die Standardwerte unverändert bleiben
-                ForeverQuestsDB[key] = type(value) == "table" and CopyTable(value) or value
-            end
-        end
+        FillDefaults()
         ns.db = ForeverQuestsDB
 
         self:UnregisterEvent("ADDON_LOADED")
     elseif event == "PLAYER_LOGIN" then
+        -- Nochmals ergänzen: ForeverCore schreibt beim Laden das Profil in dieselbe Tabelle; lief das nach uns
+        -- (z. B. nach "Zurücksetzen"), fehlten sonst alle Werte
+        FillDefaults()
+        -- Einmalig: Tracker 20 % höher (Standard 400 -> 480), wenn die Höhe noch auf dem alten Standard steht
+        if (ns.db.layoutVersion or 1) < 2 then
+            if ns.db.height == 400 then ns.db.height = ns.defaults.height end
+            ns.db.layoutVersion = 2
+        end
         if ns.ApplyBetaFilter then ns.ApplyBetaFilter() end
         ns.CreateTracker()
         ns.UpdateBlizzardTracker()

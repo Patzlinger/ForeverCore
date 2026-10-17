@@ -63,8 +63,9 @@ local function CreateSlider(parent, label, x, y, width, getMin, getMax, getValue
 
     slider.Refresh = function()
         slider:SetMinMaxValues(getMin(), getMax())
-        slider:SetValue(getValue())
-        box:SetText(math.floor(getValue() + 0.5))
+        local value = getValue() or getMin() -- fehlender Wert: kein Fehler, Regler steht am Anfang
+        slider:SetValue(value)
+        box:SetText(math.floor(value + 0.5))
     end
     table.insert(controls, slider)
 end

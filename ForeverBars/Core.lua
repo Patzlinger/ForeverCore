@@ -405,6 +405,9 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
         -- Aktuelle Einstellungen im aktiven Profil sichern
         if ns.SaveActiveProfile then ns.SaveActiveProfile() end
     elseif event == "PLAYER_LOGIN" then
+        -- Nochmals ergänzen: ForeverCore schreibt beim Laden das Profil in dieselbe Tabelle; lief das nach uns
+        -- (z. B. nach "Zurücksetzen"), fehlten sonst Werte
+        FillDefaults(ns.db, ns.defaults)
         ns.CreateMinimapButton()
         -- Läuft Bartender4, lässt ForeverBars die Leisten in Ruhe (zwei Leisten-Addons stören sich)
         local isLoaded = C_AddOns and C_AddOns.IsAddOnLoaded or IsAddOnLoaded
