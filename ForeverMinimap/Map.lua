@@ -556,6 +556,10 @@ function ns.UpdateTools()
     strip:SetWidth(cols * (ITEM + GAP) - GAP + 2 * PAD)
     strip:SetShown(useStrip and #items > 0)
     strip:SetAlpha(show and 1 or 0)
+    -- Flaeche und Rand einstellbar durchsichtig (Kinder = Knoepfe bleiben dabei voll sichtbar)
+    local a = (d.stripAlpha or 50) / 100
+    strip:SetBackdropColor(C.header[1], C.header[2], C.header[3], a)
+    strip:SetBackdropBorderColor(C.border[1], C.border[2], C.border[3], math.min(1, a + 0.2))
 
     -- Zonenname bis an Knoepfe/Uhr heran (abgeschnitten statt ueberlappt)
     if bar and bar:IsShown() then

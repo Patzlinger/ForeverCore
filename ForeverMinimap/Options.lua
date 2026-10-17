@@ -45,7 +45,9 @@ local function Build()
     -- rechts: Knoepfe
     local btnP = UI.MenuPanel(options, T("Knöpfe", "Buttons"))
     btnP:SetPoint("TOPLEFT", shape, "TOPRIGHT", M.pad, 0)
-    btnP:SetSize(COL, 44 + DS + 3 * CS + 8)
+    btnP:SetSize(COL, 44 + DS + 3 * CS + M.sliderStep + 8)
+    UI.MenuSlider(btnP, x0, y0 - DS - 3 * CS - 4, T("Deckkraft der Knopfleiste (%)", "Button bar opacity (%)"), 0, 100, 5,
+        Get("stripAlpha"), Set("stripAlpha"))
     UI.MenuDropdown(btnP, x0, y0, T("Knopfleiste", "Button bar"), {
         { key = "LEFT", label = T("Links neben der Karte", "Left of the map") },
         { key = "RIGHT", label = T("Rechts neben der Karte", "Right of the map") },
