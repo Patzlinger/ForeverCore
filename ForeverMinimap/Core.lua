@@ -21,6 +21,7 @@ ns.DEFAULTS = {
     -- Form und Rahmen
     shape = "SQUARE",        -- "SQUARE" (eckig) oder "ROUND" (rund)
     border = true,           -- feiner Rahmen um Minimap und Leiste
+    mapScale = 113,          -- Kartengroesse in % von Blizzards Minimap (198 px); Position/Gesamtgroesse: Bearbeitungsmodus
     -- Leiste
     bar = true,              -- Leiste mit Zonenname
     barPosition = "TOP",     -- "TOP" (ueber der Minimap) oder "BOTTOM" (darunter)

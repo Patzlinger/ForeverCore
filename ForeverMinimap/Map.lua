@@ -5,8 +5,8 @@ local C = UI.COLOR
 
 local BAR_H = 22        -- Hoehe der Leiste
 local TOOL = 18         -- Knopfgroesse in der Leiste (wenn die eigenen Knoepfe dort sitzen)
-local ITEM = 22         -- Knopfgroesse in der senkrechten Knopfleiste
-local STRIP_W = 28      -- Breite der senkrechten Knopfleiste
+local ITEM = 26         -- Knopfgroesse in der senkrechten Knopfleiste
+local STRIP_W = 32      -- Breite der senkrechten Knopfleiste (eine Spalte)
 local SQUARE_MASK = "Interface\\BUTTONS\\WHITE8X8"
 local CIRCLE = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
 local ROUND_MASK = CIRCLE -- gleiche Kreismaske wie der Ring dahinter (deckungsgleich)
@@ -60,9 +60,22 @@ local function PlaceEdges(top, bottom)
     l[4]:SetPoint("TOPLEFT", top, "TOPRIGHT", 0, 0) l[4]:SetPoint("BOTTOMLEFT", bottom, "BOTTOMRIGHT", 0, 0) l[4]:SetWidth(1)
 end
 
+-- Kartengroesse (Blizzard-Standard 198 px); danach einmal neu zeichnen lassen (Zoom kurz hin und zurueck)
+local BASE_SIZE = 198
+local function ApplySize()
+    local size = math.floor(BASE_SIZE * (DB().mapScale or 113) / 100 + 0.5)
+    if math.abs(Minimap:GetWidth() - size) < 0.5 then return end
+    Minimap:SetSize(size, size)
+    local z = Minimap:GetZoom()
+    local levels = Minimap:GetZoomLevels()
+    pcall(Minimap.SetZoom, Minimap, z > 0 and z - 1 or math.min(z + 1, levels - 1))
+    pcall(Minimap.SetZoom, Minimap, z)
+end
+
 function ns.ApplyShape()
     local d = DB()
     local square = d.shape == "SQUARE"
+    ApplySize()
     pcall(Minimap.SetMaskTexture, Minimap, square and SQUARE_MASK or ROUND_MASK)
     -- Archaeologie-/Questbereich-Ringe passen nicht zur eckigen Karte
     if Minimap.SetArchBlobRingScalar then pcall(Minimap.SetArchBlobRingScalar, Minimap, square and 0 or 1) end
@@ -362,8 +375,14 @@ end
 ---------------------------------------------------------------------------
 -- Senkrechte Knopfleiste neben der Minimap: eigene Knoepfe (Post, Verfolgung, Kalender, Addon-Menue) und die
 -- Minimap-Knoepfe am Rand (Forever-Sammelknopf, andere Addons wie BugSack) – auf Wunsch nur bei Mausover.
+-- Die Leiste ist genau so hoch wie Karte + Kopfleiste. Passen nicht alle Knoepfe hinein, wird der letzte Platz
+-- ein Pfeil "weitere Knoepfe": aufgeklappt waechst die Leiste in weitere Spalten nach aussen (nie hoeher).
 -- Fremde Knoepfe werden nur verschoben und verkleinert (keine Blizzard-Rahmen); Ziehen ist dort aus.
 ---------------------------------------------------------------------------
+local GAP, PAD = 3, 3
+local expanded = false
+local moreButton
+
 local function BuildStrip()
     strip = CreateFrame("Frame", "ForeverMinimapStrip", Minimap, "BackdropTemplate")
     strip:SetWidth(STRIP_W)
@@ -372,16 +391,42 @@ local function BuildStrip()
     strip:EnableMouse(true)
     strip:SetScript("OnEnter", function() ns.UpdateHover() end)
     strip:SetScript("OnLeave", function() ns.UpdateHoverSoon() end)
+
+    -- Pfeil "weitere Knoepfe" (nur, wenn nicht alle in eine Spalte passen)
+    moreButton = CreateFrame("Button", nil, strip, "BackdropTemplate")
+    moreButton:SetSize(ITEM, ITEM)
+    moreButton:SetFrameLevel(strip:GetFrameLevel() + 3)
+    UI.SetFlat(moreButton, { C.button[1], C.button[2], C.button[3], 0.85 })
+    moreButton.icon = moreButton:CreateTexture(nil, "ARTWORK")
+    moreButton.icon:SetSize(12, 12)
+    moreButton.icon:SetPoint("CENTER")
+    moreButton.icon:SetTexture("Interface\\ChatFrame\\ChatFrameExpandArrow")
+    moreButton:SetScript("OnClick", function()
+        expanded = not expanded
+        ns.UpdateTools()
+    end)
+    moreButton:SetScript("OnEnter", function(self)
+        self:SetBackdropBorderColor(C.accent[1], C.accent[2], C.accent[3], 0.9)
+        GameTooltip:SetOwner(self, DB().strip == "RIGHT" and "ANCHOR_RIGHT" or "ANCHOR_LEFT")
+        GameTooltip:AddLine(expanded and T("Weniger Knöpfe", "Fewer buttons") or T("Weitere Knöpfe", "More buttons"))
+        GameTooltip:Show()
+        ns.UpdateHover()
+    end)
+    moreButton:SetScript("OnLeave", function(self)
+        self:SetBackdropBorderColor(C.border[1], C.border[2], C.border[3], 1)
+        GameTooltip_Hide()
+        ns.UpdateHoverSoon()
+    end)
 end
 
 -- fremden Knopf an seinen Platz in der Leiste setzen (auch, wenn sein Addon ihn spaeter zurueckschiebt)
 local function PlaceForeign(b)
-    if not b.fmmY then return end
+    if not b.fmmPoint then return end
     local s = ITEM / math.max(1, b:GetWidth())
     b.fmmPlacing = true
     b:SetScale(s)
     b:ClearAllPoints()
-    b:SetPoint("TOP", strip, "TOP", 0, b.fmmY / s)
+    b:SetPoint(b.fmmPoint, strip, b.fmmPoint, b.fmmX / s, b.fmmY / s)
     b:SetFrameLevel(strip:GetFrameLevel() + 2)
     b.fmmPlacing = false
 end
@@ -400,27 +445,37 @@ local function ToolVisible(b)
     return not def.shown or def.shown()
 end
 
--- Knoepfe anordnen, ein-/ausblenden und einfaerben (Post/Einladung: goldener Rand, auch ohne Maus sichtbar)
+-- Knoepfe anordnen und ein-/ausblenden (Post/Einladung: goldener Rand, auch ohne Maus sichtbar)
 function ns.UpdateTools()
     if not strip then return end
     local d = DB()
-    local side = d.strip
-    local useStrip = side == "LEFT" or side == "RIGHT"
+    local side = d.strip == "RIGHT" and "RIGHT" or "LEFT"
+    local useStrip = d.strip == "LEFT" or d.strip == "RIGHT"
     local inBar = d.toolsInBar and d.bar
     local show = hovering or not d.stripMouseover
+    if not hovering and d.stripMouseover then expanded = false end -- beim Verlassen wieder einklappen
 
-    -- Leiste: neben Minimap (und Kopfleiste, falls sie oben sitzt)
-    local topRef = (d.bar and d.barPosition ~= "BOTTOM" and bar) or Minimap
+    -- Hoehe = Karte + Kopfleiste; oben und unten buendig
+    local barShown = d.bar and bar
+    local topRef = (barShown and d.barPosition ~= "BOTTOM" and bar) or Minimap
+    local bottomRef = (barShown and d.barPosition == "BOTTOM" and bar) or Minimap
+    local height = Minimap:GetHeight() + (barShown and BAR_H or 0)
     strip:ClearAllPoints()
-    if side == "RIGHT" then strip:SetPoint("TOPLEFT", topRef, "TOPRIGHT", 4, 0)
-    else strip:SetPoint("TOPRIGHT", topRef, "TOPLEFT", -4, 0) end
+    if side == "RIGHT" then
+        strip:SetPoint("TOPLEFT", topRef, "TOPRIGHT", 4, 0)
+        strip:SetPoint("BOTTOMLEFT", bottomRef, "BOTTOMRIGHT", 4, 0)
+    else
+        strip:SetPoint("TOPRIGHT", topRef, "TOPLEFT", -4, 0)
+        strip:SetPoint("BOTTOMRIGHT", bottomRef, "BOTTOMLEFT", -4, 0)
+    end
 
-    local y, count = -3, 0
-    local prev
+    -- Liste der Knoepfe in der Leiste: eigene, dann fremde
+    local items, prev = {}, nil
     for _, b in ipairs(tools) do
         local wanted = ToolVisible(b)
         local alert = b.def.alert and b.def.alert()
         b:ClearAllPoints()
+        b.alert = alert
         if wanted and inBar then
             b:SetSize(TOOL, TOOL)
             if prev then b:SetPoint("RIGHT", prev, "LEFT", -2, 0)
@@ -430,37 +485,76 @@ function ns.UpdateTools()
             b:SetAlpha(1)
         elseif wanted and useStrip then
             b:SetSize(ITEM, ITEM)
-            b:SetPoint("TOP", strip, "TOP", 0, y)
-            y = y - ITEM - 3
-            count = count + 1
-            b:Show()
-            b:SetAlpha((show or alert) and 1 or 0)
+            items[#items + 1] = b
         else
             b:Hide()
         end
         if alert then
             b:SetBackdropBorderColor(C.accent[1], C.accent[2], C.accent[3], 0.9)
-            b.icon:SetDesaturated(false)
         elseif not b:IsMouseOver() then
             b:SetBackdropBorderColor(C.border[1], C.border[2], C.border[3], 1)
-            b.icon:SetDesaturated(true)
         end
+    end
+    if useStrip then
+        for _, b in ipairs(SortedForeign()) do items[#items + 1] = b end
     end
 
-    -- Minimap-Knoepfe am Rand: in die Leiste darunter
-    if useStrip then
-        local foreign = SortedForeign()
-        if count > 0 and #foreign > 0 then y = y - 3 end -- kleiner Abstand zwischen eigenen und fremden Knoepfen
-        for _, b in ipairs(foreign) do
-            b.fmmY = y
-            PlaceForeign(b)
-            b:SetAlpha(show and 1 or 0)
-            y = y - ITEM - 3
-            count = count + 1
+    -- Platz je Spalte; reicht er nicht, wird der letzte Platz der Pfeil
+    local perCol = math.max(1, math.floor((height - 2 * PAD + GAP) / (ITEM + GAP)))
+    local overflow = #items > perCol
+    local slots = #items
+    if overflow then
+        if expanded then slots = #items + 1 else slots = perCol end
+    end
+    local shownItems = (overflow and not expanded) and (perCol - 1) or #items
+    local cols = math.max(1, math.ceil(slots / perCol))
+    local point = side == "RIGHT" and "TOPLEFT" or "TOPRIGHT"
+    local dir = side == "RIGHT" and 1 or -1
+    local function Slot(i) -- Spalte fuer Spalte von der Karte weg
+        local col, row = math.floor((i - 1) / perCol), (i - 1) % perCol
+        return dir * (PAD + col * (ITEM + GAP)), -(PAD + row * (ITEM + GAP))
+    end
+    for i, b in ipairs(items) do
+        local isTool = b.def ~= nil
+        if i <= shownItems then
+            local x, y = Slot(i)
+            if isTool then
+                b:ClearAllPoints()
+                b:SetPoint(point, strip, point, x, y)
+                b:Show()
+                b:SetAlpha((show or b.alert) and 1 or 0)
+            else
+                b.fmmPoint, b.fmmX, b.fmmY = point, x, y
+                PlaceForeign(b)
+                b:SetAlpha(show and 1 or 0)
+                b:EnableMouse(true)
+            end
+        else
+            -- eingeklappt: unsichtbar und nicht anklickbar auf dem Platz des Pfeils (bleibt eingesammelt)
+            if isTool then
+                b:Hide()
+            else
+                local x, y = Slot(perCol)
+                b.fmmPoint, b.fmmX, b.fmmY = point, x, y
+                PlaceForeign(b)
+                b:SetAlpha(0)
+                b:EnableMouse(false)
+            end
         end
     end
-    strip:SetHeight(-y)
-    strip:SetShown(useStrip and count > 0)
+    if overflow then
+        local x, y = Slot(expanded and (#items + 1) or perCol)
+        moreButton:ClearAllPoints()
+        moreButton:SetPoint(point, strip, point, x, y)
+        -- Pfeil zeigt nach aussen (aufklappen) bzw. zur Karte (einklappen)
+        local outward = (side == "LEFT") ~= expanded
+        moreButton.icon:SetRotation(outward and math.pi / 2 or -math.pi / 2)
+        moreButton:Show()
+    else
+        moreButton:Hide()
+    end
+    strip:SetWidth(cols * (ITEM + GAP) - GAP + 2 * PAD)
+    strip:SetShown(useStrip and #items > 0)
     strip:SetAlpha(show and 1 or 0)
 
     -- Zonenname bis an Knoepfe/Uhr heran (abgeschnitten statt ueberlappt)

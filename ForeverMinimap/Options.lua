@@ -12,7 +12,7 @@ local function Set(key) return function(v) ns.GetDB()[key] = v if ns.ApplyAll th
 local function Get(key) return function() return ns.GetDB()[key] end end
 
 local function Build()
-    local H = 452
+    local H = 452 + M.sliderStep
     options = UI.MenuWindow("ForeverMinimapOptions", T("Einstellungen", "Settings"), "ForeverMinimap", W, H)
     local x0, y0 = M.contentX, M.contentY
     local CS, DS = M.checkStep, M.choiceStep
@@ -20,12 +20,13 @@ local function Build()
     -- links: Form und Rahmen
     local shape = UI.MenuPanel(options, T("Form und Rahmen", "Shape and border"))
     shape:SetPoint("TOPLEFT", M.pad, M.panelTop)
-    shape:SetSize(COL, 44 + DS + CS + 8)
+    shape:SetSize(COL, 44 + DS + CS + M.sliderStep + 8)
     UI.MenuDropdown(shape, x0, y0, T("Form", "Shape"), {
         { key = "SQUARE", label = T("Eckig", "Square") },
         { key = "ROUND", label = T("Rund", "Round") },
     }, Get("shape"), Set("shape"))
     UI.MenuCheck(shape, x0, y0 - DS, T("Feiner Rahmen", "Thin border"), Get("border"), Set("border"))
+    UI.MenuSlider(shape, x0, y0 - DS - CS - 4, T("Kartengröße (%)", "Map size (%)"), 80, 150, 1, Get("mapScale"), Set("mapScale"))
 
     -- links: Leiste
     local barP = UI.MenuPanel(options, T("Leiste", "Bar"))
