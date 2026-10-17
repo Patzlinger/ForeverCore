@@ -343,6 +343,8 @@ Damit alle Einstellungsfenster gleich aussehen, gelten diese Maße. Quelle: `For
   ihn schon beim Laden an. Solche Rahmen deshalb **sofort beim Laden der Datei** anlegen (nicht erst bei
   `PLAYER_LOGIN`), sonst kommt "Couldn't find region named …". Wer das Addon später entfernt, setzt das Element im
   Bearbeitungsmodus einmal zurück, damit der Verweis aus dem Layout verschwindet
+  Ist das Addon ausgeschaltet (z. B. über den Hub), legt der Hub für die Namen in `EDITMODE_ANCHORS` unsichtbare
+  Platzhalter an Blizzards Standardstelle an – neue Halter-Rahmen, an die Blizzard-Elemente gehängt werden, dort eintragen
 - **ForeverBars Proc-Leuchten**: blendet Blizzards Leuchten per `SetAlpha(0)` aus einem `hooksecurefunc` heraus aus
   (taint-frei, gleiches Verfahren wie ForeverXP/ForeverCast)
 - **ForeverQuests**: ersetzt den Blizzard-Questtracker

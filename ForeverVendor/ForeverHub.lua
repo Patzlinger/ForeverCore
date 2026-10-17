@@ -1659,6 +1659,39 @@ local KNOWN = {
 local CORE = "ForeverCore"
 local function CoreLoaded() return C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded(CORE) end
 
+-- Bearbeitungsmodus-Anker ausgeschalteter Addons: Blizzard speichert im Layout Anker an Addon-Rahmen
+-- (z. B. "MainStatusTrackingBarContainer an ForeverBars_xp"). Ist das Addon aus, fehlt der Rahmen ->
+-- LUA_WARNING "Couldn't find region named …" und die Leiste verliert ihren Platz. Dann springt ein
+-- unsichtbarer Platzhalter gleichen Namens an Blizzards Standardstelle ein (Mitte der Leiste = Mitte des
+-- Platzhalters, wie beim Halter). Verschiebt man die Leiste danach im Bearbeitungsmodus, speichert Blizzard
+-- einen neuen Anker und der Platzhalter wird nicht mehr gebraucht.
+-- Muss beim Laden der Datei passieren (vor EDIT_MODE_LAYOUTS_UPDATED). Neues Addon mit solchen Halter-Rahmen: hier eintragen.
+local EDITMODE_ANCHORS = {
+    { addon = "ForeverBars", name = "ForeverBars_xp",    point = "BOTTOM",      x = 0,    y = 7 },
+    { addon = "ForeverBars", name = "ForeverBars_rep",   point = "BOTTOM",      x = 0,    y = 21 },
+    { addon = "ForeverBars", name = "ForeverBars_micro", point = "BOTTOMRIGHT", x = -170, y = 20 },
+    { addon = "ForeverBars", name = "ForeverBars_bags",  point = "BOTTOMRIGHT", x = -110, y = 60 },
+}
+
+local function WillLoad(addon)
+    if not (C_AddOns and C_AddOns.GetAddOnEnableState) then return true end
+    if C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded(addon) then return true end
+    local ok, _, _, _, loadable, reason = pcall(C_AddOns.GetAddOnInfo, addon)
+    if ok and reason == "MISSING" then return false end
+    local char = UnitGUID and UnitGUID("player") or UnitName("player")
+    local okState, state = pcall(C_AddOns.GetAddOnEnableState, addon, char)
+    if okState and type(state) == "number" then return state > 0 end
+    return not ok or loadable ~= false
+end
+
+for _, a in ipairs(EDITMODE_ANCHORS) do
+    if not _G[a.name] and not WillLoad(a.addon) then
+        local stand = CreateFrame("Frame", a.name, UIParent)
+        stand:SetSize(1, 1)
+        stand:SetPoint(a.point, UIParent, a.point, a.x, a.y)
+    end
+end
+
 -- Einstellungen (in jedem Forever-Addon als SavedVariable "ForeverHubDB" eingetragen)
 local function GetDB()
     if type(_G.ForeverHubDB) ~= "table" then _G.ForeverHubDB = {} end
