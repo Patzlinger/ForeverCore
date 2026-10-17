@@ -1055,6 +1055,20 @@ function ns.UpdateTools()
         moreButton:Hide()
     end
     strip:SetWidth(width)
+    -- Breite im ausgeklappten Zustand merken: ForeverQuests (Tracker) und ForeverBars (Mikromenü) richten ihre Breite
+    -- danach, damit sie beim Auf-/Zuklappen nicht springen (siehe ForeverMinimap_GetSpan)
+    local full = width
+    if not round then
+        local saved = expanded
+        expanded = true
+        local _, _, w = LayoutSquare(items, side, height)
+        expanded = saved
+        full = w
+    end
+    if strip.fmmFullWidth ~= full then
+        strip.fmmFullWidth = full
+        C_Timer.After(0, function() if UI.Fire then UI.Fire("ForeverMinimap.Layout") end end)
+    end
     strip:SetShown(useStrip and #items > 0)
     strip:SetAlpha(show and 1 or 0)
     PlaceMail(side, bottomRef)
@@ -1143,6 +1157,24 @@ local function BaseZoom()
 end
 
 local zoomToken, lastBase = 0, nil
+-- Fuer andere Addons (ForeverQuests-Tracker, ForeverBars-Mikromenue darunter): linke und rechte Kante von Karte
+-- samt 1-px-Rahmen und der AUSGEKLAPPTEN Knopfleiste, in Bildschirmpixeln. Runde Karte: nur die Karte.
+function ForeverMinimap_GetSpan()
+    local left, right = Minimap:GetLeft(), Minimap:GetRight()
+    if not left then return nil end
+    local mapScale = Minimap:GetEffectiveScale()
+    left, right = (left - 1) * mapScale, (right + 1) * mapScale
+    if strip and strip:IsShown() and not IsRound() and strip.fmmFullWidth and strip:GetLeft() then
+        local s = strip:GetEffectiveScale()
+        if DB().strip == "RIGHT" then
+            right = math.max(right, (strip:GetLeft() + strip.fmmFullWidth) * s)
+        else
+            left = math.min(left, (strip:GetRight() - strip.fmmFullWidth) * s)
+        end
+    end
+    return left, right
+end
+
 local settingZoom = false
 local function SetZoomSafe(z)
     settingZoom = true

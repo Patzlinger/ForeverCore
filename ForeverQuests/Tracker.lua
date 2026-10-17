@@ -1374,8 +1374,18 @@ function ns.ApplyLayout()
             offset = (micro:GetBottom() * micro:GetEffectiveScale() - anchor:GetBottom() * anchor:GetEffectiveScale())
                 / trackerScale - 4 / k
         end
-        tracker:SetPoint("TOP", anchor, "BOTTOM", 0, offset)
-        tracker:SetSize((map:GetWidth() + 2) * k + 12, db.height)
+        -- Breite: Karte samt Rahmen und ausgeklappter Knopfleiste (ForeverMinimap_GetSpan); die Fenster im Tracker
+        -- sind je 6 px eingerückt, darum + 12. Ohne die Angabe: nur die Karte.
+        local trackerScale = tracker:GetEffectiveScale()
+        local width, shift = (map:GetWidth() + 2) * k + 12, 0
+        local left, right = nil, nil
+        if _G.ForeverMinimap_GetSpan then left, right = _G.ForeverMinimap_GetSpan() end
+        if left and right and anchor:GetCenter() then
+            width = (right - left) / trackerScale + 12
+            shift = ((left + right) / 2 - anchor:GetCenter() * anchor:GetEffectiveScale()) / trackerScale
+        end
+        tracker:SetPoint("TOP", anchor, "BOTTOM", shift, offset)
+        tracker:SetSize(width, db.height)
         ns.UpdateVisibility()
         ns.RequestUpdate()
         return

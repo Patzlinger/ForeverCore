@@ -2109,11 +2109,18 @@ function ns.MicroDockTarget(holder)
     local bar = _G.ForeverMinimapBar
     if bar and bar:IsShown() and bar:GetBottom() and bar:GetBottom() < map:GetBottom() then anchor = bar end
     local uiScale = UIParent:GetEffectiveScale()
-    local scale = (map:GetWidth() + 2) * map:GetEffectiveScale() / (holder:GetWidth() * uiScale)
+    -- Breite in Pixeln: Karte samt Rahmen und ausgeklappter Knopfleiste (wie der Tracker), sonst nur die Karte
+    local anchorX = anchor:GetCenter() * anchor:GetEffectiveScale()
+    local pixels, centerPx = (map:GetWidth() + 2) * map:GetEffectiveScale(), anchorX
+    local left, right = nil, nil
+    if _G.ForeverMinimap_GetSpan then left, right = _G.ForeverMinimap_GetSpan() end
+    if left and right then pixels, centerPx = right - left, (left + right) / 2 end
+    local scale = pixels / (holder:GetWidth() * uiScale)
     local ratio = anchor:GetEffectiveScale() / uiScale
-    local centerX = anchor:GetCenter() * ratio
     local centerY = anchor:GetBottom() * ratio - MICRO_DOCK_GAP - holder:GetHeight() * scale / 2
-    return { anchor = anchor, scale = scale, x = centerX, y = centerY }
+    -- shift: waagerechter Versatz zur Mitte des Ankers (in Einheiten des Halters)
+    return { anchor = anchor, scale = scale, x = centerPx / uiScale, y = centerY,
+             shift = (centerPx - anchorX) / (uiScale * scale) }
 end
 
 -- x/y = gewünschte Mitte der gezogenen Leiste; Rückgabe: ggf. eingerastete Mitte
@@ -2224,7 +2231,7 @@ local function UpdateMover(def, holder)
                     frame.dock = true
                     holder:SetScale(dock.scale)
                     holder:ClearAllPoints()
-                    holder:SetPoint("TOP", dock.anchor, "BOTTOM", 0, -MICRO_DOCK_GAP / dock.scale)
+                    holder:SetPoint("TOP", dock.anchor, "BOTTOM", dock.shift, -MICRO_DOCK_GAP / dock.scale)
                     return
                 end
                 frame.dock = false
@@ -2485,7 +2492,7 @@ function ns.ApplyLayout()
         local dock = def.key == "micro" and cfg.dockMinimap and ns.MicroDockTarget(holder)
         if dock then
             holder:SetScale(dock.scale)
-            holder:SetPoint("TOP", dock.anchor, "BOTTOM", 0, -MICRO_DOCK_GAP / dock.scale)
+            holder:SetPoint("TOP", dock.anchor, "BOTTOM", dock.shift, -MICRO_DOCK_GAP / dock.scale)
         else
             holder:SetPoint(cfg.point or "CENTER", UIParent, "BOTTOMLEFT", x / scale, y / scale)
         end
