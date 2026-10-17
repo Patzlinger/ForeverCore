@@ -1026,9 +1026,9 @@ local function SlotCell(index, rows)
 end
 
 -- Wie viele Plätze die Leiste gerade zeigt: bis zum letzten belegten Platz (die Leiste wächst mit; "Anzahl
--- Knöpfe" ist die Höchstzahl), beim Hineinziehen/Verschieben ein freier Platz mehr. Mindestens 2 Plätze
--- (übereinander), aufgerundet auf volle Spalten.
-local SLOT_MIN = 2
+-- Knöpfe" ist die Höchstzahl), beim Hineinziehen/Verschieben ein freier Platz mehr. Mindestgröße, damit der
+-- Titel über der Leiste Platz hat: Berufe 2×2, Verpflegung 3×2; aufgerundet auf volle Spalten.
+local SLOT_MIN = { prof = 4, food = 6 }
 local slotShown = {}
 local function ShownSlotCount(key, cfg, capacity)
     local last = 0
@@ -1036,7 +1036,7 @@ local function ShownSlotCount(key, cfg, capacity)
         if slot <= capacity and slot > last then last = slot end
     end
     if slotDragActive or GetCursorInfo() == SLOT_BARS[key].cursorKind then last = last + 1 end
-    local count = math.max(SLOT_MIN, last)
+    local count = math.max(SLOT_MIN[key] or 2, last)
     local rows = SlotRows(cfg, count)
     return math.max(1, math.min(capacity, math.ceil(count / rows) * rows))
 end
