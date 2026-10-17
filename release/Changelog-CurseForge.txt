@@ -3,7 +3,7 @@
 ## Unreleased
 
 ### Improved
-- ForeverQuests, quest together: the "Together" box now shows the quest just like the rest of the tracker (level color, quest type, ready to turn in, reward chest, quest item, tooltip on hover) plus its quest ID.
+- ForeverQuests, quest together: the "Together" box now shows the quest just like the rest of the tracker (level color, quest type, ready to turn in, reward chest, quest item, tooltip on hover) plus its quest ID. All shared quests now sit together in one "Together" window, separated by a fine line; right-click a quest there to stop doing it together.
 
 ### Fixed
 - ForeverQuests, quest together: you no longer show up twice (as "You" and with your full name), so the member count is right.

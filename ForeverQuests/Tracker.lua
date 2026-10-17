@@ -408,8 +408,12 @@ local function OpenQuestMenu(owner, questID)
             disabled = not (IsInGroup() and C_QuestLog.IsPushableQuest(questID)),
             onClick = function() ShareQuest(questID) end,
         },
-        {
-            -- Der Gruppe vorschlagen: bei allen mit ForeverQuests im Reiter "Gruppe" samt Fortschritt aller
+        (ns.IsGroupQuest and ns.IsGroupQuest(questID)) and {
+            -- schon gemeinsam (Fenster "Gemeinsam" oben): beenden
+            text = ns.L("GQ_LEAVE"),
+            onClick = function() ns.RemoveGroupQuest(questID, true) end,
+        } or {
+            -- Der Gruppe vorschlagen: wer mitmacht, hat sie oben unter "Gemeinsam" samt Fortschritt aller
             text = ns.L("MENU_SUGGEST"),
             disabled = not IsInGroup(),
             onClick = function() if ns.SuggestQuest then ns.SuggestQuest(questID) end end,
@@ -576,24 +580,23 @@ local function OnLineEnter(self)
 end
 
 local function OnLineClick(self, button)
-    -- Klick auf die Titelleiste eines Gebiets: ein-/ausklappen. Reiter "Gruppe": Linksklick öffnet die Quest im
-    -- Questlog (falls man sie hat), Rechtsklick nimmt sie aus der Gruppenliste
+    -- Klick auf die Titelleiste eines Gebiets (oder "Gemeinsam"): ein-/ausklappen
     if self.groupKey then
+        if button == "LeftButton" then ToggleGroup(self.groupKey) end
+        return
+    end
+    local questID = self.questID
+    -- gemeinsame Quest, die man selbst (noch) nicht im Questlog hat: Rechtsklick beendet das gemeinsame Machen
+    if not questID and self.groupQuestID then
         local groupQuestID = self.groupQuestID
-        if groupQuestID and button == "RightButton" then
+        if button == "RightButton" then
             ns.Style.ShowMenu(self, {
                 { title = (ns.groupQuests[groupQuestID] or {}).title or "Quest" },
                 { text = ns.L("GQ_LEAVE"), onClick = function() ns.RemoveGroupQuest(groupQuestID, true) end },
             }, { atCursor = true })
-        elseif groupQuestID and C_QuestLog.GetLogIndexForQuestID(groupQuestID) and not InCombatLockdown()
-            and QuestMapFrame_OpenToQuestDetails then
-            QuestMapFrame_OpenToQuestDetails(groupQuestID)
-        elseif button == "LeftButton" then
-            ToggleGroup(self.groupKey)
         end
         return
     end
-    local questID = self.questID
     if not questID then return end
     -- Shift-Klick auf das Symbol des Questgegenstands: Gegenstand im Chat verlinken
     local item = self.questItem
@@ -937,6 +940,7 @@ local function GetBox(index, alpha)
     box:SetBackdropBorderColor(color.border[1], color.border[2], color.border[3], math.max(alpha, 0.3))
     box.header:SetColorTexture(color.header[1], color.header[2], color.header[3], math.max(alpha, 0.15))
     box:SetFrameLevel(content:GetFrameLevel() + 1)
+    for _, sep in ipairs(box.separators or {}) do sep:Hide() end -- Trennlinien (nur im Fenster "Gemeinsam")
     return box
 end
 
@@ -1145,9 +1149,10 @@ local function CollectGroups()
     return groups
 end
 
--- Gemeinsame Quests (GroupQuests.lua) ganz oben: je Quest ein Fenster mit goldener Titelleiste ("Gemeinsam · 3"),
--- darunter je Questziel eine Zeile und dahinter der Stand aller, die mitmachen ("Du 3/8   Anna 5/8").
--- Rechtsklick auf den Titel: nicht mehr gemeinsam. Rückgabe: y, index, Anzahl Fenster
+-- Gemeinsame Quests (GroupQuests.lua) ganz oben in EINEM Fenster mit goldener Titelleiste ("Gemeinsam · 2"):
+-- je Quest die Questzeile wie in der normalen Liste, darunter je Questziel der Stand aller, die mitmachen
+-- ("Du 3/8   Anna 5/8"); zwischen den Quests eine feine Linie. Rechtsklick auf eine Quest: nicht mehr gemeinsam.
+-- Rückgabe: y, index, Anzahl Fenster (0 oder 1)
 local function MemberName(member)
     local text = member.me and ns.L("YOU") or member.name
     local color = member.class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[member.class]
@@ -1157,128 +1162,160 @@ local function MemberName(member)
     return text
 end
 
-local function RenderGroupView(y, index, alpha, contentWidth, nameX, nameWidth, objectiveX, objectiveWidth, padding)
-    local boxCount = 0
-    for _, entry in ipairs(ns.GroupQuestList()) do
-        boxCount = boxCount + 1
-        local boxTop = y
-        local box = GetBox(boxCount, alpha)
-        local accent = ns.Style.COLOR.accent
-        local questID = entry.questID
-        local groupKey = "#GQ:" .. questID
-        local collapsed = ns.collapsedGroups[groupKey] == true
-        -- Questgegenstand wie in der normalen Liste
-        local questItem
-        local logIndex = GetQuestLogSpecialItemInfo and C_QuestLog.GetLogIndexForQuestID(questID)
-        if logIndex then
-            local itemLink, itemIcon, _, showWhenComplete = GetQuestLogSpecialItemInfo(logIndex)
-            if itemLink and (not C_QuestLog.IsComplete(questID) or showWhenComplete) then
-                questItem = { link = itemLink, icon = itemIcon, logIndex = logIndex }
-            end
-        end
-        -- Titelleiste: "Gemeinsam" mit Anzahl der Teilnehmer (Klick klappt ein/aus, Rechtsklick: nicht mehr gemeinsam)
-        index = index + 1
-        y = AddLine(index, y + 5, nameX, nameWidth, ns.L("GQ_TAG"), fonts.header, accent[1], accent[2], accent[3], {
-            groupKey = groupKey,
-            arrow = not collapsed,
-            suffix = "|cff8a8a8a" .. #entry.members .. "|r",
-        })
-        lines[index].groupQuestID = questID
-        y = y + 4
-        box.header:SetHeight(math.max(1, y - boxTop - 1))
-        box.header:Show()
-        box.accent:SetColorTexture(accent[1], accent[2], accent[3], 0.7)
-        box.accent:Show()
-        y = y + 3
-        if not collapsed then
-            -- Questzeile wie in der normalen Liste: Name in Schwierigkeitsfarbe mit Stufe, Questtyp, "(Fertig)",
-            -- Truhe, Questgegenstand und Quest-ID; Maus darüber = Quest-Tooltip, Klick = Questlog, Rechtsklick = Menü
-            local info = logIndex and C_QuestLog.GetInfo(logIndex)
-            local isComplete = logIndex and C_QuestLog.IsComplete(questID)
-            local r, g, b = 1, 1, 1
-            if info and info.level and LevelColor() then
-                local color = LevelColor()(info.level)
-                r, g, b = color.r, color.g, color.b
-            end
-            local name = (info and info.title) or entry.data.title
-            if info and info.level and info.level > 0 then name = name .. " (" .. info.level .. ")" end
-            if logIndex and ns.db.showQuestType then
-                local typeText = GetQuestTypeText(questID, nil)
-                if typeText ~= "" then name = name .. " |cff88ccff" .. typeText .. "|r" end
-            end
-            if isComplete then name = name .. " |cff00ff00" .. ns.L("COMPLETE_TAG") .. "|r" end
-            local rewardQuality
-            if logIndex and ns.db.rewardHighlight > 0 then
-                local quality = GetBestRewardQuality(questID)
-                if quality >= ns.db.rewardHighlight then rewardQuality = quality end
-            end
-            name = name .. "  |cff6a6a6a#" .. questID .. "|r" -- Quest-ID (zum Nachschlagen/Abgleichen)
-            index = index + 1
-            y = AddLine(index, y + 2, nameX, nameWidth, name, fonts.quest, r, g, b, {
-                questID = logIndex and questID or nil,
-                reward = rewardQuality,
-                questItem = questItem,
-            })
-            if logIndex then CheckProgress(questID, C_QuestLog.GetQuestObjectives(questID) or {}, isComplete) end
-            if isComplete then
-                index = index + 1
-                y = AddLine(index, y, objectiveX, objectiveWidth, "- " .. ns.L("READY_TO_TURN_IN"), fonts.objective, 0, 1, 0)
-            end
-            -- Stand je Teilnehmer in Einzelteile zerlegen ("3/8,1/1" -> { "3/8", "1/1" })
-            for _, member in ipairs(entry.members) do
-                member.parts = {}
-                if member.state and member.state ~= "+" and member.state ~= "-" then
-                    for part in member.state:gmatch("[^,]+") do member.parts[#member.parts + 1] = part end
-                end
-            end
-            local objectives = C_QuestLog.GetLogIndexForQuestID(questID) and C_QuestLog.GetQuestObjectives(questID) or {}
-            if #objectives > 0 then
-                for i, objective in ipairs(objectives) do
-                    -- Zielname ohne den eigenen Zähler am Ende ("Wolf getötet: 3/8" -> "Wolf getötet")
-                    local label = (objective.text or ""):gsub("[:：]?%s*%d+%s*/%s*%d+%s*$", "")
-                    if label == "" then label = ns.L("GQ_OBJECTIVE", i) end
-                    index = index + 1
-                    y = AddLine(index, y + 2, objectiveX, objectiveWidth, "- " .. label, fonts.objective, 0.85, 0.85, 0.85)
-                    local parts = {}
-                    for _, member in ipairs(entry.members) do
-                        local value
-                        if member.state == "+" then
-                            value = "|cff33ff33" .. ns.L("GQ_DONE") .. "|r"
-                        elseif member.state == "-" then
-                            value = "|cff8a8a8a" .. ns.L("GQ_MISSING") .. "|r"
-                        else
-                            local part = member.parts[i]
-                            local have, need -- (nicht "part and part:match(...)": das liefert nur den ersten Wert)
-                            if part then have, need = part:match("^(%d+)/(%d+)$") end
-                            if have and tonumber(have) >= tonumber(need) then
-                                value = "|cff33ff33" .. part .. "|r"
-                            else
-                                value = part or "|cff8a8a8a…|r"
-                            end
-                        end
-                        parts[#parts + 1] = MemberName(member) .. " " .. value
-                    end
-                    index = index + 1
-                    y = AddLine(index, y + 1, objectiveX + 8, objectiveWidth - 8, table.concat(parts, "   "),
-                        fonts.objective, 0.9, 0.9, 0.9)
-                end
-            else
-                -- Quest nicht (mehr) im eigenen Questlog: je Teilnehmer eine Zeile mit seinem Stand
-                for _, member in ipairs(entry.members) do
-                    index = index + 1
-                    y = AddLine(index, y + 2, objectiveX, objectiveWidth,
-                        MemberName(member) .. ":  " .. ns.GroupStateText(member.state), fonts.objective, 0.9, 0.9, 0.9)
-                end
-            end
-        end
-        y = y + padding
-        box:ClearAllPoints()
-        box:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -boxTop)
-        box:SetSize(contentWidth, y - boxTop)
-        box:Show()
-        y = y + BOX_GAP
+-- feine Trennlinie im Fenster (eigene kleine Sammlung je Fenster, beim nächsten Aufbau wieder versteckt)
+local function Separator(box, n, top, width)
+    box.separators = box.separators or {}
+    local line = box.separators[n]
+    if not line then
+        line = box:CreateTexture(nil, "ARTWORK")
+        line:SetHeight(1)
+        box.separators[n] = line
     end
-    return y, index, boxCount
+    local accent = ns.Style.COLOR.accent
+    line:SetColorTexture(accent[1], accent[2], accent[3], 0.18)
+    line:ClearAllPoints()
+    line:SetPoint("TOPLEFT", box, "TOPLEFT", 10, -top)
+    line:SetWidth(math.max(1, width - 20))
+    line:Show()
+end
+
+local function RenderGroupQuest(entry, y, index, nameX, nameWidth, objectiveX, objectiveWidth)
+    local questID = entry.questID
+    local logIndex = C_QuestLog.GetLogIndexForQuestID(questID)
+    -- Questgegenstand wie in der normalen Liste
+    local questItem
+    if logIndex and GetQuestLogSpecialItemInfo then
+        local itemLink, itemIcon, _, showWhenComplete = GetQuestLogSpecialItemInfo(logIndex)
+        if itemLink and (not C_QuestLog.IsComplete(questID) or showWhenComplete) then
+            questItem = { link = itemLink, icon = itemIcon, logIndex = logIndex }
+        end
+    end
+    -- Questzeile: Name in Schwierigkeitsfarbe mit Stufe, Questtyp, "(Fertig)", Truhe, Questgegenstand und Quest-ID;
+    -- Maus darüber = Quest-Tooltip, Klick = Questlog, Rechtsklick = Menü (mit "Nicht mehr gemeinsam machen")
+    local info = logIndex and C_QuestLog.GetInfo(logIndex)
+    local isComplete = logIndex and C_QuestLog.IsComplete(questID)
+    local r, g, b = 1, 1, 1
+    if info and info.level and LevelColor() then
+        local color = LevelColor()(info.level)
+        r, g, b = color.r, color.g, color.b
+    end
+    local name = (info and info.title) or entry.data.title
+    if info and info.level and info.level > 0 then name = name .. " (" .. info.level .. ")" end
+    if logIndex and ns.db.showQuestType then
+        local typeText = GetQuestTypeText(questID, nil)
+        if typeText ~= "" then name = name .. " |cff88ccff" .. typeText .. "|r" end
+    end
+    if isComplete then name = name .. " |cff00ff00" .. ns.L("COMPLETE_TAG") .. "|r" end
+    local rewardQuality
+    if logIndex and ns.db.rewardHighlight > 0 then
+        local quality = GetBestRewardQuality(questID)
+        if quality >= ns.db.rewardHighlight then rewardQuality = quality end
+    end
+    name = name .. "  |cff6a6a6a#" .. questID .. "|r" -- Quest-ID (zum Nachschlagen/Abgleichen)
+    index = index + 1
+    y = AddLine(index, y, nameX, nameWidth, name, fonts.quest, r, g, b, {
+        questID = logIndex and questID or nil,
+        reward = rewardQuality,
+        questItem = questItem,
+    })
+    -- auch ohne eigene Quest im Questlog per Rechtsklick beendbar
+    lines[index].groupQuestID = questID
+    lines[index]:EnableMouse(true)
+    if logIndex then CheckProgress(questID, C_QuestLog.GetQuestObjectives(questID) or {}, isComplete) end
+    if isComplete then
+        index = index + 1
+        y = AddLine(index, y, objectiveX, objectiveWidth, "- " .. ns.L("READY_TO_TURN_IN"), fonts.objective, 0, 1, 0)
+    end
+    -- Stand je Teilnehmer in Einzelteile zerlegen ("3/8,1/1" -> { "3/8", "1/1" })
+    for _, member in ipairs(entry.members) do
+        member.parts = {}
+        if member.state and member.state ~= "+" and member.state ~= "-" then
+            for part in member.state:gmatch("[^,]+") do member.parts[#member.parts + 1] = part end
+        end
+    end
+    local objectives = logIndex and C_QuestLog.GetQuestObjectives(questID) or {}
+    if #objectives > 0 then
+        for i, objective in ipairs(objectives) do
+            -- Zielname ohne den eigenen Zähler am Ende ("Wolf getötet: 3/8" -> "Wolf getötet")
+            local label = (objective.text or ""):gsub("[:：]?%s*%d+%s*/%s*%d+%s*$", "")
+            if label == "" then label = ns.L("GQ_OBJECTIVE", i) end
+            index = index + 1
+            y = AddLine(index, y + 2, objectiveX, objectiveWidth, "- " .. label, fonts.objective, 0.85, 0.85, 0.85)
+            local parts = {}
+            for _, member in ipairs(entry.members) do
+                local value
+                if member.state == "+" then
+                    value = "|cff33ff33" .. ns.L("GQ_DONE") .. "|r"
+                elseif member.state == "-" then
+                    value = "|cff8a8a8a" .. ns.L("GQ_MISSING") .. "|r"
+                else
+                    local part = member.parts[i]
+                    local have, need -- (nicht "part and part:match(...)": das liefert nur den ersten Wert)
+                    if part then have, need = part:match("^(%d+)/(%d+)$") end
+                    if have and tonumber(have) >= tonumber(need) then
+                        value = "|cff33ff33" .. part .. "|r"
+                    else
+                        value = part or "|cff8a8a8a…|r"
+                    end
+                end
+                parts[#parts + 1] = MemberName(member) .. " " .. value
+            end
+            index = index + 1
+            y = AddLine(index, y + 1, objectiveX + 8, objectiveWidth - 8, table.concat(parts, "   "),
+                fonts.objective, 0.9, 0.9, 0.9)
+        end
+    else
+        -- Quest nicht (mehr) im eigenen Questlog: je Teilnehmer eine Zeile mit seinem Stand
+        for _, member in ipairs(entry.members) do
+            index = index + 1
+            y = AddLine(index, y + 2, objectiveX, objectiveWidth,
+                MemberName(member) .. ":  " .. ns.GroupStateText(member.state), fonts.objective, 0.9, 0.9, 0.9)
+        end
+    end
+    return y, index
+end
+
+local function RenderGroupView(y, index, alpha, contentWidth, nameX, nameWidth, objectiveX, objectiveWidth, padding)
+    local list = ns.GroupQuestList()
+    if #list == 0 then return y, index, 0 end
+    local boxTop = y
+    local box = GetBox(1, alpha)
+    local accent = ns.Style.COLOR.accent
+    local groupKey = "#GQ"
+    local collapsed = ns.collapsedGroups[groupKey] == true
+    -- Titelleiste: "Gemeinsam" mit Anzahl der gemeinsamen Quests (Klick klappt ein/aus)
+    index = index + 1
+    y = AddLine(index, y + 5, nameX, nameWidth, ns.L("GQ_TAG"), fonts.header, accent[1], accent[2], accent[3], {
+        groupKey = groupKey,
+        arrow = not collapsed,
+        suffix = "|cff8a8a8a" .. #list .. "|r",
+    })
+    y = y + 4
+    box.header:SetHeight(math.max(1, y - boxTop - 1))
+    box.header:Show()
+    box.accent:SetColorTexture(accent[1], accent[2], accent[3], 0.7)
+    box.accent:Show()
+    y = y + 3
+    if not collapsed then
+        for n, entry in ipairs(list) do
+            if n > 1 then
+                -- feine Trennung zwischen den Quests
+                y = y + 4
+                Separator(box, n - 1, y - boxTop, contentWidth)
+                y = y + 4
+            else
+                y = y + 2
+            end
+            y, index = RenderGroupQuest(entry, y, index, nameX, nameWidth, objectiveX, objectiveWidth)
+        end
+    end
+    y = y + padding
+    box:ClearAllPoints()
+    box:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -boxTop)
+    box:SetSize(contentWidth, y - boxTop)
+    box:Show()
+    y = y + BOX_GAP
+    return y, index, 1
 end
 
 -- Reiterzeile über der Liste ("Quests" | "Gruppe"), nur solange es vorgeschlagene Quests gibt
