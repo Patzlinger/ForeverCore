@@ -2464,6 +2464,29 @@ local function GetMarkButtons(holder)
     clearGround:SetAttribute("type", "worldmarker")
     clearGround:SetAttribute("action", "clear")
     sets.ground[9] = clearGround
+    -- 4. Spalte (in beiden Ansichten): Bereitschaftscheck, Rollenabfrage, Countdown – über Blizzards Chatbefehle
+    -- auf geschützten Knöpfen (die Funktionen selbst sind im Forever-Client geschützt)
+    sets.extra = {}
+    for i, e in ipairs({
+        { macro = "/readycheck", icon = "Interface\\RaidFrame\\ReadyCheck-Ready", tip = "TIP_READYCHECK" },
+        { macro = "/rolepoll", icon = "Interface\\LFGFrame\\UI-LFG-ICON-ROLES", coords = { 0, 0.2617, 0.2617, 0.5234 },
+          tip = "TIP_ROLEPOLL" },
+        { macro = "/countdown 10", icon = "Interface\\Icons\\Spell_Holy_BorrowedTime", tip = "TIP_COUNTDOWN" },
+    }) do
+        local b = MarkButton(holder, ACTION_SIZE)
+        b.icon:SetTexture(e.icon)
+        if e.coords then b.icon:SetTexCoord(unpack(e.coords)) end
+        b:SetAttribute("type", "macro")
+        b:SetAttribute("macrotext", e.macro)
+        b:HookScript("OnEnter", function(self)
+            local tip = ns.Style.GetTooltip()
+            tip:SetOwner(self, "ANCHOR_TOP")
+            tip:AddLine(L(e.tip), 1, 1, 1)
+            tip:Show()
+        end)
+        b:HookScript("OnLeave", function() ns.Style.GetTooltip():Hide() end)
+        sets.extra[i] = b
+    end
     holder.fbMarks = sets
     return sets
 end
@@ -2481,21 +2504,25 @@ function ns.LayoutFoodMarks(cfg, holder, gap, corner, toLeft, toTop)
         return false
     end
     local sets = GetMarkButtons(holder)
+    local function Place(button, column, row)
+        button:ClearAllPoints()
+        button:SetPoint(corner, holder, corner, column * (ACTION_SIZE + gap) * (toLeft and -1 or 1),
+            row * (ACTION_SIZE + gap) * (toTop and 1 or -1))
+        button:SetBackdropBorderColor(unpack(GetSkin().border))
+        button:Show()
+    end
     for key, set in pairs(sets) do
         for i, button in ipairs(set) do
-            if key == view then
-                local column, row = (i - 1) % 3, math.floor((i - 1) / 3)
-                button:ClearAllPoints()
-                button:SetPoint(corner, holder, corner, column * (ACTION_SIZE + gap) * (toLeft and -1 or 1),
-                    row * (ACTION_SIZE + gap) * (toTop and 1 or -1))
-                button:SetBackdropBorderColor(unpack(GetSkin().border))
-                button:Show()
+            if key == "extra" then
+                Place(button, 3, i - 1) -- 4. Spalte, untereinander
+            elseif key == view then
+                Place(button, (i - 1) % 3, math.floor((i - 1) / 3))
             else
                 button:Hide()
             end
         end
     end
-    holder:SetSize(3 * ACTION_SIZE + 2 * gap, 3 * ACTION_SIZE + 2 * gap)
+    holder:SetSize(4 * ACTION_SIZE + 3 * gap, 3 * ACTION_SIZE + 2 * gap)
     return true
 end
 
