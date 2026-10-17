@@ -11,6 +11,9 @@
 - All Forever Core addons now share one version number (0.41b), so it's easy to see that everything is up to date.
 - The addons got a bit smaller and load more cleanly, because the shared parts exist only once.
 
+### Fixed
+- ForeverSpellbook: visiting another trainer (e.g. the portal trainer, a pet trainer or a weapon master) no longer replaces your class trainer's list. Mages get their own "Portals and teleports" section, and every other trainer gets its own section with its name.
+
 ### Good to know
 - Updating from an older version: install the new package (with ForeverCore). Your settings are kept.
 
