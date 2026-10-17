@@ -221,6 +221,37 @@ end
 -- Lehrer auslesen (beim Besuch): was gibt es, ab welcher Stufe, was kostet es
 ---------------------------------------------------------------------------
 local scanning = false
+local SERVICE_TYPES = { available = true, unavailable = true, used = true, header = true }
+
+-- GetTrainerServiceInfo liefert in Forever die Werte in anderer Reihenfolge als in Retail (Status an 2. Stelle,
+-- dann eine Symbol-Nummer, kein Rang): Werte nach Inhalt erkennen statt nach Position
+local function ServiceInfo(i)
+    local n = select("#", GetTrainerServiceInfo(i))
+    local r = { GetTrainerServiceInfo(i) }
+    local name, stype, sub, icon = r[1], nil, nil, nil
+    for k = 2, n do
+        local v = r[k]
+        if type(v) == "string" and not issecret(v) and SERVICE_TYPES[v] then
+            stype = stype or v
+        elseif type(v) == "string" and not issecret(v) and v ~= "" then
+            sub = sub or v
+        elseif type(v) == "number" then
+            icon = icon or v
+        end
+    end
+    return name, stype, sub, icon
+end
+
+-- aeltere gespeicherte Eintraege (vor dem Fix): Status stand in "rank", die Symbol-Nummer in "category"
+local function NormalizeService(s)
+    if s.stype then return s end
+    if SERVICE_TYPES[s.rank] then s.stype, s.rank = s.rank, nil end
+    if not s.stype and SERVICE_TYPES[s.category] then s.stype = s.category end
+    return s
+end
+
+local TrainerKind -- unten (braucht die Zauberbuch-Zeilen)
+
 local function ScanTrainer()
     if scanning or not (GetNumTrainerServices and GetTrainerServiceInfo) then return end
     if IsTradeskillTrainer and IsTradeskillTrainer() then return end -- nur Klassenlehrer
@@ -235,13 +266,13 @@ local function ScanTrainer()
     end
     local list = {}
     for i = 1, (GetNumTrainerServices() or 0) do
-        local name, rank, category = GetTrainerServiceInfo(i)
-        if name and category and category ~= "header" then
+        local name, stype, sub, icon = ServiceInfo(i)
+        if type(name) == "string" and name ~= "" and stype ~= "header" then
             list[#list + 1] = {
-                name = name, rank = rank, category = category,
+                name = name, rank = sub, stype = stype,
                 level = GetTrainerServiceLevelReq and GetTrainerServiceLevelReq(i) or 0,
                 cost = GetTrainerServiceCost and GetTrainerServiceCost(i) or 0,
-                icon = GetTrainerServiceIcon and GetTrainerServiceIcon(i),
+                icon = (GetTrainerServiceIcon and GetTrainerServiceIcon(i)) or icon,
             }
         end
     end
@@ -250,11 +281,15 @@ local function ScanTrainer()
     end
     scanning = false
     if #list > 0 then
-        -- jeden Lehrer einzeln merken (Klassenlehrer, Portal-Lehrer, Tierausbilder, Waffenmeister, Reitlehrer …),
-        -- sonst ueberschreibt der zuletzt besuchte die Liste des Klassenlehrers
+        -- jeden Lehrer an seinem eigenen Platz merken. Der NPC-Name fehlt in Forever beim Besuch oft – deshalb haben
+        -- Klassenlehrer und Portal-Lehrer feste Plaetze ("#class", "#portal"), weitere Lehrer je Name
         local npc = UnitName("npc")
-        if type(npc) ~= "string" or issecret(npc) or npc == "" then npc = "?" end
-        GetTrainers()[npc] = { list = list, level = Level(), time = time(), npc = npc }
+        if type(npc) ~= "string" or issecret(npc) or npc == "" then npc = nil end
+        local rec = { list = list, level = Level(), time = time(), npc = npc }
+        local kind = TrainerKind(rec)
+        rec.kind = kind
+        local key = (kind == "class" and "#class") or (kind == "portal" and "#portal") or ("#other:" .. (npc or "?"))
+        GetTrainers()[key] = rec
     end
 end
 
@@ -269,7 +304,7 @@ end
 
 -- Art eines Lehrers aus seinem Angebot: "portal" (nur Portale/Teleports), "class" (lehrt Zauber aus dem
 -- eigenen Zauberbuch, auch kuenftige Raenge) oder "other" (Tierausbilder, Waffenmeister, Reitlehrer …)
-local function TrainerKind(rec)
+function TrainerKind(rec)
     local names = {}
     for _, line in ipairs(lines) do
         for _, e in ipairs(line.spells) do names[e.name] = true end
@@ -291,59 +326,49 @@ local function SortByLevel(list)
     end)
 end
 
--- Liste fuer "Beim Lehrer":
---   main   = noch nicht Gelerntes vom Klassenlehrer (ohne Besuch: die "ab Stufe X"-Eintraege des Zauberbuchs)
---   groups = eigene Sektionen: Portale (Magier) und jeder weitere Lehrer mit seinem Namen
+-- Daten fuer die Lehrer-Reiter:
+--   main     = noch nicht Gelerntes vom Klassenlehrer (ohne Besuch: die "ab Stufe X"-Eintraege des Zauberbuchs)
+--   groups   = je weiterer Lehrer ein eigener Reiter: Portale (Magier), Tierausbilder, Waffenmeister, Reitlehrer …
+--              { key, title, label, icon, list, rec }
 --   classRec = der zuletzt besuchte Klassenlehrer (fuer die Ueberschrift)
 local function UpcomingList()
     local level = Level()
-    local known = {}
-    for _, line in ipairs(lines) do
-        for _, e in ipairs(line.spells) do
-            if not e.future then known[e.name .. "|" .. tostring(e.rank or "")] = true end
-        end
-    end
     local recs = {}
     for _, rec in pairs(GetTrainers()) do
-        if type(rec) == "table" and rec.list then recs[#recs + 1] = rec end
-    end
-    -- neueste Besuche zuerst: deren Stufen/Preise gelten, aeltere Doppelungen fallen weg
-    table.sort(recs, function(a, b) return (a.time or 0) > (b.time or 0) end)
-
-    local main, groups, seen, classRec, portalGroup = {}, {}, {}, nil, nil
-    local mage = IsMage()
-    local function Group(title)
-        for _, g in ipairs(groups) do if g.title == title then return g.list end end
-        local g = { title = title, list = {} }
-        groups[#groups + 1] = g
-        return g.list
-    end
-    for _, rec in ipairs(recs) do
-        local kind = TrainerKind(rec)
-        if kind == "class" and not classRec then classRec = rec end
-        local target
-        if kind == "class" then target = main
-        elseif kind == "portal" then target = nil -- Portale landen unten in ihrer eigenen Sektion
-        else target = Group(string.format(T("Lehrer: %s", "Trainer: %s"), rec.npc or "?")) end
-        for _, s in ipairs(rec.list) do
-            local key = s.name .. "|" .. tostring(s.rank or "")
-            if not seen[key] then
-                seen[key] = true
-                local learned = s.category == "used" or known[s.name .. "|" .. tostring(RankNumber(s.rank) or "")]
-                if not learned then
-                    local list = target
-                    if (mage and IsPortal(s.name)) or kind == "portal" then
-                        portalGroup = portalGroup or Group(T("Portale und Teleports", "Portals and teleports"))
-                        list = portalGroup
-                    end
-                    list[#list + 1] = { name = s.name, sub = s.rank, icon = s.icon, level = s.level or 0, cost = s.cost or 0,
-                        now = (s.level or 0) <= level, trainer = true }
-                end
-            end
+        if type(rec) == "table" and type(rec.list) == "table" then
+            for _, s in ipairs(rec.list) do NormalizeService(s) end
+            recs[#recs + 1] = rec
         end
     end
-    -- Klassenlehrer noch nie besucht: was das Zauberbuch selbst als "ab Stufe X" fuehrt
-    if not classRec then
+    -- neueste Besuche zuerst; je Art (Klassenlehrer, Portale, jeder weitere Lehrer) gilt nur der neueste
+    table.sort(recs, function(a, b) return (a.time or 0) > (b.time or 0) end)
+    local buckets, order = {}, {}
+    for _, rec in ipairs(recs) do
+        local kind = rec.kind or TrainerKind(rec)
+        local bucket = (kind == "class" or kind == "portal") and kind or ("other:" .. (rec.npc or "?"))
+        if not buckets[bucket] then
+            buckets[bucket] = { kind = kind, rec = rec }
+            order[#order + 1] = bucket
+        end
+    end
+
+    local mage = IsMage()
+    local function Entry(s)
+        return { name = s.name, sub = s.rank, icon = s.icon, level = s.level or 0, cost = s.cost or 0,
+            now = (s.level or 0) <= level, trainer = true }
+    end
+    local function Open(s) return s.stype ~= "used" end -- schon gelernt: nicht anzeigen
+
+    local main, portal, groups = {}, {}, {}
+    local classRec = buckets.class and buckets.class.rec
+    if classRec then
+        for _, s in ipairs(classRec.list) do
+            if Open(s) then
+                if mage and IsPortal(s.name) then portal[#portal + 1] = Entry(s) else main[#main + 1] = Entry(s) end
+            end
+        end
+    else
+        -- Klassenlehrer noch nie besucht: was das Zauberbuch selbst als "ab Stufe X" fuehrt
         for _, line in ipairs(lines) do
             for _, e in ipairs(line.spells) do
                 if e.future and not (mage and IsPortal(e.name)) then
@@ -354,17 +379,33 @@ local function UpcomingList()
         end
     end
     SortByLevel(main)
-    -- Portale zuerst, danach weitere Lehrer; leere Sektionen weglassen
-    local ordered = {}
-    for _, g in ipairs(groups) do
-        if #g.list > 0 and g.list == portalGroup then SortByLevel(g.list) table.insert(ordered, 1, g) end
-    end
-    for _, g in ipairs(groups) do
-        if #g.list > 0 and g.list ~= portalGroup then SortByLevel(g.list) ordered[#ordered + 1] = g end
-    end
-    return main, ordered, classRec
-end
 
+    local portalRec = buckets.portal and buckets.portal.rec
+    if portalRec then
+        local seen = {}
+        for _, u in ipairs(portal) do seen[u.name] = true end
+        for _, s in ipairs(portalRec.list) do
+            if Open(s) and not seen[s.name] then seen[s.name] = true portal[#portal + 1] = Entry(s) end
+        end
+    end
+    if portalRec or #portal > 0 then
+        SortByLevel(portal)
+        groups[#groups + 1] = { key = "trainer:portal", title = T("Portale und Teleports", "Portals and teleports"),
+            label = T("Portale", "Portals"), icon = 135744, list = portal, rec = portalRec }
+    end
+    for _, bucket in ipairs(order) do
+        local b = buckets[bucket]
+        if b.kind == "other" then
+            local list = {}
+            for _, s in ipairs(b.rec.list) do if Open(s) then list[#list + 1] = Entry(s) end end
+            SortByLevel(list)
+            local name = b.rec.npc or T("Weiterer Lehrer", "Other trainer")
+            groups[#groups + 1] = { key = "trainer:" .. bucket, title = string.format(T("Lehrer: %s", "Trainer: %s"), name),
+                label = name, icon = (b.rec.list[1] and b.rec.list[1].icon) or 136243, list = list, rec = b.rec }
+        end
+    end
+    return main, groups, classRec
+end
 ---------------------------------------------------------------------------
 -- WhatsTraining (falls installiert): dessen Daten ueber die offizielle Schnittstelle WT_API
 ---------------------------------------------------------------------------
@@ -621,26 +662,30 @@ function Refresh()
     for _, u in ipairs(upcoming) do
         if u.now then nowCount = nowCount + 1 nowCost = nowCost + (u.cost or 0) end
     end
-    local allNow = nowCount -- Zahl am Reiter: auch Portale und andere Lehrer
-    for _, g in ipairs(trainerGroups) do
-        for _, u in ipairs(g.list) do if u.now then allNow = allNow + 1 end end
-    end
+    local function Badge(n) return n > 0 and (" |cff33ff33(" .. n .. ")|r") or "" end
     local tabList = {}
     for i, line in ipairs(lines) do tabList[#tabList + 1] = { key = i, label = line.name, icon = line.icon } end
-    tabList[#tabList + 1] = { key = "upcoming", label = T("Beim Lehrer", "Trainer") .. (allNow > 0 and (" |cff33ff33(" .. allNow .. ")|r") or ""),
-        icon = 136243 }
+    tabList[#tabList + 1] = { key = "upcoming", label = T("Beim Lehrer", "Trainer") .. Badge(nowCount), icon = 136243, gap = true }
+    -- je weiterer Lehrer ein eigener Reiter (Portale, Tierausbilder, Waffenmeister …)
+    local groupByKey = {}
+    for _, g in ipairs(trainerGroups) do
+        local c = 0
+        for _, u in ipairs(g.list) do if u.now then c = c + 1 end end
+        groupByKey[g.key] = g
+        tabList[#tabList + 1] = { key = g.key, label = g.label .. Badge(c), icon = g.icon, gap = true }
+    end
     local wtGroups = WTData()
     if WTInstalled() then
         local c = wtGroups and #wtGroups.now or 0
-        tabList[#tabList + 1] = { key = "wt", label = "What's Training" .. (c > 0 and (" |cff33ff33(" .. c .. ")|r") or ""), icon = 134939 }
+        tabList[#tabList + 1] = { key = "wt", label = "What's Training" .. (c > 0 and (" |cff33ff33(" .. c .. ")|r") or ""), icon = 134939, gap = true }
     end
-    if view ~= "upcoming" and view ~= "wt" and not lines[view] then view = 1 end
+    if view ~= "upcoming" and view ~= "wt" and not lines[view] and not groupByKey[view] then view = 1 end
     if view == "wt" and not WTInstalled() then view = 1 end
     for _, b in ipairs(tabs) do b:Hide() end
     for i, tab in ipairs(tabList) do
         local b = TabButton(i)
         b:ClearAllPoints()
-        b:SetPoint("TOPLEFT", 0, -(i - 1) * 27 - ((tab.key == "upcoming" or tab.key == "wt") and 10 or 0))
+        b:SetPoint("TOPLEFT", 0, -(i - 1) * 27 - (tab.gap and 10 or 0)) -- Lehrer-Reiter etwas abgesetzt
         b:SetText(tab.label)
         b.icon:SetTexture(tab.icon or 134400)
         b:SetEnabled(view ~= tab.key or query ~= "")
@@ -739,16 +784,34 @@ function Refresh()
                 Place(u, u.name, (u.sub and u.sub ~= "" and u.sub or "") .. (cost and ("  ·  " .. cost) or ""), { 0.75, 0.75, 0.75 })
             end
         end
-        -- eigene Sektionen: Portale und Teleports (Magier), weitere Lehrer (Tierausbilder, Waffenmeister …)
-        for _, g in ipairs(trainerGroups) do
+    elseif groupByKey[view] then
+        -- weiterer Lehrer (eigener Reiter): Portale und Teleports, Tierausbilder, Waffenmeister …
+        local g = groupByKey[view]
+        if g.rec then
+            NewSection(string.format(T("%s – zuletzt besucht auf Stufe %d", "%s – last visited at level %d"), g.title, g.rec.level or 0))
+        else
             NewSection(g.title)
+        end
+        local nowN, nowSum = 0, 0
+        for _, u in ipairs(g.list) do if u.now then nowN = nowN + 1 nowSum = nowSum + (u.cost or 0) end end
+        if nowN > 0 then
+            NewSection(string.format(T("Jetzt lernbar: %d · zusammen %s", "Learnable now: %d · total %s"), nowN, Money(nowSum)))
             for _, u in ipairs(g.list) do
-                local parts = {}
-                if u.sub and u.sub ~= "" then parts[#parts + 1] = u.sub end
-                parts[#parts + 1] = Money(u.cost)
-                if not u.now then parts[#parts + 1] = string.format(T("ab Stufe %d", "from level %d"), u.level) end
-                Place(u, u.name, table.concat(parts, "  ·  "), u.now and { 0.4, 1, 0.4 } or { 0.75, 0.75, 0.75 })
+                if u.now then Place(u, u.name, (u.sub and u.sub ~= "" and (u.sub .. " · ") or "") .. Money(u.cost), { 0.4, 1, 0.4 }) end
             end
+        end
+        local lastLevel
+        for _, u in ipairs(g.list) do
+            if not u.now then
+                if u.level ~= lastLevel then
+                    lastLevel = u.level
+                    NewSection(string.format(T("Stufe %d", "Level %d"), u.level))
+                end
+                Place(u, u.name, (u.sub and u.sub ~= "" and (u.sub .. "  ·  ") or "") .. Money(u.cost), { 0.75, 0.75, 0.75 })
+            end
+        end
+        if #g.list == 0 then
+            NewSection(T("Hier gibt es gerade nichts Neues.", "Nothing new here right now."))
         end
     elseif view == "wt" then
         local function WTLine(u, color)
