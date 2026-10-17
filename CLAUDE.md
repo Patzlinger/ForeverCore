@@ -24,6 +24,7 @@ Philosophie, Regeln, Design und Abläufe. Wenn etwas hier nicht steht: am besteh
 | ForeverCore (Hauptaddon: `ForeverHub.lua` = Hub und Stil-Bibliothek; Abhängigkeit aller Addons) | gemeinsam | im Release (seit 0.41b) |
 | ForeverQuests | flowfy | im Repository, noch nicht im Release |
 | ForeverBars | flowfy | im Repository, noch nicht im Release |
+| ForeverBags | flowfy | Prototyp (seit 2026-10-17) |
 | `tools/`, `release/` | gemeinsam | – |
 
 - **Keine Absprachen nötig: jeder arbeitet frei an allen Addons** (Zusammenarbeit auf Augenhöhe). Die Spalte
@@ -71,6 +72,12 @@ Philosophie, Regeln, Design und Abläufe. Wenn etwas hier nicht steht: am besteh
     Wiederholung nach dem Kampf über `UI.AfterCombat`). `UI.HideBlizzard` passt hier NICHT: der Tracker enthält
     geschützte Questgegenstand-Knöpfe, die unsichtbar anklickbar blieben. Falls Taint-Meldungen auftauchen:
     `RegisterStateDriver(ObjectiveTrackerFrame, "visibility", "hide")` im Spiel testen
+  - **ForeverBags** macht Blizzards Taschenfenster (`ContainerFrameCombinedBags`, `ContainerFrame1…`) in deren
+    `OnShow` per `:Hide()` wieder zu (nur mit Einstellung "Blizzards Taschenfenster ersetzen"). Sie sind keine
+    geschützten Rahmen; `UI.HideBlizzard` passt nicht (die Taschenplätze blieben unsichtbar anklickbar). Öffnen/Schließen
+    wird nur per `hooksecurefunc` auf `ToggleAllBags`/`OpenAllBags`/`CloseAllBags` … mitgehört, nie überschrieben.
+    Die eigenen Taschenplätze sind Blizzards `ContainerFrameItemButtonTemplate` (Elternrahmen mit `SetID(Tasche)`,
+    Knopf mit `SetID(Platz)`) – Benutzen, Ziehen, Verkaufen und Tooltip erledigt damit Blizzard selbst
 - Zwei Addons dürfen nicht denselben Blizzard-Teil "besitzen". Bekannte Berührungspunkte siehe Abschnitt 14.
 
 ## 5. Aufbau eines Addons
@@ -347,6 +354,7 @@ Damit alle Einstellungsfenster gleich aussehen, gelten diese Maße. Quelle: `For
   | /fsb, /fspellbook, /foreverspellbook | ForeverSpellbook |
   | /fchat, /foreverchat | ForeverChat |
   | /fmm, /foreverminimap | ForeverMinimap |
+  | /fbags, /foreverbags | ForeverBags |
 - Tastenkürzel über `Bindings.xml` + `BINDING_HEADER_…`/`BINDING_NAME_…` (Bereich "AddOns")
 
 ## 12. Code-Stil
@@ -419,6 +427,12 @@ Damit alle Einstellungsfenster gleich aussehen, gelten diese Maße. Quelle: `For
   ForeverBars meldet jede Anordnung per `UI.Fire("ForeverBars.Layout")`; ForeverQuests setzt den Tracker dann 4 px
   unter das Menü, hängt ihn aber weiter an Karte/Leiste (das Menü ist geschützt – daran gehängt dürfte der Tracker
   im Kampf nicht mehr ein-/ausgeblendet werden). Anheften am Chatfenster gibt es nicht mehr
+- **ForeverBags ↔ ForeverBars / Blizzard**: ForeverBars besitzt die Taschenleiste (Rucksack- und Taschenknöpfe),
+  ForeverBags nur das Taschen**fenster**. Ein Klick auf den Rucksack ruft Blizzards `ToggleBackpack` – ForeverBags hört
+  das mit und öffnet sein Fenster. Händler, Post und Bank öffnen/schließen über `OpenAllBags`/`CloseAllBags` ebenso.
+  Blizzards Umschalt-Funktionen rufen intern selbst Öffnen/Schließen auf (im selben Bild): ForeverBags merkt sich
+  den Zustand vom Beginn des Bildes und schaltet genau einmal um. Suche über `C_Container.SetItemSearch` (gilt wie bei
+  Blizzard auch für die Bank), Sortieren über `C_Container.SortBags`
 - **ForeverBars ↔ Bartender4**: läuft Bartender4, lässt ForeverBars die Leisten in Ruhe
 - **ForeverBars ↔ Bearbeitungsmodus**: öffnet der Spieler Blizzards Bearbeitungsmodus, entsperrt ForeverBars seine
   Leisten (Blizzard kann sie nicht greifen) und sperrt sie beim Schließen wieder. Laut flowfy lösen Hooks/Callbacks

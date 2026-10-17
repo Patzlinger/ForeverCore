@@ -11,6 +11,7 @@ Autoren: Patzlinger, flowfy · CurseForge-Projekt 1743753
 | ForeverSpellbook, ForeverChat | Patzlinger | im Release (seit 0.32b) |
 | ForeverMinimap | Patzlinger | Prototyp (nicht im Release) |
 | ForeverQuests, ForeverBars | flowfy | im Repository, noch nicht im Release |
+| ForeverBags | flowfy | Prototyp (nicht im Release) |
 | ForeverCore (Hauptaddon: Hub + Stil-Bibliothek, Abhängigkeit aller Addons) | gemeinsam | im Release (seit 0.41b) |
 
 **Regeln, Design und Abläufe stehen in [CLAUDE.md](CLAUDE.md)** – bitte vor dem ersten Arbeiten lesen.
