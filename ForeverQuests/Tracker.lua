@@ -408,6 +408,12 @@ local function OpenQuestMenu(owner, questID)
             disabled = not (IsInGroup() and C_QuestLog.IsPushableQuest(questID)),
             onClick = function() ShareQuest(questID) end,
         },
+        {
+            -- Der Gruppe vorschlagen: bei allen mit ForeverQuests im Reiter "Gruppe" samt Fortschritt aller
+            text = ns.L("MENU_SUGGEST"),
+            disabled = not IsInGroup(),
+            onClick = function() if ns.SuggestQuest then ns.SuggestQuest(questID) end end,
+        },
     }
     if C_QuestLog.GetQuestWatchType(questID) then
         table.insert(items, {
@@ -570,9 +576,21 @@ local function OnLineEnter(self)
 end
 
 local function OnLineClick(self, button)
-    -- Klick auf die Titelleiste eines Gebiets: ein-/ausklappen
+    -- Klick auf die Titelleiste eines Gebiets: ein-/ausklappen. Reiter "Gruppe": Linksklick öffnet die Quest im
+    -- Questlog (falls man sie hat), Rechtsklick nimmt sie aus der Gruppenliste
     if self.groupKey then
-        if button == "LeftButton" then ToggleGroup(self.groupKey) end
+        local groupQuestID = self.groupQuestID
+        if groupQuestID and button == "RightButton" then
+            ns.Style.ShowMenu(self, {
+                { title = (ns.groupQuests[groupQuestID] or {}).title or "Quest" },
+                { text = ns.L("GQ_REMOVE"), onClick = function() ns.RemoveGroupQuest(groupQuestID, true) end },
+            }, { atCursor = true })
+        elseif groupQuestID and C_QuestLog.GetLogIndexForQuestID(groupQuestID) and not InCombatLockdown()
+            and QuestMapFrame_OpenToQuestDetails then
+            QuestMapFrame_OpenToQuestDetails(groupQuestID)
+        elseif button == "LeftButton" then
+            ToggleGroup(self.groupKey)
+        end
         return
     end
     local questID = self.questID
@@ -591,10 +609,15 @@ local function OnLineClick(self, button)
             C_QuestLog.RemoveQuestWatch(questID)
         end
     else
-        -- Linksklick: Quest auf- bzw. zuklappen (Questdetails gibt es im Rechtsklick-Menü)
-        ns.expanded[questID] = not ns.IsExpanded(questID)
-        ns.autoExpandedAt[questID] = nil
-        ns.UpdateTracker()
+        -- Linksklick auf den Namen: Quest im Questlog öffnen (auf-/zuklappen nur noch über den Pfeil).
+        -- Im Kampf öffnet Blizzard das Questlog nicht.
+        if InCombatLockdown() then return end
+        if QuestMapFrame_OpenToQuestDetails then
+            QuestMapFrame_OpenToQuestDetails(questID)
+        elseif ToggleQuestLog then
+            C_QuestLog.SetSelectedQuest(questID)
+            ToggleQuestLog()
+        end
     end
 end
 
@@ -852,6 +875,7 @@ local function AddLine(index, y, x, width, text, fontObject, r, g, b, opts)
     line:SetSize(width, height)
     line.questID = opts.questID
     line.groupKey = opts.groupKey
+    line.groupQuestID = nil -- (Reiter "Gruppe" setzt das nach AddLine)
     line:EnableMouse(opts.questID ~= nil or opts.groupKey ~= nil)
 
     if opts.arrow == nil then
@@ -1120,10 +1144,72 @@ local function CollectGroups()
     return groups
 end
 
+-- Reiter "Gruppe": je vorgeschlagener Quest ein Fenster, darin je Teilnehmer eine Zeile mit seinem Stand.
+-- Rechtsklick auf den Titel: aus der Gruppenliste nehmen (bei allen). Rückgabe: y, index, Anzahl Fenster
+local function RenderGroupView(y, index, alpha, contentWidth, nameX, nameWidth, objectiveX, objectiveWidth, padding)
+    local boxCount = 0
+    for _, entry in ipairs(ns.GroupQuestList()) do
+        boxCount = boxCount + 1
+        local boxTop = y
+        local box = GetBox(boxCount, alpha)
+        local accent = ns.Style.COLOR.accent
+        local groupKey = "#GQ:" .. entry.questID
+        local collapsed = ns.collapsedGroups[groupKey] == true
+        index = index + 1
+        y = AddLine(index, y + 5, nameX, nameWidth, entry.data.title, fonts.header, accent[1], accent[2], accent[3], {
+            groupKey = groupKey,
+            arrow = not collapsed,
+            suffix = "|cff8a8a8a" .. #entry.members .. "|r",
+        })
+        lines[index].groupQuestID = entry.questID
+        y = y + 4
+        box.header:SetHeight(math.max(1, y - boxTop - 1))
+        box.header:Show()
+        box.accent:SetColorTexture(accent[1], accent[2], accent[3], 0.7)
+        box.accent:Show()
+        y = y + 3
+        if not collapsed then
+            for _, member in ipairs(entry.members) do
+                local color = member.class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[member.class]
+                local name = color and string.format("|cff%02x%02x%02x%s|r", color.r * 255, color.g * 255, color.b * 255,
+                    member.name) or member.name
+                index = index + 1
+                y = AddLine(index, y + 2, objectiveX, objectiveWidth, name .. ":  " .. ns.GroupStateText(member.state),
+                    fonts.objective, 0.9, 0.9, 0.9)
+            end
+        end
+        y = y + padding
+        box:ClearAllPoints()
+        box:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -boxTop)
+        box:SetSize(contentWidth, y - boxTop)
+        box:Show()
+        y = y + BOX_GAP
+    end
+    return y, index, boxCount
+end
+
+-- Reiterzeile über der Liste ("Quests" | "Gruppe"), nur solange es vorgeschlagene Quests gibt
+local tabRow, questsTab, groupTab
+local function UpdateTabs()
+    if not tabRow then return end
+    local show = ns.HasGroupQuests and ns.HasGroupQuests() or false
+    if not show then ns.trackerTab = "quests" end
+    tabRow:SetShown(show)
+    scrollFrame:ClearAllPoints()
+    scrollFrame:SetPoint("TOPLEFT", 6, show and -54 or -32)
+    scrollFrame:SetPoint("BOTTOMRIGHT", -6, 6)
+    local accent = ns.Style.COLOR.accent
+    for tab, key in pairs({ [questsTab] = "quests", [groupTab] = "group" }) do
+        local active = ns.trackerTab == key
+        tab:GetFontString():SetTextColor(active and accent[1] or 0.9, active and accent[2] or 0.9, active and accent[3] or 0.9)
+    end
+end
+
 function ns.UpdateTracker()
     updatePending = false
     if not tracker then return end
     local db = ns.db
+    UpdateTabs()
 
     ns.UpdateFonts()
     BuildFactionNames()
@@ -1142,8 +1228,15 @@ function ns.UpdateTracker()
     local objectiveX = nameX + 8
     local objectiveWidth = nameWidth - 8
 
-    local groups = CollectGroups()
+    local groupMode = ns.trackerTab == "group" and ns.HasGroupQuests and ns.HasGroupQuests()
+    local groups = groupMode and {} or CollectGroups()
     local y, index, count = 0, 0, 0
+    local boxesUsed = #groups
+    if groupMode then
+        y, index, boxesUsed = RenderGroupView(y, index, alpha, contentWidth, nameX, nameWidth, objectiveX,
+            objectiveWidth, padding)
+        count = boxesUsed
+    end
 
     for groupIndex, group in ipairs(groups) do
         local boxTop = y
@@ -1285,7 +1378,7 @@ function ns.UpdateTracker()
         filterButton:SetText(ns.L("BTN_FILTER"))
     end
 
-    if count == 0 then
+    if count == 0 and not groupMode then
         index = index + 1
         local text
         if filterMode == "INSTANCE" then
@@ -1304,11 +1397,11 @@ function ns.UpdateTracker()
     for i = index + 1, #lines do
         lines[i]:Hide()
     end
-    for i = #groups + 1, #boxes do
+    for i = boxesUsed + 1, #boxes do
         boxes[i]:Hide()
     end
 
-    title:SetText(ns.L("TRACKER_TITLE") .. "  |cff8a8a8a" .. count .. "|r")
+    title:SetText(ns.L(groupMode and "TAB_GROUP" or "TRACKER_TITLE") .. "  |cff8a8a8a" .. count .. "|r")
     -- Titelleiste folgt der eingestellten Hintergrund-Transparenz
     local headerColor = ns.Style.COLOR.header
     headerBar:SetBackdropColor(headerColor[1], headerColor[2], headerColor[3], math.max(alpha, 0.15))
@@ -1599,6 +1692,23 @@ function ns.CreateTracker()
     content = CreateFrame("Frame", nil, scrollFrame)
     content:SetSize(1, 1)
     scrollFrame:SetScrollChild(content)
+
+    -- Reiter "Quests" | "Gruppe" unter der Titelleiste (nur bei vorgeschlagenen Quests, siehe GroupQuests.lua)
+    tabRow = CreateFrame("Frame", nil, tracker)
+    tabRow:SetPoint("TOPLEFT", 6, -30)
+    tabRow:SetPoint("TOPRIGHT", -6, -30)
+    tabRow:SetHeight(20)
+    questsTab = Style.CreateButton(tabRow, ns.L("TAB_QUESTS"), 80, 18, function()
+        ns.trackerTab = "quests"
+        ns.UpdateTracker()
+    end)
+    questsTab:SetPoint("LEFT", 0, 0)
+    groupTab = Style.CreateButton(tabRow, ns.L("TAB_GROUP"), 80, 18, function()
+        ns.trackerTab = "group"
+        ns.UpdateTracker()
+    end)
+    groupTab:SetPoint("LEFT", questsTab, "RIGHT", 4, 0)
+    tabRow:Hide()
 
     -- Überlagerung im entsperrten Zustand: zum Verschieben und Größe ändern
     overlay = CreateFrame("Frame", nil, tracker, "BackdropTemplate")

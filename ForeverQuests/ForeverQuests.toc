@@ -16,6 +16,7 @@ ForeverQuests.lua
 Style.lua
 Data\Dungeons.lua
 Tracker.lua
+GroupQuests.lua
 Options.lua
 Minimap.lua
 Dungeons.lua

@@ -37,7 +37,12 @@ local STRINGS = {
         BINDING_DUNGEONS = "Dungeonfenster öffnen/schließen",
         BINDING_OPTIONS = "Menü öffnen/schließen",
         TIP_REWARDS = "Belohnungen:", TIP_CHOICES = "Eine davon wählen:", TIP_XP = "%s Erfahrung",
-        TIP_QUEST_HINT = "Linksklick: auf-/zuklappen  ·  Rechtsklick: Menü  ·  Shift-Klick: nicht mehr verfolgen",
+        TIP_QUEST_HINT = "Linksklick: im Questlog öffnen  ·  Pfeil: auf-/zuklappen  ·  Rechtsklick: Menü  ·  Shift-Klick: nicht mehr verfolgen",
+        MENU_SUGGEST = "Der Gruppe vorschlagen",
+        TAB_QUESTS = "Quests", TAB_GROUP = "Gruppe",
+        GQ_DONE = "fertig", GQ_MISSING = "Quest fehlt",
+        GQ_SUGGESTED = "%s schlägt der Gruppe vor: %s (Reiter „Gruppe“ im Tracker)",
+        GQ_REMOVE = "Aus der Gruppenliste nehmen (bei allen)",
 
         -- Rechtsklick-Menü
         MENU_DETAILS = "Questdetails anzeigen",
@@ -199,7 +204,12 @@ local STRINGS = {
         BINDING_DUNGEONS = "Open/close dungeon window",
         BINDING_OPTIONS = "Open/close menu",
         TIP_REWARDS = "Rewards:", TIP_CHOICES = "Choose one:", TIP_XP = "%s experience",
-        TIP_QUEST_HINT = "Left-click: expand/collapse  ·  Right-click: menu  ·  Shift-click: stop tracking",
+        TIP_QUEST_HINT = "Left-click: open in quest log  ·  Arrow: expand/collapse  ·  Right-click: menu  ·  Shift-click: stop tracking",
+        MENU_SUGGEST = "Suggest to group",
+        TAB_QUESTS = "Quests", TAB_GROUP = "Group",
+        GQ_DONE = "done", GQ_MISSING = "quest missing",
+        GQ_SUGGESTED = "%s suggests to the group: %s (\"Group\" tab in the tracker)",
+        GQ_REMOVE = "Remove from the group list (for everyone)",
 
         MENU_DETAILS = "Show quest details",
         MENU_PIN = "Pin quest", MENU_UNPIN = "Unpin quest",
