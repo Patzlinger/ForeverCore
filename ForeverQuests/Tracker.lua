@@ -60,7 +60,23 @@ local function RetryAfterCombat()
     end
 end
 
+-- Unsichtbar machen (Deckkraft 0) geht auch im Kampf: Blizzard zeigt den Tracker z. B. beim Aufsammeln von
+-- Questgegenständen neu an – im Kampf darf er nicht versteckt werden, bliebe also bis Kampfende sichtbar.
+-- Der Hub hält die Deckkraft auf 0, solange "Blizzard-Questtracker ausblenden" an ist.
+local function HoldInvisible(frame)
+    local UI = _G.ForeverHub and _G.ForeverHub.UI
+    if not (UI and UI.HideBlizzard) then return end
+    if ns.db.hideBlizzard then
+        UI.HideBlizzard(frame, { children = false, when = function() return ns.db.hideBlizzard end })
+    elseif UI.ShowBlizzard then
+        UI.ShowBlizzard(frame)
+    end
+end
+
 function ns.UpdateBlizzardTracker()
+    for _, name in ipairs(BLIZZARD_TRACKERS) do
+        if _G[name] then HoldInvisible(_G[name]) end
+    end
     -- Im Kampf darf der Blizzard-Tracker nicht verändert werden (Questgegenstand-Knöpfe sind geschützt)
     if InCombatLockdown() then
         RetryAfterCombat()
