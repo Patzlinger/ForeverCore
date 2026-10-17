@@ -336,6 +336,10 @@ local TOOL_DEFS = {
       click = function() if ToggleCalendar then ToggleCalendar() end end,
       alert = function() return PendingInvites() > 0 end },
     -- (kein Knopf fuer Blizzards Addon-Menue: die Addons sitzen mit ihren eigenen Knoepfen schon in der Leiste)
+    -- Einstellungen von ForeverMinimap (gleiches Zahnrad wie in der Knopfleiste von ForeverChat)
+    { key = "settings", icon = "Interface\\Buttons\\UI-OptionsButton", noCrop = true,
+      tip = function() GameTooltip:AddLine(T("ForeverMinimap-Einstellungen", "ForeverMinimap settings")) GameTooltip:AddLine("/fmm", 0.6, 0.6, 0.6) end,
+      click = function() if ns.ToggleOptions then ns.ToggleOptions() end end },
 }
 
 -- heutiger Tag (fuer das Kalendersymbol)
@@ -356,7 +360,7 @@ local function ToolButton(def)
         b.icon:SetAtlas(def.atlas)
     else
         b.icon:SetTexture(def.icon)
-        if def.icon ~= UI.LOGO then b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92) end
+        if def.icon ~= UI.LOGO and not def.noCrop then b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92) end
     end
     if def.showDay then
         -- Forevers Kalendersymbol hat selbst kein Datum: Tag in Weiss mit Schatten darauf (auf jedem Grund lesbar)
