@@ -361,13 +361,11 @@ local function CreateOptions()
         function() return SelectedConfig().collapsible end,
         function(value) SelectedConfig().collapsible = value; Changed() end)
     -- Nur Mikromenü: am Chatfenster anheften (an der Stelle der Wachstumsrichtung, die es dort nicht gibt)
-    options.chatSelector = CreateSmallSelector(layoutPage, L("OPT_ATTACH_CHAT"), RIGHT_X, -92, 170, {
-            { value = "OFF", textKey = "ATTACH_OFF" },
-            { value = "ABOVE", textKey = "ATTACH_ABOVE" },
-            { value = "BELOW", textKey = "ATTACH_BELOW" },
-        },
-        function() return SelectedConfig().attachChat or "OFF" end,
-        function(value) SelectedConfig().attachChat = value; Changed() end)
+    -- Mikromenü und Taschen: am Chatfenster anheften (links unter "Position Y"; Mikromenü oben links,
+    -- Taschen oben rechts über dem Chat und nach oben ausklappend)
+    options.chatCheck = CreateCheckbox(layoutPage, L("OPT_ATTACH_CHAT"), 14, -392,
+        function() return ns.IsAttachedToChat(SelectedConfig()) end,
+        function(value) SelectedConfig().attachChat = value and "ABOVE" or "OFF"; Changed() end)
     -- Nur Mikromenü: schwarz-weiß (goldener Rand beim Darüberfahren bleibt)
     -- Nur Mikromenü: eigene flache Text-Knöpfe statt Blizzards Knöpfe
     options.microOwnCheck = CreateCheckbox(layoutPage, L("OPT_MICRO_OWN"), RIGHT_X, -146,
@@ -1028,7 +1026,7 @@ function ns.RefreshOptions()
     options.perRowSlider:SetShown(hasButtons)
     options.keyringCheck:SetShown(def.kind == "bags" and ns.HasKeyring())
     options.foodResetButton:SetShown(def.kind == "food" or def.kind == "prof")
-    options.chatSelector:SetShown(def.key == "micro")
+    options.chatCheck:SetShown(def.key == "micro" or def.kind == "bags")
     options.microOwnCheck:SetShown(def.key == "micro")
     options.microGreyCheck:SetShown(def.key == "micro" and not SelectedConfig().microOwn)
     for _, control in ipairs(controls) do

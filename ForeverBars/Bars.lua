@@ -1670,6 +1670,11 @@ end
 -- Knöpfe in Reihen anordnen. Wachstumsrichtung: von links nach rechts bzw. rechts nach links,
 -- von oben nach unten bzw. unten nach oben (der erste Knopf sitzt in der Ecke, von der aus es wächst).
 local function LayoutButtons(def, cfg, holder)
+    -- Taschen am Chat angeheftet: eine Spalte, die nach oben wächst (Rucksack unten); die eigenen Einstellungen
+    -- für Reihen und Richtung bleiben gespeichert und gelten wieder, sobald das Häkchen aus ist
+    if def.kind == "bags" and ns.IsAttachedToChat(cfg) then
+        cfg = setmetatable({ perRow = 1, growY = "UP", growX = "RIGHT" }, { __index = cfg })
+    end
     local buttons = GetButtons(def, cfg)
     local size = def.kind == "bags" and SMALL_SIZE or ACTION_SIZE
     local wanted = def.bagButtons and #buttons or (cfg.buttons or def.count)
@@ -2035,6 +2040,11 @@ end
 
 -- Pfeil an der Taschenleiste zum Aus- und Einklappen der Taschen (eingeklappt bleibt der Rucksack sichtbar).
 -- Er sitzt an dem Ende, in das die Taschen wachsen; im Kampf wird erst danach umgebaut.
+-- Am Chatfenster angeheftet? (Häkchen bei Mikromenü und Taschen; Werte "ABOVE"/"BELOW" = ja, "OFF"/nil = nein)
+function ns.IsAttachedToChat(cfg)
+    return cfg.attachChat ~= nil and cfg.attachChat ~= "OFF" and cfg.attachChat ~= false
+end
+
 function ns.UpdateBagToggle(def, cfg, holder)
     local toggle = holder.fbBagToggle
     if not cfg.collapsible then
@@ -2070,8 +2080,16 @@ function ns.UpdateBagToggle(def, cfg, holder)
     -- Pfeil zeigt in die Richtung, in die sich die Taschen öffnen bzw. schließen
     local toLeft = cfg.growX == "LEFT"
     local expanding = cfg.bagsCollapsed
-    toggle:SetSize(12, SMALL_SIZE)
     toggle:ClearAllPoints()
+    if ns.IsAttachedToChat(cfg) then
+        -- Am Chat angeheftet: Taschen als Spalte nach oben, der Pfeil sitzt oben darüber
+        toggle:SetSize(SMALL_SIZE, 12)
+        toggle:SetPoint("BOTTOM", holder, "TOP", 0, 2)
+        toggle.arrow:SetRotation(expanding and math.pi / 2 or -math.pi / 2) -- nach oben bzw. unten
+        toggle:Show()
+        return
+    end
+    toggle:SetSize(12, SMALL_SIZE)
     if toLeft then
         toggle:SetPoint("RIGHT", holder, "LEFT", -2, 0)
     else
@@ -2179,13 +2197,14 @@ function ns.ApplyLayout()
         local x, y = cfg.x, cfg.y
         if not x or not y then x, y = ns.GetBarPosition(def.key) end
         holder:ClearAllPoints()
-        local chat = def.key == "micro" and cfg.attachChat ~= "OFF" and cfg.attachChat and ChatFrame1
-        if chat and cfg.attachChat == "ABOVE" then
+        -- Am Chatfenster angeheftet (Häkchen; früher auch "unter dem Chat" – das gilt jetzt als "über dem Chat")
+        local chat = (def.key == "micro" or def.kind == "bags") and ns.IsAttachedToChat(cfg) and ChatFrame1
+        if chat and def.key == "micro" then
             -- Mikromenü über dem Chatfenster (oberhalb der Chat-Reiter), linksbündig
             holder:SetPoint("BOTTOMLEFT", chat, "TOPLEFT", -2 / scale, 26 / scale)
-        elseif chat and cfg.attachChat == "BELOW" then
-            -- Mikromenü unter dem Chatfenster (unterhalb der Eingabezeile), linksbündig
-            holder:SetPoint("TOPLEFT", chat, "BOTTOMLEFT", -2 / scale, -32 / scale)
+        elseif chat then
+            -- Taschen über dem Chatfenster, rechtsbündig; sie klappen nach oben aus
+            holder:SetPoint("BOTTOMRIGHT", chat, "TOPRIGHT", 2 / scale, 26 / scale)
         else
             holder:SetPoint(cfg.point or "CENTER", UIParent, "BOTTOMLEFT", x / scale, y / scale)
         end

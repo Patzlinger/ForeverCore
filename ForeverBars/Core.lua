@@ -155,7 +155,8 @@ ns.defaults.bars.bags.point = "BOTTOMRIGHT"
 ns.defaults.bars.bags.growX = "LEFT"
 ns.defaults.bars.bags.collapsible = true   -- Pfeil zum Aus-/Einklappen der Taschen
 ns.defaults.bars.bags.bagsCollapsed = true -- eingeklappt: nur der Rucksack
-ns.defaults.bars.micro.attachChat = "OFF"  -- Mikromenü am Chatfenster: "OFF", "ABOVE", "BELOW"
+ns.defaults.bars.micro.attachChat = "OFF"  -- am Chatfenster angeheftet: "OFF" oder "ABOVE" (Häkchen im Menü)
+ns.defaults.bars.bags.attachChat = "OFF"
 ns.defaults.bars.prof.buttons = 12 -- 12 Plätze, 6 breit und 2 hoch, frei belegbar
 ns.defaults.bars.prof.perRow = 6
 -- Berufe und Verpflegung: belegte Plätze, automatisch eingetragene, herausgezogene; Einklapp-Pfeil
