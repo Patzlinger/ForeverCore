@@ -1,12 +1,14 @@
--- ForeverMinimap – Map.lua: Form, Rahmen, Leiste (Zone, Uhr, Koordinaten), Knoepfe, Komfort
-local ADDON_NAME, ns = ...
+-- ForeverMinimap – Map.lua: Form, Rahmen, Leiste (Zone, Ruhe, Haltbarkeit, Warteschlange, Uhr), Koordinaten,
+-- Knopfleiste (eckig als Spalte, rund als Bogen um die Karte), Komfort (Zoom, Pings)
+local _, ns = ...
 local UI, T = ns.UI, ns.T
 local C = UI.COLOR
 
 local BAR_H = 22        -- Hoehe der Leiste
 local TOOL = 18         -- Knopfgroesse in der Leiste (wenn die eigenen Knoepfe dort sitzen)
-local ITEM = 26         -- Knopfgroesse in der senkrechten Knopfleiste
-local STRIP_W = 32      -- Breite der senkrechten Knopfleiste (eine Spalte)
+local ITEM = 26         -- Knopfgroesse in der Knopfleiste
+local STRIP_W = 32      -- Breite der Knopfleiste (eine Spalte)
+local MARK = 16         -- kleine Anzeigen in der Leiste (Haltbarkeit, Warteschlange)
 local SQUARE_MASK = "Interface\\BUTTONS\\WHITE8X8"
 local CIRCLE = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
 local ROUND_MASK = CIRCLE -- gleiche Kreismaske wie der Ring dahinter (deckungsgleich)
@@ -17,6 +19,7 @@ local edgeButtons = {}  -- Minimap-Knoepfe am Rand (Forever-Knopf, andere Addons
 local hovering = false
 
 local function DB() return ns.GetDB() end
+local function IsRound() return DB().shape ~= "SQUARE" end
 
 -- Fuer andere Addons (z. B. LibDBIcon) und die Forever-Knoepfe am Rand: Form der Minimap
 function _G.GetMinimapShape()
@@ -139,7 +142,7 @@ function ns.ApplyBlizzard()
 end
 
 ---------------------------------------------------------------------------
--- Leiste: Zonenname (in Gebietsfarbe), Schwierigkeit, Uhr
+-- Leiste: Zonenname (Gebietsfarbe), Ruhe-Hinweis, Schwierigkeit
 ---------------------------------------------------------------------------
 local ZONE_COLORS = {
     sanctuary = { 0.41, 0.80, 0.94 }, arena = { 1, 0.10, 0.10 }, friendly = { 0.10, 1, 0.10 },
@@ -163,21 +166,34 @@ local function UpdateZone()
     local col = ZONE_COLORS[pvp or ""] or C.accent
     bar.zone:SetTextColor(col[1], col[2], col[3])
     local suffix = ""
+    -- Ruhegebiet (Stadt, Gasthaus): dezentes "zZ" direkt hinter dem Namen
+    if d.restInfo and IsResting and IsResting() then suffix = suffix .. "  |cff7f9fd0zZ|r" end
     if d.difficulty and GetInstanceInfo then
         local _, instanceType, _, difficultyName = GetInstanceInfo()
         if instanceType and instanceType ~= "none" and type(difficultyName) == "string" and difficultyName ~= "" then
-            suffix = "  |cff8a8a8a" .. difficultyName .. "|r"
+            suffix = suffix .. "  |cff8a8a8a" .. difficultyName .. "|r"
         end
     end
     bar.zone:SetText(text .. suffix)
 end
 
-local function ClockText()
-    if _G.GameTime_GetTime then
-        local ok, s = pcall(_G.GameTime_GetTime, false)
-        if ok and type(s) == "string" then return s end
+---------------------------------------------------------------------------
+-- Uhr: Ortszeit oder Serverzeit, 24 oder 12 Stunden (eigene Einstellung)
+---------------------------------------------------------------------------
+local function ClockText(source)
+    local d = DB()
+    source = source or d.clockSource
+    local h, m
+    if source == "SERVER" and GetGameTime then
+        h, m = GetGameTime()
+    else
+        local t = date("*t")
+        h, m = t.hour, t.min
     end
-    return date("%H:%M")
+    if d.clock24 ~= false then return string.format("%02d:%02d", h, m) end
+    local h12 = h % 12
+    if h12 == 0 then h12 = 12 end
+    return string.format("%d:%02d %s", h12, m, h < 12 and "AM" or "PM")
 end
 
 local function UpdateClock()
@@ -195,20 +211,24 @@ local function UpdateClock()
     end
 end
 
--- Koordinaten (nur draussen; in Instanzen liefert das Spiel keine Position)
+---------------------------------------------------------------------------
+-- Koordinaten (nur draussen; in Instanzen liefert das Spiel keine Position) – Klick setzt eine Kartenmarkierung
+---------------------------------------------------------------------------
+local function PlayerPosition()
+    local mapID = C_Map and C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player")
+    if not (mapID and ns.CanRead(mapID)) then return end
+    local ok, pos = pcall(C_Map.GetPlayerMapPosition, mapID, "player")
+    if not (ok and pos and pos.GetXY) then return end
+    local x, y = pos:GetXY()
+    if not (ns.CanRead(x, y) and type(x) == "number" and type(y) == "number") or (x == 0 and y == 0) then return end
+    return mapID, x, y
+end
+
 local function UpdateCoords()
     if not coordBox then return end
     if not DB().coords then coordBox:Hide() return end
-    local x, y
-    local mapID = C_Map and C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player")
-    if mapID and ns.CanRead(mapID) then
-        local ok, pos = pcall(C_Map.GetPlayerMapPosition, mapID, "player")
-        if ok and pos and pos.GetXY then
-            x, y = pos:GetXY()
-            if not (ns.CanRead(x, y) and type(x) == "number" and type(y) == "number") or (x == 0 and y == 0) then x = nil end
-        end
-    end
-    if x then
+    local mapID, x, y = PlayerPosition()
+    if mapID then
         coordBox.text:SetFormattedText("%.1f  %.1f", x * 100, y * 100)
         coordBox:SetWidth(coordBox.text:GetStringWidth() + 10)
         coordBox:Show()
@@ -217,6 +237,100 @@ local function UpdateCoords()
     end
 end
 
+local function SetWaypointHere()
+    local mapID, x, y = PlayerPosition()
+    if not (mapID and C_Map.SetUserWaypoint and UiMapPoint and UiMapPoint.CreateFromCoordinates) then return false end
+    if C_Map.CanSetUserWaypointOnMap and not C_Map.CanSetUserWaypointOnMap(mapID) then
+        ns.Chat(T("Auf dieser Karte geht keine Markierung.", "No waypoint possible on this map."))
+        return false
+    end
+    C_Map.SetUserWaypoint(UiMapPoint.CreateFromCoordinates(mapID, x, y))
+    if C_SuperTrack and C_SuperTrack.SetSuperTrackedUserWaypoint then C_SuperTrack.SetSuperTrackedUserWaypoint(true) end
+    return true
+end
+
+local function CoordClick(_, button)
+    if button == "RightButton" then
+        if C_Map and C_Map.ClearUserWaypoint then C_Map.ClearUserWaypoint() end
+        ns.Chat(T("Kartenmarkierung entfernt.", "Waypoint removed."))
+        return
+    end
+    if not SetWaypointHere() then return end
+    if IsShiftKeyDown() then
+        -- Link nur in eine schon offene Chat-Eingabe einfuegen (die Eingabe selbst oeffnen wir nicht)
+        local link = C_Map.GetUserWaypointHyperlink and C_Map.GetUserWaypointHyperlink()
+        if not (link and ChatEdit_InsertLink and ChatEdit_InsertLink(link)) then
+            ns.Chat(T("Markierung gesetzt. Zum Teilen erst die Chat-Eingabe öffnen, dann Umschalt-Klick.",
+                "Waypoint set. To share it, open the chat input first, then shift-click."))
+        end
+    else
+        ns.Chat(T("Kartenmarkierung gesetzt.", "Waypoint set."))
+    end
+end
+
+---------------------------------------------------------------------------
+-- Haltbarkeit: kleines Amboss-Symbol in der Leiste, sobald ein Teil unter die Grenze faellt
+---------------------------------------------------------------------------
+local DURA_LIMIT = 30
+local function Durability()
+    local lowest, list = 100, {}
+    if not GetInventoryItemDurability then return lowest, list end
+    for slot = 1, 18 do
+        local cur, max = GetInventoryItemDurability(slot)
+        if cur and max and max > 0 then
+            local pct = math.floor(cur / max * 100 + 0.5)
+            if pct < 100 then list[#list + 1] = { slot = slot, pct = pct } end
+            if pct < lowest then lowest = pct end
+        end
+    end
+    table.sort(list, function(a, b) return a.pct < b.pct end)
+    return lowest, list
+end
+
+local function UpdateDurability()
+    if not bar then return end
+    local lowest = Durability()
+    local show = DB().durability and lowest < DURA_LIMIT
+    bar.dura:SetShown(show)
+    if show then
+        -- unter 10 % (oder kaputt): rot, sonst orange
+        if lowest < 10 then bar.dura.icon:SetVertexColor(1, 0.35, 0.3) else bar.dura.icon:SetVertexColor(1, 0.75, 0.35) end
+    end
+end
+
+---------------------------------------------------------------------------
+-- Warteschlangen-Auge: in der Leiste, solange ForeverBars es nicht in seiner eigenen Leiste fuehrt
+---------------------------------------------------------------------------
+local function BarsOwnsQueue()
+    if not (C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("ForeverBars")) then return false end
+    local bdb = _G.ForeverBarsDB
+    local q = bdb and bdb.bars and bdb.bars.queue
+    return q and q.enabled == true
+end
+
+local function QueueDocked()
+    return DB().queueDock and _G.QueueStatusButton ~= nil and not BarsOwnsQueue()
+end
+
+local queueX = -40 -- Platz in der Leiste (von rechts), wird beim Anordnen gesetzt
+local function PlaceQueue()
+    local q = _G.QueueStatusButton
+    if not (q and bar and QueueDocked()) then return end
+    q.fmmPlacing = true
+    if q.SetIgnoreParentAlpha then q:SetIgnoreParentAlpha(true) end -- Elternrahmen (z. B. Mikromenue) evtl. unsichtbar
+    local pScale = (q:GetParent() and q:GetParent():GetEffectiveScale()) or 1
+    q:SetScale((MARK + 4) * bar:GetEffectiveScale() / (math.max(1, q:GetWidth()) * pScale))
+    local k = bar:GetEffectiveScale() / q:GetEffectiveScale()
+    q:ClearAllPoints()
+    q:SetPoint("RIGHT", bar, "RIGHT", queueX * k, 0)
+    q:SetFrameStrata(bar:GetFrameStrata())
+    q:SetFrameLevel(bar:GetFrameLevel() + 4)
+    q.fmmPlacing = false
+end
+
+---------------------------------------------------------------------------
+-- Leiste bauen
+---------------------------------------------------------------------------
 local function ZoneTooltip(self)
     GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
     GameTooltip:AddLine(GetZoneText and GetZoneText() or "", 1, 1, 1)
@@ -233,8 +347,19 @@ local function ZoneTooltip(self)
         local col = ZONE_COLORS[pvp] or C.accent
         GameTooltip:AddLine(labels[pvp], col[1], col[2], col[3])
     end
+    if IsResting and IsResting() then GameTooltip:AddLine(T("Ruhegebiet: Erholung wird gesammelt (zZ)", "Resting area: rested XP builds up (zZ)"), 0.5, 0.62, 0.82) end
     if DB().barClickMap then GameTooltip:AddLine(T("Klick: Weltkarte", "Click: world map"), 0.6, 0.6, 0.6) end
     GameTooltip:Show()
+end
+
+local function SmallFlat(parent, size)
+    local b = CreateFrame("Button", nil, parent, "BackdropTemplate")
+    b:SetSize(size, size)
+    UI.SetFlat(b, { C.button[1], C.button[2], C.button[3], 0.85 })
+    b.icon = b:CreateTexture(nil, "ARTWORK")
+    b.icon:SetPoint("TOPLEFT", 2, -2)
+    b.icon:SetPoint("BOTTOMRIGHT", -2, 2)
+    return b
 end
 
 local function BuildBar()
@@ -273,24 +398,68 @@ local function BuildBar()
     end)
     bar.clockButton:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
-        GameTooltip:AddLine(ClockText(), 1, 1, 1)
-        if GetGameTime then
-            local h, m = GetGameTime()
-            GameTooltip:AddLine(string.format(T("Serverzeit %02d:%02d", "Server time %02d:%02d"), h, m), 0.85, 0.85, 0.85)
-        end
+        GameTooltip:AddDoubleLine(T("Ortszeit", "Local time"), ClockText("LOCAL"), 0.85, 0.85, 0.85, 1, 1, 1)
+        GameTooltip:AddDoubleLine(T("Serverzeit", "Server time"), ClockText("SERVER"), 0.85, 0.85, 0.85, 1, 1, 1)
         GameTooltip:AddLine(T("Links: Uhr und Wecker · Rechts: Kalender", "Left: clock and alarm · Right: calendar"), 0.6, 0.6, 0.6)
         GameTooltip:Show()
         ns.UpdateHover()
     end)
     bar.clockButton:SetScript("OnLeave", function() GameTooltip_Hide() ns.UpdateHoverSoon() end)
 
-    -- Koordinaten unten mittig auf der Karte, kleiner dunkler Kasten
-    coordBox = CreateFrame("Frame", nil, Minimap, "BackdropTemplate")
+    -- Haltbarkeit (nur bei niedrigem Wert)
+    bar.dura = SmallFlat(bar, MARK)
+    bar.dura:SetFrameLevel(bar:GetFrameLevel() + 2)
+    bar.dura.icon:SetTexture("Interface\\Icons\\Trade_BlackSmithing")
+    bar.dura.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    bar.dura:Hide()
+    bar.dura:SetScript("OnClick", function()
+        if ToggleCharacter and not InCombatLockdown() then ToggleCharacter("PaperDollFrame") end
+    end)
+    bar.dura:SetScript("OnEnter", function(self)
+        self:SetBackdropBorderColor(C.accent[1], C.accent[2], C.accent[3], 0.9)
+        GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+        local lowest, list = Durability()
+        GameTooltip:AddLine(string.format(T("Haltbarkeit: %d %%", "Durability: %d %%"), lowest))
+        for i, e in ipairs(list) do
+            if i > 8 then break end
+            local link = GetInventoryItemLink and GetInventoryItemLink("player", e.slot)
+            local r = e.pct < 10 and 1 or (e.pct < DURA_LIMIT and 1 or 0.85)
+            local g = e.pct < 10 and 0.35 or (e.pct < DURA_LIMIT and 0.75 or 0.85)
+            GameTooltip:AddDoubleLine(link or ("#" .. e.slot), e.pct .. " %", 1, 1, 1, r, g, 0.3)
+        end
+        GameTooltip:AddLine(T("Klick: Charakterfenster", "Click: character window"), 0.6, 0.6, 0.6)
+        GameTooltip:Show()
+        ns.UpdateHover()
+    end)
+    bar.dura:SetScript("OnLeave", function(self)
+        self:SetBackdropBorderColor(C.border[1], C.border[2], C.border[3], 1)
+        GameTooltip_Hide()
+        ns.UpdateHoverSoon()
+    end)
+
+    -- Koordinaten unten mittig auf der Karte; Klick: Kartenmarkierung
+    coordBox = CreateFrame("Button", nil, Minimap, "BackdropTemplate")
     coordBox:SetHeight(14)
     coordBox:SetFrameLevel(Minimap:GetFrameLevel() + 6)
     coordBox:SetPoint("BOTTOM", Minimap, "BOTTOM", 0, 3)
     UI.SetFlat(coordBox, { C.background[1], C.background[2], C.background[3], 0.7 }, { 0, 0, 0, 0 })
-    coordBox:EnableMouse(false)
+    coordBox:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    coordBox:SetScript("OnClick", CoordClick)
+    coordBox:SetScript("OnEnter", function(self)
+        self:SetBackdropBorderColor(C.accent[1], C.accent[2], C.accent[3], 0.9)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:AddLine(T("Koordinaten", "Coordinates"))
+        GameTooltip:AddLine(T("Klick: Kartenmarkierung hier setzen", "Click: set a waypoint here"), 1, 1, 1)
+        GameTooltip:AddLine(T("Umschalt-Klick: zusätzlich in die offene Chat-Eingabe", "Shift-click: also into the open chat input"), 1, 1, 1)
+        GameTooltip:AddLine(T("Rechtsklick: Markierung entfernen", "Right-click: remove waypoint"), 1, 1, 1)
+        GameTooltip:Show()
+        ns.UpdateHover()
+    end)
+    coordBox:SetScript("OnLeave", function(self)
+        self:SetBackdropBorderColor(0, 0, 0, 0)
+        GameTooltip_Hide()
+        ns.UpdateHoverSoon()
+    end)
     coordBox.text = coordBox:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     coordBox.text:SetPoint("CENTER")
     coordBox.text:SetTextColor(0.85, 0.85, 0.85)
@@ -299,6 +468,26 @@ local function BuildBar()
     pingText = Minimap:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     pingText:SetPoint("TOP", Minimap, "TOP", 0, -6)
     pingText:Hide()
+end
+
+-- Anzeigen rechts in der Leiste anordnen: Uhr ganz rechts, davor Warteschlange und Haltbarkeit (nah an der Uhr);
+-- liefert den freien Rand fuer weitere Knoepfe und den Zonennamen
+local function LayoutBar()
+    local d = DB()
+    local x = -7
+    if d.clock then x = x - (bar.clock:GetStringWidth() + 6) end
+    local q = _G.QueueStatusButton
+    if q and QueueDocked() and q:IsShown() then
+        queueX = x
+        PlaceQueue()
+        x = x - (MARK + 4) - 3
+    end
+    if bar.dura:IsShown() then
+        bar.dura:ClearAllPoints()
+        bar.dura:SetPoint("RIGHT", bar, "RIGHT", x, 0)
+        x = x - MARK - 3
+    end
+    return x
 end
 
 ---------------------------------------------------------------------------
@@ -336,7 +525,7 @@ local TOOL_DEFS = {
       click = function() if ToggleCalendar then ToggleCalendar() end end,
       alert = function() return PendingInvites() > 0 end },
     -- (kein Knopf fuer Blizzards Addon-Menue: die Addons sitzen mit ihren eigenen Knoepfen schon in der Leiste)
-    { key = "settings", icon = "Interface\\Icons\\INV_Misc_Gear_01", separatorAfter = true,
+    { key = "settings", icon = "Interface\\Icons\\INV_Misc_Gear_01",
       tip = function() GameTooltip:AddLine(T("ForeverMinimap-Einstellungen", "ForeverMinimap settings")) GameTooltip:AddLine("/fmm", 0.6, 0.6, 0.6) end,
       click = function() if ns.ToggleOptions then ns.ToggleOptions() end end },
 }
@@ -376,10 +565,68 @@ local function SetCalendarIcon(b)
     b.day:Show()
 end
 
+---------------------------------------------------------------------------
+-- Rund oder eckig: gleicher Knopf, zwei Looks (rund im runden Kartenmodus, damit alles zusammenpasst)
+---------------------------------------------------------------------------
+local function NewMask(frame, anchor, inset)
+    local m = frame:CreateMaskTexture()
+    m:SetPoint("TOPLEFT", anchor, "TOPLEFT", inset or 0, -(inset or 0))
+    m:SetPoint("BOTTOMRIGHT", anchor, "BOTTOMRIGHT", -(inset or 0), inset or 0)
+    m:SetTexture(CIRCLE, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+    return m
+end
+
+-- runde Teile einmalig anlegen: Ring (Randfarbe), Scheibe (Knopffarbe), Kreismaske fuer das Symbol
+local function EnsureRound(b)
+    if b.fmmRound then return b.fmmRound end
+    local r = {}
+    r.ring = b:CreateTexture(nil, "BACKGROUND", nil, -7)
+    r.ring:SetAllPoints()
+    r.ring:SetColorTexture(1, 1, 1, 1)
+    r.ring:AddMaskTexture(NewMask(b, b, 0))
+    r.disc = b:CreateTexture(nil, "BACKGROUND", nil, -6)
+    r.disc:SetPoint("TOPLEFT", 1, -1)
+    r.disc:SetPoint("BOTTOMRIGHT", -1, 1)
+    r.disc:SetColorTexture(C.button[1], C.button[2], C.button[3], 0.9)
+    r.disc:AddMaskTexture(NewMask(b, b, 1))
+    local icon = b.fmmIcon or b.icon
+    if icon then r.iconMask = NewMask(b, icon, 0) end
+    r.icon = icon
+    b.fmmRound = r
+    return r
+end
+
+-- Look umschalten; gold = Hover oder Hinweis (Post, Einladung)
+local function StyleItem(b, round, gold)
+    local edge = gold and C.accent or C.border
+    if round then
+        local r = EnsureRound(b)
+        r.ring:Show() r.disc:Show()
+        r.ring:SetVertexColor(edge[1], edge[2], edge[3], 1)
+        if r.icon and not r.masked then r.icon:AddMaskTexture(r.iconMask) r.masked = true end
+    elseif b.fmmRound then
+        local r = b.fmmRound
+        r.ring:Hide() r.disc:Hide()
+        if r.icon and r.masked then r.icon:RemoveMaskTexture(r.iconMask) r.masked = false end
+    end
+    -- eigene Knoepfe: Backdrop; fremde: eigene Kanten/Flaeche (fmmSquareParts)
+    if b.fmmTool then
+        if round then
+            b:SetBackdropColor(0, 0, 0, 0)
+            b:SetBackdropBorderColor(0, 0, 0, 0)
+        else
+            b:SetBackdropColor(C.button[1], C.button[2], C.button[3], 0.85)
+            b:SetBackdropBorderColor(edge[1], edge[2], edge[3], gold and 0.9 or 1)
+        end
+    end
+    for _, t in ipairs(b.fmmSquareParts or {}) do t:SetShown(not round) end
+end
+
 local function ToolButton(def)
     local b = CreateFrame("Button", nil, Minimap, "BackdropTemplate")
     UI.SetFlat(b, { C.button[1], C.button[2], C.button[3], 0.85 })
     b:SetFrameLevel(Minimap:GetFrameLevel() + 8)
+    b.fmmTool = true
     local inset = def.inset or 2
     b.icon = b:CreateTexture(nil, "ARTWORK")
     b.icon:SetPoint("TOPLEFT", inset, -inset)
@@ -397,13 +644,13 @@ local function ToolButton(def)
     b:RegisterForClicks("LeftButtonUp")
     b:SetScript("OnClick", function() if def.click then def.click() end end)
     b:SetScript("OnEnter", function(self)
-        self:SetBackdropBorderColor(C.accent[1], C.accent[2], C.accent[3], 0.9)
+        StyleItem(self, IsRound() and self.fmmInStrip, true)
         GameTooltip:SetOwner(self, "ANCHOR_BOTTOMLEFT")
         def.tip()
         GameTooltip:Show()
         ns.UpdateHover()
     end)
-    b:SetScript("OnLeave", function(self)
+    b:SetScript("OnLeave", function()
         ns.UpdateTools()
         GameTooltip_Hide()
         ns.UpdateHoverSoon()
@@ -412,13 +659,13 @@ local function ToolButton(def)
 end
 
 ---------------------------------------------------------------------------
--- Senkrechte Knopfleiste neben der Minimap: eigene Knoepfe (Post, Verfolgung, Kalender, Einstellungen), ein
--- dezenter Trennstrich, dann die Minimap-Knoepfe am Rand (Forever-Sammelknopf, andere Addons wie BugSack).
--- Die Leiste ist genau so hoch wie Karte + Kopfleiste. Passen nicht alle Knoepfe hinein, wird der letzte Platz
--- ein Pfeil "weitere Knoepfe": aufgeklappt waechst die Leiste in weitere Spalten nach aussen (nie hoeher).
--- Fremde Knoepfe (keine Blizzard-Rahmen) bekommen auf Wunsch den gleichen eckigen Look wie die eigenen:
--- runder Rahmen und Hintergrund unsichtbar, Symbol quadratisch, flache Flaeche mit goldenem Rand beim Darueberfahren.
--- Ihre Klicks, Tooltips und Menues bleiben unveraendert; Ziehen ist in der Leiste aus.
+-- Knopfleiste neben der Minimap: eigene Knoepfe (Post, Verfolgung, Kalender, Einstellungen), ein dezenter
+-- Trennstrich, dann die Minimap-Knoepfe am Rand (Forever-Sammelknopf, andere Addons wie BugSack).
+--   eckig: senkrechte Spalte, genau so hoch wie Karte + Kopfleiste; reicht der Platz nicht, wird der letzte Platz
+--          ein Pfeil "weitere Knoepfe" und die Leiste waechst in weitere Spalten nach aussen (nie hoeher)
+--   rund:  runde Knoepfe auf einem Bogen um die Karte; aufgeklappt ein zweiter Bogen weiter aussen
+-- Fremde Knoepfe (keine Blizzard-Rahmen) bekommen auf Wunsch denselben Look wie die eigenen; ihre Klicks,
+-- Tooltips und Menues bleiben unveraendert; Ziehen ist in der Leiste aus.
 ---------------------------------------------------------------------------
 local GAP, PAD, SEP = 3, 3, 9
 local expanded = false
@@ -438,12 +685,11 @@ local function BuildStrip()
     separator:SetColorTexture(1, 1, 1, 0.14)
     separator:SetSize(ITEM - 6, 1)
 
-    -- Pfeil "weitere Knoepfe" (nur, wenn nicht alle in eine Spalte passen)
-    moreButton = CreateFrame("Button", nil, strip, "BackdropTemplate")
-    moreButton:SetSize(ITEM, ITEM)
+    -- Pfeil "weitere Knoepfe" (nur, wenn nicht alle hineinpassen)
+    moreButton = SmallFlat(strip, ITEM)
+    moreButton.fmmTool = true
     moreButton:SetFrameLevel(strip:GetFrameLevel() + 3)
-    UI.SetFlat(moreButton, { C.button[1], C.button[2], C.button[3], 0.85 })
-    moreButton.icon = moreButton:CreateTexture(nil, "ARTWORK")
+    moreButton.icon:ClearAllPoints()
     moreButton.icon:SetSize(12, 12)
     moreButton.icon:SetPoint("CENTER")
     moreButton.icon:SetTexture("Interface\\ChatFrame\\ChatFrameExpandArrow")
@@ -452,14 +698,14 @@ local function BuildStrip()
         ns.UpdateTools()
     end)
     moreButton:SetScript("OnEnter", function(self)
-        self:SetBackdropBorderColor(C.accent[1], C.accent[2], C.accent[3], 0.9)
+        StyleItem(self, IsRound(), true)
         GameTooltip:SetOwner(self, DB().strip == "RIGHT" and "ANCHOR_RIGHT" or "ANCHOR_LEFT")
         GameTooltip:AddLine(expanded and T("Weniger Knöpfe", "Fewer buttons") or T("Weitere Knöpfe", "More buttons"))
         GameTooltip:Show()
         ns.UpdateHover()
     end)
     moreButton:SetScript("OnLeave", function(self)
-        self:SetBackdropBorderColor(C.border[1], C.border[2], C.border[3], 1)
+        StyleItem(self, IsRound(), false)
         GameTooltip_Hide()
         ns.UpdateHoverSoon()
     end)
@@ -484,7 +730,7 @@ local function IsRoundArt(tex)
     return false
 end
 
--- fremden Knopf eckig machen (einmalig)
+-- fremden Knopf in den eigenen Look bringen (einmalig)
 local function SkinForeign(b)
     if b.fmmSkinned then return end
     b.fmmSkinned = true
@@ -500,10 +746,12 @@ local function SkinForeign(b)
     end
     local hl = b.GetHighlightTexture and b:GetHighlightTexture()
     if hl then hl:SetAlpha(0) end
-    -- flache Flaeche, feiner Rand, goldener Rand beim Darueberfahren (Ebene HIGHLIGHT zeigt sich von selbst)
+    -- eckig: flache Flaeche, feiner Rand, goldener Rand beim Darueberfahren (Ebene HIGHLIGHT zeigt sich von selbst)
+    b.fmmSquareParts = {}
     local bg = b:CreateTexture(nil, "BACKGROUND", nil, -8)
     bg:SetAllPoints()
     bg:SetColorTexture(C.button[1], C.button[2], C.button[3], 0.85)
+    tinsert(b.fmmSquareParts, bg)
     for _, side in ipairs({ { "TOPLEFT", "TOPRIGHT", nil, 1 }, { "BOTTOMLEFT", "BOTTOMRIGHT", nil, 1 },
         { "TOPLEFT", "BOTTOMLEFT", 1, nil }, { "TOPRIGHT", "BOTTOMRIGHT", 1, nil } }) do
         for _, layer in ipairs({ "BORDER", "HIGHLIGHT" }) do
@@ -512,6 +760,7 @@ local function SkinForeign(b)
             else e:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 0.9) end
             e:SetPoint(side[1]) e:SetPoint(side[2])
             if side[3] then e:SetWidth(side[3]) else e:SetHeight(side[4]) end
+            tinsert(b.fmmSquareParts, e)
         end
     end
     if icon then
@@ -520,23 +769,28 @@ local function SkinForeign(b)
         icon:SetPoint("BOTTOMRIGHT", -3, 3)
         icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
     end
+    b.fmmIcon = icon
+    -- rund: goldener Ring beim Darueberfahren
+    b:HookScript("OnEnter", function(self) if IsRound() and self.fmmRound then StyleItem(self, true, true) end end)
+    b:HookScript("OnLeave", function(self) if IsRound() and self.fmmRound then StyleItem(self, true, false) end end)
 end
 
--- fremden Knopf an seinen Platz in der Leiste setzen (auch, wenn sein Addon ihn spaeter zurueckschiebt)
+-- fremden Knopf an seinen Platz setzen (auch, wenn sein Addon ihn spaeter zurueckschiebt)
 local function PlaceForeign(b)
-    if not b.fmmPoint then return end
+    if not b.fmmRel then return end
     b.fmmPlacing = true
     if DB().squareForeign then
         SkinForeign(b)
         b:SetScale(1)
         b:SetSize(ITEM, ITEM)
         b:ClearAllPoints()
-        b:SetPoint(b.fmmPoint, strip, b.fmmPoint, b.fmmX, b.fmmY)
+        b:SetPoint(b.fmmPoint, b.fmmRel, b.fmmRelPoint, b.fmmX, b.fmmY)
+        StyleItem(b, IsRound(), false)
     else
         local s = ITEM / math.max(1, b:GetWidth())
         b:SetScale(s)
         b:ClearAllPoints()
-        b:SetPoint(b.fmmPoint, strip, b.fmmPoint, b.fmmX / s, b.fmmY / s)
+        b:SetPoint(b.fmmPoint, b.fmmRel, b.fmmRelPoint, b.fmmX / s, b.fmmY / s)
     end
     b:SetFrameLevel(strip:GetFrameLevel() + 2)
     b.fmmPlacing = false
@@ -556,64 +810,9 @@ local function ToolVisible(b)
     return not def.shown or def.shown()
 end
 
--- Knoepfe anordnen und ein-/ausblenden (Post/Einladung: goldener Rand, auch ohne Maus sichtbar)
-function ns.UpdateTools()
-    if not strip then return end
-    local d = DB()
-    local side = d.strip == "RIGHT" and "RIGHT" or "LEFT"
-    local useStrip = d.strip == "LEFT" or d.strip == "RIGHT"
-    local inBar = d.toolsInBar and d.bar
-    local show = hovering or not d.stripMouseover
-    if not hovering and d.stripMouseover then expanded = false end -- beim Verlassen wieder einklappen
-
-    -- Hoehe = Karte + Kopfleiste; oben und unten buendig
-    local barShown = d.bar and bar
-    local topRef = (barShown and d.barPosition ~= "BOTTOM" and bar) or Minimap
-    local bottomRef = (barShown and d.barPosition == "BOTTOM" and bar) or Minimap
-    local height = Minimap:GetHeight() + (barShown and BAR_H or 0)
-    strip:ClearAllPoints()
-    if side == "RIGHT" then
-        strip:SetPoint("TOPLEFT", topRef, "TOPRIGHT", 4, 0)
-        strip:SetPoint("BOTTOMLEFT", bottomRef, "BOTTOMRIGHT", 4, 0)
-    else
-        strip:SetPoint("TOPRIGHT", topRef, "TOPLEFT", -4, 0)
-        strip:SetPoint("BOTTOMRIGHT", bottomRef, "BOTTOMLEFT", -4, 0)
-    end
-
-    -- Eintraege der Leiste: eigene Knoepfe, Trennstrich, fremde Knoepfe
-    local items, prev = {}, nil
-    local ownCount = 0
-    for _, b in ipairs(tools) do
-        local wanted = ToolVisible(b)
-        local alert = b.def.alert and b.def.alert()
-        b:ClearAllPoints()
-        b.alert = alert
-        if b.def.calendar then SetCalendarIcon(b) end -- neuer Tag
-        if wanted and inBar then
-            b:SetSize(TOOL, TOOL)
-            if prev then b:SetPoint("RIGHT", prev, "LEFT", -2, 0)
-            else b:SetPoint("RIGHT", d.clock and bar.clock or bar, d.clock and "LEFT" or "RIGHT", d.clock and -6 or -4, 0) end
-            prev = b
-            b:SetShown(show or alert)
-            b:SetAlpha(1)
-        elseif wanted and useStrip then
-            b:SetSize(ITEM, ITEM)
-            items[#items + 1] = { button = b, h = ITEM }
-            ownCount = ownCount + 1
-        else
-            b:Hide()
-        end
-        if alert then
-            b:SetBackdropBorderColor(C.accent[1], C.accent[2], C.accent[3], 0.9)
-        elseif not b:IsMouseOver() then
-            b:SetBackdropBorderColor(C.border[1], C.border[2], C.border[3], 1)
-        end
-    end
-    local foreign = useStrip and SortedForeign() or {}
-    if ownCount > 0 and #foreign > 0 then items[#items + 1] = { sep = true, h = SEP } end
-    for _, b in ipairs(foreign) do items[#items + 1] = { button = b, h = ITEM, foreign = true } end
-
-    -- Spalten fuellen: von oben nach unten, dann die naechste Spalte weiter aussen
+-- Plaetze fuer die Eintraege berechnen. Rueckgabe: je Eintrag { point, rel, relPoint, x, y, angle } oder false
+-- (eingeklappt/nicht sichtbar), Platz des Pfeils, Breite der Leiste
+local function LayoutSquare(items, side, height)
     local avail = height - 2 * PAD
     local total = 0
     for i, it in ipairs(items) do total = total + it.h + (i > 1 and GAP or 0) end
@@ -621,96 +820,183 @@ function ns.UpdateTools()
     local point = side == "RIGHT" and "TOPLEFT" or "TOPRIGHT"
     local dir = side == "RIGHT" and 1 or -1
     local col, y = 0, 0
-    local hiddenAt -- eingeklappt: ab hier nicht mehr sichtbar
     local function Next(h)
         if y > 0 and y + h > avail then col, y = col + 1, 0 end
         local px, py = dir * (PAD + col * (ITEM + GAP)), -(PAD + y)
         y = y + h + GAP
-        return px, py
+        return { point = point, rel = strip, relPoint = point, x = px, y = py }
     end
-    local positions = {}
+    local positions, stop = {}, false
     for i, it in ipairs(items) do
-        if overflow and not expanded then
-            -- erste Spalte: Platz fuer den Pfeil unten lassen
-            if y + it.h > avail - (ITEM + GAP) then hiddenAt = i break end
-        end
-        if it.sep and y == 0 and col > 0 then
-            positions[i] = false -- kein Strich ganz oben in einer Spalte
-        else
-            positions[i] = { Next(it.h) }
-        end
+        if overflow and not expanded and y + it.h > avail - (ITEM + GAP) then stop = true end
+        if stop or (it.sep and y == 0 and col > 0) then positions[i] = false
+        else positions[i] = Next(it.h) end
     end
-    local moreX, moreY
+    local more
     if overflow then
-        if expanded then moreX, moreY = Next(ITEM)
-        else moreX, moreY = dir * PAD, -(PAD + avail - ITEM) end
+        if expanded then more = Next(ITEM)
+        else more = { point = point, rel = strip, relPoint = point, x = dir * PAD, y = -(PAD + avail - ITEM) } end
     end
-    local cols = col + 1
-    if overflow and not expanded then cols = 1 end
-    -- eingeklappte fremde Knoepfe liegen unsichtbar auf dem Platz des Pfeils
-    local parkX, parkY = moreX or dir * PAD, moreY or -PAD
+    local cols = (overflow and not expanded) and 1 or (col + 1)
+    return positions, more, cols * (ITEM + GAP) - GAP + 2 * PAD
+end
+
+local function LayoutRound(items, side)
+    local mapR = Minimap:GetWidth() / 2
+    local baseR = mapR + ITEM / 2 + 5
+    local maxSpan = math.rad(150)               -- Bogen von oben-seitlich bis unten-seitlich
+    local center = side == "RIGHT" and 0 or math.pi
+    local dirA = side == "RIGHT" and -1 or 1    -- Richtung "nach unten" auf dem Bogen
+    local total = 0
+    for i, it in ipairs(items) do total = total + (it.h + (i > 1 and GAP or 0)) / baseR end
+    local overflow = total > maxSpan
+    local ringNo, used = 0, 0
+    local function Next(h)
+        local r = baseR + ringNo * (ITEM + GAP)
+        local need = (h + GAP) / r
+        if used > 0 and used + h / r > maxSpan then ringNo, used = ringNo + 1, 0 r = baseR + ringNo * (ITEM + GAP) need = (h + GAP) / r end
+        local a = center - dirA * (maxSpan / 2) + dirA * (used + (h / 2) / r)
+        used = used + need
+        return { point = "CENTER", rel = Minimap, relPoint = "CENTER", x = math.cos(a) * r, y = math.sin(a) * r, angle = a }
+    end
+    local positions, stop = {}, false
+    for i, it in ipairs(items) do
+        if overflow and not expanded and used + (it.h + ITEM + 2 * GAP) / baseR > maxSpan then stop = true end
+        if stop or (it.sep and used == 0 and ringNo > 0) then positions[i] = false
+        else positions[i] = Next(it.h) end
+    end
+    local more
+    if overflow then more = Next(ITEM) end
+    local rings = (overflow and not expanded) and 1 or (ringNo + 1)
+    return positions, more, rings * (ITEM + GAP) + 10
+end
+
+-- Knoepfe anordnen und ein-/ausblenden (Post/Einladung: goldener Rand, auch ohne Maus sichtbar)
+function ns.UpdateTools()
+    if not strip then return end
+    local d = DB()
+    local side = d.strip == "RIGHT" and "RIGHT" or "LEFT"
+    local useStrip = d.strip == "LEFT" or d.strip == "RIGHT"
+    local inBar = d.toolsInBar and d.bar
+    local round = IsRound()
+    local show = hovering or not d.stripMouseover
+    if not hovering and d.stripMouseover then expanded = false end -- beim Verlassen wieder einklappen
+
+    -- Leiste rechts anordnen (Uhr, Warteschlange, Haltbarkeit); der Rest ist Platz fuer Knoepfe und Zonennamen
+    local barX = -7
+    if bar and bar:IsShown() then barX = LayoutBar() end
+
+    -- Flaeche der Knopfleiste: eckig neben Karte + Kopfleiste (oben/unten buendig); rund unsichtbar, nur fuer die Maus
+    local barShown = d.bar and bar
+    local topRef = (barShown and d.barPosition ~= "BOTTOM" and bar) or Minimap
+    local bottomRef = (barShown and d.barPosition == "BOTTOM" and bar) or Minimap
+    local height = Minimap:GetHeight() + (barShown and BAR_H or 0)
+    strip:ClearAllPoints()
+    if round then topRef, bottomRef = Minimap, Minimap end
+    if side == "RIGHT" then
+        strip:SetPoint("TOPLEFT", topRef, "TOPRIGHT", round and 0 or 4, 0)
+        strip:SetPoint("BOTTOMLEFT", bottomRef, "BOTTOMRIGHT", round and 0 or 4, 0)
+    else
+        strip:SetPoint("TOPRIGHT", topRef, "TOPLEFT", round and 0 or -4, 0)
+        strip:SetPoint("BOTTOMRIGHT", bottomRef, "BOTTOMLEFT", round and 0 or -4, 0)
+    end
+
+    -- Eintraege: eigene Knoepfe, Trennstrich, fremde Knoepfe
+    local items, prev = {}, nil
+    local ownCount = 0
+    for _, b in ipairs(tools) do
+        local wanted = ToolVisible(b)
+        b.alert = b.def.alert and b.def.alert()
+        b.fmmInStrip = false
+        b:ClearAllPoints()
+        if b.def.calendar then SetCalendarIcon(b) end -- neuer Tag
+        if wanted and inBar then
+            b:SetSize(TOOL, TOOL)
+            if prev then b:SetPoint("RIGHT", prev, "LEFT", -2, 0)
+            else b:SetPoint("RIGHT", bar, "RIGHT", barX, 0) end
+            prev = b
+            b:SetShown(show or b.alert)
+            b:SetAlpha(1)
+            StyleItem(b, false, b.alert or b:IsMouseOver())
+        elseif wanted and useStrip then
+            b:SetSize(ITEM, ITEM)
+            b.fmmInStrip = true
+            items[#items + 1] = { button = b, h = ITEM }
+            ownCount = ownCount + 1
+        else
+            b:Hide()
+        end
+    end
+    local foreign = useStrip and SortedForeign() or {}
+    if ownCount > 0 and #foreign > 0 then items[#items + 1] = { sep = true, h = SEP } end
+    for _, b in ipairs(foreign) do items[#items + 1] = { button = b, h = ITEM, foreign = true } end
+
+    local positions, more, width
+    if round then positions, more, width = LayoutRound(items, side)
+    else positions, more, width = LayoutSquare(items, side, height) end
+    local park = more or positions[1] or { point = "CENTER", rel = strip, relPoint = "CENTER", x = 0, y = 0 }
 
     separator:Hide()
     for i, it in ipairs(items) do
         local pos = positions[i]
-        local visible = pos and (not hiddenAt or i < hiddenAt)
         if it.sep then
-            if visible then
+            if pos then
                 separator:ClearAllPoints()
-                separator:SetPoint("CENTER", strip, point, pos[1] + dir * (ITEM / 2), pos[2] - SEP / 2)
+                if pos.angle then
+                    separator:SetPoint("CENTER", pos.rel, pos.relPoint, pos.x, pos.y)
+                    separator:SetRotation(pos.angle + math.pi / 2) -- quer zum Bogen
+                else
+                    local dir = side == "RIGHT" and 1 or -1
+                    separator:SetPoint("CENTER", strip, pos.point, pos.x + dir * (ITEM / 2), pos.y - SEP / 2)
+                    separator:SetRotation(0)
+                end
                 separator:Show()
             end
         elseif not it.foreign then
             local b = it.button
-            if visible then
-                b:ClearAllPoints()
-                b:SetPoint(point, strip, point, pos[1], pos[2])
+            if pos then
+                b:SetPoint(pos.point, pos.rel, pos.relPoint, pos.x, pos.y)
                 b:Show()
                 b:SetAlpha((show or b.alert) and 1 or 0)
+                StyleItem(b, round, b.alert or b:IsMouseOver())
             else
                 b:Hide()
             end
         else
             local b = it.button
-            if visible then
-                b.fmmPoint, b.fmmX, b.fmmY = point, pos[1], pos[2]
-                PlaceForeign(b)
-                b:SetAlpha(show and 1 or 0)
-                b:EnableMouse(true)
-            else
-                b.fmmPoint, b.fmmX, b.fmmY = point, parkX, parkY
-                PlaceForeign(b)
-                b:SetAlpha(0)
-                b:EnableMouse(false)
-            end
+            local p = pos or park
+            b.fmmPoint, b.fmmRel, b.fmmRelPoint, b.fmmX, b.fmmY = p.point, p.rel, p.relPoint, p.x, p.y
+            PlaceForeign(b)
+            b:SetAlpha((pos and show) and 1 or 0)
+            b:EnableMouse(pos ~= false and pos ~= nil)
         end
     end
-    if overflow then
+    if more then
         moreButton:ClearAllPoints()
-        moreButton:SetPoint(point, strip, point, moreX, moreY)
+        moreButton:SetPoint(more.point, more.rel, more.relPoint, more.x, more.y)
         -- Pfeil zeigt nach aussen (aufklappen) bzw. zur Karte (einklappen)
         local outward = (side == "LEFT") ~= expanded
         moreButton.icon:SetRotation(outward and math.pi / 2 or -math.pi / 2)
+        StyleItem(moreButton, round, moreButton:IsMouseOver())
         moreButton:Show()
     else
         moreButton:Hide()
     end
-    strip:SetWidth(cols * (ITEM + GAP) - GAP + 2 * PAD)
+    strip:SetWidth(width)
     strip:SetShown(useStrip and #items > 0)
     strip:SetAlpha(show and 1 or 0)
-    -- Flaeche und Rand einstellbar durchsichtig (Kinder = Knoepfe bleiben dabei voll sichtbar)
-    local a = (d.stripAlpha or 50) / 100
+    -- Flaeche und Rand einstellbar durchsichtig (rund: keine Flaeche – die Knoepfe sitzen frei am Bogen)
+    local a = round and 0 or (d.stripAlpha or 50) / 100
     strip:SetBackdropColor(C.header[1], C.header[2], C.header[3], a)
-    strip:SetBackdropBorderColor(C.border[1], C.border[2], C.border[3], math.min(1, a + 0.2))
+    strip:SetBackdropBorderColor(C.border[1], C.border[2], C.border[3], round and 0 or math.min(1, a + 0.2))
 
-    -- Zonenname bis an Knoepfe/Uhr heran (abgeschnitten statt ueberlappt)
+    -- Zonenname bis an Anzeigen/Knoepfe heran (abgeschnitten statt ueberlappt)
     if bar and bar:IsShown() then
-        local right = -7
-        if d.clock then right = right - (bar.clock:GetStringWidth() + 8) end
+        local right = barX
         if inBar then
             for _, b in ipairs(tools) do if b:IsShown() then right = right - (TOOL + 2) end end
         end
-        bar.zone:SetPoint("RIGHT", bar, "RIGHT", right, 0)
+        bar.zone:SetPoint("RIGHT", bar, "RIGHT", right - 2, 0)
     end
 end
 
@@ -720,6 +1006,7 @@ end
 local function IsOverAny()
     if Minimap:IsMouseOver() or (bar and bar:IsShown() and bar:IsMouseOver()) then return true end
     if strip and strip:IsShown() and strip:IsMouseOver() then return true end
+    if moreButton and moreButton:IsShown() and moreButton:IsMouseOver() then return true end
     for _, b in ipairs(tools) do if b:IsShown() and b:IsMouseOver() then return true end end
     for b in pairs(edgeButtons) do if b:IsShown() and b:IsMouseOver() then return true end end
     return false
@@ -764,21 +1051,51 @@ function ns.CollectEdgeButtons()
 end
 
 ---------------------------------------------------------------------------
--- Komfort: Rechtsklick = Verfolgung, automatisch herauszoomen, wer hat gepingt
+-- Zoom: in Staedten/Rastgebieten naeher heran, draussen weit; nach 10 s zurueck auf diese Grundstufe
 ---------------------------------------------------------------------------
-local zoomToken = 0
+local function InCity()
+    if IsResting and IsResting() then return true end
+    local mapID = C_Map and C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player")
+    local info = mapID and ns.CanRead(mapID) and C_Map.GetMapInfo and C_Map.GetMapInfo(mapID)
+    return info and Enum and Enum.UIMapType and info.mapType == Enum.UIMapType.City or false
+end
+
+local function BaseZoom()
+    local d = DB()
+    if d.cityZoom and InCity() then
+        return math.min(d.cityZoomLevel or 2, Minimap:GetZoomLevels() - 1)
+    end
+    return 0
+end
+
+local zoomToken, lastBase = 0, nil
+local settingZoom = false
+local function SetZoomSafe(z)
+    settingZoom = true
+    pcall(Minimap.SetZoom, Minimap, z)
+    if Minimap.ZoomIn then Minimap.ZoomIn:SetEnabled(z < Minimap:GetZoomLevels() - 1) end
+    if Minimap.ZoomOut then Minimap.ZoomOut:SetEnabled(z > 0) end
+    settingZoom = false
+end
+
 local function ScheduleZoomOut()
-    if not DB().autoZoom then return end
+    if settingZoom or not DB().autoZoom then return end
     zoomToken = zoomToken + 1
     local token = zoomToken
     C_Timer.After(10, function()
         if token ~= zoomToken or not DB().autoZoom then return end
-        if Minimap:GetZoom() > 0 then
-            Minimap:SetZoom(0)
-            if Minimap.ZoomIn then Minimap.ZoomIn:Enable() end
-            if Minimap.ZoomOut then Minimap.ZoomOut:Disable() end
-        end
+        local base = BaseZoom()
+        if Minimap:GetZoom() ~= base then SetZoomSafe(base) end
     end)
+end
+
+-- Gebiet gewechselt: neue Grundstufe nur setzen, wenn sie sich aendert (eigenes Zoomen bleibt sonst unberuehrt)
+local function ApplyAreaZoom()
+    local base = BaseZoom()
+    if base ~= lastBase then
+        lastBase = base
+        SetZoomSafe(base)
+    end
 end
 
 local pingToken = 0
@@ -819,13 +1136,15 @@ function ns.ApplyAll()
         if d.bar and d.barPosition == "BOTTOM" then PlaceEdges(Minimap, bar)
         elseif d.bar then PlaceEdges(bar, Minimap)
         else PlaceEdges(Minimap, Minimap) end
-        -- Koordinaten nicht unter die Leiste legen
         coordBox:ClearAllPoints()
         coordBox:SetPoint("BOTTOM", Minimap, "BOTTOM", 0, 3)
     end
     UpdateZone()
     UpdateClock()
     UpdateCoords()
+    UpdateDurability()
+    lastBase = nil
+    ApplyAreaZoom()
     ns.UpdateHover()
 end
 
@@ -849,10 +1168,19 @@ function ns.SetupMap()
     end)
     hooksecurefunc(Minimap, "SetZoom", ScheduleZoomOut)
 
+    -- Warteschlangen-Auge: Blizzard zeigt/versteckt es selbst; wir halten es an seinem Platz in der Leiste
+    local q = _G.QueueStatusButton
+    if q then
+        hooksecurefunc(q, "SetPoint", function(self) if not self.fmmPlacing and QueueDocked() then PlaceQueue() end end)
+        q:HookScript("OnShow", function() ns.UpdateTools() end)
+        q:HookScript("OnHide", function() ns.UpdateTools() end)
+    end
+
     local ev = CreateFrame("Frame")
     for _, e in ipairs({ "ZONE_CHANGED", "ZONE_CHANGED_INDOORS", "ZONE_CHANGED_NEW_AREA", "PLAYER_ENTERING_WORLD",
         "PLAYER_DIFFICULTY_CHANGED", "UPDATE_PENDING_MAIL", "MAIL_CLOSED", "CALENDAR_UPDATE_PENDING_INVITES",
-        "MINIMAP_PING", "MINIMAP_UPDATE_ZOOM", "ADDON_LOADED" }) do
+        "MINIMAP_PING", "MINIMAP_UPDATE_ZOOM", "ADDON_LOADED", "PLAYER_UPDATE_RESTING",
+        "UPDATE_INVENTORY_DURABILITY", "PLAYER_EQUIPMENT_CHANGED" }) do
         pcall(ev.RegisterEvent, ev, e)
     end
     ev:SetScript("OnEvent", ns.Safe(T("Ereignis", "Event"), function(_, event, arg1)
@@ -866,8 +1194,12 @@ function ns.SetupMap()
             C_Timer.After(1, ns.CollectEdgeButtons)
         elseif event == "UPDATE_PENDING_MAIL" or event == "MAIL_CLOSED" or event == "CALENDAR_UPDATE_PENDING_INVITES" then
             ns.UpdateTools()
+        elseif event == "UPDATE_INVENTORY_DURABILITY" or event == "PLAYER_EQUIPMENT_CHANGED" then
+            UpdateDurability()
+            ns.UpdateTools()
         else
             UpdateZone()
+            ApplyAreaZoom()
             if event == "PLAYER_ENTERING_WORLD" then ns.ApplyAll() end
         end
     end))

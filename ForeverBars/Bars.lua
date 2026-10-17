@@ -2232,6 +2232,11 @@ function ns.ApplyLayout()
         HideBlizzardBars(def)
         if def.key == "micro" and cfg.microOwn then
             LayoutOwnMicro(def, cfg, holder) -- eigene Knöpfe statt Blizzards Mikromenü
+        elseif def.key == "queue" and not cfg.enabled then
+            -- Warteschlangen-Leiste aus: das Auge nicht in den (unsichtbaren) Halter haengen – sonst waere es gar
+            -- nicht zu sehen. Es bleibt bei Blizzard bzw. ForeverMinimap (dort in der Leiste ueber der Karte).
+            local eye = _G.QueueStatusButton
+            if eye then eye.fbHolder = nil end -- frueheres "zurueck in den Halter" (Hook) abschalten
         elseif def.kind == "container" or def.kind == "single" then
             if def.key == "micro" then HideOwnMicro() end
             LayoutContainer(def, cfg, holder)

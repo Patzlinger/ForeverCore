@@ -25,7 +25,12 @@ ns.DEFAULTS = {
     -- Leiste
     bar = true,              -- Leiste mit Zonenname
     barPosition = "TOP",     -- "TOP" (ueber der Minimap) oder "BOTTOM" (darunter)
-    clock = true,            -- Uhr in der Leiste (Format wie Blizzards Uhr: 24 h / Ortszeit)
+    clock = true,            -- Uhr in der Leiste
+    clockSource = "LOCAL",   -- "LOCAL" (Ortszeit des Rechners) oder "SERVER" (Serverzeit)
+    clock24 = true,          -- 24 Stunden (aus: 12 Stunden mit AM/PM)
+    restInfo = true,         -- im Ruhegebiet (Stadt, Gasthaus) dezentes "zZ" hinter dem Namen
+    durability = true,       -- Amboss-Symbol in der Leiste, wenn ein Ausruestungsteil unter 30 % faellt
+    queueDock = true,        -- Warteschlangen-Auge in der Leiste (solange ForeverBars es nicht selbst fuehrt)
     coords = true,           -- Koordinaten (nur draussen; in Instanzen gibt es keine)
     difficulty = true,       -- in Instanzen: Schwierigkeit (z. B. "Heroisch")
     barClickMap = true,      -- Klick auf den Zonennamen oeffnet die Weltkarte
@@ -38,7 +43,9 @@ ns.DEFAULTS = {
     hideBlizzard = true,     -- Blizzards Kopfzeile, Rahmen und Knoepfe ausblenden (Ersatz: Leiste und eigene Knoepfe)
     -- Komfort
     rightClickTracking = true, -- Rechtsklick auf die Minimap: Verfolgung (Kraeuter, Erze, Personen …)
-    autoZoom = true,         -- nach 10 Sekunden wieder ganz herauszoomen
+    autoZoom = true,         -- nach 10 Sekunden wieder auf die Grundstufe zoomen
+    cityZoom = true,         -- in Staedten und Gasthaeusern (Ruhegebiet) naeher heran
+    cityZoomLevel = 2,       -- Zoomstufe dort (0 = ganz weit, 5 = ganz nah)
     pingNames = true,        -- beim Pingen kurz zeigen, wer gepingt hat
     minimapAngle = 190,
 }

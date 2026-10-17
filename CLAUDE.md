@@ -387,7 +387,8 @@ Damit alle Einstellungsfenster gleich aussehen, gelten diese Maße. Quelle: `For
   auf (`Tracking.Button:OpenMenu()`, `ToggleCalendar`, `TimeManager_Toggle`, `AddonCompartmentFrame:OpenMenu()`).
   Blizzard setzt die Form bei "Minimap drehen" neu (`MinimapCluster:UpdateMinimapConfig`) – ForeverMinimap hängt sich
   dort an. Position und Größe verwaltet Blizzards Bearbeitungsmodus. Das Warteschlangen-Auge (`QueueStatusButton`)
-  gehört ForeverBars – ForeverMinimap fasst es nicht an
+  gehört ForeverBars nur, wenn dessen Warteschlangen-Leiste an ist; sonst lässt Bars es in Ruhe und ForeverMinimap
+  zeigt es klein in seiner Leiste (prüft `ForeverBarsDB.bars.queue.enabled`; beide halten es per SetPoint-Hook, nie gleichzeitig)
 - **ForeverBars ↔ Bartender4**: läuft Bartender4, lässt ForeverBars die Leisten in Ruhe
 - **ForeverBars ↔ Bearbeitungsmodus**: öffnet der Spieler Blizzards Bearbeitungsmodus, entsperrt ForeverBars seine
   Leisten (Blizzard kann sie nicht greifen) und sperrt sie beim Schließen wieder. Laut flowfy lösen Hooks/Callbacks
