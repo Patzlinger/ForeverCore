@@ -334,7 +334,10 @@ local function BuildChanTab()
     UI.SetFlat(chanTab, { C.button[1], C.button[2], C.button[3], 0.85 })
     chanTab.text = chanTab:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     local font, size, flags = TabFont()
-    if font then chanTab.text:SetFont(font, size, flags) end
+    -- Schrift wie Blizzards Reiter; liefert der Reiter keine Größe, bleibt die Standardschrift
+    if type(font) == "string" and type(size) == "number" and size > 0 then
+        pcall(chanTab.text.SetFont, chanTab.text, font, size, flags or "")
+    end
     chanTab.text:SetPoint("LEFT", 7, 0)
     chanTab.text:SetPoint("RIGHT", -7, 0)
     chanTab.text:SetWordWrap(false)
