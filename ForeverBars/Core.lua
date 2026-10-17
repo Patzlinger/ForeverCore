@@ -105,7 +105,7 @@ ns.defaults = {
         xp = BarDefaults(true), rep = BarDefaults(true),
     },
     -- (Profile verwaltet seit 0.41b ForeverCore – je Charakter, siehe RegisterSettings am Ende dieser Datei)
-    layoutVersion = 23,-- Stand der Standard-Anordnung (siehe MigrateLayout)
+    layoutVersion = 24,-- Stand der Standard-Anordnung (siehe MigrateLayout)
     skin = "FOREVER",        -- Aussehen der Knöpfe (ns.SKINS in Bars.lua)
     hoverAlpha = 15,         -- Stärke des Hover-Leuchtens über den Knöpfen (%)
     procGlow = "FOREVER",    -- Leuchten bei Procs: "FOREVER" (goldener Rahmen), "BLIZZARD", "OFF"
@@ -241,7 +241,8 @@ ns.FillDefaults = FillDefaults
 --  22 (0.44b+): mehr Platz zwischen Ruf-Leiste und Aktionsleisten, Positionen neu berechnet – nur für Leisten, die du nicht
 --               selbst verschoben hast (Leisten mit gesetzter Position, cfg.moved, behalten sie)
 --  23 (0.44b+): der Abstand aus 22 kam nicht an (Bedingung traf nie zu) – behoben, Positionen nochmals neu berechnet
-local LAYOUT_VERSION = 23
+--  24 (0.44b+): Leisten 6-8 direkt über Leiste 3, Begleiter/Haltung über der obersten Aktionsleiste – Positionen neu
+local LAYOUT_VERSION = 24
 -- Standardgrößen vor 16 (nur Leisten, die noch darauf stehen, wachsen mit)
 local OLD_SCALES = { pet = 56, stance = 56, prof = 80, food = 80, bags = 76, queue = 50 }
 local STANDARD_LAYOUT_BARS = { "bar1", "bar2", "bar3", "bar6", "bar7", "bar8", "pet", "stance", "prof", "food",
@@ -342,7 +343,7 @@ function ns.MigrateLayout(db)
                     if bar and (bar.height == nil or bar.height == old) then bar.height = ns.defaults.bars[key].height end
                 end
             end
-            if version < 23 then -- (19: Erfahrung/Ruf unten, 20: Begleiter-/Haltungsleiste, 21: flachere Leisten, 22/23: Abstand) Positionen neu
+            if version < 24 then -- (19: Erfahrung/Ruf unten, 20: Begleiter-/Haltungsleiste, 21: flachere Leisten, 22/23: Abstand, 24: Leisten 6-8) Positionen neu
                 for _, key in ipairs(STANDARD_LAYOUT_BARS) do
                     local bar = target.bars[key]
                     if bar then bar.x, bar.y = nil, nil end

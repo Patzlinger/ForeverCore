@@ -148,10 +148,18 @@ local function DefaultPosition(key)
     -- (früher "== STATUS_EDGE": das traf bei sichtbaren Leisten nie zu, die Luft fehlte)
     if statusBase > EDGE then statusBase = statusBase + STATUS_TOP_GAP end
     local function BarCenter(row) return statusBase + barHeight / 2 + row * (barHeight + BAR_GAP) end
-    local stackTop = statusBase + 3 * barHeight + 2 * BAR_GAP     -- Oberkante der drei Aktionsleisten
+    -- Aktionsleisten übereinander: 1, 2, 3, darüber 6, 7, 8. Begleiter- und Haltungsleiste sitzen immer über der
+    -- obersten eingeschalteten davon (ApplyLayout rechnet das bei jeder Anordnung neu, solange man sie nicht selbst
+    -- verschoben hat)
+    local ROWS = { bar1 = 0, bar2 = 1, bar3 = 2, bar6 = 3, bar7 = 4, bar8 = 5 }
+    local topRow = 0
+    for key, row in pairs(ROWS) do
+        if bars[key] and bars[key].enabled and row > topRow then topRow = row end
+    end
+    local stackTop = BarCenter(topRow) + barHeight / 2              -- Oberkante der obersten Aktionsleiste
     local smallRow = ACTION_SIZE * Scale("pet")                    -- Höhe der Begleiter-/Haltungsreihe
     local smallBottom = stackTop + PET_GAP                          -- Unterkante der Begleiter-/Haltungsreihe
-    local aboveSmall = smallBottom + smallRow + PET_GAP             -- darüber beginnen Leisten 6-8
+    local aboveSmall = smallBottom + smallRow + PET_GAP             -- darüber: Fahrzeug verlassen
     local microHeight = HolderHeight("micro", 40)
     -- Mikromenü unter der Minimap angedockt: die Taschen sitzen allein unten rechts in der Ecke
     if bars.micro.dockMinimap and C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("ForeverMinimap") then
@@ -159,9 +167,7 @@ local function DefaultPosition(key)
     end
     local positions = {
         bar1 = { width / 2, BarCenter(0) }, bar2 = { width / 2, BarCenter(1) }, bar3 = { width / 2, BarCenter(2) },
-        bar6 = { width / 2, aboveSmall + barHeight / 2 },
-        bar7 = { width / 2, aboveSmall + barHeight * 1.5 + BAR_GAP },
-        bar8 = { width / 2, aboveSmall + barHeight * 2.5 + BAR_GAP * 2 },
+        bar6 = { width / 2, BarCenter(3) }, bar7 = { width / 2, BarCenter(4) }, bar8 = { width / 2, BarCenter(5) },
         bar4 = { width - 30, height / 2 }, bar5 = { width - 30 - ACTION_SIZE - 8, height / 2 },
         pet = { left, smallBottom },     -- BOTTOMLEFT
         totem = { left, smallBottom },   -- BOTTOMLEFT, beim Schamanen statt der Begleiterleiste
@@ -335,6 +341,8 @@ function ns.ShortKey(text)
     return text
 end
 
+local CAST_VFX_ALPHA = 0.4 -- Deckkraft von Blizzards Zauber-Rand auf den Knöpfen (siehe UpdateButtonLook)
+
 -- Texte (Tastenbelegung, Makroname, Anzahl), Schrift, Rand und Symbol-Zuschnitt eines Knopfes
 local function UpdateButtonLook(button)
     local name = button:GetName()
@@ -375,9 +383,13 @@ local function UpdateButtonLook(button)
         SetTextFont(count, db.fontSize)
     end
 
-    -- Zauber-Effekt auf dem Knopf (kleine Zauberleiste beim Zaubern), falls das Spiel ihn hat
-    for _, effect in ipairs({ button.SpellCastAnimFrame, button.InterruptDisplay }) do
-        if effect and effect.SetAlpha then effect:SetAlpha(db.castVFX and 1 or 0) end
+    -- Zauber-Effekt auf dem Knopf (gelber Rand, der beim Zaubern umläuft), falls das Spiel ihn hat. Blizzards Rand
+    -- ist für größere Knöpfe gemacht und wirkt auf den flachen Knöpfen dick: dezenter (halb durchsichtig)
+    for _, effect in ipairs({ button.SpellCastAnimFrame, button.TargetReticleAnimFrame }) do
+        if effect and effect.SetAlpha then effect:SetAlpha(db.castVFX and CAST_VFX_ALPHA or 0) end
+    end
+    if button.InterruptDisplay and button.InterruptDisplay.SetAlpha then
+        button.InterruptDisplay:SetAlpha(db.castVFX and 1 or 0)
     end
 
     -- Stil: Rand, Hintergrund leerer Plätze, Abstand des Symbols zum Rand
@@ -2422,6 +2434,74 @@ function ns.FoodView(cfg)
     return FOOD_VIEWS[view] and view or "unit"
 end
 
+-- Schnelltastenbelegung (Blizzards Modus "Tastenbelegung per Maus"): im Modus Knopf unter der Maus an Blizzards
+-- Belegungs-Fenster melden (QuickKeybindFrame:SetSelected mit dem Befehl "CLICK <name>:LeftButton"); die gedrückte
+-- Taste belegt Blizzard dann selbst. Solange der Modus läuft, lösen die Knöpfe nichts aus (Typ kurz entfernt) und
+-- zeigen eine goldene Fläche. Der Modus geht nur außerhalb des Kampfes auf.
+local quickButtons = {}
+local function InQuickKeybind() return QuickKeybindFrame and QuickKeybindFrame:IsShown() end
+
+local function QuickTooltip(button)
+    local tip = ns.Style.GetTooltip()
+    tip:SetOwner(button, "ANCHOR_TOP")
+    tip:AddLine(_G["BINDING_NAME_" .. button.commandName] or button.commandName, 1, 0.82, 0)
+    local key = GetBindingKey(button.commandName)
+    tip:AddLine(key and GetBindingText(key) or (NOT_BOUND or "-"), 1, 1, 1)
+    tip:AddLine(L("QUICKBIND_HINT"), 0.7, 0.7, 0.7, true)
+    tip:Show()
+end
+
+local function SetQuickMode(on)
+    for _, button in ipairs(quickButtons) do
+        if not InCombatLockdown() then
+            if on then
+                button.fbQuickType = button.fbQuickType or button:GetAttribute("type")
+                button:SetAttribute("type", nil)
+            elseif button.fbQuickType then
+                button:SetAttribute("type", button.fbQuickType)
+                button.fbQuickType = nil
+            end
+        end
+        button.fbQuickHighlight:SetShown(on)
+    end
+end
+
+local function AddQuickKeybind(button)
+    button.commandName = "CLICK " .. button:GetName() .. ":LeftButton"
+    local highlight = button:CreateTexture(nil, "OVERLAY", nil, 7)
+    highlight:SetAllPoints()
+    highlight:SetColorTexture(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3], 0.22)
+    highlight:Hide()
+    button.fbQuickHighlight = highlight
+    button:HookScript("OnEnter", function(self)
+        if not InQuickKeybind() then return end
+        QuickKeybindFrame:SetSelected(self.commandName, self)
+        self.fbQuickHighlight:SetColorTexture(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3], 0.45)
+        QuickTooltip(self)
+    end)
+    button:HookScript("OnLeave", function(self)
+        if not InQuickKeybind() then return end
+        QuickKeybindFrame:SetSelected(nil, nil)
+        self.fbQuickHighlight:SetColorTexture(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3], 0.22)
+        ns.Style.GetTooltip():Hide()
+    end)
+    -- weitere Maustasten (Taste 4/5 …) im Modus ebenfalls belegen (wie bei Blizzards Knöpfen)
+    button:HookScript("OnClick", function(self, mouseButton, down)
+        if InQuickKeybind() and mouseButton ~= "LeftButton" and mouseButton ~= "RightButton" and down ~= false then
+            QuickKeybindFrame:OnKeyDown(mouseButton)
+            QuickTooltip(self)
+        end
+    end)
+    quickButtons[#quickButtons + 1] = button
+    if InQuickKeybind() then SetQuickMode(true) end
+end
+
+if EventRegistry and EventRegistry.RegisterCallback then
+    local owner = {}
+    EventRegistry:RegisterCallback("QuickKeybindFrame.QuickKeybindModeEnabled", function() SetQuickMode(true) end, owner)
+    EventRegistry:RegisterCallback("QuickKeybindFrame.QuickKeybindModeDisabled", function() SetQuickMode(false) end, owner)
+end
+
 -- Geschützter Markierungs-Knopf im Forever-Look (Rand wie der Knopf-Stil, beim Darüberfahren gold).
 -- name: fester Name für die Tastaturbelegung (Bindings.xml: "CLICK <name>:LeftButton")
 local markButtonNames = {}
@@ -2443,6 +2523,7 @@ local function MarkButton(parent, size, name)
         self:SetBackdropBorderColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3], 0.9)
     end)
     button:HookScript("OnLeave", function(self) self:SetBackdropBorderColor(unpack(GetSkin().border)) end)
+    if name then AddQuickKeybind(button) end
     return button
 end
 
@@ -2817,6 +2898,13 @@ function ns.ApplyLayout()
         holder:SetScale(scale)
         local x, y = cfg.x, cfg.y
         if not x or not y then x, y = ns.GetBarPosition(def.key) end
+        -- Begleiter-, Haltungs- und Totemleiste: immer über der obersten eingeschalteten Aktionsleiste, solange man
+        -- sie nicht selbst verschoben hat (cfg.moved) – auch nach dem Ein-/Ausschalten von Leisten
+        if (def.key == "pet" or def.key == "stance" or def.key == "totem") and not cfg.moved then
+            x, y = DefaultPosition(def.key)
+            x, y = math.floor(x + 0.5), math.floor(y + 0.5)
+            cfg.x, cfg.y = x, y
+        end
         holder:ClearAllPoints()
         -- Am Chatfenster angeheftet (Häkchen; früher auch "unter dem Chat" – das gilt jetzt als "über dem Chat")
         -- Die Leiste soll genau auf der Ecke des sichtbaren Chat-Hintergrunds sitzen (er ist etwas größer als das
