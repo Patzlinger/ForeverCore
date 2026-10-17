@@ -426,18 +426,55 @@ Damit alle Einstellungsfenster gleich aussehen, gelten diese Maße. Quelle: `For
   - Die Reiterleiste (`GENERAL_CHAT_DOCK`) hängt an zwei Ankern über `ChatFrame1.Background`; ForeverChat kürzt sie
     rechts um die eigene Knopfleiste und setzt das nach `FCFDock_SetPrimary` erneut
 
-## 15. Git-Ablauf
-- Vor dem Arbeiten: `git pull --ff-only` (bzw. `git pull --rebase`, wenn lokal schon Commits liegen);
-  `tools/session-sync.ps1` erledigt das (holen, vorspulen, Stand melden) und eignet sich als SessionStart-Hook
-- Während der Arbeit am Live-Ordner (AddOns-Verknüpfung = dieses Repository) NICHT automatisch pushen
-- Fertige Änderungen lokal committen (kurze deutsche Nachricht, was und warum) ist erlaubt
-- `git push` nur auf ausdrückliches Kommando des Nutzers oder am Ende einer Session (dann kurz nachfragen bzw. ankündigen)
-- Bei Konflikten oder unerwarteten Änderungen des anderen erst nachfragen; nie force-pushen
-- Größere Umbauten auf einem eigenen Zweig + Pull Request
+## 15. Git-Ablauf (seit 2026-10-17: gleichzeitig arbeiten über `development`)
+Patzlinger und flowfy arbeiten zeitgleich, jeder mit seinem eigenen Claude. Damit keiner auf den anderen warten muss,
+gilt für **beide** (und deren Claude) genau dieser Ablauf:
+
+**Zweige**
+- `development` = gemeinsamer Arbeitszweig. **Hier wird gearbeitet**, committet und gepusht – immer.
+- `main` = nur veröffentlichte Stände (je Release ein Tag `v0.xxb`). Auf `main` wird nie direkt gearbeitet; `main`
+  wird nur beim Release gepusht (siehe 16).
+- Optional `feature/<name>` (von `development` abgezweigt) für große, mehrtägige Umbauten, die `development` sonst
+  unspielbar machen würden; fertig → in `development` übernehmen (`git merge --no-ff`), Zweig löschen.
+- Das Repository ist der Live-Ordner (Junctions in AddOns): ein Zweigwechsel ändert sofort, was im Spiel geladen wird
+  → danach `/reload`.
+
+**Sitzungsbeginn**
+- `tools/session-sync.ps1` als SessionStart-Hook (in der lokalen `.claude/settings.json` des AddOns-Ordners) erledigt:
+  holen, auf `development` wechseln (wenn sauber), eigene Commits per `pull --rebase --autostash` hinter die neuen des
+  anderen hängen, Stand in einer Zeile melden. Meldet es einen Konflikt oder falschen Zweig: erst das klären.
+- Ohne Hook von Hand: `git switch development` und `git pull --rebase --autostash`.
+
+**Während der Arbeit – kleine Schritte, sofort teilen**
+- Je fertige, im Syntax-Check fehlerfreie Änderung **ein** Commit (kurze deutsche Nachricht, vorne das Addon:
+  `ForeverChat: …`, `Hub v36: …`).
+- Direkt danach **ohne Nachfrage**: `git pull --rebase` und `git push` (auf `development`). Damit hat der andere
+  spätestens beim nächsten Holen den Stand – niemand sammelt Commits an.
+- Nichts Halbfertiges pushen, das beim Laden Fehler wirft (`development` muss für beide spielbar bleiben); Halbfertiges
+  lokal lassen oder auf `feature/<name>` pushen.
+- Konflikte beim Rebase: eindeutige (beide Seiten unabhängig, z. B. verschiedene Funktionen) selbst zusammenführen und
+  im Spiel prüfen; unklare → `git rebase --abort` und den Nutzer fragen. **Nie force-pushen**, nie gepushte Commits
+  umschreiben.
+
+**Stellen, an denen man sich trifft (Konflikte vermeiden)**
+- `ForeverCore/ForeverHub.lua`: vor größeren Änderungen kurz absprechen; treffen beide eine `VERSION`-Erhöhung,
+  nimmt der Zweite die nächsthöhere Zahl.
+- `## Version` in den .toc, `release/`-Dateien: ändert nur, wer den Release baut (16).
+- Changelog: neue Punkte während der Entwicklung unter `## Unreleased` oben in `release/Changelog-CurseForge.txt`
+  eintragen (Englisch, für Spieler); beim Release wird daraus die Versionsüberschrift.
+- Diese CLAUDE.md: Regeländerungen sofort committen und pushen, damit der Claude des anderen sie gleich kennt.
+- Wer an einem Addon des anderen etwas Größeres ändert, sagt es vorher (siehe 2).
+
 - Installieren über die CurseForge-App überschreibt die verknüpften Ordner = das Repository → danach `git status`,
   ggf. `git restore .`
 
 ## 16. Release
+- Nur auf ausdrückliches Kommando des Nutzers; vorher mit dem anderen absprechen (kurz nichts pushen). Ablauf:
+  1. auf `development`: `git pull --rebase`, Version in allen .toc erhöhen, `## Unreleased` im Changelog in
+     `## 0.xxb – <Datum>` umbenennen, `tools/build-release.ps1` bauen, committen, pushen
+  2. `git switch main`, `git merge --ff-only development` (geht das nicht: `git merge --no-ff development`),
+     `git tag -a v0.xxb -m "Forever Core 0.xxb"`, `git push origin main v0.xxb`
+  3. `git switch development` – weiterarbeiten; neuer leerer Abschnitt `## Unreleased` im Changelog
 - `release/addons.txt` = Addons im Release; Prototypen erst nach Freigabe eintragen
 - Alle Release-Addons tragen dieselbe `## Version` (Suite-Version, z. B. `0.44b`); `tools/build-release.ps1` prüft das
 - Alle Release-.toc: `## Title: <Addon> |cff8a8a8a(Beta)|r`, `## X-Curse-Project-ID: 1743753`, `## X-License: MIT`

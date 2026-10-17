@@ -1,5 +1,7 @@
 # Forever Core – Changelog
 
+## Unreleased
+
 ## 0.44b – October 17, 2026
 
 ### New
