@@ -87,7 +87,20 @@ local function AddForeverLook(button, bag)
 end
 ns.AddForeverLook = AddForeverLook
 
+-- Blizzards Kontext-Prüfung abschalten: Blizzard dunkelt Plätze ab, die zum gerade aktiven "Kontext" (z. B. Bank-
+-- oder Händler-Ansicht seiner eigenen Fenster) nicht passen. In unseren Fenstern ergab das fälschlich "passt nicht"
+-- (alles dunkel). Die Suche dunkelt weiter über SetMatchesSearch ab.
+local function NoItemContext(button)
+    local result = ItemButtonUtil and ItemButtonUtil.ItemContextMatchResult
+    if result and result.DoesNotApply then
+        button.GetItemContextMatchResult = function() return result.DoesNotApply end
+    end
+    if button.UpdateItemContextMatching then pcall(button.UpdateItemContextMatching, button) end
+end
+ns.NoItemContext = NoItemContext
+
 function ns.StyleSlot(button, bag)
+    NoItemContext(button)
     -- Blizzards Platz-Rahmen ausblenden, dafür dunkle Fläche + 1-px-Rand im Forever-Stil
     local normal = button.GetNormalTexture and button:GetNormalTexture()
     if normal then normal:SetAlpha(0) end
@@ -140,6 +153,7 @@ function ns.UpdateSlot(button, bag, slot)
     else
         button:SetAlpha(filtered and 0.3 or 1)
     end
+    if button.UpdateItemContextMatching then pcall(button.UpdateItemContextMatching, button) end
     -- Neu erhaltene Gegenstände (erst nach dem Login erhaltene – siehe ClearAll beim Einloggen). Blizzards
     -- Leucht-Animationen der Vorlage sonst anhalten, sonst leuchten alle Plätze
     local isNew = ns.db.highlightNew and C_NewItems and C_NewItems.IsNewItem and C_NewItems.IsNewItem(bag, slot)
@@ -587,8 +601,20 @@ end
 
 -- Beim Öffnen: beim Händler unter dem ForeverVendor-Fenster (bzw. rechts neben dem Händlerfenster), sonst an
 -- der Mausposition (Einstellung "openAtCursor"; aus = gespeicherte Position). Bildschirmränder hält UI.Window ein.
+local vendorHooked = false
 local function PlaceOnOpen()
-    if not window or window.fbagsMoving then return end
+    if not window or window.fbagsMoving or not window:IsShown() then return end
+    -- ForeverVendor-Fenster ändert Größe/Lage, solange der Händler offen ist: unser Fenster bleibt darunter
+    local vendorPanel = _G.ForeverVendorMerchantPanel
+    if vendorPanel and not vendorHooked then
+        vendorHooked = true
+        local function Again()
+            local m = _G.MerchantFrame
+            if m and m:IsShown() then C_Timer.After(0, PlaceOnOpen) end
+        end
+        vendorPanel:HookScript("OnSizeChanged", Again)
+        vendorPanel:HookScript("OnShow", Again)
+    end
     local ws = window:GetEffectiveScale()
     local function At(point, frame, x, y)
         window:ClearAllPoints()
@@ -755,7 +781,13 @@ local function CreateWindow()
     -- HookScript statt SetScript: der Hub hängt eigene Dinge an OnShow (Fenster-Stapel, Größen-Griff)
     window:HookScript("OnShow", function()
         PlaceOnOpen()
-        C_Timer.After(0, PlaceOnOpen) -- ForeverVendor setzt sein Händler-Fenster im selben Moment
+        -- ForeverVendor baut sein Händler-Fenster im selben Moment auf (Größe erst danach): mehrmals nachsetzen
+        for _, delay in ipairs({ 0, 0.1, 0.3, 0.6 }) do
+            C_Timer.After(delay, function()
+                local m = _G.MerchantFrame
+                if m and m:IsShown() then PlaceOnOpen() end
+            end)
+        end
         ns.LayoutBags()
         if PlaySound and SOUNDKIT and SOUNDKIT.IG_BACKPACK_OPEN then PlaySound(SOUNDKIT.IG_BACKPACK_OPEN) end
     end)
