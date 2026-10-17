@@ -1346,6 +1346,22 @@ local function DockedMicroMenu()
     return micro
 end
 
+do
+    local watcher = CreateFrame("Frame")
+    watcher:RegisterEvent("PLAYER_LOGIN")
+    watcher:SetScript("OnEvent", function(self)
+        self:UnregisterAllEvents()
+        local manager = _G.EditModeManagerFrame
+        if manager and manager.HookScript then
+            manager:HookScript("OnHide", function()
+                for _, delay in ipairs({ 0.2, 1, 2.5 }) do
+                    C_Timer.After(delay, function() if ns.ApplyLayout then ns.ApplyLayout() end end)
+                end
+            end)
+        end
+    end)
+end
+
 local function MinimapAnchor()
     if not ns.db.followMinimap then return nil end
     if not (C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("ForeverMinimap")) then return nil end
@@ -1357,8 +1373,15 @@ local function MinimapAnchor()
     return map, map
 end
 
+-- Bearbeitungsmodus offen: Karte, Mikromenü usw. sind nur vorübergehend verstellt – der Tracker bleibt, wo er ist,
+-- und wird nach dem Schließen mehrfach sauber neu gesetzt (Blizzard und die anderen Forever-Addons brauchen kurz)
+local function EditModeOpen()
+    return _G.EditModeManagerFrame and _G.EditModeManagerFrame:IsShown() or false
+end
+
 function ns.ApplyLayout()
     if not tracker then return end
+    if EditModeOpen() then return end
     local db = ns.db
     local anchor, map = MinimapAnchor()
     if anchor then

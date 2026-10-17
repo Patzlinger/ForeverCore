@@ -101,7 +101,7 @@ ns.defaults = {
         xp = BarDefaults(true), rep = BarDefaults(true),
     },
     -- (Profile verwaltet seit 0.41b ForeverCore – je Charakter, siehe RegisterSettings am Ende dieser Datei)
-    layoutVersion = 21,-- Stand der Standard-Anordnung (siehe MigrateLayout)
+    layoutVersion = 22,-- Stand der Standard-Anordnung (siehe MigrateLayout)
     skin = "FOREVER",        -- Aussehen der Knöpfe (ns.SKINS in Bars.lua)
     hoverAlpha = 15,         -- Stärke des Hover-Leuchtens über den Knöpfen (%)
     procGlow = "FOREVER",    -- Leuchten bei Procs: "FOREVER" (goldener Rahmen), "BLIZZARD", "OFF"
@@ -231,7 +231,9 @@ ns.FillDefaults = FillDefaults
 --  20 (0.44b+): Stil "Forever" als Standard, Begleiter-/Haltungsleiste größer (66 %) mit kleinem Abstand
 --               zu den Aktionsleisten – Positionen neu berechnet
 --  21 (0.44b+): Erfahrungs-/Ruf-Leiste flacher (16/12 px), mit Luft unter der untersten Leiste, Positionen neu berechnet
-local LAYOUT_VERSION = 21
+--  22 (0.44b+): mehr Platz zwischen Ruf-Leiste und Aktionsleisten, Positionen neu berechnet – nur für Leisten, die du nicht
+--               selbst verschoben hast (Leisten mit gesetzter Position, cfg.moved, behalten sie)
+local LAYOUT_VERSION = 22
 -- Standardgrößen vor 16 (nur Leisten, die noch darauf stehen, wachsen mit)
 local OLD_SCALES = { pet = 56, stance = 56, prof = 80, food = 80, bags = 76, queue = 50 }
 local STANDARD_LAYOUT_BARS = { "bar1", "bar2", "bar3", "bar6", "bar7", "bar8", "pet", "stance", "prof", "food",
@@ -248,6 +250,16 @@ function ns.MigrateLayout(db)
     local stored = type(fc.profiles) == "table" and fc.profiles.Default
     if stored and stored.bars then table.insert(targets, stored) end
     if (fc.active or "Default") == "Default" then table.insert(targets, db) end
+    -- Positionen, die der Nutzer selbst gesetzt hat (Ziehen, Zentrieren, X/Y), vor dem Umrechnen merken
+    local keep = {}
+    for _, target in ipairs(targets) do
+        keep[target] = {}
+        for key, bar in pairs(target.bars or {}) do
+            if type(bar) == "table" and bar.moved and bar.x ~= nil and bar.y ~= nil then
+                keep[target][key] = { bar.x, bar.y, bar.point }
+            end
+        end
+    end
     for _, target in ipairs(targets) do
         if version < 2 then
             target.bars = CopyTable(ns.defaults.bars)
@@ -322,7 +334,7 @@ function ns.MigrateLayout(db)
                     if bar and (bar.height == nil or bar.height == old) then bar.height = ns.defaults.bars[key].height end
                 end
             end
-            if version < 21 then -- (19: Erfahrung/Ruf unten, 20: Begleiter-/Haltungsleiste, 21: flachere Leisten) Positionen neu
+            if version < 22 then -- (19: Erfahrung/Ruf unten, 20: Begleiter-/Haltungsleiste, 21: flachere Leisten, 22: Abstand) Positionen neu
                 for _, key in ipairs(STANDARD_LAYOUT_BARS) do
                     local bar = target.bars[key]
                     if bar then bar.x, bar.y = nil, nil end
@@ -390,6 +402,11 @@ function ns.MigrateLayout(db)
                     if bar then bar.x, bar.y = nil, nil end
                 end
             end
+        end
+        -- selbst gesetzte Positionen zurück (sie springen sonst bei jeder neuen Standard-Anordnung an den Ursprungsort)
+        for key, pos in pairs(keep[target] or {}) do
+            local bar = target.bars and target.bars[key]
+            if bar then bar.x, bar.y, bar.point, bar.moved = pos[1], pos[2], pos[3] or bar.point, true end
         end
     end
 end

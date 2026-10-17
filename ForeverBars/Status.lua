@@ -806,9 +806,45 @@ local function ShouldHide(c)
     return (xp and xp.enabled and Shows(c, "Experience")) or (rep and rep.enabled and Shows(c, "Reputation")) or false
 end
 
+-- Mehrfach nachsetzen: Blizzard baut die Leisten erst kurz nach dem Anmelden auf (und setzt sie im Bearbeitungsmodus neu)
+local blizzPending = false
+local function ScheduleBlizzard(delay)
+    C_Timer.After(delay or 0, function()
+        blizzPending = false
+        if ns.db and not InCombatLockdown() then ns.UpdateBlizzardStatus() end
+    end)
+end
+
 function ns.UpdateBlizzardStatus()
     if not (ns.db and UI.HideBlizzard) then return end
     local any = false
+    -- Sind beide eigenen Leisten an, verschwindet die ganze Verwaltung samt allen Unterrahmen (kein Warten darauf,
+    -- welcher Behälter gerade was zeigt); die Verwaltung meldet sich bei jedem Neuaufbau und wird dann gleich wieder versteckt
+    local xpCfg, repCfg = Cfg("xp"), Cfg("rep")
+    local manager = _G.StatusTrackingBarManager
+    if manager and ns.db.hideStatusBlizzard and xpCfg and repCfg and xpCfg.enabled and repCfg.enabled then
+        UI.HideBlizzard(manager, { when = function()
+            return ns.db.hideStatusBlizzard and xpCfg.enabled and repCfg.enabled
+        end })
+        if not manager.fbStatusHooked then
+            manager.fbStatusHooked = true
+            for _, method in ipairs({ "UpdateBarsShown", "LayoutBars", "Layout", "SetBarsShown", "OnShow" }) do
+                if manager[method] then
+                    hooksecurefunc(manager, method, function()
+                        if not blizzPending then
+                            blizzPending = true
+                            ScheduleBlizzard(0)
+                        end
+                    end)
+                end
+            end
+            manager:HookScript("OnShow", function() ScheduleBlizzard(0) end)
+        end
+        for _, name in ipairs(CONTAINERS) do UI.ShowBlizzard(_G[name]) end -- einzeln nichts mehr zu tun (alles unter der Verwaltung)
+        return
+    elseif manager then
+        UI.ShowBlizzard(manager)
+    end
     for _, name in ipairs(CONTAINERS) do
         local c = _G[name]
         if c then
@@ -874,6 +910,10 @@ for _, e in ipairs({ "PLAYER_ENTERING_WORLD", "PLAYER_XP_UPDATE", "PLAYER_LEVEL_
 end
 events:SetScript("OnEvent", function(_, event, arg1)
     if not ns.db then return end
+    if event == "PLAYER_ENTERING_WORLD" then
+        -- Blizzards Leisten entstehen erst kurz nach dem Anmelden: ein paar Mal nachsetzen
+        for _, delay in ipairs({ 0.5, 2, 5, 10 }) do ScheduleBlizzard(delay) end
+    end
     if event == "UPDATE_FACTION" or event == "EDIT_MODE_LAYOUTS_UPDATED" or event == "PLAYER_REGEN_ENABLED" then
         if not InCombatLockdown() then ns.UpdateBlizzardStatus() end
     elseif event == "CHAT_MSG_COMBAT_XP_GAIN" then

@@ -336,11 +336,11 @@ local function CreateOptions()
     options.posXSlider = CreateSlider(layoutPage, L("OPT_POS_X"), 14, -294, 180,
         function() return 0 end, function() return math.floor(UIParent:GetWidth()) end,
         function() return (ns.GetBarPosition(selectedKey)) end,
-        function(value) SelectedConfig().x = value; Changed() end)
+        function(value) SelectedConfig().x = value; SelectedConfig().moved = true; Changed() end)
     options.posYSlider = CreateSlider(layoutPage, L("OPT_POS_Y"), 14, -338, 180,
         function() return 0 end, function() return math.floor(UIParent:GetHeight()) end,
         function() return select(2, ns.GetBarPosition(selectedKey)) end,
-        function(value) SelectedConfig().y = value; Changed() end)
+        function(value) SelectedConfig().y = value; SelectedConfig().moved = true; Changed() end)
 
     -- Rechte Spalte: Wachstumsrichtung, Ausklapp-Richtung, Taschen, Zentrieren
     local RIGHT_X = 290
