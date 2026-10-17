@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 30
+local VERSION = 31
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -99,6 +99,22 @@ local function HoverEdge(frame, withFill)
         t:SetPoint(side[1])
         t:SetPoint(side[2])
         if side[3] then t:SetWidth(side[3]) else t:SetHeight(side[4]) end
+    end
+end
+
+-- Nachrichten zwischen Forever-Addons (ohne Blizzard-Tabellen wie EventRegistry):
+--   UI.On("Name", fn)        -> fn wird bei jedem UI.Fire("Name", ...) aufgerufen (abgesichert)
+--   UI.Fire("Name", ...)     -> z. B. "ForeverMinimap.Layout", wenn sich Groesse/Leiste der Minimap aendern
+SHARED.signals = SHARED.signals or {}
+function UI.On(name, fn)
+    local list = SHARED.signals[name] or {}
+    SHARED.signals[name] = list
+    tinsert(list, fn)
+end
+function UI.Fire(name, ...)
+    for _, fn in ipairs(SHARED.signals[name] or {}) do
+        local ok, err = pcall(fn, ...)
+        if not ok then UI.ReportError("Forever", name, err) end
     end
 end
 

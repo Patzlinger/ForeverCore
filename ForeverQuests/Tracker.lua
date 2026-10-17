@@ -1324,9 +1324,41 @@ function ns.UpdateVisibility()
     tracker:SetShown(not db.trackerHidden and not hiddenByCombat)
 end
 
+-- Standard mit ForeverMinimap: direkt unter der Minimap, die Fenster genau so breit wie die Karte samt Rahmen
+-- (Tracker = Kartenbreite + 2 px Rahmen + 2 x 6 px Einzug der Fenster). Zieht man den Tracker selbst woanders hin,
+-- gilt wieder die eigene Position; "Position zuruecksetzen" haengt ihn wieder unter die Minimap.
+-- ForeverMinimap meldet Aenderungen (Kartengroesse, Leiste oben/unten, Groesse im Bearbeitungsmodus) ueber den Hub
+do
+    local hubUI = _G.ForeverHub and _G.ForeverHub.UI
+    if hubUI and hubUI.On then
+        hubUI.On("ForeverMinimap.Layout", function() if ns.ApplyLayout then ns.ApplyLayout() end end)
+    end
+end
+
+local function MinimapAnchor()
+    if not ns.db.followMinimap then return nil end
+    if not (C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("ForeverMinimap")) then return nil end
+    local map = _G.Minimap
+    if not (map and map:IsShown() and map:GetBottom()) then return nil end
+    -- liegt die Leiste der Minimap unten, kommt der Tracker unter die Leiste
+    local bar = _G.ForeverMinimapBar
+    if bar and bar:IsShown() and bar:GetBottom() and bar:GetBottom() < map:GetBottom() then return bar, map end
+    return map, map
+end
+
 function ns.ApplyLayout()
     if not tracker then return end
     local db = ns.db
+    local anchor, map = MinimapAnchor()
+    if anchor then
+        local k = map:GetEffectiveScale() / tracker:GetEffectiveScale()
+        tracker:ClearAllPoints()
+        tracker:SetPoint("TOP", anchor, "BOTTOM", 0, -8 / k)
+        tracker:SetSize((map:GetWidth() + 2) * k + 12, db.height)
+        ns.UpdateVisibility()
+        ns.RequestUpdate()
+        return
+    end
     if db.x == nil or db.y == nil then
         db.x = math.floor(UIParent:GetWidth() - db.width - 40)
         db.y = math.floor(UIParent:GetHeight() - 220)
@@ -1347,6 +1379,7 @@ end
 local function SaveFromFrame()
     tracker:StopMovingOrSizing()
     local db = ns.db
+    db.followMinimap = false -- selbst verschoben/vergroessert: ab jetzt eigene Position
     db.x = math.floor(tracker:GetLeft() + 0.5)
     db.y = math.floor(tracker:GetTop() + 0.5)
     db.width = math.floor(tracker:GetWidth() + 0.5)
@@ -1365,6 +1398,7 @@ end
 function ns.ResetPosition()
     local db = ns.db
     db.x, db.y = nil, nil
+    db.followMinimap = true -- wieder unter die Minimap (wenn ForeverMinimap aktiv ist)
     db.width = ns.defaults.width
     db.height = ns.defaults.height
     ns.ApplyLayout()

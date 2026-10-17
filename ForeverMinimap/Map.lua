@@ -1146,6 +1146,8 @@ function ns.ApplyAll()
     lastBase = nil
     ApplyAreaZoom()
     ns.UpdateHover()
+    -- andere Forever-Addons (z. B. ForeverQuests unter der Minimap) neu ausrichten lassen
+    if UI.Fire then UI.Fire("ForeverMinimap.Layout") end
 end
 
 function ns.SetupMap()
@@ -1159,6 +1161,12 @@ function ns.SetupMap()
     -- Blizzard setzt Form und Rahmen neu, wenn sich "Minimap drehen" aendert: danach wieder anwenden
     if _G.MinimapCluster and _G.MinimapCluster.UpdateMinimapConfig then
         hooksecurefunc(_G.MinimapCluster, "UpdateMinimapConfig", function() ns.ApplyShape() ns.ApplyBlizzard() end)
+    end
+    -- Groesse im Bearbeitungsmodus geaendert: Nachbarn (ForeverQuests) neu ausrichten
+    if _G.MinimapCluster and _G.MinimapCluster.SetEditModeScale then
+        hooksecurefunc(_G.MinimapCluster, "SetEditModeScale", function()
+            C_Timer.After(0, function() if UI.Fire then UI.Fire("ForeverMinimap.Layout") end end)
+        end)
     end
 
     Minimap:HookScript("OnEnter", function() ns.UpdateHover() end)
