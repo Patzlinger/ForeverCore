@@ -94,7 +94,7 @@ end
 -- Berufeleiste, unten rechts Menü und Taschen übereinander, oben mittig Erfahrung und Ruf.
 local EDGE = 4         -- Abstand zum Bildschirmrand
 local BAR_GAP = 1      -- Abstand zwischen aneinanderliegenden Leisten
-local SIDE_GAP = 14    -- Abstand von Berufe-/Verpflegungsleiste zu den Aktionsleisten (Platz für den Einklapp-Pfeil)
+local SIDE_GAP = 18    -- Abstand von Berufe-/Verpflegungsleiste zu den Aktionsleisten (Platz für den Einklapp-Pfeil)
 local FRAME_SPACE = 4  -- Rand des Rahmens um eine Leiste (siehe UpdateBarFrame)
 
 local function DefaultPosition(key)
@@ -448,8 +448,8 @@ end
 -- unsichtbar im Ablageort.
 ---------------------------------------------------------------------------
 
-local MICRO_HEIGHT = 22 -- quadratisch: so breit wie hoch
-local MICRO_ICON = 15
+local MICRO_HEIGHT = 19 -- quadratisch: so breit wie hoch
+local MICRO_ICON = 13
 local MICRO_MAX = 16
 local MICRO_ICON_PATH = "Interface\\AddOns\\ForeverBars\\Media\\Micro\\"
 local MICRO_ICON_COLOR = { 0.85, 0.85, 0.85 }
@@ -1968,7 +1968,7 @@ end
 -- Einklapp-Pfeil an Berufe- und Verpflegungsleiste: sitzt auf der Innenseite (zu den Aktionsleisten hin), so hoch
 -- wie die Leiste samt Rahmen. Ausgeklappt zeigt er nach innen ("einklappen"), eingeklappt nach außen. Eingeklappt
 -- ist die Leiste ausgeblendet (über ihre Sichtbarkeits-Bedingung, im Kampf erst danach); der Pfeil bleibt stehen.
-local ARROW_WIDTH = 10
+local ARROW_WIDTH = 14
 function ns.UpdateCollapseArrow(def, cfg, holder)
     local arrow = holder.fbCollapseArrow
     if not cfg.enabled or not cfg.collapseArrow then
@@ -1980,7 +1980,7 @@ function ns.UpdateCollapseArrow(def, cfg, holder)
         arrow:SetFrameStrata("MEDIUM")
         ns.Style.SetFlat(arrow, COLOR.button)
         arrow.icon = arrow:CreateTexture(nil, "OVERLAY")
-        arrow.icon:SetSize(8, 8)
+        arrow.icon:SetSize(10, 10)
         arrow.icon:SetPoint("CENTER")
         arrow.icon:SetTexture("Interface\\ChatFrame\\ChatFrameExpandArrow")
         arrow:SetScript("OnClick", function()
