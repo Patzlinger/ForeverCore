@@ -38,7 +38,7 @@ ns.DEFAULTS = {
     strip = "LEFT",          -- Knopfleiste "LEFT"/"RIGHT" neben der Minimap oder "OFF" (Knoepfe am Rand bleiben, wo sie sind)
     stripMouseover = true,   -- Knopfleiste nur, solange die Maus ueber Minimap/Leisten ist (Post/Einladungen bleiben sichtbar)
     stripAlpha = 50,         -- Deckkraft der Flaeche hinter den Knoepfen in % (Knoepfe selbst bleiben voll sichtbar)
-    toolsInBar = false,      -- eigene Knoepfe (Post, Verfolgung, Kalender, Einstellungen) oben in der Leiste statt seitlich
+    toolsInBar = true,       -- eigene Knoepfe (Post, Verfolgung, Kalender, Einstellungen) oben in der Leiste statt seitlich
     squareForeign = true,    -- Minimap-Knoepfe anderer Addons im gleichen eckigen Look wie die eigenen
     hideBlizzard = true,     -- Blizzards Kopfzeile, Rahmen und Knoepfe ausblenden (Ersatz: Leiste und eigene Knoepfe)
     -- Komfort
