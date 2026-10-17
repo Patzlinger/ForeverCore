@@ -31,7 +31,7 @@ function ns.RestorePosition()
         if p then
             anchor:SetPoint("TOPLEFT", UIParent, "TOPLEFT", p[1], p[2])
         else
-            anchor:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 40, -260)
+            anchor:SetPoint("TOPLEFT", UIParent, "TOP", -476, -397) -- Standard: links unterhalb der Mitte
         end
     end)
 end

@@ -20,10 +20,10 @@ local DEFAULTS = {
     style = "bar",         -- "bar": Querbalken im Blizzard-Stil (Details bei Mouse-over) | "box": Kasten mit Zeilen
     locked = true,
     combatFade = false,    -- im Kampf durchsichtig (standardmaessig aus: Anzeige bleibt voll sichtbar)
-    barAuto = true,        -- an Blizzards Platz, Laenge automatisch (aus = eigene Position und Groesse); folgt barPlace
-    barPlace = "BLIZZARD", -- "BLIZZARD" (an Blizzards Platz), "TOP" (oben mittig), "BOTTOM" (unten mittig), "FREE" (frei)
-    barWidth = 1024,       -- eigene Breite (px)
-    barHeight = 16,        -- eigene Hoehe inkl. Rand (px)
+    barAuto = false,       -- an Blizzards Platz, Laenge automatisch (aus = eigene Position und Groesse); folgt barPlace
+    barPlace = "TOP",      -- "BLIZZARD" (an Blizzards Platz), "TOP" (oben mittig), "BOTTOM" (unten mittig), "FREE" (frei)
+    barWidth = 1192,       -- eigene Breite (px)
+    barHeight = 18,        -- eigene Hoehe inkl. Rand (px)
     barHeightScale = 85,   -- an Blizzards Platz: Hoehe in % von Blizzards Leiste
     barTexts = true,       -- Infos an den Enden (Stufe, Mobs, Quests, Tempo, Level-Up)
     barTicks = true,       -- Zehntel-Striche wie bei Blizzard
@@ -512,7 +512,7 @@ local function RestoreBarPosition()
     if Overlaying() then
         bar:SetPoint("CENTER", blizzBar, "CENTER", 0, 0)
     elseif d.barPlace == "TOP" then
-        bar:SetPoint("TOP", UIParent, "TOP", 0, -4)
+        bar:SetPoint("TOP", UIParent, "TOP", 0, -6)
     elseif d.barPlace == "BOTTOM" then
         bar:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 4)
     elseif pos then
@@ -1260,7 +1260,7 @@ UI.Hint(options, R + 2, -296, 290, T("Im Kasten stehen die Infos wie früher in 
 UI.Header(options, R, -336, T("Werkzeuge", "Tools"), 296)
 local resetPos = UI.Button(options, T("Position zurücksetzen", "Reset position"), 160, function()
     local d = GetDB()
-    d.barPos, d.barAuto, d.barPlace = nil, true, "BLIZZARD"
+    d.barPos, d.barAuto, d.barPlace = nil, false, "TOP"
     Refresh()
     if OnBarMoved then OnBarMoved() end
 end)

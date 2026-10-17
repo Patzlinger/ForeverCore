@@ -81,7 +81,7 @@ Philosophie, Regeln, Design und Abläufe. Wenn etwas hier nicht steht: am besteh
   ## IconTexture: Interface\AddOns\ForeverName\Media\ForeverCore
   ## Category: Forever Core
   ## Author: <Name>
-  ## Version: 0.41b
+  ## Version: 0.44b
   ## Dependencies: ForeverCore
   ## Group: ForeverCore
   ## SavedVariables: ForeverNameDB, ForeverHubDB
@@ -439,7 +439,7 @@ Damit alle Einstellungsfenster gleich aussehen, gelten diese Maße. Quelle: `For
 
 ## 16. Release
 - `release/addons.txt` = Addons im Release; Prototypen erst nach Freigabe eintragen
-- Alle Release-Addons tragen dieselbe `## Version` (Suite-Version, z. B. `0.41b`); `tools/build-release.ps1` prüft das
+- Alle Release-Addons tragen dieselbe `## Version` (Suite-Version, z. B. `0.44b`); `tools/build-release.ps1` prüft das
 - Alle Release-.toc: `## Title: <Addon> |cff8a8a8a(Beta)|r`, `## X-Curse-Project-ID: 1743753`, `## X-License: MIT`
 - `release/README.txt` (DE/EN, kommt ins Gesamt-Zip) bei neuen Befehlen/Funktionen anpassen
 - `release/Changelog-CurseForge.txt` = Englisch, für Spieler geschrieben; wandert nicht ins Zip

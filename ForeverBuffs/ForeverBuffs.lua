@@ -400,7 +400,7 @@ local MAX_ICONS = 12
 -- Rechtsklick darauf sperrt wieder. Die Leiste haengt links am Anker.
 local anchor = CreateFrame("Frame", "ForeverBuffsAnchor", UIParent, "BackdropTemplate")
 anchor:SetSize(170, 30)
-anchor:SetPoint("TOP", 0, -40)
+anchor:SetPoint("TOP", 0, -57)
 anchor:SetMovable(true)
 anchor:SetClampedToScreen(true)
 anchor:SetFrameStrata("DIALOG")
@@ -807,7 +807,7 @@ SlashCmdList["FOREVERBUFFS"] = function(msg)
     elseif msg == "reset" then
         GetDB().pos = nil
         anchor:ClearAllPoints()
-        anchor:SetPoint("TOP", 0, -40)
+        anchor:SetPoint("TOP", 0, -57)
         Chat(T("Position zurückgesetzt.", "Position reset."))
     else
         ToggleOptions()

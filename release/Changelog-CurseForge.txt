@@ -1,5 +1,21 @@
 # Forever Core – Changelog
 
+## 0.44b – October 17, 2026
+
+### New
+- **A ready-made layout out of the box:** on a fresh install, all frames, bars and windows now start in a tidy, tested arrangement – unit frames and party frames around the screen center, cast bar below, buffs at the top, the XP bar at the top center, loot and vendor windows off to the side. Already moved something yourself? Your positions stay exactly where they are.
+- **Details! in the Forever look:** one click in the hub (/forever) gives Details! a matching skin – a title bar like the Forever windows and a see-through body in the color of your chat. It creates a copy of your Details profile named "Forever Core", so your own profile stays untouched, and a second click switches back. A new copy also puts the window in the bottom right corner.
+- **ForeverXP – choose where the bar sits:** at Blizzard's spot (automatic length), top center, bottom center or anywhere you like. Dragging the bar switches to "free" by itself.
+
+### Improved
+- ForeverChat: all buttons now sit in the tab row and are easier to see. The tabs are as tall as the buttons, and the default text size is 17 (set once – your own choice wins afterwards).
+- ForeverChat: the "Text to speech" button is optional (off by default). "Jump to the end" is gone, since Blizzard's arrow below the scrollbar already does that.
+- ForeverSpellbook: trainer lists now check your real spellbook, so spells you already know (e.g. a teleport) no longer show up as missing. Every trainer you visit gets its own tab, and the class trainer is never replaced.
+- ForeverUnits: level colors follow the classic experience rules – mobs that still give you experience show green instead of gray.
+
+### Fixed
+- ForeverChat: the button bar could go missing with an error ("compare number with nil").
+
 ## 0.41b – October 17, 2026
 
 ### New

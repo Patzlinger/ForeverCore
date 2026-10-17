@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 34
+local VERSION = 35
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -3383,6 +3383,18 @@ function UI.DetailsForeverActive()
     return D and D:GetCurrentProfileName() == DETAILS_NAME or false
 end
 
+-- Standardplatz des ersten Details-Fensters: 310 x 158, rechts 4 und unten 50 vom Bildschirmrand
+-- (Details rechnet die Position als Mitte relativ zur Bildschirmmitte)
+local DETAILS_W, DETAILS_H, DETAILS_RIGHT, DETAILS_BOTTOM = 310, 158, 4, 50
+local function DetailsDefaultPosition(D)
+    local instance = D.GetInstance and D:GetInstance(1)
+    if not (instance and instance.baseframe and instance.mostrando == "normal") then return end
+    local x = UIParent:GetWidth() / 2 - DETAILS_RIGHT - DETAILS_W / 2
+    local y = -UIParent:GetHeight() / 2 + DETAILS_BOTTOM + DETAILS_H / 2
+    instance:RestoreMainWindowPosition({ x = x, y = y, largura = DETAILS_W, altura = DETAILS_H })
+    instance:SaveMainWindowPosition()
+end
+
 function UI.DetailsApplyForever()
     local D = DetailsReady()
     if not D then return false end
@@ -3392,8 +3404,11 @@ function UI.DetailsApplyForever()
     if current ~= DETAILS_NAME then
         GetDB().detailsPrevious = current
         -- Kopie des aktuellen Stands (Fenster, Positionen, Einstellungen); ein frueheres "Forever Core" bleibt, wie es ist
-        if not D:GetProfile(DETAILS_NAME, false) then D:SaveProfile(DETAILS_NAME) end
+        local fresh = not D:GetProfile(DETAILS_NAME, false)
+        if fresh then D:SaveProfile(DETAILS_NAME) end
         D:ApplyProfile(DETAILS_NAME)
+        -- nur beim ersten Anlegen: erstes Fenster an den Forever-Standardplatz (unten rechts ueber Menue und Taschen)
+        if fresh then pcall(DetailsDefaultPosition, D) end
     end
     if D.ListInstances then
         for _, instance in D:ListInstances() do

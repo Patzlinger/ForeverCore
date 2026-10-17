@@ -396,7 +396,7 @@ local function RestorePosition()
     if p then
         frame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", p[1], p[2])
     else
-        frame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 320, -200)
+        frame:SetPoint("TOPLEFT", UIParent, "TOP", 437, -284) -- Standard: rechts neben der Mitte
     end
     frame:SetScale(GetDB().scale)
 end

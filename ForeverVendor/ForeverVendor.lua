@@ -760,7 +760,7 @@ end
 local function RestorePosition()
     local pos = GetDB().pos
     icon:ClearAllPoints()
-    icon:SetPoint("CENTER", UIParent, "CENTER", pos and pos[1] or 480, pos and pos[2] or -300)
+    icon:SetPoint("CENTER", UIParent, "CENTER", pos and pos[1] or 811, pos and pos[2] or 341)
 end
 
 local OnMoved -- Einstellungsfenster: X/Y nachziehen

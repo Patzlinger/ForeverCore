@@ -80,15 +80,15 @@ ns.DEFAULTS = {
     snap = true,                   -- beim Ziehen an anderen Rahmen / am Raster einrasten
 
     frames = {
-        player = FrameDefaults({ x = -250, y = -200 }),
-        target = FrameDefaults({ x = 250, y = -200, portraitSide = "RIGHT", levelShow = true,
+        player = FrameDefaults({ width = 212, height = 45, x = -238, y = -154 }),
+        target = FrameDefaults({ width = 212, height = 46, x = 224, y = -167, portraitSide = "RIGHT", levelShow = true,
             buffs = true, debuffs = true, dotBars = true }),
-        targettarget = FrameDefaults({ width = 110, height = 24, x = 418, y = -208, powerHeight = 0,
+        targettarget = FrameDefaults({ width = 110, height = 24, x = 395, y = -190, powerHeight = 0,
             fontSize = 10, portrait = "none", portraitSide = "RIGHT", hpFormat = "percent", powerText = false }),
-        focus = FrameDefaults({ width = 160, height = 30, x = -250, y = -110, powerHeight = 5, fontSize = 11,
+        focus = FrameDefaults({ width = 160, height = 30, x = -426, y = -147, powerHeight = 5, fontSize = 11,
             portrait = "none", levelShow = true, hpFormat = "percent", powerText = false, debuffs = true, auraSize = 18, auraNum = 6,
             dotBars = true, dotFreeY = -100 }),
-        pet = FrameDefaults({ width = 120, height = 22, x = -290, y = -238, powerHeight = 4, fontSize = 10,
+        pet = FrameDefaults({ width = 120, height = 22, x = -284, y = -196, powerHeight = 4, fontSize = 10,
             portrait = "none", hpFormat = "percent", powerText = false, textLayout = "inline" }),
     },
 }

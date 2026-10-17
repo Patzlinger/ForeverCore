@@ -3,7 +3,7 @@ local ADDON_NAME = ...
 
 local GCD_SPELL = 61304   -- interne Zauber-ID der globalen Abklingzeit
 local FADE_TIME = 0.5     -- so lange blendet die Leiste nach dem Zauber aus
-local BAR_WIDTH = 240
+local BAR_WIDTH = 290
 
 local COLOR_CAST    = { 1, 0.7, 0 }      -- normaler Zauber (gold)
 local COLOR_CHANNEL = { 0.3, 0.6, 1 }    -- kanalisierter Zauber (blau)
@@ -59,7 +59,7 @@ local DEFAULTS = {
     hideBlizzard = true,
     minimapAngle = 130,
     width = BAR_WIDTH,  -- Laenge der Leiste in Pixeln
-    height = 20,        -- Hoehe der Leiste in Pixeln
+    height = 24,        -- Hoehe der Leiste in Pixeln
     gridShow = true,    -- Raster beim Ziehen / bei offenen Einstellungen (nur entsperrt)
     gridSize = 32,
     snap = true,        -- an Rahmen, Bildschirmmitte und Raster einrasten
@@ -583,7 +583,7 @@ end
 -- Unsichtbarer Halter: traegt Zauberleiste und GCD-Balken, wird verschoben
 local anchor = CreateFrame("Frame", "ForeverCastAnchor", UIParent)
 anchor:SetSize(BAR_WIDTH, 28)
-anchor:SetPoint("CENTER", 0, -180)
+anchor:SetPoint("CENTER", 32, -336)
 anchor:SetMovable(true)
 anchor:SetClampedToScreen(true)
 
@@ -1455,7 +1455,7 @@ function RestorePosition()
     if pos then
         anchor:SetPoint(pos[1], UIParent, pos[2], pos[3], pos[4])
     else
-        anchor:SetPoint("CENTER", 0, -180)
+        anchor:SetPoint("CENTER", 32, -336)
     end
 end
 
