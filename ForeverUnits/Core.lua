@@ -66,6 +66,10 @@ ns.DEFAULTS = {
     leaderShow = true,
     markShow = true,
     restingShow = true,            -- Ausruhen-Symbol (Gasthaus/Hauptstadt) am Spielerrahmen
+    comboShow = true,              -- Kombopunkte am Ziel (Schurken, Druiden in Katzengestalt), Combo.lua
+    comboPoint = "PORTRAIT",       -- "PORTRAIT" (Spalte neben dem Porträt) | "BELOW" (Balken mit Strichen) | "ABOVE" (Punkte)
+    comboSize = 8,                 -- Breite der Spalte bzw. Höhe der Striche / Größe der Punkte
+    comboShowEmpty = true,         -- leere Punkte auch ohne Kombopunkte zeigen (bei angreifbarem Ziel)
     auraTimer = true,
     auraTooltip = true,
 

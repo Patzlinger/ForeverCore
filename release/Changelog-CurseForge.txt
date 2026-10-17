@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### New
+- **ForeverUnits: combo points on your target** (Rogues, and Druids in cat form). By default they sit as a clear column right next to the target's portrait, filling up from gold to orange-red. Prefer something else? Choose a bar with five segments below the frame or round dots above it, change the size, or hide the empty points (General tab in /fu).
+
 ### Fixed
 - ForeverBars: the marker bar and the profession bar now fold out and in during combat as well (before, the click only took effect after the fight).
 

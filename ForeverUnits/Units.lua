@@ -489,7 +489,8 @@ local function LayoutAuras(b)
     local f = FrameDB(b.key)
     local supported = AurasSupported()
     local dotsOn = supported and f.dotBars and (b.key == "target" or b.key == "focus")
-    local y = -3
+    -- Kombopunkte als Balken unter dem Rahmen (Combo.lua): Auren und DoT-Leisten rücken darunter
+    local y = -3 - (ns.ComboSpace and ns.ComboSpace(b, "BELOW") or 0)
     for _, kind in ipairs({ "buffs", "debuffs" }) do
         local wanted = supported and f[kind]
         local c = b.v.auras[kind]
@@ -531,7 +532,7 @@ local function LayoutAuras(b)
             local dx, dy = f.dotX or 0, f.dotY or 0
             dc:ClearAllPoints()
             if where == "ABOVE" then
-                dc:SetPoint("BOTTOMLEFT", b, "TOPLEFT", dx, 3 + dy)
+                dc:SetPoint("BOTTOMLEFT", b, "TOPLEFT", dx, 3 + dy + (ns.ComboSpace and ns.ComboSpace(b, "ABOVE") or 0))
             elseif where == "LEFT" then
                 dc:SetPoint("TOPRIGHT", b, "TOPLEFT", -3 + dx, dy)
             elseif where == "RIGHT" then

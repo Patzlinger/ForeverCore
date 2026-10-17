@@ -15,4 +15,5 @@
 
 Core.lua
 Units.lua
+Combo.lua
 Options.lua

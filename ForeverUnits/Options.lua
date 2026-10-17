@@ -218,6 +218,18 @@ do
         StaticPopup_Show("FOREVERUNITS_RESET")
     end)
     resetAll:SetPoint("TOPLEFT", R + 4, -194)
+
+    UI.Header(p, R, -240, T("Kombopunkte (Ziel)", "Combo points (target)"))
+    Check(p, R, -260, T("Kombopunkte anzeigen", "Show combo points"), G("comboShow"))
+    Choice(p, R, -288, T("Ort", "Place"), 170, {
+        { key = "PORTRAIT", label = T("Spalte neben dem Porträt", "Column next to the portrait") },
+        { key = "BELOW",    label = T("Balken mit Strichen unten", "Bar with segments below") },
+        { key = "ABOVE",    label = T("Punkte oben", "Dots above") },
+    }, G("comboPoint"))
+    Check(p, R, -316, T("Leere Punkte zeigen (angreifbares Ziel)", "Show empty points (attackable target)"), G("comboShowEmpty"))
+    Slider(p, R, -346, T("Größe", "Size"), 4, 16, 1, G("comboSize"), { unit = " px" })
+    UI.Hint(p, R + 4, -386, 300, T("Nur für Schurken und Druiden (Katzengestalt). Entsperrt zeigt ein Platzhalter die Lage.",
+        "Rogues and druids (cat form) only. When unlocked, a placeholder shows where they sit."))
 end
 
 ---------------------------------------------------------------------------
