@@ -2398,7 +2398,7 @@ local MARKERS = {
 local MARK_ICON = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_"
 local CLEAR_ICON = "Interface\\Buttons\\UI-GroupLoot-Pass-Up"
 local GEAR_ICON = "Interface\\Icons\\INV_Misc_Gear_01"
-local FOOD_VIEWS = { items = true, unit = true, ground = true }
+local FOOD_VIEWS = { unit = true, ground = true } -- "Verbrauchbares" gibt es als Ansicht nicht mehr
 
 local function PingChoices()
     local e = Enum and Enum.RestrictPingsTo
@@ -2411,10 +2411,10 @@ local function PingChoices()
     }
 end
 
--- Ansicht der Verbrauchbar-Leiste: "items" (Standard), "unit" oder "ground"
+-- Ansicht der (früheren Verbrauchbar-)Leiste: "unit" (Zielmarkierungen, Standard) oder "ground" (Bodenmarkierungen)
 function ns.FoodView(cfg)
     local view = cfg and cfg.foodView
-    return FOOD_VIEWS[view] and view or "items"
+    return FOOD_VIEWS[view] and view or "unit"
 end
 
 -- Geschützter Markierungs-Knopf im Forever-Look (Rand wie der Knopf-Stil, beim Darüberfahren gold)
@@ -2518,7 +2518,7 @@ local function GearMenu(key, gear)
     if key == "food" then
         local cfg = ns.db.bars.food
         table.insert(items, { title = L("GEAR_VIEW") })
-        for _, v in ipairs({ { "items", "VIEW_ITEMS" }, { "unit", "MARK_TITLE_UNIT" }, { "ground", "MARK_TITLE_GROUND" } }) do
+        for _, v in ipairs({ { "unit", "MARK_TITLE_UNIT" }, { "ground", "MARK_TITLE_GROUND" } }) do
             table.insert(items, { radio = true, text = L(v[2]),
                 checked = function() return ns.FoodView(cfg) == v[1] end,
                 onClick = function()
@@ -2586,7 +2586,6 @@ local ARROW_WIDTH = 20
 -- Symbol je Leiste im eingeklappten Pfeil-Knopf
 local COLLAPSE_SYMBOLS = {
     prof = "Interface\\Icons\\Trade_BlackSmithing", -- Amboss: Berufe
-    food = "Interface\\Icons\\INV_Potion_51",       -- Fläschchen: Verbrauchbares
 }
 function ns.UpdateCollapseArrow(def, cfg, holder)
     local arrow = holder.fbCollapseArrow
@@ -2620,7 +2619,9 @@ function ns.UpdateCollapseArrow(def, cfg, holder)
             self:SetBackdropBorderColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3], 0.9)
             local barCfg = ns.db.bars[def.key]
             local titleText = strtrim(barCfg.frameTitleText or "")
-            local name = titleText ~= "" and titleText or L(def.titleKey or def.textKey)
+            -- Markierungs-Leiste: Name der zuletzt gewählten Ansicht ("Zielmarkierungen ausklappen")
+            local viewTitle = def.key == "food" and ns.FoodViewTitle and ns.FoodViewTitle(barCfg)
+            local name = viewTitle or (titleText ~= "" and titleText) or L(def.titleKey or def.textKey)
             local tip = ns.Style.GetTooltip()
             tip:SetOwner(self, "ANCHOR_TOP")
             tip:AddLine(L(barCfg.collapsed and "BAR_EXPAND_NAME" or "BAR_COLLAPSE_NAME", name))
@@ -2650,6 +2651,12 @@ function ns.UpdateCollapseArrow(def, cfg, holder)
     if not arrow.label then
         arrow.label = arrow:CreateTexture(nil, "OVERLAY")
         arrow.label:SetSize(16, 16)
+    end
+    -- Symbol: Berufe = Amboss; Markierungs-Leiste = Totenkopf (Zielmarkierungen) bzw. Stern (Bodenmarkierungen)
+    if def.key == "food" then
+        arrow.label:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcon_" .. (ns.FoodView(cfg) == "ground" and 1 or 8))
+        arrow.label:SetTexCoord(0, 1, 0, 1)
+    else
         arrow.label:SetTexture(COLLAPSE_SYMBOLS[def.key] or COLLAPSE_SYMBOLS.prof)
         arrow.label:SetTexCoord(0.08, 0.92, 0.08, 0.92)
     end
@@ -2754,7 +2761,7 @@ function ns.ApplyLayout()
         UpdateMover(def, holder)
     end
     -- Flächen zum Hineinziehen (einmalig anlegen, sobald die Halter da sind)
-    CreateCatcher("food")
+    -- (keine Fläche zum Hineinziehen bei der früheren Verbrauchbar-Leiste: sie zeigt nur noch Markierungen)
     CreateCatcher("prof")
     -- ForeverQuests hängt den Tracker unter das angedockte Mikromenü (siehe dort MinimapAnchor)
     local hubUI = _G.ForeverHub and _G.ForeverHub.UI
