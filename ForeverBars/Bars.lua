@@ -1573,6 +1573,31 @@ local function KeepBagButton(button)
     hooksecurefunc(button, "Hide", Back)
 end
 
+-- Rucksack im Stil des Mikromenüs: Blizzards Rucksack-Grafik unsichtbar, darüber ein eigenes schlichtes Symbol
+-- (Media\Micro\Backpack.tga) in Gold, beim Darüberfahren weiß mit goldenem Rand. Der Knopf bleibt Blizzards Knopf
+-- (Klick öffnet die Taschen, die Zahl der freien Plätze bleibt); nur Alpha, eigene Textur und HookScript.
+local function StyleBackpack(button)
+    local icon = button.icon or button.Icon or _G[button:GetName() .. "IconTexture"]
+    if icon then icon:SetAlpha(0) end
+    if not button.fbBackpackIcon then
+        local glyph = button:CreateTexture(nil, "OVERLAY", nil, 1)
+        glyph:SetTexture("Interface\\AddOns\\ForeverBars\\Media\\Micro\\Backpack")
+        glyph:SetPoint("CENTER")
+        button.fbBackpackIcon = glyph
+        button:HookScript("OnEnter", function(self)
+            self.fbBackpackIcon:SetVertexColor(1, 1, 1)
+            if self.fbBorder then self.fbBorder:SetBackdropBorderColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3], 0.9) end
+        end)
+        button:HookScript("OnLeave", function(self)
+            self.fbBackpackIcon:SetVertexColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3])
+            if self.fbBorder then self.fbBorder:SetBackdropBorderColor(unpack(GetSkin().border)) end
+        end)
+    end
+    local size = math.floor(button:GetHeight() * 0.68 + 0.5)
+    button.fbBackpackIcon:SetSize(size, size)
+    button.fbBackpackIcon:SetVertexColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3])
+end
+
 -- Knöpfe in Reihen anordnen. Wachstumsrichtung: von links nach rechts bzw. rechts nach links,
 -- von oben nach unten bzw. unten nach oben (der erste Knopf sitzt in der Ecke, von der aus es wächst).
 local function LayoutButtons(def, cfg, holder)
@@ -1619,7 +1644,10 @@ local function LayoutButtons(def, cfg, holder)
             end
         end
         StyleButton(button)
-        if def.kind == "bags" then KeepBagButton(button) end
+        if def.kind == "bags" then
+            KeepBagButton(button)
+            if button == MainMenuBarBackpackButton then StyleBackpack(button) end
+        end
     end
     -- Nicht genutzte Knöpfe (zu viele bzw. ausgeschlossene Taschen) ablegen
     for _, button in ipairs(GetAllButtons(def)) do
