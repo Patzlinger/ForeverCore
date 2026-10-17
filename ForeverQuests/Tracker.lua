@@ -583,7 +583,7 @@ local function OnLineClick(self, button)
         if groupQuestID and button == "RightButton" then
             ns.Style.ShowMenu(self, {
                 { title = (ns.groupQuests[groupQuestID] or {}).title or "Quest" },
-                { text = ns.L("GQ_REMOVE"), onClick = function() ns.RemoveGroupQuest(groupQuestID, true) end },
+                { text = ns.L("GQ_LEAVE"), onClick = function() ns.RemoveGroupQuest(groupQuestID, true) end },
             }, { atCursor = true })
         elseif groupQuestID and C_QuestLog.GetLogIndexForQuestID(groupQuestID) and not InCombatLockdown()
             and QuestMapFrame_OpenToQuestDetails then
@@ -1121,6 +1121,7 @@ local function CollectGroups()
             if info.isHeader then
                 currentHeader = info.title
             elseif not info.isHidden and info.questID and info.questID > 0
+                and not (ns.IsGroupQuest and ns.IsGroupQuest(info.questID)) -- steht schon oben unter "Gemeinsam"
                 and PassesFilters(filters, info, currentHeader) then
                 info.zoneHeader = currentHeader
                 if db.pinned[info.questID] then
@@ -1144,8 +1145,18 @@ local function CollectGroups()
     return groups
 end
 
--- Reiter "Gruppe": je vorgeschlagener Quest ein Fenster, darin je Teilnehmer eine Zeile mit seinem Stand.
--- Rechtsklick auf den Titel: aus der Gruppenliste nehmen (bei allen). Rückgabe: y, index, Anzahl Fenster
+-- Gemeinsame Quests (GroupQuests.lua) ganz oben: je Quest ein Fenster mit goldener Titelleiste ("Gemeinsam · 3"),
+-- darunter je Questziel eine Zeile und dahinter der Stand aller, die mitmachen ("Du 3/8   Anna 5/8").
+-- Rechtsklick auf den Titel: nicht mehr gemeinsam. Rückgabe: y, index, Anzahl Fenster
+local function MemberName(member)
+    local text = member.me and ns.L("YOU") or member.name
+    local color = member.class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[member.class]
+    if color then
+        return string.format("|cff%02x%02x%02x%s|r", color.r * 255, color.g * 255, color.b * 255, text)
+    end
+    return text
+end
+
 local function RenderGroupView(y, index, alpha, contentWidth, nameX, nameWidth, objectiveX, objectiveWidth, padding)
     local boxCount = 0
     for _, entry in ipairs(ns.GroupQuestList()) do
@@ -1153,15 +1164,26 @@ local function RenderGroupView(y, index, alpha, contentWidth, nameX, nameWidth, 
         local boxTop = y
         local box = GetBox(boxCount, alpha)
         local accent = ns.Style.COLOR.accent
-        local groupKey = "#GQ:" .. entry.questID
+        local questID = entry.questID
+        local groupKey = "#GQ:" .. questID
         local collapsed = ns.collapsedGroups[groupKey] == true
+        -- Questgegenstand wie in der normalen Liste
+        local questItem
+        local logIndex = GetQuestLogSpecialItemInfo and C_QuestLog.GetLogIndexForQuestID(questID)
+        if logIndex then
+            local itemLink, itemIcon, _, showWhenComplete = GetQuestLogSpecialItemInfo(logIndex)
+            if itemLink and (not C_QuestLog.IsComplete(questID) or showWhenComplete) then
+                questItem = { link = itemLink, icon = itemIcon, logIndex = logIndex }
+            end
+        end
         index = index + 1
         y = AddLine(index, y + 5, nameX, nameWidth, entry.data.title, fonts.header, accent[1], accent[2], accent[3], {
             groupKey = groupKey,
             arrow = not collapsed,
-            suffix = "|cff8a8a8a" .. #entry.members .. "|r",
+            questItem = questItem,
+            suffix = "|cff8a8a8a" .. ns.L("GQ_TAG") .. " · " .. #entry.members .. "|r",
         })
-        lines[index].groupQuestID = entry.questID
+        lines[index].groupQuestID = questID
         y = y + 4
         box.header:SetHeight(math.max(1, y - boxTop - 1))
         box.header:Show()
@@ -1169,13 +1191,50 @@ local function RenderGroupView(y, index, alpha, contentWidth, nameX, nameWidth, 
         box.accent:Show()
         y = y + 3
         if not collapsed then
+            -- Stand je Teilnehmer in Einzelteile zerlegen ("3/8,1/1" -> { "3/8", "1/1" })
             for _, member in ipairs(entry.members) do
-                local color = member.class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[member.class]
-                local name = color and string.format("|cff%02x%02x%02x%s|r", color.r * 255, color.g * 255, color.b * 255,
-                    member.name) or member.name
-                index = index + 1
-                y = AddLine(index, y + 2, objectiveX, objectiveWidth, name .. ":  " .. ns.GroupStateText(member.state),
-                    fonts.objective, 0.9, 0.9, 0.9)
+                member.parts = {}
+                if member.state and member.state ~= "+" and member.state ~= "-" then
+                    for part in member.state:gmatch("[^,]+") do member.parts[#member.parts + 1] = part end
+                end
+            end
+            local objectives = C_QuestLog.GetLogIndexForQuestID(questID) and C_QuestLog.GetQuestObjectives(questID) or {}
+            if #objectives > 0 then
+                for i, objective in ipairs(objectives) do
+                    -- Zielname ohne den eigenen Zähler am Ende ("Wolf getötet: 3/8" -> "Wolf getötet")
+                    local label = (objective.text or ""):gsub("[:：]?%s*%d+%s*/%s*%d+%s*$", "")
+                    if label == "" then label = ns.L("GQ_OBJECTIVE", i) end
+                    index = index + 1
+                    y = AddLine(index, y + 2, objectiveX, objectiveWidth, "- " .. label, fonts.objective, 0.85, 0.85, 0.85)
+                    local parts = {}
+                    for _, member in ipairs(entry.members) do
+                        local value
+                        if member.state == "+" then
+                            value = "|cff33ff33" .. ns.L("GQ_DONE") .. "|r"
+                        elseif member.state == "-" then
+                            value = "|cff8a8a8a" .. ns.L("GQ_MISSING") .. "|r"
+                        else
+                            local part = member.parts[i]
+                            local have, need = part and part:match("^(%d+)/(%d+)$")
+                            if have and tonumber(have) >= tonumber(need) then
+                                value = "|cff33ff33" .. part .. "|r"
+                            else
+                                value = part or "|cff8a8a8a…|r"
+                            end
+                        end
+                        parts[#parts + 1] = MemberName(member) .. " " .. value
+                    end
+                    index = index + 1
+                    y = AddLine(index, y + 1, objectiveX + 8, objectiveWidth - 8, table.concat(parts, "   "),
+                        fonts.objective, 0.9, 0.9, 0.9)
+                end
+            else
+                -- Quest nicht (mehr) im eigenen Questlog: je Teilnehmer eine Zeile mit seinem Stand
+                for _, member in ipairs(entry.members) do
+                    index = index + 1
+                    y = AddLine(index, y + 2, objectiveX, objectiveWidth,
+                        MemberName(member) .. ":  " .. ns.GroupStateText(member.state), fonts.objective, 0.9, 0.9, 0.9)
+                end
             end
         end
         y = y + padding
@@ -1192,8 +1251,9 @@ end
 local tabRow, questsTab, groupTab
 local function UpdateTabs()
     if not tabRow then return end
-    local show = ns.HasGroupQuests and ns.HasGroupQuests() or false
-    if not show then ns.trackerTab = "quests" end
+    -- (früher Reiter "Quests | Gruppe"; gemeinsame Quests stehen jetzt oben in der Liste – Reiterzeile bleibt aus)
+    local show = false
+    ns.trackerTab = "quests"
     tabRow:SetShown(show)
     scrollFrame:ClearAllPoints()
     scrollFrame:SetPoint("TOPLEFT", 6, show and -54 or -32)
@@ -1228,20 +1288,21 @@ function ns.UpdateTracker()
     local objectiveX = nameX + 8
     local objectiveWidth = nameWidth - 8
 
-    local groupMode = ns.trackerTab == "group" and ns.HasGroupQuests and ns.HasGroupQuests()
-    local groups = groupMode and {} or CollectGroups()
+    -- gemeinsame Quests (mit der Gruppe) stehen ganz oben, danach die normale Liste
+    local groups = CollectGroups()
     local y, index, count = 0, 0, 0
-    local boxesUsed = #groups
-    if groupMode then
-        y, index, boxesUsed = RenderGroupView(y, index, alpha, contentWidth, nameX, nameWidth, objectiveX,
+    local groupBoxes = 0
+    if ns.HasGroupQuests and ns.HasGroupQuests() then
+        y, index, groupBoxes = RenderGroupView(y, index, alpha, contentWidth, nameX, nameWidth, objectiveX,
             objectiveWidth, padding)
-        count = boxesUsed
+        count = groupBoxes
     end
+    local boxesUsed = groupBoxes + #groups
 
     for groupIndex, group in ipairs(groups) do
         local boxTop = y
         local hr, hg, hb = GetHeaderColor(group)
-        local box = GetBox(groupIndex, alpha)
+        local box = GetBox(groupBoxes + groupIndex, alpha)
 
         -- Titelleiste des Fensters (Gebiet, Klasse, Ruf oder "Angeheftet") mit Anzahl der Quests.
         -- Klick darauf oder auf den Pfeil klappt das Gebiet ein bzw. aus.
@@ -1378,7 +1439,7 @@ function ns.UpdateTracker()
         filterButton:SetText(ns.L("BTN_FILTER"))
     end
 
-    if count == 0 and not groupMode then
+    if count == 0 then
         index = index + 1
         local text
         if filterMode == "INSTANCE" then
@@ -1401,7 +1462,7 @@ function ns.UpdateTracker()
         boxes[i]:Hide()
     end
 
-    title:SetText(ns.L(groupMode and "TAB_GROUP" or "TRACKER_TITLE") .. "  |cff8a8a8a" .. count .. "|r")
+    title:SetText(ns.L("TRACKER_TITLE") .. "  |cff8a8a8a" .. count .. "|r")
     -- Titelleiste folgt der eingestellten Hintergrund-Transparenz
     local headerColor = ns.Style.COLOR.header
     headerBar:SetBackdropColor(headerColor[1], headerColor[2], headerColor[3], math.max(alpha, 0.15))

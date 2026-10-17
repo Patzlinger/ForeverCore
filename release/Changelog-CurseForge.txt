@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### New
+- **ForeverQuests: do quests together with your group.** Right-click a quest in the tracker and pick "Suggest to group". Everyone in your group who uses ForeverQuests gets a small, quiet window next to their tracker asking whether they'd like to join, with "Join" and "No, thanks" (it goes away by itself after a minute). Everyone who joins sees the quest at the top of the tracker under "Together", with every objective and how far each member has got ("You 3/8   Anna 5/8"). Right-click the title to stop doing it together.
 - **ForeverUnits: combo points on your target** (Rogues, and Druids in cat form). By default they sit as a clear column on the outside of the target frame, right next to its portrait, filling up from gold to orange-red. Prefer something else? Choose a bar with five segments below the frame or round dots above it, change the size, or hide the empty points (General tab in /fu).
 
 ### Fixed
