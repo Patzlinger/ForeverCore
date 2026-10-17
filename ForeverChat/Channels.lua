@@ -15,13 +15,10 @@ local SIZE_H, SIZE_W = 18, 20
 ---------------------------------------------------------------------------
 -- Eigener Kanal (vom Spieler erstellt/betreten)? Blizzard unterscheidet Zonen-, Gemeinschafts- und eigene Kanäle.
 local function IsCustom(id, name)
-    local info = C_ChatInfo and C_ChatInfo.GetChannelInfoFromIdentifier and C_ChatInfo.GetChannelInfoFromIdentifier(name)
-    local kinds = Enum and Enum.PermanentChatChannelType
-    if info and kinds and info.channelType ~= nil then
-        return info.channelType == kinds.Custom
-    end
-    -- Rückfall: die ersten Nummern sind Zonenkanäle (Allgemein, Handel, Lokale Verteidigung, Gruppensuche …)
-    return id > 4 and not tostring(name):find("^Community:")
+    -- Die Typ-Angabe der API ist uneinheitlich, deshalb über Nummer und Namen: die ersten Nummern sind Zonenkanäle,
+    -- Zonenkanäle heißen "Allgemein - Zone", "Dienste - Stadt" …, Gemeinschaftskanäle beginnen mit "Community:"
+    name = tostring(name)
+    return id > 4 and not name:find("^Community:") and not name:find(" %- ")
 end
 
 local function CustomChannels()
