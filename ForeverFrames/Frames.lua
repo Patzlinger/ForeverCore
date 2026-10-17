@@ -1210,7 +1210,23 @@ ns.On("INCOMING_SUMMON_CHANGED", T("Beschwörung", "Summon"), ForUnit(function(b
     C_Timer.After(6, function() if b.ffUnit and b:IsVisible() then pcall(UpdateIncoming, b) end end)
 end))
 
+-- Gruppe <-> Schlachtzug (oder anderer Reiter im Menue): andere Einstellungen, also Position, Anordnung und
+-- Aussehen neu (Position/Anordnung im Kampf erst danach, siehe ns.OutOfCombat)
+local appliedMode
+function ns.ApplyMode(force)
+    local mode = ns.ActiveMode()
+    if mode == appliedMode and not force then return end
+    appliedMode = mode
+    ns.RestorePosition()
+    ns.ApplyLayout()
+    ns.UpdateAllButtons()
+    ForEachShown(ns.UpdateAll)
+    if ns.OnMoved then ns.OnMoved() end
+    ns.RequestBounds()
+end
+
 local function RosterChanged()
+    ns.ApplyMode()
     -- gleiche Einheit ("raid3"), aber evtl. ein anderer Spieler: alles neu
     C_Timer.After(0, Safe(T("Gruppe", "Group"), function() ForEachShown(ns.UpdateAll) end))
     -- Blizzards Raid-Stil-Partyrahmen entstehen evtl. erst beim Gruppenbeitritt
@@ -1246,6 +1262,7 @@ end)
 C_Timer.NewTicker(0.25, Safe(T("Reichweite", "Range"), function() ForEachShown(UpdateRange) end))
 
 ns.On("PLAYER_LOGIN", "Start", function()
+    appliedMode = ns.ActiveMode()
     ns.RestorePosition()
     ns.ApplyLayout()
     ns.PrecreateButtons()

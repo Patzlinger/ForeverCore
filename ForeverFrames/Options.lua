@@ -252,7 +252,7 @@ end
 ---------------------------------------------------------------------------
 -- Fenster
 ---------------------------------------------------------------------------
-local options = UI.Window("ForeverFramesOptions", T("ForeverFrames – Einstellungen", "ForeverFrames – Settings"), 680, 640)
+local options = UI.Window("ForeverFramesOptions", T("ForeverFrames – Einstellungen", "ForeverFrames – Settings"), 680, 670)
 
 local tabs, panels = {}, {}
 local function SelectTab(index)
@@ -265,7 +265,7 @@ end
 local function AddTab(title)
     local index = #panels + 1
     local p = CreateFrame("Frame", nil, options)
-    p:SetPoint("TOPLEFT", 10, -62)
+    p:SetPoint("TOPLEFT", 10, -92)
     p:SetPoint("BOTTOMRIGHT", -10, 44)
     p:Hide()
     -- kein eigener Rahmen um den Reiter: die Abschnitte haben ihre eigenen Kaesten (ForeverHub)
@@ -277,6 +277,51 @@ local function AddTab(title)
 end
 
 local L, R = 8, 340 -- linke / rechte Spalte
+
+---------------------------------------------------------------------------
+-- Gruppe / Schlachtzug: welche Rahmen die Reiter darunter einstellen. Solange das Menue offen ist, zeigen die
+-- Rahmen (und der Testmodus) die gewaehlten Einstellungen; danach gilt wieder die echte Lage.
+---------------------------------------------------------------------------
+local modeButtons = {}
+local modeHint
+local function UpdateModeButtons()
+    local mode = ns.previewMode or ns.ActiveMode()
+    for key, b in pairs(modeButtons) do
+        if b.SetEnabled then b:SetEnabled(key ~= mode) end
+    end
+    local shared = T("Gemeinsam für beide: Sperren, Raster, Einrasten, Klick-Zauber, eigene Buff-Listen, Blizzard-Rahmen.",
+        "Shared by both: lock, grid, snap, click casting, own buff lists, Blizzard frames.")
+    modeHint:SetText(shared)
+end
+
+local function SelectMode(mode)
+    ns.previewMode = mode
+    -- Testmodus passend zur Ansicht: 5 Spieler in der Gruppe, mindestens 20 im Schlachtzug
+    if (ns.testCount or 0) > 0 and not InCombatLockdown() then
+        ns.SetTestMode(mode == "raid" and math.max(20, ns.testCount) or 5)
+    end
+    ns.ApplyMode(true)
+    UpdateModeButtons()
+    LoadAll()
+end
+
+do
+    local label = options:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    label:SetPoint("TOPLEFT", 16, -66)
+    label:SetText(T("Einstellungen für:", "Settings for:"))
+    local prev = label
+    for _, m in ipairs({ { key = "party", text = T("Gruppe", "Party") }, { key = "raid", text = T("Schlachtzug", "Raid") } }) do
+        local b = W.Button(options, m.text, 100, function() SelectMode(m.key) end)
+        b:SetPoint("LEFT", prev, "RIGHT", prev == label and 10 or 4, 0)
+        modeButtons[m.key] = b
+        prev = b
+    end
+    modeHint = options:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    modeHint:SetPoint("LEFT", prev, "RIGHT", 10, 0)
+    modeHint:SetPoint("RIGHT", options, "RIGHT", -16, 0)
+    modeHint:SetJustifyH("LEFT")
+    modeHint:SetWordWrap(true)
+end
 
 ---------------------------------------------------------------------------
 -- Reiter 1: Rahmen
@@ -775,11 +820,12 @@ resetPos:SetPoint("LEFT", statusBtn, "RIGHT", 6, 0)
 local KEEP_ON_RESET = { clicks = true, buffCustom = true, minimapAngle = true }
 
 local function ResetAll()
-    local db = GetDB()
+    local db = ns.GetBaseDB() -- Gruppe und gemeinsame Werte; der Schlachtzug startet danach wieder als Kopie
     for key, value in pairs(ns.DEFAULTS) do
         if not KEEP_ON_RESET[key] then db[key] = ns.CopyValue(value) end
     end
     db.pos = nil
+    db.raid = nil
     ns.RestorePosition()
     ns.ApplyLayout()
     ns.UpdateAllButtons()
@@ -815,6 +861,9 @@ local closeBtn = W.Button(options, T("Schließen", "Close"), 100, function() opt
 closeBtn:SetPoint("BOTTOMRIGHT", -16, 14)
 
 options:SetScript("OnShow", Safe(T("Einstellungen", "Settings"), function()
+    -- beim Öffnen: die Einstellungen der gerade echten Lage (Gruppe bzw. Schlachtzug)
+    ns.previewMode = IsInRaid() and "raid" or "party"
+    UpdateModeButtons()
     LoadAll()
     if not options.tabChosen then
         options.tabChosen = true
@@ -822,7 +871,12 @@ options:SetScript("OnShow", Safe(T("Einstellungen", "Settings"), function()
     end
     ns.UpdateGrid()
 end))
-options:HookScript("OnHide", function() pcall(ns.UpdateGrid) end)
+options:HookScript("OnHide", function()
+    pcall(ns.UpdateGrid)
+    -- wieder die echte Lage zeigen
+    ns.previewMode = nil
+    pcall(ns.ApplyMode)
+end)
 
 function ns.ToggleOptions()
     options:SetShown(not options:IsShown())

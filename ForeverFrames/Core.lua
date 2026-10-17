@@ -141,8 +141,64 @@ ns.CopyValue = CopyValue
 -- Wegen des Beta-Bugs wird ForeverFramesDB bei jedem Zugriff neu geprueft;
 -- fehlende Werte werden mit den Standardwerten aufgefuellt.
 -- "__fresh" markiert eine selbst angelegte (also NICHT geladene) Tabelle.
+---------------------------------------------------------------------------
+-- Gruppe und Schlachtzug getrennt einstellbar (Reiter "Gruppe" / "Schlachtzug" im Menue).
+-- Die Gruppen-Einstellungen sind die Tabelle selbst (wie bisher), die Schlachtzug-Einstellungen liegen in
+-- db.raid (beim ersten Mal eine Kopie der Gruppen-Einstellungen). Gemeinsam fuer beide bleiben nur die Werte
+-- unten (Sperren, Raster, Klick-Zauber, eigene Buff-Listen, Blizzard-Rahmen, Minimap-Knopf).
+-- GetDB() liefert je nach Lage die passende Sicht: im Schlachtzug (bzw. beim Einstellen im Reiter
+-- "Schlachtzug") eine Tabelle, die die Schlachtzug-Werte liest und schreibt – der restliche Code merkt davon nichts.
+---------------------------------------------------------------------------
+local SHARED = { locked = true, gridShow = true, gridSize = true, snap = true, minimapAngle = true, clicks = true,
+    buffCustom = true, hideBlizzParty = true, hideBlizzRaid = true, hideBlizzManager = true }
+local function PerMode(k)
+    return k == "pos" or (ns.DEFAULTS[k] ~= nil and not SHARED[k])
+end
+ns.PerModeKey = PerMode
+
+-- welche Einstellungen gelten gerade: beim Einstellen der gewaehlte Reiter, sonst Schlachtzug oder Gruppe
+function ns.ActiveMode()
+    if ns.previewMode then return ns.previewMode end
+    return IsInRaid() and "raid" or "party"
+end
+
+local raidChecked = false
+local function EnsureRaid(base)
+    if type(base.raid) ~= "table" then
+        local raid = {}
+        for k, v in pairs(base) do
+            if PerMode(k) then raid[k] = CopyValue(v) end
+        end
+        base.raid = raid
+        raidChecked = true
+    elseif not raidChecked then
+        -- neue Einstellungen (spaetere Versionen) fuer den Schlachtzug von der Gruppe uebernehmen
+        for k in pairs(ns.DEFAULTS) do
+            if PerMode(k) and base.raid[k] == nil then base.raid[k] = CopyValue(base[k]) end
+        end
+        raidChecked = true
+    end
+    return base.raid
+end
+
+local raidView = setmetatable({}, {
+    __index = function(_, k)
+        local base = _G.ForeverFramesDB
+        if PerMode(k) then
+            local v = EnsureRaid(base)[k]
+            if v ~= nil or k == "pos" then return v end
+        end
+        return base[k]
+    end,
+    __newindex = function(_, k, v)
+        local base = _G.ForeverFramesDB
+        if PerMode(k) then EnsureRaid(base)[k] = v else base[k] = v end
+    end,
+})
+
 local db
-function ns.GetDB()
+-- Die eigentliche Tabelle (Gruppe + gemeinsame Werte), unabhaengig von der Lage
+function ns.GetBaseDB()
     if type(_G.ForeverFramesDB) ~= "table" then
         _G.ForeverFramesDB = db or { __fresh = true }
     end
@@ -151,6 +207,15 @@ function ns.GetDB()
         if db[k] == nil then db[k] = CopyValue(v) end
     end
     return db
+end
+
+function ns.GetDB()
+    local base = ns.GetBaseDB()
+    if ns.ActiveMode() == "raid" then
+        EnsureRaid(base)
+        return raidView
+    end
+    return base
 end
 
 -- Farbe aus den Einstellungen als r, g, b, a
