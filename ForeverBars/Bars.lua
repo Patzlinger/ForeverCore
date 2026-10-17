@@ -2752,6 +2752,8 @@ function ns.UpdateCollapseArrow(def, cfg, holder)
         -- im Kampf nur aus geschütztem Code gezeigt/versteckt werden). Den Zustand hält der Halter als Attribut
         -- "fbcollapsed", sein Sichtbarkeits-Treiber "fbvis" beachtet es (siehe ApplyLayout).
         arrow = CreateFrame("Button", nil, UIParent, "SecureHandlerClickTemplate, BackdropTemplate")
+        -- mit zwei Vorlagen läuft nur das OnLoad der letzten: die geschützte Vorlage von Hand einrichten
+        if not arrow.SetFrameRef and SecureHandler_OnLoad then SecureHandler_OnLoad(arrow) end
         arrow:SetFrameStrata("MEDIUM")
         ns.Style.SetFlat(arrow, COLOR.button)
         arrow.icon = arrow:CreateTexture(nil, "OVERLAY")
