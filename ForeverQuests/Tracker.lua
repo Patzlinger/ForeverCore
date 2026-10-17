@@ -1215,7 +1215,8 @@ local function RenderGroupView(y, index, alpha, contentWidth, nameX, nameWidth, 
                             value = "|cff8a8a8a" .. ns.L("GQ_MISSING") .. "|r"
                         else
                             local part = member.parts[i]
-                            local have, need = part and part:match("^(%d+)/(%d+)$")
+                            local have, need -- (nicht "part and part:match(...)": das liefert nur den ersten Wert)
+                            if part then have, need = part:match("^(%d+)/(%d+)$") end
                             if have and tonumber(have) >= tonumber(need) then
                                 value = "|cff33ff33" .. part .. "|r"
                             else
