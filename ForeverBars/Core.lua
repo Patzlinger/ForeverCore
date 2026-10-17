@@ -39,6 +39,9 @@ ns.BAR_DEFS = {
       blizzard = { "PetActionBar", "PetActionBarFrame" } },
     { key = "stance", textKey = "BAR_STANCE", kind = "stance", buttons = "StanceButton", count = 10,
       blizzard = { "StanceBar", "StanceBarFrame" } },
+    -- Totemleiste (nur Schamane): Blizzards Leiste mit den vier Totem-Arten nebeneinander, Auswahl nach oben;
+    -- standardmäßig am Platz der Begleiterleiste (die beim Schamanen dafür aus ist)
+    { key = "totem", textKey = "BAR_TOTEM", kind = "container", frames = { "MultiCastActionBarFrame" } },
     -- Berufe: eigene Knöpfe (Bars.lua), belegt mit den Berufen und Berufs-Fähigkeiten des Charakters
     { key = "prof", textKey = "BAR_PROF", titleKey = "PROF_FRAME_TITLE", kind = "prof",
       buttons = "ForeverBarsProfButton", count = 12 },
@@ -98,6 +101,7 @@ ns.defaults = {
         -- (Haltungsleiste: "enabled" hängt von der Klasse ab, siehe ADDON_LOADED)
         micro = BarDefaults(true), bags = BarDefaults(true), vehicle = BarDefaults(true),
         queue = BarDefaults(true),
+        totem = BarDefaults(false), -- ("enabled" hängt von der Klasse ab, siehe ADDON_LOADED)
         xp = BarDefaults(true), rep = BarDefaults(true),
     },
     -- (Profile verwaltet seit 0.41b ForeverCore – je Charakter, siehe RegisterSettings am Ende dieser Datei)
@@ -173,6 +177,9 @@ end
 -- Warteschlangen-Auge: standardmäßig aus (dann nicht zu sehen), eingeschaltet halb so groß
 ns.defaults.bars.queue.enabled = false
 ns.defaults.bars.queue.scale = 53
+-- Totemleiste: unten links bündig wie die Begleiterleiste, etwas kleiner als Blizzards 30er-Knöpfe
+ns.defaults.bars.totem.point = "BOTTOMLEFT"
+ns.defaults.bars.totem.scale = 85
 -- Erfahrungs- und Ruf-Leiste: Größe 100 %, Breite = Aktionsleiste 1 (width = nil), Höhe in px; Infos an den Enden und Striche an
 for key, height in pairs({ xp = 16, rep = 12 }) do
     local bar = ns.defaults.bars[key]
@@ -238,7 +245,7 @@ local LAYOUT_VERSION = 23
 -- Standardgrößen vor 16 (nur Leisten, die noch darauf stehen, wachsen mit)
 local OLD_SCALES = { pet = 56, stance = 56, prof = 80, food = 80, bags = 76, queue = 50 }
 local STANDARD_LAYOUT_BARS = { "bar1", "bar2", "bar3", "bar6", "bar7", "bar8", "pet", "stance", "prof", "food",
-                               "micro", "bags", "vehicle", "xp", "rep" }
+                               "micro", "bags", "vehicle", "xp", "rep", "totem" }
 function ns.MigrateLayout(db)
     local version = db.layoutVersion or 1
     if version >= LAYOUT_VERSION then return end
@@ -471,6 +478,9 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
         if ... ~= addonName then return end
         local _, class = UnitClass("player")
         ns.defaults.bars.stance.enabled = STANCE_CLASSES[class] or false
+        -- Schamane: Totemleiste am Platz der Begleiterleiste (die blendet sich ohne Begleiter ohnehin aus).
+        -- Bei anderen Klassen zeigt Blizzard die Totemleiste nie, auch wenn sie im gemeinsamen Profil an ist.
+        ns.defaults.bars.totem.enabled = class == "SHAMAN"
         -- Wegen des Beta-Bugs (SavedVariables werden nicht geladen) gelten notfalls die Standardwerte
         ForeverBarsDB = ForeverBarsDB or {}
         ns.MigrateBars(ForeverBarsDB.bars)

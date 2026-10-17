@@ -11,8 +11,8 @@ local selectedKey = "bar1"
 local searchIndex = {}    -- für die Suche: { label, control, page } je Einstellung
 local pageInfo = {}       -- [Seite] = wo sie im Menü liegt (Ansicht, Reiter, Name für die Suche)
 
-local WINDOW_WIDTH, WINDOW_HEIGHT = 720, 810
-local PANEL_HEIGHT = 446   -- Platz für alle Einträge der Leistenliste
+local WINDOW_WIDTH, WINDOW_HEIGHT = 720, 832
+local PANEL_HEIGHT = 468   -- Platz für alle Einträge der Leistenliste (beim Schamanen eine mehr: Totemleiste)
 local GENERAL_HEIGHT = 236 -- Feld "Allgemein"
 local LIST_WIDTH = 200
 local DROPDOWN_X = 150
@@ -258,14 +258,18 @@ local function CreateOptions()
         return button
     end
     local listY = -38
+    local _, playerClass = UnitClass("player")
     for _, def in ipairs(ns.BAR_DEFS) do
-        local button = ListButton(L(def.textKey), listY, def.key, function()
-            selectedKey = def.key
-            options.view = "bar"
-            ns.RefreshOptions()
-        end)
-        table.insert(searchIndex, { label = L(def.textKey), control = button, barKey = def.key })
-        listY = listY - 21
+        -- Totemleiste nur beim Schamanen in der Liste
+        if def.key ~= "totem" or playerClass == "SHAMAN" then
+            local button = ListButton(L(def.textKey), listY, def.key, function()
+                selectedKey = def.key
+                options.view = "bar"
+                ns.RefreshOptions()
+            end)
+            table.insert(searchIndex, { label = L(def.textKey), control = button, barKey = def.key })
+            listY = listY - 21
+        end
     end
     -- Unterpunkt "Profile" (Vorlagen, gespeicherte Profile, Export/Import), etwas abgesetzt
     local profileEntry = ListButton(L("SEC_PROFILES"), listY - 4, "profiles", function()

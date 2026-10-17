@@ -164,6 +164,7 @@ local function DefaultPosition(key)
         bar8 = { width / 2, aboveSmall + barHeight * 2.5 + BAR_GAP * 2 },
         bar4 = { width - 30, height / 2 }, bar5 = { width - 30 - ACTION_SIZE - 8, height / 2 },
         pet = { left, smallBottom },     -- BOTTOMLEFT
+        totem = { left, smallBottom },   -- BOTTOMLEFT, beim Schamanen statt der Begleiterleiste
         stance = { right, smallBottom }, -- BOTTOMRIGHT
         prof = { left - SIDE_GAP - FRAME_SPACE, statusBase + FRAME_SPACE }, -- BOTTOMRIGHT (Rahmen eingerechnet)
         food = { right + SIDE_GAP + FRAME_SPACE, statusBase + FRAME_SPACE }, -- BOTTOMLEFT, gespiegelt zur Berufeleiste
@@ -1988,6 +1989,17 @@ local function LayoutContainer(def, cfg, holder)
     if def.key == "micro" then
         frame:SetAlpha(1) -- war bei den eigenen Knöpfen unsichtbar
         ns.StyleMicroMenu()
+    end
+    -- Totemleiste (Schamane): Blizzards Leiste bleibt, wie sie ist (Totem-Arten nebeneinander, Auswahl klappt
+    -- nach oben auf); nur ihre Aktionsknöpfe bekommen den Forever-Look
+    if def.key == "totem" then
+        for i = 1, 12 do
+            local button = _G["MultiCastActionButton" .. i]
+            if button then StyleButton(button) end
+        end
+        for _, name in ipairs({ "MultiCastSummonSpellButton", "MultiCastRecallSpellButton" }) do
+            if _G[name] then StyleButton(_G[name]) end
+        end
     end
     -- Mindestgröße, damit der Halter auch dann Platz hat, wenn Blizzard das Element gerade ausblendet
     local minSize = def.minSize or 1
