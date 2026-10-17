@@ -323,11 +323,11 @@ local TOOL_DEFS = {
           end
       end,
       shown = HasMail, alert = HasMail },
-    { key = "tracking", icon = "Interface\\Icons\\INV_Misc_Spyglass_03",
+    -- Fernglas fuellt sein Symbol mehr aus als die anderen: etwas mehr Innenabstand
+    { key = "tracking", icon = "Interface\\Icons\\INV_Misc_Spyglass_03", inset = 4,
       tip = function() GameTooltip:AddLine(T("Verfolgung", "Tracking")) GameTooltip:AddLine(T("Auch: Rechtsklick auf die Minimap", "Also: right-click the minimap"), 0.6, 0.6, 0.6) end,
       click = OpenTracking },
-    -- Kalender: Forevers eigenes Minimap-Kalendersymbol mit dem heutigen Tag darauf (wie bei Blizzard)
-    { key = "calendar", atlas = "ui-hud-minimap-calendar-button", icon = "Interface\\Icons\\INV_Misc_Note_05", showDay = true,
+    { key = "calendar", calendar = true,
       tip = function()
           GameTooltip:AddLine(T("Kalender", "Calendar"))
           local n = PendingInvites()
@@ -336,8 +336,7 @@ local TOOL_DEFS = {
       click = function() if ToggleCalendar then ToggleCalendar() end end,
       alert = function() return PendingInvites() > 0 end },
     -- (kein Knopf fuer Blizzards Addon-Menue: die Addons sitzen mit ihren eigenen Knoepfen schon in der Leiste)
-    -- Einstellungen von ForeverMinimap (gleiches Zahnrad wie in der Knopfleiste von ForeverChat)
-    { key = "settings", icon = "Interface\\Buttons\\UI-OptionsButton", noCrop = true,
+    { key = "settings", icon = "Interface\\Icons\\INV_Misc_Gear_01", separatorAfter = true,
       tip = function() GameTooltip:AddLine(T("ForeverMinimap-Einstellungen", "ForeverMinimap settings")) GameTooltip:AddLine("/fmm", 0.6, 0.6, 0.6) end,
       click = function() if ns.ToggleOptions then ns.ToggleOptions() end end },
 }
@@ -348,28 +347,51 @@ local function Today()
     return (t and t.monthDay) or tonumber(date("%d"))
 end
 
+local function HasAtlas(name) return C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(name) ~= nil end
+
+-- Kalendersymbol: 1. Blizzards Kalender mit eingezeichnetem Tag (Retail-Grafik), 2. klassisches Kalenderblatt
+-- mit dunkler Tageszahl, 3. Notizzettel mit heller Zahl
+local function SetCalendarIcon(b)
+    local day = Today()
+    if b.calendarDay == day then return end
+    b.calendarDay = day
+    local atlas = "ui-hud-calendar-" .. day .. "-up"
+    b.icon:SetTexCoord(0, 1, 0, 1)
+    if HasAtlas(atlas) then
+        b.icon:SetAtlas(atlas)
+        b.day:Hide()
+        return
+    end
+    if b.icon:SetTexture("Interface\\Calendar\\UI-Calendar-Button") then
+        b.icon:SetTexCoord(0, 0.390625, 0, 0.78125)
+        b.day:SetTextColor(0.1, 0.1, 0.1)
+        b.day:SetShadowColor(0, 0, 0, 0)
+    else
+        b.icon:SetTexture("Interface\\Icons\\INV_Misc_Note_05")
+        b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+        b.day:SetTextColor(1, 1, 1)
+        b.day:SetShadowColor(0, 0, 0, 1)
+    end
+    b.day:SetText(day)
+    b.day:Show()
+end
+
 local function ToolButton(def)
     local b = CreateFrame("Button", nil, Minimap, "BackdropTemplate")
     UI.SetFlat(b, { C.button[1], C.button[2], C.button[3], 0.85 })
     b:SetFrameLevel(Minimap:GetFrameLevel() + 8)
+    local inset = def.inset or 2
     b.icon = b:CreateTexture(nil, "ARTWORK")
-    b.icon:SetPoint("TOPLEFT", 2, -2)
-    b.icon:SetPoint("BOTTOMRIGHT", -2, 2)
-    local atlas = def.atlas and C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(def.atlas)
-    if atlas then
-        b.icon:SetAtlas(def.atlas)
-    else
-        b.icon:SetTexture(def.icon)
-        if def.icon ~= UI.LOGO and not def.noCrop then b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92) end
-    end
-    if def.showDay then
-        -- Forevers Kalendersymbol hat selbst kein Datum: Tag in Weiss mit Schatten darauf (auf jedem Grund lesbar)
+    b.icon:SetPoint("TOPLEFT", inset, -inset)
+    b.icon:SetPoint("BOTTOMRIGHT", -inset, inset)
+    if def.calendar then
         b.day = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
         b.day:SetPoint("CENTER", 0, -2)
-        b.day:SetTextColor(1, 1, 1)
-        b.day:SetShadowColor(0, 0, 0, 1)
         b.day:SetShadowOffset(1, -1)
-        b.day:SetText(Today())
+        SetCalendarIcon(b)
+    else
+        b.icon:SetTexture(def.icon)
+        if def.icon ~= UI.LOGO then b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92) end
     end
     b.def = def
     b:RegisterForClicks("LeftButtonUp")
@@ -390,15 +412,17 @@ local function ToolButton(def)
 end
 
 ---------------------------------------------------------------------------
--- Senkrechte Knopfleiste neben der Minimap: eigene Knoepfe (Post, Verfolgung, Kalender, Addon-Menue) und die
--- Minimap-Knoepfe am Rand (Forever-Sammelknopf, andere Addons wie BugSack) – auf Wunsch nur bei Mausover.
+-- Senkrechte Knopfleiste neben der Minimap: eigene Knoepfe (Post, Verfolgung, Kalender, Einstellungen), ein
+-- dezenter Trennstrich, dann die Minimap-Knoepfe am Rand (Forever-Sammelknopf, andere Addons wie BugSack).
 -- Die Leiste ist genau so hoch wie Karte + Kopfleiste. Passen nicht alle Knoepfe hinein, wird der letzte Platz
 -- ein Pfeil "weitere Knoepfe": aufgeklappt waechst die Leiste in weitere Spalten nach aussen (nie hoeher).
--- Fremde Knoepfe werden nur verschoben und verkleinert (keine Blizzard-Rahmen); Ziehen ist dort aus.
+-- Fremde Knoepfe (keine Blizzard-Rahmen) bekommen auf Wunsch den gleichen eckigen Look wie die eigenen:
+-- runder Rahmen und Hintergrund unsichtbar, Symbol quadratisch, flache Flaeche mit goldenem Rand beim Darueberfahren.
+-- Ihre Klicks, Tooltips und Menues bleiben unveraendert; Ziehen ist in der Leiste aus.
 ---------------------------------------------------------------------------
-local GAP, PAD = 3, 3
+local GAP, PAD, SEP = 3, 3, 9
 local expanded = false
-local moreButton
+local moreButton, separator
 
 local function BuildStrip()
     strip = CreateFrame("Frame", "ForeverMinimapStrip", Minimap, "BackdropTemplate")
@@ -408,6 +432,11 @@ local function BuildStrip()
     strip:EnableMouse(true)
     strip:SetScript("OnEnter", function() ns.UpdateHover() end)
     strip:SetScript("OnLeave", function() ns.UpdateHoverSoon() end)
+
+    -- dezenter Strich zwischen eigenen Knoepfen und denen der Addons
+    separator = strip:CreateTexture(nil, "ARTWORK")
+    separator:SetColorTexture(1, 1, 1, 0.14)
+    separator:SetSize(ITEM - 6, 1)
 
     -- Pfeil "weitere Knoepfe" (nur, wenn nicht alle in eine Spalte passen)
     moreButton = CreateFrame("Button", nil, strip, "BackdropTemplate")
@@ -436,14 +465,79 @@ local function BuildStrip()
     end)
 end
 
+-- runde Minimap-Grafik (Rahmen, Hintergrund, Hover-Schein) erkennen: per Datei oder Lage im Knopf
+local ROUND_ART = {
+    ["interface\\minimap\\minimap-trackingborder"] = true, ["interface\\minimap\\ui-minimap-background"] = true,
+    ["interface\\minimap\\ui-minimap-zoombutton-highlight"] = true,
+    [136430] = true, [136467] = true, [136477] = true,
+}
+local function IsRoundArt(tex)
+    local f = tex.GetTexture and tex:GetTexture()
+    if type(f) == "string" then
+        if ROUND_ART[f:lower():gsub("/", "\\")] then return true end
+    elseif f and ROUND_ART[f] then
+        return true
+    end
+    local layer = tex.GetDrawLayer and tex:GetDrawLayer()
+    if layer == "BACKGROUND" then return true end                           -- runder Hintergrund
+    if layer == "OVERLAY" and (tex:GetWidth() or 0) >= 45 then return true end -- grosser Ring um den Knopf
+    return false
+end
+
+-- fremden Knopf eckig machen (einmalig)
+local function SkinForeign(b)
+    if b.fmmSkinned then return end
+    b.fmmSkinned = true
+    local icon = b.icon or b.Icon
+    for _, r in ipairs({ b:GetRegions() }) do
+        if r.GetObjectType and r:GetObjectType() == "Texture" and r ~= icon then
+            if IsRoundArt(r) then
+                r:SetAlpha(0)
+            elseif not icon and r:GetDrawLayer() == "ARTWORK" then
+                icon = r
+            end
+        end
+    end
+    local hl = b.GetHighlightTexture and b:GetHighlightTexture()
+    if hl then hl:SetAlpha(0) end
+    -- flache Flaeche, feiner Rand, goldener Rand beim Darueberfahren (Ebene HIGHLIGHT zeigt sich von selbst)
+    local bg = b:CreateTexture(nil, "BACKGROUND", nil, -8)
+    bg:SetAllPoints()
+    bg:SetColorTexture(C.button[1], C.button[2], C.button[3], 0.85)
+    for _, side in ipairs({ { "TOPLEFT", "TOPRIGHT", nil, 1 }, { "BOTTOMLEFT", "BOTTOMRIGHT", nil, 1 },
+        { "TOPLEFT", "BOTTOMLEFT", 1, nil }, { "TOPRIGHT", "BOTTOMRIGHT", 1, nil } }) do
+        for _, layer in ipairs({ "BORDER", "HIGHLIGHT" }) do
+            local e = b:CreateTexture(nil, layer, nil, 7)
+            if layer == "BORDER" then e:SetColorTexture(C.border[1], C.border[2], C.border[3], 1)
+            else e:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 0.9) end
+            e:SetPoint(side[1]) e:SetPoint(side[2])
+            if side[3] then e:SetWidth(side[3]) else e:SetHeight(side[4]) end
+        end
+    end
+    if icon then
+        icon:ClearAllPoints()
+        icon:SetPoint("TOPLEFT", 3, -3)
+        icon:SetPoint("BOTTOMRIGHT", -3, 3)
+        icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    end
+end
+
 -- fremden Knopf an seinen Platz in der Leiste setzen (auch, wenn sein Addon ihn spaeter zurueckschiebt)
 local function PlaceForeign(b)
     if not b.fmmPoint then return end
-    local s = ITEM / math.max(1, b:GetWidth())
     b.fmmPlacing = true
-    b:SetScale(s)
-    b:ClearAllPoints()
-    b:SetPoint(b.fmmPoint, strip, b.fmmPoint, b.fmmX / s, b.fmmY / s)
+    if DB().squareForeign then
+        SkinForeign(b)
+        b:SetScale(1)
+        b:SetSize(ITEM, ITEM)
+        b:ClearAllPoints()
+        b:SetPoint(b.fmmPoint, strip, b.fmmPoint, b.fmmX, b.fmmY)
+    else
+        local s = ITEM / math.max(1, b:GetWidth())
+        b:SetScale(s)
+        b:ClearAllPoints()
+        b:SetPoint(b.fmmPoint, strip, b.fmmPoint, b.fmmX / s, b.fmmY / s)
+    end
     b:SetFrameLevel(strip:GetFrameLevel() + 2)
     b.fmmPlacing = false
 end
@@ -486,14 +580,15 @@ function ns.UpdateTools()
         strip:SetPoint("BOTTOMRIGHT", bottomRef, "BOTTOMLEFT", -4, 0)
     end
 
-    -- Liste der Knoepfe in der Leiste: eigene, dann fremde
+    -- Eintraege der Leiste: eigene Knoepfe, Trennstrich, fremde Knoepfe
     local items, prev = {}, nil
+    local ownCount = 0
     for _, b in ipairs(tools) do
         local wanted = ToolVisible(b)
         local alert = b.def.alert and b.def.alert()
         b:ClearAllPoints()
         b.alert = alert
-        if b.day then b.day:SetText(Today()) end -- neuer Tag
+        if b.def.calendar then SetCalendarIcon(b) end -- neuer Tag
         if wanted and inBar then
             b:SetSize(TOOL, TOOL)
             if prev then b:SetPoint("RIGHT", prev, "LEFT", -2, 0)
@@ -503,7 +598,8 @@ function ns.UpdateTools()
             b:SetAlpha(1)
         elseif wanted and useStrip then
             b:SetSize(ITEM, ITEM)
-            items[#items + 1] = b
+            items[#items + 1] = { button = b, h = ITEM }
+            ownCount = ownCount + 1
         else
             b:Hide()
         end
@@ -513,47 +609,76 @@ function ns.UpdateTools()
             b:SetBackdropBorderColor(C.border[1], C.border[2], C.border[3], 1)
         end
     end
-    if useStrip then
-        for _, b in ipairs(SortedForeign()) do items[#items + 1] = b end
-    end
+    local foreign = useStrip and SortedForeign() or {}
+    if ownCount > 0 and #foreign > 0 then items[#items + 1] = { sep = true, h = SEP } end
+    for _, b in ipairs(foreign) do items[#items + 1] = { button = b, h = ITEM, foreign = true } end
 
-    -- Platz je Spalte; reicht er nicht, wird der letzte Platz der Pfeil
-    local perCol = math.max(1, math.floor((height - 2 * PAD + GAP) / (ITEM + GAP)))
-    local overflow = #items > perCol
-    local slots = #items
-    if overflow then
-        if expanded then slots = #items + 1 else slots = perCol end
-    end
-    local shownItems = (overflow and not expanded) and (perCol - 1) or #items
-    local cols = math.max(1, math.ceil(slots / perCol))
+    -- Spalten fuellen: von oben nach unten, dann die naechste Spalte weiter aussen
+    local avail = height - 2 * PAD
+    local total = 0
+    for i, it in ipairs(items) do total = total + it.h + (i > 1 and GAP or 0) end
+    local overflow = total > avail
     local point = side == "RIGHT" and "TOPLEFT" or "TOPRIGHT"
     local dir = side == "RIGHT" and 1 or -1
-    local function Slot(i) -- Spalte fuer Spalte von der Karte weg
-        local col, row = math.floor((i - 1) / perCol), (i - 1) % perCol
-        return dir * (PAD + col * (ITEM + GAP)), -(PAD + row * (ITEM + GAP))
+    local col, y = 0, 0
+    local hiddenAt -- eingeklappt: ab hier nicht mehr sichtbar
+    local function Next(h)
+        if y > 0 and y + h > avail then col, y = col + 1, 0 end
+        local px, py = dir * (PAD + col * (ITEM + GAP)), -(PAD + y)
+        y = y + h + GAP
+        return px, py
     end
-    for i, b in ipairs(items) do
-        local isTool = b.def ~= nil
-        if i <= shownItems then
-            local x, y = Slot(i)
-            if isTool then
+    local positions = {}
+    for i, it in ipairs(items) do
+        if overflow and not expanded then
+            -- erste Spalte: Platz fuer den Pfeil unten lassen
+            if y + it.h > avail - (ITEM + GAP) then hiddenAt = i break end
+        end
+        if it.sep and y == 0 and col > 0 then
+            positions[i] = false -- kein Strich ganz oben in einer Spalte
+        else
+            positions[i] = { Next(it.h) }
+        end
+    end
+    local moreX, moreY
+    if overflow then
+        if expanded then moreX, moreY = Next(ITEM)
+        else moreX, moreY = dir * PAD, -(PAD + avail - ITEM) end
+    end
+    local cols = col + 1
+    if overflow and not expanded then cols = 1 end
+    -- eingeklappte fremde Knoepfe liegen unsichtbar auf dem Platz des Pfeils
+    local parkX, parkY = moreX or dir * PAD, moreY or -PAD
+
+    separator:Hide()
+    for i, it in ipairs(items) do
+        local pos = positions[i]
+        local visible = pos and (not hiddenAt or i < hiddenAt)
+        if it.sep then
+            if visible then
+                separator:ClearAllPoints()
+                separator:SetPoint("CENTER", strip, point, pos[1] + dir * (ITEM / 2), pos[2] - SEP / 2)
+                separator:Show()
+            end
+        elseif not it.foreign then
+            local b = it.button
+            if visible then
                 b:ClearAllPoints()
-                b:SetPoint(point, strip, point, x, y)
+                b:SetPoint(point, strip, point, pos[1], pos[2])
                 b:Show()
                 b:SetAlpha((show or b.alert) and 1 or 0)
             else
-                b.fmmPoint, b.fmmX, b.fmmY = point, x, y
+                b:Hide()
+            end
+        else
+            local b = it.button
+            if visible then
+                b.fmmPoint, b.fmmX, b.fmmY = point, pos[1], pos[2]
                 PlaceForeign(b)
                 b:SetAlpha(show and 1 or 0)
                 b:EnableMouse(true)
-            end
-        else
-            -- eingeklappt: unsichtbar und nicht anklickbar auf dem Platz des Pfeils (bleibt eingesammelt)
-            if isTool then
-                b:Hide()
             else
-                local x, y = Slot(perCol)
-                b.fmmPoint, b.fmmX, b.fmmY = point, x, y
+                b.fmmPoint, b.fmmX, b.fmmY = point, parkX, parkY
                 PlaceForeign(b)
                 b:SetAlpha(0)
                 b:EnableMouse(false)
@@ -561,9 +686,8 @@ function ns.UpdateTools()
         end
     end
     if overflow then
-        local x, y = Slot(expanded and (#items + 1) or perCol)
         moreButton:ClearAllPoints()
-        moreButton:SetPoint(point, strip, point, x, y)
+        moreButton:SetPoint(point, strip, point, moreX, moreY)
         -- Pfeil zeigt nach aussen (aufklappen) bzw. zur Karte (einklappen)
         local outward = (side == "LEFT") ~= expanded
         moreButton.icon:SetRotation(outward and math.pi / 2 or -math.pi / 2)

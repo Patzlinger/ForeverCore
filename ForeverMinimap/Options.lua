@@ -12,7 +12,7 @@ local function Set(key) return function(v) ns.GetDB()[key] = v if ns.ApplyAll th
 local function Get(key) return function() return ns.GetDB()[key] end end
 
 local function Build()
-    local H = 452 + M.sliderStep
+    local H = 452 + M.sliderStep + M.checkStep
     options = UI.MenuWindow("ForeverMinimapOptions", T("Einstellungen", "Settings"), "ForeverMinimap", W, H)
     local x0, y0 = M.contentX, M.contentY
     local CS, DS = M.checkStep, M.choiceStep
@@ -31,7 +31,9 @@ local function Build()
     -- links: Leiste
     local barP = UI.MenuPanel(options, T("Leiste", "Bar"))
     barP:SetPoint("TOPLEFT", shape, "BOTTOMLEFT", 0, -M.pad)
-    barP:SetSize(COL, 44 + CS + DS + 4 * CS + 8)
+    -- beide Spalten enden unten auf einer Linie (knapp ueber der Fussleiste)
+    barP:SetPoint("BOTTOMLEFT", options, "BOTTOMLEFT", M.pad, 2 * M.pad + M.footerHeight)
+    barP:SetWidth(COL)
     UI.MenuCheck(barP, x0, y0, T("Leiste mit Zonenname zeigen", "Show bar with zone name"), Get("bar"), Set("bar"))
     UI.MenuDropdown(barP, x0, y0 - CS, T("Position", "Position"), {
         { key = "TOP", label = T("Über der Minimap", "Above the minimap") },
@@ -45,8 +47,10 @@ local function Build()
     -- rechts: Knoepfe
     local btnP = UI.MenuPanel(options, T("Knöpfe", "Buttons"))
     btnP:SetPoint("TOPLEFT", shape, "TOPRIGHT", M.pad, 0)
-    btnP:SetSize(COL, 44 + DS + 3 * CS + M.sliderStep + 8)
-    UI.MenuSlider(btnP, x0, y0 - DS - 3 * CS - 4, T("Deckkraft der Knopfleiste (%)", "Button bar opacity (%)"), 0, 100, 5,
+    btnP:SetSize(COL, 44 + DS + 4 * CS + M.sliderStep + 8)
+    UI.MenuCheck(btnP, x0, y0 - DS - 3 * CS, T("Knöpfe anderer Addons eckig", "Square buttons for other addons"), Get("squareForeign"), Set("squareForeign"),
+        T("Gleicher Look wie die eigenen Knöpfe. Ausschalten gilt nach /reload.", "Same look as the own buttons. Turning it off applies after /reload."))
+    UI.MenuSlider(btnP, x0, y0 - DS - 4 * CS - 4, T("Deckkraft der Knopfleiste (%)", "Button bar opacity (%)"), 0, 100, 5,
         Get("stripAlpha"), Set("stripAlpha"))
     UI.MenuDropdown(btnP, x0, y0, T("Knopfleiste", "Button bar"), {
         { key = "LEFT", label = T("Links neben der Karte", "Left of the map") },
@@ -66,7 +70,7 @@ local function Build()
     -- rechts: Komfort
     local qol = UI.MenuPanel(options, T("Komfort", "Comfort"))
     qol:SetPoint("TOPLEFT", btnP, "BOTTOMLEFT", 0, -M.pad)
-    qol:SetPoint("BOTTOMLEFT", barP, "BOTTOMRIGHT", M.pad, 0)
+    qol:SetPoint("BOTTOMLEFT", barP, "BOTTOMRIGHT", M.pad, 0) -- unten buendig mit der linken Spalte
     qol:SetWidth(COL)
     UI.MenuCheck(qol, x0, y0, T("Rechtsklick auf die Karte: Verfolgung", "Right-click on the map: tracking"), Get("rightClickTracking"), Set("rightClickTracking"))
     UI.MenuCheck(qol, x0, y0 - CS, T("Nach 10 Sekunden wieder herauszoomen", "Zoom back out after 10 seconds"), Get("autoZoom"), Set("autoZoom"))
