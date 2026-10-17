@@ -517,6 +517,12 @@ end
 
 function ns.SetupSkin()
     ns.ApplySkin()
+    -- Standard-Textgroesse 17 (einmalig; danach gilt, was man selbst einstellt – Blizzard speichert sie je Fenster)
+    local d = ns.GetDB()
+    if not d.fontSizeDefaultSet then
+        d.fontSizeDefaultSet = true
+        C_Timer.After(1, function() ns.SetFontSize(ns.DEFAULT_FONT_SIZE or 17) end)
+    end
     -- Auswahl/Farben der Reiter: nach Blizzards eigener Aktualisierung unseren Stil setzen
     if _G.FCFTab_UpdateColors then
         hooksecurefunc("FCFTab_UpdateColors", function(tab, selected) UpdateTabLook(tab, selected) end)
@@ -536,6 +542,8 @@ function ns.SetupSkin()
 end
 
 -- Textgroesse aller Chatfenster (Blizzards eigene Einstellung, FCF_SetChatWindowFontSize speichert sie)
+ns.DEFAULT_FONT_SIZE = 17
+
 function ns.GetFontSize()
     local _, size = ns.MainChatFrame():GetFont()
     return math.floor((size or 14) + 0.5)
