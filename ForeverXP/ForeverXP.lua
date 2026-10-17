@@ -637,7 +637,47 @@ end
 -- ein erneuter Aufruf sammelt spaeter dazugekommene Unterrahmen ein, z. B. wenn man einen Ruf beobachtet).
 local function WantHidden() return IsBar() and GetDB().hideBlizzard end
 
-local function HideBlizzardBar()
+-- Retail/Forever: Blizzard verteilt Erfahrung, Ruf usw. auf zwei Behaelter (Main/Secondary), jeder merkt sich in
+-- shownBarIndex, welche Leiste er gerade zeigt. Unsichtbar wird nur der Behaelter mit der Erfahrung – frueher wurde
+-- die ganze Verwaltung (StatusTrackingBarManager) samt Rufleiste unsichtbar, dann zeigte ein beobachteter Ruf nichts.
+local XP_CONTAINERS = { "MainStatusTrackingBarContainer", "SecondaryStatusTrackingBarContainer" }
+local function ShowsExperience(c)
+    local enum = _G.StatusTrackingBarInfo and _G.StatusTrackingBarInfo.BarsEnum
+    if not (enum and enum.Experience and c.shownBarIndex ~= nil) then
+        return c == _G.MainStatusTrackingBarContainer -- unbekannter Aufbau: wie bisher die Hauptleiste
+    end
+    return c.shownBarIndex == enum.Experience
+end
+
+local HideBlizzardBar
+local function HideSplitContainers()
+    local target
+    for _, name in ipairs(XP_CONTAINERS) do
+        local c = _G[name]
+        if WantHidden() and ShowsExperience(c) then
+            UI.HideBlizzard(c, { when = function() return WantHidden() and ShowsExperience(c) end })
+        else
+            UI.ShowBlizzard(c)
+        end
+        if ShowsExperience(c) then target = c end
+        -- Tauscht Blizzard die Leisten zwischen den Behaeltern (z. B. Ruf beobachten), neu verteilen
+        if not c.fxpHooked and c.ApplyPendingBarToShow then
+            c.fxpHooked = true
+            hooksecurefunc(c, "ApplyPendingBarToShow", function() C_Timer.After(0, HideBlizzardBar) end)
+            c:HookScript("OnSizeChanged", function(self) if self == blizzBar and Overlaying() then LayoutBar() end end)
+        end
+    end
+    -- Ziel fuer unseren Balken: der Behaelter mit der Erfahrung (ohne Erfahrung, z. B. Hoechststufe: Hauptleiste)
+    blizzBar = target or _G.MainStatusTrackingBarContainer
+end
+
+HideBlizzardBar = function()
+    if _G.StatusTrackingBarManager and _G.MainStatusTrackingBarContainer and _G.SecondaryStatusTrackingBarContainer then
+        HideSplitContainers()
+        RestoreBarPosition()
+        LayoutBar()
+        return
+    end
     for _, name in ipairs(BLIZZ_BARS) do
         local f = _G[name]
         if f then

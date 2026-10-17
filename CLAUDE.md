@@ -373,7 +373,9 @@ Damit alle Einstellungsfenster gleich aussehen, gelten diese Maße. Quelle: `For
   Ist ForeverXP aktiv (ab ForeverBars 0.12.0), gehört ihm die Erfahrungsleiste: ForeverBars hält Blizzards Leiste
   fest am Standardplatz (oben mittig, ohne Griff, ohne Größe/Sichtbarkeit aus den eigenen Einstellungen) und
   verweist im Menü mit einem Knopf auf `/fxp`. Position, Größe und Sichtbarkeit stellt man nur in ForeverXP ein
-  (Standard "An Blizzards Platz" = oben mittig)
+  (Standard "An Blizzards Platz" = oben mittig). ForeverXP macht nur den Behälter unsichtbar, der gerade die
+  Erfahrung zeigt (`shownBarIndex == StatusTrackingBarInfo.BarsEnum.Experience`, neu verteilt per Hook auf
+  `ApplyPendingBarToShow`) – nie den ganzen `StatusTrackingBarManager`, sonst ist die Rufleiste mit unsichtbar
 - **ForeverBars ↔ ForeverSpellbook**: ForeverSpellbook legt einen Klick-Knopf über den Zauberbuch-Knopf im
   Mikromenü; ForeverBars verschiebt das Mikromenü – der Knopf hängt am Mikromenü-Knopf und wandert mit.
   Mit den **eigenen Menüknöpfen** von ForeverBars (Standard) sind die eigenen Knöpfe nur Optik; Blizzards echte

@@ -539,7 +539,47 @@ end
 
 -- Symbol des Blizzard-Knopfes übernehmen (seine Grafik "-Up" aus dem Atlas, im Seitenverhältnis des Originals,
 -- so hoch wie unser Knopf ohne Rand). Ohne Atlas-Grafik: eigenes Ersatz-Symbol aus Media\Micro.
+local PORTRAIT_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
+local portraitButtons = {}
+local portraitEvents
+-- Charakter-Knopf: Blizzard zeigt dort kein Symbol, sondern das runde Porträt der Spielfigur (SetPortraitTexture)
+local function SetMicroPortrait(own)
+    if not own.fbPortraitMask then
+        own.fbPortraitMask = own:CreateMaskTexture()
+        own.fbPortraitMask:SetTexture(PORTRAIT_MASK, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+        own.fbPortraitMask:SetAllPoints(own.icon)
+    end
+    own.icon:SetTexCoord(0, 1, 0, 1)
+    own.icon:SetSize(MICRO_HEIGHT - 4, MICRO_HEIGHT - 4)
+    own.icon:AddMaskTexture(own.fbPortraitMask)
+    SetPortraitTexture(own.icon, "player")
+    own.fbBlizzardIcon = true
+    own.fbPortrait = true
+    portraitButtons[own] = true
+    if not portraitEvents then
+        -- wie Blizzards Knopf: Porträt bei Änderungen der Spielfigur neu zeichnen
+        portraitEvents = CreateFrame("Frame")
+        portraitEvents:RegisterEvent("PORTRAITS_UPDATED")
+        portraitEvents:RegisterEvent("PLAYER_ENTERING_WORLD")
+        portraitEvents:RegisterUnitEvent("UNIT_PORTRAIT_UPDATE", "player")
+        portraitEvents:SetScript("OnEvent", function()
+            for button in pairs(portraitButtons) do
+                if button.fbPortrait then SetPortraitTexture(button.icon, "player") end
+            end
+        end)
+    end
+end
+
 local function SetMicroIcon(own, blizzard)
+    if blizzard == _G.CharacterMicroButton then
+        SetMicroPortrait(own)
+        return
+    end
+    -- anderer Knopf auf diesem Platz als zuvor: Porträt-Maske wieder entfernen
+    if own.fbPortrait then
+        own.fbPortrait = false
+        if own.fbPortraitMask then own.icon:RemoveMaskTexture(own.fbPortraitMask) end
+    end
     local normal = blizzard.GetNormalTexture and blizzard:GetNormalTexture()
     local atlas = normal and normal.GetAtlas and normal:GetAtlas()
     local info = atlas and C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(atlas)
