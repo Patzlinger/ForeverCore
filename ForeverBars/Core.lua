@@ -102,7 +102,7 @@ ns.defaults = {
         xp = BarDefaults(true), rep = BarDefaults(true), queue = BarDefaults(true),
     },
     -- (Profile verwaltet seit 0.41b ForeverCore – je Charakter, siehe RegisterSettings am Ende dieser Datei)
-    layoutVersion = 12,        -- Stand der Standard-Anordnung (siehe MigrateLayout)
+    layoutVersion = 13,        -- Stand der Standard-Anordnung (siehe MigrateLayout)
     skin = "FLAT",           -- Aussehen der Knöpfe (ns.SKINS in Bars.lua)
     hoverAlpha = 15,         -- Stärke des Hover-Leuchtens über den Knöpfen (%)
     procGlow = "FOREVER",    -- Leuchten bei Procs: "FOREVER" (goldener Rahmen), "BLIZZARD", "OFF"
@@ -149,7 +149,7 @@ ns.defaults.bars.micro.point = "BOTTOMRIGHT"
 ns.defaults.bars.micro.scale = 100  -- eigene flache Text-Knöpfe (18 hoch) statt Blizzards Mikromenü
 ns.defaults.bars.micro.microOwn = true
 ns.defaults.bars.micro.microGrey = true -- nur für Blizzards Mikromenü (wenn die eigenen Knöpfe aus sind)
-ns.defaults.bars.bags.scale = 63   -- Rucksack so groß wie die Mikromenü-Knöpfe (19 px), direkt darüber
+ns.defaults.bars.bags.scale = 76   -- Rucksack etwas größer als die Mikromenü-Knöpfe, direkt darüber
 ns.defaults.bars.micro.spacing = 0 -- Mikromenü-Knöpfe ohne Abstand
 ns.defaults.bars.bags.point = "BOTTOMRIGHT"
 ns.defaults.bars.bags.growX = "LEFT"
@@ -205,7 +205,8 @@ ns.FillDefaults = FillDefaults
 --               Verpflegungs-, Taschenleiste und Mikromenü neu berechnet
 --  11 (0.41b+): noch breitere Einklapp-Pfeile – Positionen von Berufe- und Verpflegungsleiste neu berechnet
 --  12 (0.41b+): Mikromenü ohne Abstand, Rucksack in Mikromenü-Größe direkt darüber
-local LAYOUT_VERSION = 12
+--  13 (0.41b+): Taschenleiste 20 % größer (76 %)
+local LAYOUT_VERSION = 13
 local STANDARD_LAYOUT_BARS = { "bar1", "bar2", "bar3", "bar6", "bar7", "bar8", "pet", "stance", "prof", "food",
                                "micro", "bags", "xp", "rep", "vehicle" }
 function ns.MigrateLayout(db)
@@ -278,6 +279,13 @@ function ns.MigrateLayout(db)
                         bar.x, bar.y = nil, nil
                     end
                 end
+            end
+            if version < 13 and target.bars.bags then
+                local bags = target.bars.bags
+                if bags.scale == nil or bags.scale == 63 or bags.scale == 80 or bags.scale == 100 then
+                    bags.scale = ns.defaults.bars.bags.scale
+                end
+                bags.x, bags.y = nil, nil
             end
             if version < 12 then
                 local micro, bags = target.bars.micro, target.bars.bags
