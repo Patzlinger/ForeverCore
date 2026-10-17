@@ -1406,9 +1406,11 @@ function ns.CreateTracker()
     local Style = ns.Style
 
     -- Titelleiste mit goldener Linie, wie beim Dungeon-Fenster
+    -- links/rechts 6 px eingerückt wie der Scrollbereich darunter: Leiste und Gebiets-Fenster sind genau gleich
+    -- breit und bleiben es bei jeder Größenänderung (beide hängen am Tracker)
     headerBar = CreateFrame("Frame", nil, tracker, "BackdropTemplate")
-    headerBar:SetPoint("TOPLEFT")
-    headerBar:SetPoint("TOPRIGHT")
+    headerBar:SetPoint("TOPLEFT", 6, 0)
+    headerBar:SetPoint("TOPRIGHT", -6, 0)
     headerBar:SetHeight(26)
     headerBar:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8" })
     headerBar:SetBackdropColor(unpack(Style.COLOR.header))
