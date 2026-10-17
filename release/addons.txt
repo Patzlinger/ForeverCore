@@ -5,7 +5,7 @@ ForeverFrames
 ForeverUnits
 ForeverCast
 ForeverLoot
-ForeverXP
+# (ForeverXP ist seit 0.44b in ForeverBars aufgegangen: ForeverBars hier eintragen, sobald es freigegeben ist)
 ForeverBuffs
 ForeverVendor
 ForeverSpellbook

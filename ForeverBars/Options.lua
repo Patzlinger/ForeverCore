@@ -436,13 +436,42 @@ local function CreateOptions()
     end)
     resetButton:SetPoint("TOPLEFT", RIGHT_X, -390)
 
+    -- Nur Erfahrungs- und Ruf-Leiste (Status.lua): Breite/Höhe, Infos an den Enden, Striche, Blizzards Leiste ersetzen
+    local T = ForeverHub.UI.T
+    options.statusWidthSlider = CreateSlider(layoutPage, T("Breite (px)", "Width (px)"), 14, -382, 180,
+        function() return 100 end, function() return math.floor(UIParent:GetWidth()) end,
+        function() return SelectedConfig().width or math.floor(ns.StatusWidth(SelectedConfig())) end,
+        function(value) SelectedConfig().width = value; Changed() end)
+    options.statusHeightSlider = CreateSlider(layoutPage, T("Höhe (px)", "Height (px)"), 14, -426, 180,
+        function() return 8 end, function() return 48 end,
+        function() return SelectedConfig().height or ns.STATUS_HEIGHT[selectedKey] or 16 end,
+        function(value) SelectedConfig().height = value; Changed() end)
+    options.statusTextsCheck = CreateCheckbox(layoutPage, T("Infos an den Enden", "Info at the ends"), RIGHT_X, -146,
+        function() return SelectedConfig().barTexts end,
+        function(value) SelectedConfig().barTexts = value; Changed() end)
+    options.statusTicksCheck = CreateCheckbox(layoutPage, T("Zehntel-Striche", "Tenth markers"), RIGHT_X, -170,
+        function() return SelectedConfig().barTicks end,
+        function(value) SelectedConfig().barTicks = value; Changed() end)
+    options.statusReplaceCheck = CreateCheckbox(layoutPage, T("Blizzards Leiste ausblenden", "Hide Blizzard's bar"), RIGHT_X, -194,
+        function() return ns.db.hideStatusBlizzard end,
+        function(value) ns.db.hideStatusBlizzard = value; ns.UpdateBlizzardStatus() end)
+    options.statusWidthReset = CreateSearchButton(layoutPage, T("Breite wie Aktionsleiste 1", "Width of action bar 1"), 170, 22, function()
+        SelectedConfig().width = nil
+        Changed()
+        ns.RefreshOptions()
+    end)
+    options.statusRateReset = CreateSearchButton(layoutPage, T("XP/h zurücksetzen", "Reset XP/h"), 170, 22, function()
+        ns.ResetXPRate()
+    end)
+
     -- Reihenfolge der beiden Spalten; RefreshOptions setzt die gerade sichtbaren lückenlos untereinander
     -- (je Zeile: Element, Höhe, Einrückung; spacer = zusätzlicher Abstand)
     options.layoutPage = layoutPage
     options.layoutColumns = {
         { x = 14, rows = {
             { options.buttonsSlider, 44 }, { options.perRowSlider, 44 }, { options.spacingSlider, 44 },
-            { options.scaleSlider, 44 }, { options.alphaSlider, 44 }, { options.posXSlider, 44 },
+            { options.scaleSlider, 44 }, { options.statusWidthSlider, 44 }, { options.statusHeightSlider, 44 },
+            { options.alphaSlider, 44 }, { options.posXSlider, 44 },
             { options.posYSlider, 50 },
         } },
         { x = RIGHT_X, rows = {
@@ -450,6 +479,8 @@ local function CreateOptions()
             { options.microOwnCheck, 24 }, { options.microGreyCheck, 24 }, { options.collapseArrowCheck, 24 },
             { options.arrowSideSelector, 46, 16 },
             { options.backpackCheck, 24 }, { options.keyringCheck, 24 }, { options.foodResetButton, 30 },
+            { options.statusTextsCheck, 24 }, { options.statusTicksCheck, 24 }, { options.statusReplaceCheck, 28 },
+            { options.statusWidthReset, 30 }, { options.statusRateReset, 30 },
             { options.frameCheck, 24 }, { options.frameTitleCheck, 22, 16 }, { titleBox, 32, 16 },
             { spacer = 8 }, { options.centerXButton, 26 }, { options.centerYButton, 38 }, { resetButton, 26 },
         } },
@@ -1042,6 +1073,15 @@ function ns.RefreshOptions()
     options.perRowSlider:SetShown(hasButtons)
     options.keyringCheck:SetShown(def.kind == "bags" and ns.HasKeyring())
     options.foodResetButton:SetShown(def.kind == "food" or def.kind == "prof")
+    local isStatus = def.kind == "status"
+    options.statusWidthSlider:SetShown(isStatus)
+    options.statusHeightSlider:SetShown(isStatus)
+    options.statusTextsCheck:SetShown(isStatus)
+    options.statusTicksCheck:SetShown(isStatus)
+    options.statusReplaceCheck:SetShown(isStatus)
+    options.statusWidthReset:SetShown(isStatus)
+    options.statusRateReset:SetShown(def.key == "xp")
+    options.frameCheck:SetShown(not isStatus)
     options.microOwnCheck:SetShown(def.key == "micro")
     options.microGreyCheck:SetShown(def.key == "micro" and not SelectedConfig().microOwn)
     -- Spalten im Reiter "Anordnung" lückenlos von oben nach unten anordnen

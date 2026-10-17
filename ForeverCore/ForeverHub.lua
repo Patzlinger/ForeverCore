@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 37
+local VERSION = 38
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -1732,7 +1732,6 @@ local KNOWN = {
     { name = "ForeverChat",   button = "ForeverChatMinimapButton", cmd = "/fchat" },
     { name = "ForeverMinimap", button = "ForeverMinimapMinimapButton", cmd = "/fmm" },
     { name = "ForeverLoot",   button = "ForeverLootMinimapButton", cmd = "/floot" },
-    { name = "ForeverXP",     button = "ForeverXPMinimapButton", cmd = "/fxp" },
     { name = "ForeverBuffs",  button = "ForeverBuffsMinimapButton", cmd = "/fbuffs" },
     { name = "ForeverVendor", button = "ForeverVendorMinimapButton", cmd = "/fvendor" },
     { name = "ForeverSpellbook", button = "ForeverSpellbookMinimapButton", cmd = "/fsb" },
@@ -1753,10 +1752,8 @@ local function CoreLoaded() return C_AddOns and C_AddOns.IsAddOnLoaded and C_Add
 -- einen neuen Anker und der Platzhalter wird nicht mehr gebraucht.
 -- Muss beim Laden der Datei passieren (vor EDIT_MODE_LAYOUTS_UPDATED). Neues Addon mit solchen Halter-Rahmen: hier eintragen.
 local EDITMODE_ANCHORS = {
-    -- Erfahrungs- und Rufleiste gehoeren seit 0.44b ForeverXP; Layouts, die noch an die alten Halter von ForeverBars
-    -- gebunden sind, brauchen die Platzhalter weiterhin (always = auch bei geladenem Addon)
-    { addon = "ForeverBars", name = "ForeverBars_xp",    point = "BOTTOM",      x = 0,    y = 7,  always = true },
-    { addon = "ForeverBars", name = "ForeverBars_rep",   point = "BOTTOM",      x = 0,    y = 21, always = true },
+    { addon = "ForeverBars", name = "ForeverBars_xp",    point = "BOTTOM",      x = 0,    y = 7 },
+    { addon = "ForeverBars", name = "ForeverBars_rep",   point = "BOTTOM",      x = 0,    y = 21 },
     { addon = "ForeverBars", name = "ForeverBars_micro", point = "BOTTOMRIGHT", x = -170, y = 20 },
     { addon = "ForeverBars", name = "ForeverBars_bags",  point = "BOTTOMRIGHT", x = -110, y = 60 },
 }
@@ -1773,7 +1770,7 @@ local function WillLoad(addon)
 end
 
 for _, a in ipairs(EDITMODE_ANCHORS) do
-    if not _G[a.name] and (a.always or not WillLoad(a.addon)) then
+    if not _G[a.name] and not WillLoad(a.addon) then
         local stand = CreateFrame("Frame", a.name, UIParent)
         stand:SetSize(1, 1)
         stand:SetPoint(a.point, UIParent, a.point, a.x, a.y)

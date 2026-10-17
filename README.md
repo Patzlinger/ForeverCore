@@ -7,7 +7,7 @@ Autoren: Patzlinger, flowfy · CurseForge-Projekt 1743753
 
 | Addon | Von | Status |
 |---|---|---|
-| ForeverFrames, ForeverUnits, ForeverCast, ForeverLoot, ForeverXP, ForeverBuffs, ForeverVendor | Patzlinger | im Release (MIT) |
+| ForeverFrames, ForeverUnits, ForeverCast, ForeverLoot, ForeverBuffs, ForeverVendor | Patzlinger | im Release (MIT) |
 | ForeverSpellbook, ForeverChat | Patzlinger | im Release (seit 0.32b) |
 | ForeverMinimap | Patzlinger | Prototyp (nicht im Release) |
 | ForeverQuests, ForeverBars | flowfy | im Repository, noch nicht im Release |
@@ -20,7 +20,7 @@ Im Spiel: `/forever` zeigt alle Forever-Addons, `/fmove` verschiebt alle Rahmen.
 
 ```
 _Forever-Source/
-  ForeverXP/ ...          ein Ordner pro Addon (Ordnername = .toc-Name)
+  ForeverBars/ ...          ein Ordner pro Addon (Ordnername = .toc-Name)
   ForeverCore/            Hauptaddon: ForeverHub.lua = gemeinsame Bibliothek, Hub-Fenster, Begrüßung
   release/                README/Changelog fürs Paket, addons.txt = was ins Release kommt
   tools/                  Skripte (siehe unten)

@@ -121,8 +121,21 @@ local function DefaultPosition(key)
     local barWidth = (12 * ACTION_SIZE + 11 * ns.ButtonGap(bars.bar1)) * scale
     local barHeight = ACTION_SIZE * scale
     local left, right = width / 2 - barWidth / 2, width / 2 + barWidth / 2
-    local function BarCenter(row) return EDGE + barHeight / 2 + row * (barHeight + BAR_GAP) end
-    local stackTop = EDGE + 3 * barHeight + 2 * BAR_GAP           -- Oberkante der drei Aktionsleisten
+    -- Erfahrungs- und Ruf-Leiste liegen ganz unten (Erfahrung unten, Ruf darüber, sonst ohne Lücke); die Aktionsleisten
+    -- und alles daneben beginnen darüber. Bei Höchststufe (keine Erfahrung) und ausgeschalteten Leisten entfällt der Platz.
+    local statusBase, statusCenter = EDGE, {}
+    for _, key in ipairs({ "xp", "rep" }) do
+        local cfg = bars[key]
+        if cfg then
+            local h = ns.StatusHeight(key, cfg) * Scale(key)
+            statusCenter[key] = statusBase + h / 2
+            if cfg.enabled and not (key == "xp" and ns.AtMaxLevel and ns.AtMaxLevel()) then
+                statusBase = statusBase + h + BAR_GAP
+            end
+        end
+    end
+    local function BarCenter(row) return statusBase + barHeight / 2 + row * (barHeight + BAR_GAP) end
+    local stackTop = statusBase + 3 * barHeight + 2 * BAR_GAP     -- Oberkante der drei Aktionsleisten
     local smallRow = ACTION_SIZE * Scale("pet")                    -- Höhe der Begleiter-/Haltungsreihe
     local aboveSmall = stackTop + BAR_GAP + smallRow + BAR_GAP    -- darüber beginnen Leisten 6-8
     local microHeight = HolderHeight("micro", 40)
@@ -138,8 +151,9 @@ local function DefaultPosition(key)
         bar4 = { width - 30, height / 2 }, bar5 = { width - 30 - ACTION_SIZE - 8, height / 2 },
         pet = { left, stackTop + BAR_GAP },     -- BOTTOMLEFT
         stance = { right, stackTop + BAR_GAP }, -- BOTTOMRIGHT
-        prof = { left - SIDE_GAP - FRAME_SPACE, EDGE + FRAME_SPACE }, -- BOTTOMRIGHT (Rahmen eingerechnet)
-        food = { right + SIDE_GAP + FRAME_SPACE, EDGE + FRAME_SPACE }, -- BOTTOMLEFT, gespiegelt zur Berufeleiste
+        prof = { left - SIDE_GAP - FRAME_SPACE, statusBase + FRAME_SPACE }, -- BOTTOMRIGHT (Rahmen eingerechnet)
+        food = { right + SIDE_GAP + FRAME_SPACE, statusBase + FRAME_SPACE }, -- BOTTOMLEFT, gespiegelt zur Berufeleiste
+        xp = { width / 2, statusCenter.xp or (EDGE + 9) }, rep = { width / 2, statusCenter.rep or (EDGE + 30) },
         micro = { width - EDGE, EDGE },                        -- BOTTOMRIGHT
         bags = { width - EDGE, EDGE + microHeight - 1 },       -- BOTTOMRIGHT, direkt auf dem Mikromenü (Ränder übereinander)
         vehicle = { width / 2, aboveSmall + 20 }, queue = { width - 290, 120 },
@@ -196,6 +210,9 @@ local function SetTextFont(text, size)
     end
 end
 
+ns.GetFontPath = GetFontPath
+ns.SetTextFont = SetTextFont
+
 -- Stile der Knöpfe, alle im flachen Forever-Design: Randfarbe, Randstärke, Abstand des Symbols zum Rand
 -- und Hintergrund leerer Plätze
 local COLOR = ns.Style.COLOR
@@ -223,6 +240,13 @@ end
 function ns.ButtonGap(cfg)
     local inset = ns.db.showBorder and GetSkin().inset or 0
     return (cfg.spacing or 1) - 2 * inset
+end
+
+-- Breite der Aktionsleiste 1 in Bildschirmeinheiten: Erfahrungs- und Ruf-Leiste sind standardmäßig genauso breit
+function ns.ActionBarWidth()
+    local cfg = ns.db.bars.bar1
+    local count = math.max(1, math.min(cfg.perRow or 12, cfg.buttons or 12))
+    return (count * ACTION_SIZE + (count - 1) * ns.ButtonGap(cfg)) * ns.BarScale("bar1", cfg)
 end
 
 -- Hover-, Gedrückt- und Aktiv-Leuchten: Blizzards Grafiken sind für größere Knöpfe mit Rahmen gemacht und
@@ -2341,6 +2365,8 @@ function ns.ApplyLayout()
             -- nicht zu sehen. Es bleibt bei Blizzard bzw. ForeverMinimap (dort in der Leiste ueber der Karte).
             local eye = _G.QueueStatusButton
             if eye then eye.fbHolder = nil end -- frueheres "zurueck in den Halter" (Hook) abschalten
+        elseif def.kind == "status" then
+            ns.LayoutStatus(def, cfg, holder) -- Erfahrungs- und Ruf-Leiste (Status.lua)
         elseif def.kind == "container" or def.kind == "single" then
             if def.key == "micro" then HideOwnMicro() end
             LayoutContainer(def, cfg, holder)

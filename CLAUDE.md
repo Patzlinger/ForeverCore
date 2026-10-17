@@ -17,7 +17,7 @@ Philosophie, Regeln, Design und Abläufe. Wenn etwas hier nicht steht: am besteh
 ## 2. Team und Zuständigkeiten
 | Addon | Verantwortlich | Status |
 |---|---|---|
-| ForeverFrames, ForeverUnits, ForeverCast, ForeverLoot, ForeverXP, ForeverBuffs, ForeverVendor | Patzlinger | im Release |
+| ForeverFrames, ForeverUnits, ForeverCast, ForeverLoot, ForeverBuffs, ForeverVendor | Patzlinger | im Release |
 | ForeverSpellbook | Patzlinger | im Release (seit 0.32b) |
 | ForeverChat | Patzlinger | im Release (seit 0.32b) |
 | ForeverMinimap | Patzlinger | Prototyp (seit 2026-10-17) |
@@ -62,7 +62,7 @@ Philosophie, Regeln, Design und Abläufe. Wenn etwas hier nicht steht: am besteh
   Raid-Symbole im Menü oder geschützte Aktionen). Stattdessen:
   - `UnregisterAllEvents()` + `RegisterStateDriver(frame, "visibility", "hide")`, oder
   - unsichtbar machen: `SetAlpha(0)` und mit `hooksecurefunc(frame, "SetAlpha", …)` gegen Zurücksetzen absichern
-    (so macht es ForeverXP mit der XP-Leiste – Platz und Anordnung der Blizzard-Leisten bleiben dabei erhalten)
+    (so macht es ForeverBars mit Blizzards Erfahrungs- und Rufleiste – Platz und Anordnung bleiben dabei erhalten)
 - Blizzard-Funktionen nur mit `hooksecurefunc` bzw. `frame:HookScript` erweitern, nie überschreiben
 - Dokumentierte Ausnahmen (bewusst so, nicht "reparieren" ohne Absprache):
   - **ForeverBars** setzt Blizzards Aktionsknöpfe und Leisten per `SetParent` in eigene Halter – das ist für ein
@@ -100,7 +100,7 @@ Philosophie, Regeln, Design und Abläufe. Wenn etwas hier nicht steht: am besteh
   - `ForeverHubDB` steht vorerst weiter in den SavedVariables jedes Addons (Übergang: so übernehmen Spieler ihre
     Hub-Einstellungen aus den alten Speicherständen; kann später auf ForeverCore allein reduziert werden)
   - Der Titel trägt den dezenten Beta-Hinweis (nur in der Addon-Liste sichtbar)
-  - `Media\ForeverCore.tga` (Logo) liegt in jedem Addon (Kopie z. B. aus ForeverXP)
+  - `Media\ForeverCore.tga` (Logo) liegt in jedem Addon (Kopie z. B. aus ForeverBars)
   - Release-Addons zusätzlich: `## X-License: MIT`, `## X-Curse-Project-ID: 1743753`, `LICENSE.txt`
 - Datei-Aufteilung frei; bewährt: `Core.lua` (Defaults, Start, Chatbefehl), `Locales.lua`, `Options.lua`, Funktionsdateien
 - Neues Addon zusätzlich: in `ForeverCore/ForeverHub.lua` in die Liste `KNOWN` eintragen (Name + Minimap-Knopf) und
@@ -341,7 +341,7 @@ Damit alle Einstellungsfenster gleich aussehen, gelten diese Maße. Quelle: `For
   | /fb, /foreverbars | ForeverBars |
   | /fq, /foreverquests | ForeverQuests |
   | /floot, /foreverloot | ForeverLoot |
-  | /fxp, /foreverxp | ForeverXP |
+  | /fxp, /foreverxp | ForeverBars (Erfahrungsleiste; früher ForeverXP) |
   | /fbuffs, /foreverbuffs | ForeverBuffs |
   | /fvendor, /forevervendor | ForeverVendor |
   | /fsb, /fspellbook, /foreverspellbook | ForeverSpellbook |
@@ -376,15 +376,16 @@ Damit alle Einstellungsfenster gleich aussehen, gelten diese Maße. Quelle: `For
 - Nach jeder Änderung kurz notieren, was der Mitarbeiter im Spiel prüfen soll
 
 ## 14. Bekannte Wechselwirkungen
-- **Erfahrungs- und Rufleiste gehören ForeverXP** (seit 0.44b): ForeverBars hat die Leisten "xp" und "rep" nicht mehr
-  (Stand davor: Git-Markierung `snapshot-vor-xp-rep-umbau`). ForeverXP macht Blizzards Behälter unsichtbar (Alpha 0)
-  und legt seinen Erfahrungsbalken (`ForeverXP.lua`) bzw. die schmalere Ruf-Leiste (`Reputation.lua`) an deren Stelle.
-  Nur der Behälter wird unsichtbar, der gerade Erfahrung (`shownBarIndex == StatusTrackingBarInfo.BarsEnum.Experience`,
-  neu verteilt per Hook auf `ApplyPendingBarToShow`) bzw. – solange die Ruf-Leiste läuft – Ruf (`BarsEnum.Reputation`)
-  zeigt; nie den ganzen `StatusTrackingBarManager`. Die Ruf-Leiste hängt am Erfahrungsbalken (`ForeverXPBar`; darunter,
-  wenn der oben steht, sonst darüber; ohne Erfahrungsbalken nimmt sie dessen Platz) und teilt Breite, Textur und Schrift.
-  Alte Bearbeitungsmodus-Layouts, die noch an `ForeverBars_xp`/`ForeverBars_rep` hängen, bedient der Hub mit
-  Platzhaltern (`EDITMODE_ANCHORS`, `always = true`)
+- **Erfahrungs- und Rufleiste sind Leisten von ForeverBars** (seit 0.44b; das Addon ForeverXP ist darin aufgegangen,
+  Stand davor: Git-Markierung `snapshot-vor-xp-rep-umbau` bzw. `..\_Forever-Beiseite\ForeverXP-vor-Integration`).
+  `Status.lua` baut den Inhalt (`kind = "status"`: Füllung, Zehntel-Striche, drei Textzonen mit Ruhe-/Maus-drüber-Fassung,
+  Tooltip); Halter, Verschieben, Einrasten, Sichtbarkeit, Profile kommen aus Bars.lua wie bei den Aktionsleisten. Standard:
+  genauso breit wie Aktionsleiste 1 (`ns.ActionBarWidth()`, `width = nil`), ganz unten (Erfahrung unten, Ruf darüber),
+  alle anderen Leisten beginnen darüber (`DefaultPosition`, Layout-Version 19). Blizzards Behälter werden nur unsichtbar
+  (Alpha), und zwar der, der gerade Erfahrung (`shownBarIndex == StatusTrackingBarInfo.BarsEnum.Experience`) bzw. Ruf
+  (`BarsEnum.Reputation`) zeigt, solange die eigene Leiste an ist (Hook auf `ApplyPendingBarToShow` verteilt neu) – nie
+  den ganzen `StatusTrackingBarManager`. Spielzeit pro Level liegt weiter in `ForeverXPCharDB`. Layouts im Bearbeitungsmodus,
+  die an `ForeverBars_xp`/`ForeverBars_rep` hängen, finden wieder die Halter (Hub-Platzhalter nur bei ausgeschaltetem Addon)
 - **ForeverBars ↔ ForeverSpellbook**: ForeverSpellbook legt einen Klick-Knopf über den Zauberbuch-Knopf im
   Mikromenü; ForeverBars verschiebt das Mikromenü – der Knopf hängt am Mikromenü-Knopf und wandert mit.
   Mit den **eigenen Menüknöpfen** von ForeverBars (Standard) sind die eigenen Knöpfe nur Optik; Blizzards echte
@@ -432,7 +433,7 @@ Damit alle Einstellungsfenster gleich aussehen, gelten diese Maße. Quelle: `For
   Ist das Addon ausgeschaltet (z. B. über den Hub), legt der Hub für die Namen in `EDITMODE_ANCHORS` unsichtbare
   Platzhalter an Blizzards Standardstelle an – neue Halter-Rahmen, an die Blizzard-Elemente gehängt werden, dort eintragen
 - **ForeverBars Proc-Leuchten**: blendet Blizzards Leuchten per `SetAlpha(0)` aus einem `hooksecurefunc` heraus aus
-  (taint-frei, gleiches Verfahren wie ForeverXP/ForeverCast)
+  (taint-frei, gleiches Verfahren wie ForeverCast)
 - **ForeverQuests**: ersetzt den Blizzard-Questtracker
 - **ForeverChat ↔ Blizzard-Chat**: Der Chat ist im Forever-Client besonders geschützt (Nachrichten können im Kampf
   gesperrt sein, `AddMessage` läuft über `ScrollingMessageFrameSecureMixin`). Deshalb gilt für Chat-Code:

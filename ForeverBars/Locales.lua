@@ -16,7 +16,7 @@ local STRINGS = {
         BAR_5 = "Aktionsleiste 5", BAR_6 = "Aktionsleiste 6", BAR_7 = "Aktionsleiste 7", BAR_8 = "Aktionsleiste 8",
         BAR_PET = "Begleiterleiste", BAR_STANCE = "Haltungsleiste", BAR_MICRO = "Menüleiste",
         BAR_BAGS = "Taschenleiste", BAR_VEHICLE = "Fahrzeug verlassen",
-        BAR_QUEUE = "Warteschlangen-Auge",
+        BAR_QUEUE = "Warteschlangen-Auge", BAR_XP = "Erfahrungsleiste", BAR_REP = "Rufleiste",
         BAR_PROF = "Berufeleiste",
 
         -- Menü: Suche, Profile, neue Darstellungs-Einstellungen
@@ -171,7 +171,7 @@ BAR_COLLAPSE = "Leiste einklappen", BAR_EXPAND = "Leiste ausklappen",
         BAR_5 = "Action bar 5", BAR_6 = "Action bar 6", BAR_7 = "Action bar 7", BAR_8 = "Action bar 8",
         BAR_PET = "Pet bar", BAR_STANCE = "Stance bar", BAR_MICRO = "Micro menu",
         BAR_BAGS = "Bag bar", BAR_VEHICLE = "Leave vehicle",
-        BAR_QUEUE = "Queue status eye",
+        BAR_QUEUE = "Queue status eye", BAR_XP = "Experience bar", BAR_REP = "Reputation bar",
         BAR_PROF = "Professions bar",
 
         SEARCH_PLACEHOLDER = "Search settings …", SEARCH_NONE = "Nothing found",

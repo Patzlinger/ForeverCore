@@ -51,6 +51,9 @@ ns.BAR_DEFS = {
       bagButtons = { "MainMenuBarBackpackButton", "CharacterBag0Slot", "CharacterBag1Slot", "CharacterBag2Slot",
                      "CharacterBag3Slot", "CharacterReagentBag0Slot" } },
     { key = "vehicle", textKey = "BAR_VEHICLE", kind = "single", frames = { "MainMenuBarVehicleLeaveButton" } },
+    -- Erfahrung und Ruf: eigene Leisten (Status.lua), unter Aktionsleiste 1; seit 0.44b statt des Addons ForeverXP
+    { key = "xp", textKey = "BAR_XP", kind = "status" },
+    { key = "rep", textKey = "BAR_REP", kind = "status" },
     -- Warteschlangen-Auge (Gruppensuche, Schlachtfeld); Blizzard setzt es mit UpdatePosition gern zurück
     { key = "queue", textKey = "BAR_QUEUE", kind = "single", frames = { "QueueStatusButton" },
       hookMethods = { "UpdatePosition" }, minSize = 45 },
@@ -95,6 +98,7 @@ ns.defaults = {
         -- (Haltungsleiste: "enabled" hängt von der Klasse ab, siehe ADDON_LOADED)
         micro = BarDefaults(true), bags = BarDefaults(true), vehicle = BarDefaults(true),
         queue = BarDefaults(true),
+        xp = BarDefaults(true), rep = BarDefaults(true),
     },
     -- (Profile verwaltet seit 0.41b ForeverCore – je Charakter, siehe RegisterSettings am Ende dieser Datei)
     layoutVersion = 18,-- Stand der Standard-Anordnung (siehe MigrateLayout)
@@ -120,6 +124,7 @@ ns.defaults = {
     castVFX = true,           -- Zauber-Effekt auf den Knöpfen beim Zaubern
     showMinimapButton = true,
     minimapAngle = 200,       -- Position des Minimap-Symbols (Winkel in Grad)
+    hideStatusBlizzard = true, -- Blizzards Erfahrungs- und Rufleiste unsichtbar machen (solange die eigene Leiste an ist)
 }
 ns.defaults.bars.pet.buttons = 10
 ns.defaults.bars.stance.buttons = 10 -- Haltungsleiste zeigt immer so viele Knöpfe, wie der Charakter Haltungen hat
@@ -168,6 +173,14 @@ end
 -- Warteschlangen-Auge: standardmäßig aus (dann nicht zu sehen), eingeschaltet halb so groß
 ns.defaults.bars.queue.enabled = false
 ns.defaults.bars.queue.scale = 53
+-- Erfahrungs- und Ruf-Leiste: Größe 100 %, Breite = Aktionsleiste 1 (width = nil), Höhe in px; Infos an den Enden und Striche an
+for key, height in pairs({ xp = 18, rep = 13 }) do
+    local bar = ns.defaults.bars[key]
+    bar.scale = 100
+    bar.height = height
+    bar.barTexts = true
+    bar.barTicks = true
+end
 -- Leiste 1 macht in Fahrzeugen der Blizzard-Fahrzeugleiste Platz; die Begleiterleiste nur mit Begleiter
 ns.defaults.bars.bar1.hideVehicle = true
 ns.defaults.bars.bar1.hideOverride = true
@@ -213,12 +226,13 @@ ns.FillDefaults = FillDefaults
 --  16 (0.44b+): alles 5 % größer, Abstand 1,5, Mikromenü unter der Minimap angedockt (Anheften am Chat entfällt),
 --               Positionen der Standard-Anordnung neu berechnet
 --  17 (0.44b+): Taschenleiste doppelt so groß (160 %), Rucksack mit Blizzards Symbol
+--  19 (0.44b+): Erfahrungs- und Ruf-Leiste unter Aktionsleiste 1 (statt Addon ForeverXP), alle Leisten rücken nach oben
 --  18 (0.44b+): Aktionsleisten-Größe neu gezählt (105 % heißen jetzt 100 %), Symbol-Zuschnitt 4 %, Taschenleiste aus
-local LAYOUT_VERSION = 18
+local LAYOUT_VERSION = 19
 -- Standardgrößen vor 16 (nur Leisten, die noch darauf stehen, wachsen mit)
 local OLD_SCALES = { pet = 56, stance = 56, prof = 80, food = 80, bags = 76, queue = 50 }
 local STANDARD_LAYOUT_BARS = { "bar1", "bar2", "bar3", "bar6", "bar7", "bar8", "pet", "stance", "prof", "food",
-                               "micro", "bags", "vehicle" }
+                               "micro", "bags", "vehicle", "xp", "rep" }
 function ns.MigrateLayout(db)
     local version = db.layoutVersion or 1
     if version >= LAYOUT_VERSION then return end
@@ -288,6 +302,12 @@ function ns.MigrateLayout(db)
                         bar.perRow = ns.defaults.bars[key].perRow
                         bar.x, bar.y = nil, nil
                     end
+                end
+            end
+            if version < 19 then
+                for _, key in ipairs(STANDARD_LAYOUT_BARS) do
+                    local bar = target.bars[key]
+                    if bar then bar.x, bar.y = nil, nil end
                 end
             end
             if version < 18 then

@@ -1,7 +1,7 @@
 ## Interface: 16001
 ## Title: ForeverBars |cff8a8a8a(Beta)|r
-## Notes: Action bars in the ForeverQuests style: size, layout, visibility and key bindings
-## Notes-deDE: Aktionsleisten im Stil von ForeverQuests: Größe, Anordnung, Sichtbarkeit und Tastenbelegung
+## Notes: Action bars in the ForeverQuests style (size, layout, visibility, key bindings) with experience and reputation bars
+## Notes-deDE: Aktionsleisten im Stil von ForeverQuests (Größe, Anordnung, Sichtbarkeit, Tastenbelegung) mit Erfahrungs- und Ruf-Leiste
 ## IconTexture: Interface\AddOns\ForeverBars\Media\ForeverCore
 ## Category: Forever Core
 ## Author: flowfy
@@ -9,11 +9,13 @@
 ## Dependencies: ForeverCore
 ## Group: ForeverCore
 ## SavedVariables: ForeverBarsDB, ForeverHubDB
+## SavedVariablesPerCharacter: ForeverXPCharDB
 
 Locales.lua
 Core.lua
 Style.lua
 Bars.lua
+Status.lua
 Profiles.lua
 Minimap.lua
 Options.lua
