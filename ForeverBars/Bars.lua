@@ -2109,12 +2109,9 @@ function ns.MicroDockTarget(holder)
     local bar = _G.ForeverMinimapBar
     if bar and bar:IsShown() and bar:GetBottom() and bar:GetBottom() < map:GetBottom() then anchor = bar end
     local uiScale = UIParent:GetEffectiveScale()
-    -- Breite in Pixeln: Karte samt Rahmen und ausgeklappter Knopfleiste (wie der Tracker), sonst nur die Karte
+    -- Breite in Pixeln: Karte samt Rahmen (ohne die Knopfleiste daneben), mittig unter der Karte
     local anchorX = anchor:GetCenter() * anchor:GetEffectiveScale()
     local pixels, centerPx = (map:GetWidth() + 2) * map:GetEffectiveScale(), anchorX
-    local left, right = nil, nil
-    if _G.ForeverMinimap_GetSpan then left, right = _G.ForeverMinimap_GetSpan() end
-    if left and right then pixels, centerPx = right - left, (left + right) / 2 end
     local scale = pixels / (holder:GetWidth() * uiScale)
     local ratio = anchor:GetEffectiveScale() / uiScale
     local centerY = anchor:GetBottom() * ratio - MICRO_DOCK_GAP - holder:GetHeight() * scale / 2
