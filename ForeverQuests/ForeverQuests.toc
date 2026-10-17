@@ -7,6 +7,7 @@
 ## Author: flowfy
 ## Version: 0.41b
 ## Dependencies: ForeverCore
+## Group: ForeverCore
 ## SavedVariables: ForeverQuestsDB, ForeverHubDB
 
 Locales.lua

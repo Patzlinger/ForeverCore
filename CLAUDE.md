@@ -82,10 +82,13 @@ Philosophie, Regeln, Design und Abläufe. Wenn etwas hier nicht steht: am besteh
   ## Author: <Name>
   ## Version: 0.41b
   ## Dependencies: ForeverCore
+  ## Group: ForeverCore
   ## SavedVariables: ForeverNameDB, ForeverHubDB
 
   ... eigene Dateien ...
   ```
+  - `## Group: ForeverCore`: in Blizzards Addon-Liste eingerückt unter "Forever Core" (wie AtlasLoot); Blizzard setzt das
+    nur bei gleichem Namensanfang automatisch, deshalb ausdrücklich eintragen
   - `## Dependencies: ForeverCore`: ForeverCore lädt garantiert vorher, `ForeverHub.UI` steht ab der ersten Zeile bereit.
     **Keine eigene Kopie von `ForeverHub.lua`** mehr ins Addon legen
   - `ForeverHubDB` steht vorerst weiter in den SavedVariables jedes Addons (Übergang: so übernehmen Spieler ihre

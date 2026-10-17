@@ -9,6 +9,7 @@
 ## Author: Patzlinger
 ## X-License: MIT
 ## Dependencies: ForeverCore
+## Group: ForeverCore
 ## SavedVariables: ForeverFramesDB, ForeverHubDB
 
 Core.lua
