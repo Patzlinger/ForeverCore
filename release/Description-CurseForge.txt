@@ -44,13 +44,35 @@ Every addon needs the small base addon **ForeverCore**. It's included in the pac
 - Disappears on its own a few seconds after the result
 - Settings: /floot
 
-**ForeverXP – experience bar**
-- A slim bar in Blizzard style that takes the place of the default XP bar
-- Your level, XP per hour, time to level-up, and the XP your completed quests will give you
-- Hover over it to see mobs and quests left until level-up, plus rested XP
-- A slimmer **reputation bar** in the same style sits next to it and shows your watched faction: standing, progress, reputation per hour and the time to the next rank
-- Prefer a box? The classic style is still there
-- Settings: /fxp
+**ForeverBars – action bars, experience and reputation** *(new)*
+- Clean, flat action bars, plus pet, stance and totem bars, each with its own size, layout, fading and key bindings
+- A slim **experience bar** right below action bar 1: XP per hour, time to level-up, rested XP and the XP your completed quests will give you. Hover over it for more.
+- A slimmer **reputation bar** for your watched faction: standing, progress, reputation per hour and the time to the next rank
+- A **marker bar** with target and world markers, ready check, role poll and countdown
+- Profession bar, bag bar and a micro menu that docks right below the minimap
+- Copy the settings of one bar to another with one click
+- Settings: /fb
+
+**ForeverQuests – quest tracker** *(new)*
+- Your quests grouped by zone, with tags for class, reputation and profession quests
+- A small chest marks quests with good item rewards
+- Filters for zone, dungeon, raid, group, class, profession, reputation and more. Inside dungeons it can show only the quests for that dungeon.
+- Pin important quests to the top, and share, untrack or abandon them with a right-click
+- A searchable dungeon window with all dungeon quests
+- Settings: /fq
+
+**ForeverMinimap – a simple minimap** *(new)*
+- Round or square, with a slim bar for zone, clock and coordinates
+- Minimap buttons only show up when you need them
+- A clear tile for new mail and the dungeon finder eye right in the map
+- Settings: /fmm
+
+**ForeverBags – all bags in one window** *(new)*
+- Search, sort, free slots and your gold at a glance
+- Its own bank and guild bank windows
+- Look into the bags, bank and gold of all your characters. Item tooltips show how many of an item all your characters own.
+- Currencies in the footer, quest items marked in yellow
+- Settings: /fbags
 
 **ForeverBuffs – buffs and consumables**
 - Shows a small icon only when something is missing
@@ -67,17 +89,18 @@ Every addon needs the small base addon **ForeverCore**. It's included in the pac
 - A spending limit per visit and a gold reserve keep your wallet safe
 - Settings: /fvendor
 
-**ForeverChat – your chat, just cleaner** *(new)*
+**ForeverChat – your chat, just cleaner**
 - Keeps Blizzard's chat (whispers, channels, links and communities work as usual), with a transparent window and flat tabs
 - A small button bar right in the tab row
 - Player names in class colors with their level
 - Short channel names, clickable web links and highlighted mentions of your name
 - Instant messaging: an "IM" tab with one sub-tab per person, which blinks gold when you have unread messages
 - The input line only shows up while you're typing
+- Custom channels get their own tab, and a "+" button lets you switch or leave them
 - Copy the whole chat with one click
 - Settings: /fchat
 
-**ForeverSpellbook – compact spellbook** *(new)*
+**ForeverSpellbook – compact spellbook**
 - All your spells in tabs, with a search
 - Tells you when your bars still have a lower rank of a spell, and fixes it with one click
 - Shows what your trainer has next and what it costs
@@ -89,7 +112,9 @@ Every addon needs the small base addon **ForeverCore**. It's included in the pac
 ## Made to work together
 - **One minimap button:** with two or more Forever Core addons, their buttons are bundled into a single Forever Core button.
 - **Forever Core Hub:** type **/forever** for a list of all your Forever Core addons, with their commands and a button that takes you straight to their settings. You'll also find Forever Core in Blizzard's options (Esc » Options » AddOns) and in the addon menu at the minimap.
-- **Move everything at once:** type **/fmove** to unlock all frames together, then place them with a grid and snapping (hold Shift to move freely). Type /fmove again to lock them.
+- **A ready-made layout:** on a fresh install, everything starts in a tidy, tested arrangement.
+- **Move everything at once:** type **/fmove** to unlock all frames together, then place them with a grid. Frames snap to each other, to the minimap and to the chat (hold Shift to move freely). Type /fmove again to lock them.
+- **Details! skin:** one click in the hub gives Details! the Forever look, on a copy of your profile.
 - **Exact positions:** X/Y fields for pixel-perfect placement.
 - **Resizable windows:** drag the corner of any settings window, and the window you opened last always stays on top.
 - **Profiles per character:** one shared profile for everyone, or an own profile for any character – for all addons at once (**/forever profile**).

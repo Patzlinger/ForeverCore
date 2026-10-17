@@ -5,7 +5,11 @@ ForeverFrames
 ForeverUnits
 ForeverCast
 ForeverLoot
-# (ForeverXP ist seit 0.44b in ForeverBars aufgegangen: ForeverBars hier eintragen, sobald es freigegeben ist)
+# ForeverXP ist seit 0.44b in ForeverBars aufgegangen
+ForeverBars
+ForeverQuests
+ForeverMinimap
+ForeverBags
 ForeverBuffs
 ForeverVendor
 ForeverSpellbook

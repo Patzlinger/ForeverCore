@@ -6,6 +6,7 @@
 ## Category: Forever Core
 ## Author: flowfy
 ## Version: 0.44b
+## X-Curse-Project-ID: 1743753
 ## Dependencies: ForeverCore
 ## Group: ForeverCore
 ## SavedVariables: ForeverBagsDB, ForeverBagsData, ForeverHubDB

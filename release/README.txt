@@ -1,7 +1,7 @@
 Forever Core – für World of Warcraft: Forever (Interface 16001)
 ===============================================================
 Less clutter. More control. Just the essentials.
-Version 0.44b (Beta) · by Patzlinger · MIT License
+Version 0.44b (Beta) · by Patzlinger & flowfy · MIT License
 
 DEUTSCH
 -------
@@ -27,11 +27,17 @@ Die Addons (jedes funktioniert auch einzeln, zusammen mit ForeverCore):
   ForeverCast    Zauberleiste mit Ping, Lag-Bereich, Spell-Queue-Fenster und GCD.
                  Position per X/Y, Raster und Einrasten. /fcast
   ForeverLoot    Zeigt bei Würfel-Drops, wer Bedarf/Gier/Passen gewählt hat. /floot
-  ForeverXP      XP-Balken im Blizzard-Stil (ersetzt die Blizzard-Leiste) mit XP/Stunde, Zeit bis
-                 Level-Up, Mobs/Quests bis Level-Up und XP aus fertigen Quests – mehr bei
-                 Mouse-over. Dazu eine schmalere Ruf-Leiste für den beobachteten Ruf (Rang,
-                 Fortschritt, Ruf/Stunde, Zeit bis zum nächsten Rang). Alternativ als Kasten
-                 wie früher. Einstellungen: /fxp
+  ForeverBars    Aktionsleisten im Forever-Stil (ersetzt Blizzards Leisten): Begleiter-, Haltungs- und
+                 Totemleiste, Berufe-, Taschen- und Markierungsleiste (Ziel-/Bodenmarkierungen,
+                 Bereitschaftscheck, Rollenabfrage, Countdown), Mikromenü unter der Minimap.
+                 Dazu Erfahrungs- und Ruf-Leiste (früher ForeverXP) mit XP/Stunde, Zeit bis
+                 Level-Up, Erholung, XP aus fertigen Quests und Ruf/Stunde. /fb (XP: /fxp)
+  ForeverQuests  Questtracker statt Blizzards: nach Gebieten, Filter, angeheftete Quests,
+                 Belohnungstruhe, nur Instanz-Quests im Dungeon, Dungeonfenster. /fq
+  ForeverMinimap Schlichte Minimap (rund oder eckig) mit Leiste für Gebiet, Uhr und Koordinaten,
+                 Knöpfe nur bei Bedarf, Post-Kachel und Dungeonfinder-Auge. /fmm
+  ForeverBags    Alle Taschen in einem Fenster: Suche, Sortieren, freie Plätze, Gold, eigenes Bank-
+                 und Gildenbankfenster, Taschen/Bank/Gold aller Charaktere, Währungen. /fbags
   ForeverBuffs   Erinnert unaufdringlich an fehlende Buffs, niedrige Ränge, Essen/Trinken
                  und eigene Verbrauchsgüter – Klick aufs Symbol wirkt den Buff. /fbuffs (verschieben: /fbuffs lock)
   ForeverVendor  Händler-Helfer: verkauft Graues, repariert auf Wunsch und kauft Reagenzien,
@@ -40,7 +46,8 @@ Die Addons (jedes funktioniert auch einzeln, zusammen mit ForeverCore):
   ForeverChat    Blizzards Chat im Forever-Stil: durchsichtiges Fenster, flache Reiter, Knopfleiste
                  in der Reiterzeile, Klassenfarben und Stufen bei Namen, kurze Kanalnamen, klickbare
                  Links, Erwähnungen hervorgehoben, IM-Reiter mit einem Unterreiter je Person,
-                 Eingabezeile nur beim Schreiben, Chat kopieren. /fchat (kopieren: /fchat copy)
+                 Eingabezeile nur beim Schreiben, eigener Reiter für eigene Kanäle („+“-Knopf),
+                 Chat kopieren. /fchat (kopieren: /fchat copy)
   ForeverSpellbook  Kompaktes Zauberbuch mit Suche, Hinweis auf niedrigere Ränge in den Leisten
                  (mit Ersetzen-Knopf) und Vorschau, was beim Lehrer noch kommt. Ersetzt auf
                  Wunsch die Zauberbuch-Taste (P). /fsb
@@ -92,10 +99,17 @@ The addons (each one also works on its own, together with ForeverCore):
   ForeverCast    Cast bar with ping, lag zone, spell queue window and GCD.
                  Position via X/Y, grid and snapping. /fcast
   ForeverLoot    Shows who chose need/greed/pass on loot rolls. /floot
-  ForeverXP      Blizzard-style XP bar (replaces the Blizzard bar) with XP/hour, time to level-up,
-                 mobs/quests to level-up and XP from completed quests – more on mouse-over.
-                 Plus a slimmer reputation bar for your watched faction (standing, progress,
-                 reputation/hour, time to the next rank). Classic box style also available. Settings: /fxp
+  ForeverBars    Action bars in the Forever look (replaces Blizzard's bars): pet, stance and totem
+                 bars, profession, bag and marker bars (target/world markers, ready check, role
+                 poll, countdown), micro menu below the minimap. Plus experience and reputation
+                 bars (formerly ForeverXP) with XP/hour, time to level-up, rested XP, XP from
+                 completed quests and reputation/hour. /fb (XP: /fxp)
+  ForeverQuests  Quest tracker instead of Blizzard's: grouped by zone, filters, pinned quests,
+                 reward chest, only instance quests in dungeons, dungeon window. /fq
+  ForeverMinimap Simple minimap (round or square) with a bar for zone, clock and coordinates,
+                 buttons only when needed, mail tile and dungeon finder eye. /fmm
+  ForeverBags    All bags in one window: search, sort, free slots, gold, own bank and guild bank
+                 windows, bags/bank/gold of all characters, currencies. /fbags
   ForeverBuffs   Unobtrusive reminder for missing buffs, lower ranks, food/drink and
                  your own consumables – click an icon to cast the buff. /fbuffs (move: /fbuffs lock)
   ForeverVendor  Merchant helper: sells junk, repairs on request and restocks reagents,
@@ -104,7 +118,8 @@ The addons (each one also works on its own, together with ForeverCore):
   ForeverChat    Blizzard's chat in the Forever look: transparent window, flat tabs, button bar
                  in the tab row, class colors and levels for names, short channel names, clickable
                  links, highlighted mentions, IM tab with one sub-tab per person, input line only
-                 while typing, copy chat. /fchat (copy: /fchat copy)
+                 while typing, own tab for custom channels ("+" button), copy chat.
+                 /fchat (copy: /fchat copy)
   ForeverSpellbook  Compact spellbook with search, a note when your bars have a lower rank
                  (with a replace button) and a preview of what your trainer has next.
                  Can replace the spellbook key (P). /fsb

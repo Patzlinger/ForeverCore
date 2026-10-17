@@ -2,32 +2,60 @@
 
 ## Unreleased
 
+## 0.44b – October 18, 2026
+
+### Four new addons
+- **ForeverBars – action bars in the Forever look.** Replaces Blizzard's action bars with clean, flat bars.
+  - Action bars, pet bar, stance bar and a totem bar for Shamans, each with its own size, layout, visibility, fading and key bindings (/fb)
+  - Copy the settings of one action bar to another with one click (its position stays)
+  - **Experience and reputation bars** (formerly ForeverXP): slim bars with a fine gold border, as wide as action bar 1 and right below it. XP per hour, time to level-up, rested XP and the XP your completed quests will give you. The reputation bar shows your watched faction with standing, progress, reputation per hour and the time to the next rank. Hover for more, click the reputation bar to open the reputation panel. Settings: /fb (or /fxp)
+  - **Marker bar:** target and world markers in a 3×3 grid, plus ready check, role poll and countdown, all with their own key bindings
+  - Profession bar, a bag bar and a micro menu that docks right below the minimap
+  - The profession and marker bars fold into a small arrow button when you need the space
+  - Leaves your bars alone if you use Bartender4
+- **ForeverQuests – a quest tracker that fits.** Replaces Blizzard's quest tracker.
+  - Quests grouped by zone, with class/reputation/profession tags and a small chest for good item rewards
+  - Filters (zone, dungeon, raid, group, class, profession, reputation, ready to turn in, pinned …) and "only instance quests" inside dungeons
+  - Pin your important quests to the top. Right-click a quest to share, untrack or abandon it.
+  - A dungeon window with all dungeon quests, searchable
+  - Sits right below the minimap and is just as wide by default
+  - Settings: /fq
+- **ForeverMinimap – a simple minimap.** Round or square, with a slim bar for zone, clock and coordinates.
+  - Your minimap buttons only show up when you need them
+  - New mail appears as a tile in the corner between the button strip and the micro menu
+  - The dungeon finder eye sits in the bottom right corner of the map, only while you're queued
+  - Settings: /fmm
+- **ForeverBags – all your bags in one window.**
+  - Search, sort, free slots and your gold at a glance
+  - Its own bank and guild bank windows
+  - See the bags, bank and gold of all your characters. Item tooltips show how many of an item all your characters have.
+  - Currencies in the footer (right-click to pick them), quest items marked in yellow, reagent bags with a colored border
+  - Opens at your mouse, or next to the ForeverVendor window at a merchant
+  - Settings: /fbags
+
 ### New
-- **ForeverChat: a "+" button for your custom channels.** As soon as you are in a custom channel, a "+" button appears right next to the General and Combat Log tabs. Click it to pick a channel (the input line then writes to it and the channel is shown in the chat window you have selected) or to leave it. The menu also lists all your chat windows, so you can switch even if Blizzard's overflow arrow hides tabs. You can turn the button off in the ForeverChat settings.
-- **ForeverUnits: optional "Forever" skin (test).** In the Look tab you can switch the unit frames to the style of the Forever windows: flat bars, a slim grey border with a gold edge on top and a dark name band with a fine gold line. Class and reaction colors, texts and all functions stay exactly as they are, and you can switch back to the default look any time.
-- **ForeverXP is now part of ForeverBars – one addon for your bars, experience and reputation.** The experience bar and a new, slimmer **reputation bar** are bars like your action bars: you can move them (unlock, drag), they snap to the other bars, you can show or hide them, fade them out, and save them in profiles. By default both are as wide as action bar 1 and sit right below it (the action bars moved up a bit). The reputation bar shows the faction you are watching – name and standing, progress, how much is left, the reputation earned this session, reputation per hour and the time until the next rank. Mouse-over still shows more info on the bar and a detailed tooltip; click the reputation bar to open the reputation panel. Blizzard's own bars are hidden while yours are on. Settings: /fb (or /fxp).
-- **Snapping for every frame:** all movable Forever Core frames (unit frames, party frames, cast bar, XP bar, buffs, loot window, vendor icon, quest tracker and your action bars) now snap to each other, to the minimap, to the main chat, to the screen center and to the grid while you drag them. Yellow guide lines show where it snaps.
-- Hold **Shift** while dragging to move freely. To turn snapping off for good, untick "Snap while moving" in the hub (/forever) or type **/fmove snap**.
-- **ForeverFrames – separate settings for party and raid:** at the top of the settings (/ff) you choose "Party" or "Raid", and every tab below then sets up only those frames – size, layout, position, look, texts, icons, buffs and debuffs. The frames switch automatically when you join or leave a raid. Your raid settings start as a copy of your current ones. While the settings are open, the frames (and test mode) show the tab you picked. Lock, grid, snapping, click casting, own buff lists and the Blizzard frame options stay shared.
-
-### Fixed
-- ForeverChat settings: options no longer overlap each other (e.g. "Input box in Forever style" and "only while typing").
-
-## 0.44b – October 17, 2026
-
-### New
-- **A ready-made layout out of the box:** on a fresh install, all frames, bars and windows now start in a tidy, tested arrangement – unit frames and party frames around the screen center, cast bar below, buffs at the top, the XP bar at the top center, loot and vendor windows off to the side. Already moved something yourself? Your positions stay exactly where they are.
-- **Details! in the Forever look:** one click in the hub (/forever) gives Details! a matching skin – a title bar like the Forever windows and a see-through body in the color of your chat. It creates a copy of your Details profile named "Forever Core", so your own profile stays untouched, and a second click switches back. A new copy also puts the window in the bottom right corner.
-- **ForeverXP – choose where the bar sits:** at Blizzard's spot (automatic length), top center, bottom center or anywhere you like. Dragging the bar switches to "free" by itself.
+- **A ready-made layout out of the box:** on a fresh install, all frames, bars and windows start in a tidy, tested arrangement. Already moved something yourself? Your positions stay exactly where they are.
+- **Snapping for every frame:** all movable Forever Core frames (unit frames, party frames, cast bar, bars, buffs, loot window, vendor icon, quest tracker) now snap to each other, to the minimap, to the main chat, to the screen center and to the grid while you drag them. Yellow guide lines show where it snaps. Hold **Shift** to move freely. To turn snapping off for good, untick "Snap while moving" in the hub (/forever) or type **/fmove snap**.
+- **Details! in the Forever look:** one click in the hub (/forever) gives Details! a matching skin. It creates a copy of your Details profile named "Forever Core", so your own profile stays untouched, and a second click switches back.
+- **ForeverChat: a tab for your custom channels.** Join a custom channel and a "+" button appears next to the General and Combat Log tabs. Pick a channel there and it gets its own tab ("# Name") right behind them. "Channel 5 · Name" at the top of the window shows where you are, and the input line writes to that channel. Switch to another channel with the "+" any time. Right-click the tab for the usual chat window menu, plus "Leave channel". Blizzard's overflow arrow is gone, and the "+" menu lists all your chat windows instead.
+- **ForeverFrames – separate settings for party and raid:** at the top of the settings (/ff) choose "Party" or "Raid", and every tab below sets up only those frames. The frames switch automatically when you join or leave a raid.
+- **ForeverUnits: optional "Forever" skin (test).** In the Look tab you can give the unit frames the style of the Forever windows: flat bars, a slim border with a gold edge and a dark name band. Class colors, texts and all functions stay exactly as they are.
 
 ### Improved
-- ForeverChat: all buttons now sit in the tab row and are easier to see. The tabs are as tall as the buttons, and the default text size is 17 (set once – your own choice wins afterwards).
-- ForeverChat: the "Text to speech" button is optional (off by default). "Jump to the end" is gone, since Blizzard's arrow below the scrollbar already does that.
-- ForeverSpellbook: trainer lists now check your real spellbook, so spells you already know (e.g. a teleport) no longer show up as missing. Every trainer you visit gets its own tab, and the class trainer is never replaced.
-- ForeverUnits: level colors follow the classic experience rules – mobs that still give you experience show green instead of gray.
+- ForeverFrames: the ready check now shows reliably on every frame, as a check mark or a cross right before the name. Players who didn't answer get a cross when the check ends. You can move it back to its own spot in the settings.
+- ForeverChat: all buttons now sit in the tab row and are easier to see. The default text size is 17 (set once, your own choice wins afterwards). "Text to speech" is optional (off by default).
+- ForeverSpellbook: trainer lists check your real spellbook, so spells you already know no longer show up as missing. Every trainer you visit gets its own tab.
+- ForeverUnits: level colors follow the classic experience rules. Mobs that still give you experience show green instead of gray.
 
 ### Fixed
+- ForeverChat: the settings no longer overlap each other.
 - ForeverChat: the button bar could go missing with an error ("compare number with nil").
+- Blizzard's XP and reputation bars no longer show up after a reload.
+- The quest tracker no longer moves when you open and close Edit Mode.
+- Bars you moved yourself no longer jump back to their old spot.
+
+### Good to know
+- **ForeverXP is now part of ForeverBars.** If you used ForeverXP, you can delete its folder. Your XP data is taken over.
 
 ## 0.41b – October 17, 2026
 
