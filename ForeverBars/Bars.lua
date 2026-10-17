@@ -460,7 +460,7 @@ local MICRO_ICONS = {
     SpellbookMicroButton = "Spells", TalentMicroButton = "Talents", AchievementMicroButton = "Achievements",
     QuestLogMicroButton = "Quests", GuildMicroButton = "Guild", SocialsMicroButton = "Social", LFDMicroButton = "Group",
     LFGMicroButton = "Group", PVPMicroButton = "PvP", CollectionsMicroButton = "Collections", EJMicroButton = "Journal",
-    WorldMapMicroButton = "Map", StoreMicroButton = "Shop", MainMenuMicroButton = "Menu", HelpMicroButton = "Help",
+    WorldMapMicroButton = "Map", StoreMicroButton = "Compass", MainMenuMicroButton = "Menu", HelpMicroButton = "Help",
     HousingMicroButton = "Housing",
 }
 
@@ -545,6 +545,34 @@ local function OverlayBlizzardButton(blizzard, own, holder)
     Place(blizzard)
 end
 
+-- Zusätzlicher Knopf am Ende: Interface neu laden (wie /reload)
+local function GetReloadButton(holder)
+    local button = _G.ForeverBarsMicroReload
+    if button then return button end
+    button = CreateFrame("Button", "ForeverBarsMicroReload", holder, "BackdropTemplate")
+    button:SetSize(MICRO_HEIGHT, MICRO_HEIGHT)
+    button:RegisterForClicks("AnyUp")
+    ns.Style.SetFlat(button, COLOR.button)
+    button.icon = button:CreateTexture(nil, "ARTWORK")
+    button.icon:SetSize(MICRO_ICON, MICRO_ICON)
+    button.icon:SetPoint("CENTER")
+    button.icon:SetTexture(MICRO_ICON_PATH .. "Reload")
+    button:SetScript("OnClick", function() ReloadUI() end)
+    button:SetScript("OnEnter", function(self)
+        SetMicroHover(self, true)
+        local tip = ns.Style.GetTooltip()
+        tip:SetOwner(self, "ANCHOR_TOP")
+        tip:AddLine(L("MICRO_RELOAD_UI"), 1, 0.82, 0)
+        tip:AddLine("/reload", 0.9, 0.9, 0.9)
+        tip:Show()
+    end)
+    button:SetScript("OnLeave", function(self)
+        SetMicroHover(self, false)
+        ns.Style.GetTooltip():Hide()
+    end)
+    return button
+end
+
 -- Eigene Knöpfe anordnen (nur außerhalb des Kampfes); "Knöpfe pro Reihe" bricht um, "Abstand" wie bei Leisten
 local function LayoutOwnMicro(def, cfg, holder)
     local buttons = BlizzardMicroButtons() -- vor dem Ablegen merken (siehe oben)
@@ -578,6 +606,15 @@ local function LayoutOwnMicro(def, cfg, holder)
         local own = _G["ForeverBarsMicroButton" .. index]
         if own then own:Hide() end
     end
+    -- Am Ende: Interface neu laden (bricht wie die anderen nach "Knöpfe pro Reihe" um)
+    local reload = GetReloadButton(holder)
+    if used > 0 and used % perRow == 0 then x, y = 0, y - MICRO_HEIGHT - gap end
+    reload:SetParent(holder)
+    reload:ClearAllPoints()
+    reload:SetPoint("TOPLEFT", holder, "TOPLEFT", x, y)
+    reload:Show()
+    SetMicroHover(reload, false)
+    width = math.max(width, x + MICRO_HEIGHT)
     holder:SetSize(math.max(1, width), math.max(MICRO_HEIGHT, -y + MICRO_HEIGHT))
 end
 
@@ -585,6 +622,7 @@ end
 -- (sie liegen bis dahin unsichtbar über den ausgeblendeten Knöpfen)
 local function HideOwnMicro()
     local wasOwn = false
+    if _G.ForeverBarsMicroReload then _G.ForeverBarsMicroReload:Hide() end
     for index = 1, MICRO_MAX do
         local own = _G["ForeverBarsMicroButton" .. index]
         if own then
