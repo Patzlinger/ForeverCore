@@ -125,11 +125,20 @@ local ZONE_COLORS = {
     hostile = { 1, 0.10, 0.10 }, contested = { 1, 0.70, 0 }, combat = { 1, 0.10, 0.10 },
 }
 
+-- PvP-Art des Gebiets: Retail/Forever C_PvP.GetZonePVPInfo, aeltere Clients GetZonePVPInfo
+local function ZonePVP()
+    local fn = (C_PvP and C_PvP.GetZonePVPInfo) or _G.GetZonePVPInfo
+    if not fn then return nil end
+    local ok, pvp, isArena, faction = pcall(fn)
+    if not ok then return nil end
+    return pvp, isArena, faction
+end
+
 local function UpdateZone()
     if not bar then return end
     local d = DB()
     local text = GetMinimapZoneText and GetMinimapZoneText() or ""
-    local pvp = GetZonePVPInfo and GetZonePVPInfo()
+    local pvp = ZonePVP()
     local col = ZONE_COLORS[pvp or ""] or C.accent
     bar.zone:SetTextColor(col[1], col[2], col[3])
     local suffix = ""
@@ -192,7 +201,7 @@ local function ZoneTooltip(self)
     GameTooltip:AddLine(GetZoneText and GetZoneText() or "", 1, 1, 1)
     local sub = GetSubZoneText and GetSubZoneText() or ""
     if sub ~= "" then GameTooltip:AddLine(sub, 0.85, 0.85, 0.85) end
-    local pvp, _, faction = GetZonePVPInfo()
+    local pvp, _, faction = ZonePVP()
     local labels = {
         sanctuary = T("Zuflucht (kein PvP)", "Sanctuary (no PvP)"),
         friendly = faction and string.format(T("Freundlich (%s)", "Friendly (%s)"), faction) or T("Freundlich", "Friendly"),
