@@ -20,7 +20,8 @@ local DEFAULTS = {
     style = "bar",         -- "bar": Querbalken im Blizzard-Stil (Details bei Mouse-over) | "box": Kasten mit Zeilen
     locked = true,
     combatFade = false,    -- im Kampf durchsichtig (standardmaessig aus: Anzeige bleibt voll sichtbar)
-    barAuto = true,        -- an Blizzards Platz, Laenge automatisch (aus = eigene Position und Groesse)
+    barAuto = true,        -- an Blizzards Platz, Laenge automatisch (aus = eigene Position und Groesse); folgt barPlace
+    barPlace = "BLIZZARD", -- "BLIZZARD" (an Blizzards Platz), "TOP" (oben mittig), "BOTTOM" (unten mittig), "FREE" (frei)
     barWidth = 1024,       -- eigene Breite (px)
     barHeight = 16,        -- eigene Hoehe inkl. Rand (px)
     barHeightScale = 85,   -- an Blizzards Platz: Hoehe in % von Blizzards Leiste
@@ -481,7 +482,7 @@ barLabel:Hide()
 local BLIZZ_BARS = { "MainMenuExpBar", "MainStatusTrackingBarContainer", "StatusTrackingBarManager" }
 local blizzBar -- die gefundene Blizzard-Leiste, ueber der unser Balken liegt
 local function Overlaying()
-    return blizzBar ~= nil and IsBar() and GetDB().barAuto
+    return blizzBar ~= nil and IsBar() and GetDB().barPlace == "BLIZZARD"
 end
 
 -- Striche passend zur tatsaechlichen Breite (die Breite kann von Blizzards Leiste kommen)
@@ -503,12 +504,17 @@ bar:SetScript("OnSizeChanged", function()
     if ApplyLook then ApplyLook() end
 end)
 
--- Position: an Blizzards Platz – oder eigene Position (Mitte relativ zur Bildschirmmitte)
+-- Position: an Blizzards Platz, oben mittig, unten mittig – oder frei (Mitte relativ zur Bildschirmmitte)
 local function RestoreBarPosition()
-    local pos = GetDB().barPos
+    local d = GetDB()
+    local pos = d.barPos
     bar:ClearAllPoints()
     if Overlaying() then
         bar:SetPoint("CENTER", blizzBar, "CENTER", 0, 0)
+    elseif d.barPlace == "TOP" then
+        bar:SetPoint("TOP", UIParent, "TOP", 0, -4)
+    elseif d.barPlace == "BOTTOM" then
+        bar:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 4)
     elseif pos then
         bar:SetPoint("CENTER", UIParent, "CENTER", pos[1], pos[2])
     else
@@ -600,12 +606,13 @@ end
 local OnBarMoved -- Einstellungsfenster: X/Y nachziehen
 local function SetBarPosition(x, y)
     local d = GetDB()
-    if d.barAuto then
+    if d.barPlace == "BLIZZARD" then
         -- vom Blizzard-Platz geloest: bisherige Groesse als eigene Groesse uebernehmen
         d.barWidth = math.floor(bar:GetWidth() + 0.5)
         d.barHeight = math.floor(bar:GetHeight() + 0.5)
-        d.barAuto = false
     end
+    -- selbst gezogen bzw. X/Y eingegeben: ab jetzt frei
+    d.barPlace, d.barAuto = "FREE", false
     d.barPos = { UI.Round(x), UI.Round(y) }
     RestoreBarPosition()
     LayoutBar()
@@ -1197,15 +1204,24 @@ Check(L - 4, -112, T("Gesperrt (entsperrt: ziehen zum Verschieben)", "Locked (un
 KeyCheck(L - 4, -136, T("Im Kampf durchsichtig", "Transparent in combat"), "combatFade")
 
 UI.Header(options, L, -176, T("Balken", "Bar"), 312)
-KeyCheck(L - 4, -198, T("An Blizzards Platz (Länge automatisch)", "At Blizzard's spot (automatic length)"), "barAuto")
+Choice(L, -194, T("Position", "Position"), {
+    { key = "BLIZZARD", label = T("An Blizzards Platz", "At Blizzard's spot") },
+    { key = "TOP", label = T("Oben mittig", "Top center") },
+    { key = "BOTTOM", label = T("Unten mittig", "Bottom center") },
+    { key = "FREE", label = T("Frei verschiebbar", "Free to move") },
+}, "barPlace", function()
+    local d = GetDB()
+    d.barAuto = d.barPlace == "BLIZZARD"
+    if OnBarMoved then OnBarMoved() end
+end)
 Slider(L + 2, -228, T("Höhe an Blizzards Platz", "Height at Blizzard's spot"), "barHeightScale", 50, 150, 1, { width = 190, unit = " %" })
 Slider(L + 2, -268, T("Eigene Breite", "Own width"), "barWidth", 100, 2560, 10, { width = 190, unit = " px" })
 Slider(L + 2, -308, T("Eigene Höhe", "Own height"), "barHeight", 8, 48, 1, { width = 190, unit = " px" })
 KeyCheck(L - 4, -348, T("Infos an den Enden", "Info at the ends"), "barTexts")
 KeyCheck(L - 4, -372, T("Zehntel-Striche", "Tenth markers"), "barTicks")
 KeyCheck(L - 4, -396, T("Blizzard-Erfahrungsleiste ersetzen", "Replace the Blizzard XP bar"), "hideBlizzard")
-UI.Hint(options, L + 2, -420, 300, T("Eigene Breite/Höhe gelten, wenn \"An Blizzards Platz\" aus ist – das passiert auch automatisch beim Verschieben.",
-    "Own width/height apply when \"At Blizzard's spot\" is off – this also happens automatically when you move the bar."))
+UI.Hint(options, L + 2, -420, 300, T("An Blizzards Platz passt sich die Länge an. Oben, unten und frei gelten eigene Breite und Höhe. Ziehen (entsperrt) stellt auf \"Frei\".",
+    "At Blizzard's spot the length adapts. Top, bottom and free use your own width and height. Dragging (unlocked) switches to \"Free\"."))
 
 UI.Header(options, L, -466, T("Position (X/Y ab Bildschirmmitte)", "Position (X/Y from screen center)"), 312)
 local function PosGet(i) return function() return select(i, UI.CenterOffset(bar)) end end
@@ -1244,7 +1260,7 @@ UI.Hint(options, R + 2, -296, 290, T("Im Kasten stehen die Infos wie früher in 
 UI.Header(options, R, -336, T("Werkzeuge", "Tools"), 296)
 local resetPos = UI.Button(options, T("Position zurücksetzen", "Reset position"), 160, function()
     local d = GetDB()
-    d.barPos, d.barAuto = nil, true
+    d.barPos, d.barAuto, d.barPlace = nil, true, "BLIZZARD"
     Refresh()
     if OnBarMoved then OnBarMoved() end
 end)
@@ -1399,4 +1415,10 @@ end
 ---------------------------------------------------------------------------
 -- Gemeinsame Einstellungs-Verwaltung (ForeverCore): Profile je Charakter, Zuruecksetzen, Export/Import
 ---------------------------------------------------------------------------
-UI.RegisterSettings({ addon = "ForeverXP", sv = "ForeverXPDB", defaults = DEFAULTS, version = 1 })
+UI.RegisterSettings({ addon = "ForeverXP", sv = "ForeverXPDB", defaults = DEFAULTS, version = 2,
+    -- Version 2: statt "An Blizzards Platz" ja/nein eine Auswahl (Blizzard, oben, unten, frei)
+    migrate = function(data, from)
+        if from < 2 and data.barPlace == nil then
+            data.barPlace = (data.barAuto == false) and "FREE" or "BLIZZARD"
+        end
+    end })
