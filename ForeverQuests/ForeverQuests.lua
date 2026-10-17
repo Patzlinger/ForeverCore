@@ -19,7 +19,7 @@ ns.FONTS = {
 ns.defaults = {
     version = 1,
     width = 260,
-    height = 480,
+    height = 528,
     -- x/y = nil bedeutet: Standardposition am rechten Bildschirmrand
     followMinimap = true, -- mit ForeverMinimap: direkt darunter und gleich breit (aus, sobald man den Tracker selbst zieht)
     hideBlizzard = true,
@@ -80,10 +80,10 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
         -- Nochmals ergänzen: ForeverCore schreibt beim Laden das Profil in dieselbe Tabelle; lief das nach uns
         -- (z. B. nach "Zurücksetzen"), fehlten sonst alle Werte
         FillDefaults()
-        -- Einmalig: Tracker 20 % höher (Standard 400 -> 480), wenn die Höhe noch auf dem alten Standard steht
-        if (ns.db.layoutVersion or 1) < 2 then
-            if ns.db.height == 400 then ns.db.height = ns.defaults.height end
-            ns.db.layoutVersion = 2
+        -- Einmalig: Tracker höher (Standard 400 -> 480 -> 528), wenn die Höhe noch auf einem alten Standard steht
+        if (ns.db.layoutVersion or 1) < 3 then
+            if ns.db.height == 400 or ns.db.height == 480 then ns.db.height = ns.defaults.height end
+            ns.db.layoutVersion = 3
         end
         if ns.ApplyBetaFilter then ns.ApplyBetaFilter() end
         ns.CreateTracker()
