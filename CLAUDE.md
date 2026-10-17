@@ -368,7 +368,10 @@ Damit alle Einstellungsfenster gleich aussehen, gelten diese Maße. Quelle: `For
   verweist im Menü mit einem Knopf auf `/fxp`. Position, Größe und Sichtbarkeit stellt man nur in ForeverXP ein
   (Standard "An Blizzards Platz" = oben mittig)
 - **ForeverBars ↔ ForeverSpellbook**: ForeverSpellbook legt einen Klick-Knopf über den Zauberbuch-Knopf im
-  Mikromenü; ForeverBars verschiebt das Mikromenü – der Knopf hängt am Mikromenü-Knopf und wandert mit
+  Mikromenü; ForeverBars verschiebt das Mikromenü – der Knopf hängt am Mikromenü-Knopf und wandert mit.
+  Mit den **eigenen Menüknöpfen** von ForeverBars (Standard) liegt Blizzards Mikromenü unsichtbar im Ablageort; jeder
+  eigene Knopf ist ein geschützter Klick-Knopf (`type = "click"`), der den Blizzard-Menüknopf drückt. Der
+  Zauberbuch-Knopf drückt dabei `ForeverSpellbookToggle`, wenn ForeverSpellbook geladen ist (Name nicht ändern)
 - **ForeverBars ↔ Bartender4**: läuft Bartender4, lässt ForeverBars die Leisten in Ruhe
 - **ForeverBars ↔ Bearbeitungsmodus**: öffnet der Spieler Blizzards Bearbeitungsmodus, entsperrt ForeverBars seine
   Leisten (Blizzard kann sie nicht greifen) und sperrt sie beim Schließen wieder. Laut flowfy lösen Hooks/Callbacks
