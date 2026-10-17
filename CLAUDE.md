@@ -20,6 +20,7 @@ Philosophie, Regeln, Design und Abläufe. Wenn etwas hier nicht steht: am besteh
 | ForeverFrames, ForeverUnits, ForeverCast, ForeverLoot, ForeverXP, ForeverBuffs, ForeverVendor | Patzlinger | im Release |
 | ForeverSpellbook | Patzlinger | im Release (seit 0.32b) |
 | ForeverChat | Patzlinger | im Release (seit 0.32b) |
+| ForeverCore (Hauptaddon: nur `ForeverHub.lua`, hält den Hub am Leben) | gemeinsam | neu, noch nicht im Release |
 | ForeverQuests | flowfy | im Repository, noch nicht im Release |
 | ForeverBars | flowfy | im Repository, noch nicht im Release |
 | `Shared/ForeverHub.lua`, `tools/`, `release/` | gemeinsam | – |
@@ -108,7 +109,14 @@ Philosophie, Regeln, Design und Abläufe. Wenn etwas hier nicht steht: am besteh
      Forever-Core-Knopf gesammelt (Klick wird an den Original-Knopf weitergereicht)
   3. **Hub-Fenster** `/forever` (`/fhub`, Ebene `HIGH`, bleibt beim Öffnen eines Addons im Hintergrund offen):
      alle installierten Forever-Addons mit Chatbefehl und "Öffnen"-Knopf ins jeweilige Menü,
-     "Alle verschieben", Minimap-Knopf ein/aus, **Sprache für alle Forever-Addons**; `/forever reset` holt Knöpfe zurück
+     "Alle verschieben", Minimap-Knopf ein/aus, **Sprache für alle Forever-Addons**; `/forever reset` holt Knöpfe zurück.
+     **Addons ein-/ausschalten** (ab v26): Häkchen je Addon, "Alle an/aus", "nur dieser Charakter"
+     (`ForeverHubDB.perCharacter`, sonst alle Charaktere) über `C_AddOns.EnableAddOn/DisableAddOn` + `SaveAddOns`;
+     wirkt erst nach "Neu laden" (kein Nachladen zur Laufzeit – Rahmen müssen beim Laden entstehen, siehe Abschnitt 14).
+     **Begrüßung**: beim allerersten Start öffnet sich das Fenster einmal (`ForeverHubDB.welcomeDone`, accountweit;
+     wird sofort beim Anzeigen gesetzt, damit es nie wieder aufpoppt). Das Hauptaddon `ForeverCore` enthält nur
+     `ForeverHub.lua` und steht nicht in `KNOWN`; es hält Hub, Optionsmenü und Addon-Menü-Eintrag am Leben,
+     wenn alle anderen aus sind. Einzelne Addons funktionieren weiter ohne ForeverCore (keine Abhängigkeit eintragen)
   4. **Gemeinsamer Verschiebe-Modus** `/fmove`: entsperrt/sperrt alle angemeldeten Addons auf einmal
   5. **Blizzard-Optionsmenü** (Esc » Optionen » Reiter "AddOns"): Eintrag "Forever Core" mit Übersicht und je
      Forever-Addon eine Unterseite mit "Einstellungen öffnen" (öffnet das eigene Fenster, Optionsmenü schließt sich).
@@ -355,7 +363,8 @@ Damit alle Einstellungsfenster gleich aussehen, gelten diese Maße. Quelle: `For
     rechts um die eigene Knopfleiste und setzt das nach `FCFDock_SetPrimary` erneut
 
 ## 15. Git-Ablauf
-- Vor dem Arbeiten: `git pull --ff-only` (bzw. `git pull --rebase`, wenn lokal schon Commits liegen)
+- Vor dem Arbeiten: `git pull --ff-only` (bzw. `git pull --rebase`, wenn lokal schon Commits liegen);
+  `tools/session-sync.ps1` erledigt das (holen, vorspulen, Stand melden) und eignet sich als SessionStart-Hook
 - Während der Arbeit am Live-Ordner (AddOns-Verknüpfung = dieses Repository) NICHT automatisch pushen
 - Fertige Änderungen lokal committen (kurze deutsche Nachricht, was und warum) ist erlaubt
 - `git push` nur auf ausdrückliches Kommando des Nutzers oder am Ende einer Session (dann kurz nachfragen bzw. ankündigen)

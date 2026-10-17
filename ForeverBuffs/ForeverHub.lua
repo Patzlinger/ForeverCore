@@ -5,7 +5,10 @@
 --  2. Sammelknopf: Sind mindestens zwei Forever-Addons aktiv, werden deren Minimap-Knoepfe
 --     ausgeblendet und in einer ausklappbaren Liste gesammelt. Klicks gehen an den Original-Knopf.
 --  3. Hub-Fenster (/forever): Liste aller Forever-Addons mit direktem Weg in ihr Menue –
---     auch ohne Minimap-Knoepfe.
+--     auch ohne Minimap-Knoepfe. Addons dort ein-/ausschalten (gilt nach dem Neuladen);
+--     beim allerersten Start oeffnet es sich einmal als Begruessung.
+--     Das Hauptaddon "ForeverCore" enthaelt nur diese Datei: so bleibt der Hub da, auch wenn alle
+--     anderen Forever-Addons aus sind.
 --  4. Eintrag "Forever Core" im Blizzard-Optionsmenue (Reiter AddOns) mit Unterseite je Addon.
 --  5. Eintrag "Forever Core" im Addon-Menue an der Minimap (falls der Client es hat).
 --
@@ -14,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 25
+local VERSION = 26
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -1651,6 +1654,10 @@ local KNOWN = {
     { name = "ForeverBoard",  button = "ForeverBoardMinimapButton" },
     { name = "ForeverNotes",  button = "ForeverNotesMinimapButton" },
 }
+-- Hauptaddon (nur der Hub, kein eigenes Menue): steht nicht in der Liste, haelt aber Hub, Optionsmenue
+-- und Addon-Menue-Eintrag am Leben, auch wenn alle anderen Forever-Addons ausgeschaltet sind
+local CORE = "ForeverCore"
+local function CoreLoaded() return C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded(CORE) end
 
 -- Einstellungen (in jedem Forever-Addon als SavedVariable "ForeverHubDB" eingetragen)
 local function GetDB()
@@ -1866,9 +1873,10 @@ events:SetScript("OnEvent", function()
 end)
 
 ---------------------------------------------------------------------------
--- 3. Hub-Fenster: alle Forever-Addons auf einen Blick, Klick oeffnet das jeweilige Menue
+-- 3. Hub-Fenster: alle Forever-Addons auf einen Blick – ein-/ausschalten und ins Menue springen
 ---------------------------------------------------------------------------
-local HUB_ROW_H = 38
+local HUB_ROW_H = 34
+local HUB_INTRO_H = 46
 local hubWindow
 
 -- Addon installiert? (auch wenn es gerade deaktiviert ist)
@@ -1890,6 +1898,32 @@ local function OpenAddon(e)
     if onClick then onClick(e.button, "LeftButton") end
 end
 
+-- Ein- und Ausschalten ueber Blizzards Addon-Verwaltung (wie die Addon-Liste) – wirkt nach dem Neuladen.
+-- Standard: fuer alle Charaktere; Einstellung "nur dieser Charakter" (ForeverHubDB.perCharacter).
+-- Gelesen wird immer der Stand des aktuellen Charakters (der zaehlt beim naechsten Laden).
+local function IsLoaded(name)
+    return C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded(name) and true or false
+end
+
+local function IsEnabled(name)
+    if not (C_AddOns and C_AddOns.GetAddOnEnableState) then return IsLoaded(name) end
+    local ok, state = pcall(C_AddOns.GetAddOnEnableState, name, UnitGUID("player"))
+    if not ok or type(state) ~= "number" then return IsLoaded(name) end
+    return state > 0
+end
+
+local function SetEnabled(name, on)
+    if not C_AddOns then return end
+    local fn = on and C_AddOns.EnableAddOn or C_AddOns.DisableAddOn
+    if not fn then return end
+    pcall(fn, name, GetDB().perCharacter and UnitGUID("player") or nil)
+    -- sofort speichern (sonst verwirft Blizzards Addon-Liste die Aenderung beim naechsten Schliessen)
+    if C_AddOns.SaveAddOns then pcall(C_AddOns.SaveAddOns) end
+end
+
+-- geaendert, aber noch nicht neu geladen?
+local function IsPending(name) return IsLoaded(name) ~= IsEnabled(name) end
+
 local function BuildHubWindow()
     local list, cmdOf = {}, {}
     for _, k in ipairs(KNOWN) do
@@ -1899,19 +1933,37 @@ local function BuildHubWindow()
         end
     end
 
-    -- Fussbereich: Sprache (nur deutscher Client), Verschieben/Minimap, Hinweis
-    local bottomH = UI.GERMAN_CLIENT and 122 or 92
-    local f = UI.Window("ForeverHubWindow", UI.NAME, 420, 26 + 12 + math.max(#list, 1) * HUB_ROW_H + bottomH)
+    -- Fussbereich: Sprache (nur deutscher Client), Ein-/Ausschalten, Verschieben/Minimap, Hinweis
+    local bottomH = UI.GERMAN_CLIENT and 156 or 124
+    local f = UI.Window("ForeverHubWindow", UI.NAME, 460,
+        26 + HUB_INTRO_H + 8 + math.max(#list, 1) * HUB_ROW_H + bottomH)
     -- eine Ebene unter den Addon-Fenstern (DIALOG): "Öffnen" laesst den Hub offen, das Addon-Fenster liegt darueber
     f:SetFrameStrata("HIGH")
     hubWindow = f
     f.rows = {}
 
+    local intro = UI.Hint(f, 16, -34, 428, "")
+    intro:SetWordWrap(true)
+
+    local reload -- Knopf "Neu laden" (weiter unten), erscheint, sobald etwas erst nach dem Neuladen gilt
+    local langChanged = false
+    local function Refresh()
+        local pending = langChanged
+        for _, row in ipairs(f.rows) do
+            row.Update()
+            if IsPending(row.name) then pending = true end
+        end
+        if reload then reload:SetShown(pending) end
+    end
+    f.Refresh = Refresh
+
+    local top = -26 - HUB_INTRO_H - 4
     for i, name in ipairs(list) do
         local row = CreateFrame("Frame", nil, f)
+        row.name = name
         row:SetHeight(HUB_ROW_H)
-        row:SetPoint("TOPLEFT", 10, -26 - 8 - (i - 1) * HUB_ROW_H)
-        row:SetPoint("TOPRIGHT", -10, -26 - 8 - (i - 1) * HUB_ROW_H)
+        row:SetPoint("TOPLEFT", 10, top - (i - 1) * HUB_ROW_H)
+        row:SetPoint("TOPRIGHT", -10, top - (i - 1) * HUB_ROW_H)
         if i > 1 then
             local sep = row:CreateTexture(nil, "ARTWORK")
             sep:SetColorTexture(1, 1, 1, 0.06)
@@ -1920,11 +1972,26 @@ local function BuildHubWindow()
             sep:SetPoint("TOPRIGHT", -4, 0)
         end
 
+        -- Haekchen = Addon aktiv
+        row.check = UI.Check(row, nil, nil, "", function(checked)
+            SetEnabled(name, checked)
+            Refresh()
+        end)
+        row.check:SetPoint("LEFT", 6, 0)
+        row.check:SetHitRectInsets(-4, -4, -4, -4)
+        row.check:HookScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:AddLine(name)
+            GameTooltip:AddLine(T("Häkchen = aktiv. Gilt nach dem Neuladen.", "Checked = active. Applies after reloading."), 1, 1, 1, true)
+            GameTooltip:Show()
+        end)
+        row.check:HookScript("OnLeave", GameTooltip_Hide)
+
         row.icon = row:CreateTexture(nil, "ARTWORK")
-        row.icon:SetSize(24, 24)
-        row.icon:SetPoint("LEFT", 4, 0)
+        row.icon:SetSize(22, 22)
+        row.icon:SetPoint("LEFT", 32, 0)
         row.label = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        row.label:SetPoint("TOPLEFT", row.icon, "TOPRIGHT", 10, 1)
+        row.label:SetPoint("TOPLEFT", row.icon, "TOPRIGHT", 10, 2)
         row.label:SetText(name)
         -- Chatbefehl des Addons als Info neben dem Namen
         if cmdOf[name] then
@@ -1950,22 +2017,30 @@ local function BuildHubWindow()
 
         function row.Update()
             local e = EntryOf(name)
-            local loaded = C_AddOns.IsAddOnLoaded(name)
+            local enabled = IsEnabled(name)
+            local pending = IsPending(name)
+            row.check:SetChecked(enabled)
             row.icon:SetTexture(e and e.icon or UI.LOGO)
             row.icon:SetDesaturated(not e)
             row.label:SetTextColor(e and 1 or 0.5, e and 0.82 or 0.5, e and 0 or 0.5)
-            row.open:SetShown(e ~= nil)
-            row.status:SetShown(e == nil)
-            row.status:SetText(loaded and T("ohne Menü", "no menu") or T("deaktiviert", "disabled"))
+            row.open:SetShown(e ~= nil and not pending)
+            row.status:SetShown(not row.open:IsShown())
+            if pending then
+                row.status:SetText(enabled and T("an nach Neuladen", "on after reload") or T("aus nach Neuladen", "off after reload"))
+                row.status:SetTextColor(C.accent[1], C.accent[2], C.accent[3])
+            else
+                row.status:SetText(IsLoaded(name) and T("ohne Menü", "no menu") or T("aus", "off"))
+                row.status:SetTextColor(0.5, 0.5, 0.5)
+            end
         end
         f.rows[i] = row
     end
 
     if #list == 0 then
-        UI.Hint(f, 16, -40, nil, T("Keine Forever-Addons gefunden.", "No Forever addons found."))
+        UI.Hint(f, 16, top - 6, nil, T("Keine Forever-Addons gefunden.", "No Forever addons found."))
     end
 
-    -- unten: alle verschieben/sperren und Minimap-Knopf
+    -- unten: Trennlinie
     local line = f:CreateTexture(nil, "ARTWORK")
     line:SetColorTexture(C.border[1], C.border[2], C.border[3], 1)
     line:SetHeight(1)
@@ -1986,23 +2061,43 @@ local function BuildHubWindow()
             return key
         end
         local langLabel = UI.Text(f, "label", T("Sprache", "Language"))
-        langLabel:SetPoint("BOTTOMLEFT", 16, 84)
+        langLabel:SetPoint("BOTTOMLEFT", 16, 118)
         lang = UI.AddArrow(UI.Button(f, "", 170))
         lang:SetPoint("LEFT", langLabel, "RIGHT", 10, 0)
-        local reload = UI.Button(f, T("Neu laden", "Reload"), 90, function() ReloadUI() end)
-        reload:SetPoint("LEFT", lang, "RIGHT", 8, 0)
-        reload:Hide()
         lang:SetScript("OnClick", function(self)
             UI.ChoiceMenu(self, LANGS, Current, function(key)
                 GetDB().language = key ~= "AUTO" and key or nil
                 self:SetText(LabelOf(Current()))
-                reload:Show()
+                langChanged = true
+                Refresh()
                 UI.Chat("Forever", T("Die Sprache gilt nach dem Neuladen für alle Forever-Addons.",
                     "The language applies to all Forever addons after reloading."))
             end)
         end)
         function lang.Load() lang:SetText(LabelOf(Current())) end
     end
+
+    -- Ein-/Ausschalten: alle an, alle aus, nur dieser Charakter, Neu laden
+    local function SetAll(on)
+        for _, name in ipairs(list) do SetEnabled(name, on) end
+        Refresh()
+        if not on and not IsInstalled(CORE) then
+            UI.Chat("Forever", T("Ohne Forever-Addons gibt es auch kein Hub-Fenster mehr – wieder einschalten dann über die Addon-Liste (Charakterauswahl).",
+                "Without Forever addons there is no hub window either – turn them back on via the addon list (character selection)."))
+        end
+    end
+    local allOn = UI.Button(f, T("Alle an", "All on"), 80, function() SetAll(true) end)
+    allOn:SetPoint("BOTTOMLEFT", 14, 82)
+    local allOff = UI.Button(f, T("Alle aus", "All off"), 80, function() SetAll(false) end)
+    allOff:SetPoint("LEFT", allOn, "RIGHT", 6, 0)
+    local perChar = UI.Check(f, nil, nil, T("nur dieser Charakter", "this character only"), function(checked)
+        GetDB().perCharacter = checked or nil
+    end)
+    perChar:SetPoint("LEFT", allOff, "RIGHT", 14, 0)
+    reload = UI.Button(f, T("Neu laden", "Reload"), 100, function() ReloadUI() end)
+    reload:SetPoint("BOTTOMRIGHT", -14, 82)
+    reload:GetFontString():SetTextColor(C.accent[1], C.accent[2], C.accent[3])
+    reload:Hide()
 
     local move = UI.Button(f, "", 150, function()
         f:Hide()
@@ -2024,17 +2119,49 @@ local function BuildHubWindow()
 
     f:SetScript("OnShow", function()
         SafeSetup() -- falls seit dem Login Addons/Knoepfe dazugekommen sind
-        for _, row in ipairs(f.rows) do row.Update() end
+        if f.welcome then
+            f.TitleText:SetText(T("Willkommen bei Forever Core", "Welcome to Forever Core"))
+            intro:SetText("|cffffd100" .. T("Wähle, welche Addons du nutzen möchtest (Häkchen) – danach „Neu laden“. ",
+                "Choose which addons you want to use (checkbox) – then \"Reload\". ") .. "|r"
+                .. T("Dieses Fenster öffnet sich nur dieses eine Mal; später findest du es mit /forever, im Addon-Menü an der Minimap oder unter Esc » Optionen » AddOns.",
+                "This window only opens this once; later you'll find it via /forever, the addon menu at the minimap or Esc » Options » AddOns."))
+        else
+            f.TitleText:SetText(UI.NAME)
+            intro:SetText(T("Häkchen = Addon aktiv. Ein- und Ausschalten gilt nach dem Neuladen. „Öffnen“ führt ins Menü des Addons.",
+                "Checked = addon active. Turning addons on or off applies after reloading. \"Open\" takes you to the addon's settings."))
+        end
+        Refresh()
         move:SetText(UI.AnyUnlocked() and T("Alle sperren", "Lock all") or T("Alle verschieben", "Move all"))
         mm:SetChecked(not GetDB().hideButton)
+        perChar:SetChecked(GetDB().perCharacter and true or false)
         if lang then lang.Load() end
     end)
+    f:HookScript("OnHide", function() f.welcome = nil end)
 end
 
 function hub.ToggleWindow()
     if not hubWindow then BuildHubWindow() end
     hubWindow:SetShown(not hubWindow:IsShown())
 end
+
+-- Begruessung: nur beim allerersten Start (ForeverHubDB.welcomeDone, gilt fuer den ganzen Account)
+function hub.ShowWelcome()
+    if not hubWindow then BuildHubWindow() end
+    hubWindow:Hide()
+    hubWindow.welcome = true
+    hubWindow:Show()
+end
+
+local function MaybeWelcome()
+    if _G.ForeverHub ~= hub or InCombatLockdown() then return end -- im Kampf: beim naechsten Laden
+    local db = GetDB()
+    if db.welcomeDone then return end
+    db.welcomeDone = true -- sofort merken: erscheint auch dann nie wieder, wenn man es einfach schliesst
+    hub.ShowWelcome()
+end
+events:HookScript("OnEvent", function(_, event)
+    if event == "PLAYER_ENTERING_WORLD" then C_Timer.After(4, function() pcall(MaybeWelcome) end) end
+end)
 
 ---------------------------------------------------------------------------
 -- 4. Blizzard-Optionsmenue (Reiter "AddOns"): Eintrag "Forever Core" mit Uebersicht und je Addon
@@ -2145,7 +2272,7 @@ end
 
 RegisterSettings = function()
     if not (Settings and Settings.RegisterCanvasLayoutCategory and Settings.RegisterAddOnCategory) then return end
-    if #entries == 0 then return end
+    if #entries == 0 and not CoreLoaded() then return end
     if not settingsCategory then
         settingsCategory = Settings.RegisterCanvasLayoutCategory(BuildOverview(), UI.NAME)
         Settings.RegisterAddOnCategory(settingsCategory)
@@ -2165,7 +2292,7 @@ end
 -- alle Rahmen verschieben/sperren. Gibt es das Menue im Client nicht, passiert nichts.
 ---------------------------------------------------------------------------
 RegisterCompartment = function()
-    if SHARED.compartment or #entries == 0 then return end
+    if SHARED.compartment or (#entries == 0 and not CoreLoaded()) then return end
     local menu = _G.AddonCompartmentFrame
     if not (menu and menu.RegisterAddon) then return end
     SHARED.compartment = true

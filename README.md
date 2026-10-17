@@ -10,6 +10,7 @@ Autoren: Patzlinger, flowfy · CurseForge-Projekt 1743753
 | ForeverFrames, ForeverUnits, ForeverCast, ForeverLoot, ForeverXP, ForeverBuffs, ForeverVendor | Patzlinger | im Release (MIT) |
 | ForeverSpellbook, ForeverChat | Patzlinger | im Release (seit 0.32b) |
 | ForeverQuests, ForeverBars | flowfy | im Repository, noch nicht im Release |
+| ForeverCore (Hauptaddon, nur der Hub) | gemeinsam | neu, noch nicht im Release |
 
 **Regeln, Design und Abläufe stehen in [CLAUDE.md](CLAUDE.md)** – bitte vor dem ersten Arbeiten lesen.
 Im Spiel: `/forever` zeigt alle Forever-Addons, `/fmove` verschiebt alle Rahmen.
