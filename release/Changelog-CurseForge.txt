@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Fixed
+- ForeverBars: the marker bar and the profession bar now fold out and in during combat as well (before, the click only took effect after the fight).
+
 ## 0.44b – October 18, 2026
 
 ### Four new addons
