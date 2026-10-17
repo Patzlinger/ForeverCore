@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 33
+local VERSION = 34
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -3239,6 +3239,14 @@ local function QuestsAlpha()
     return math.max(0.15, 1 - tr / 100)
 end
 
+-- Flaeche wie der Chat (ForeverChat: Deckkraft der Flaeche, Standard 20 %); ohne ForeverChat wie ForeverQuests
+local function ChatAlpha()
+    local c = _G.ForeverChatDB
+    local v = c and tonumber(c.bgAlpha)
+    if v then return math.max(0.05, v / 100) end
+    return QuestsAlpha()
+end
+
 -- schlichte, einfarbige Leisten-Textur (fuer Details' Titelleiste) in LibSharedMedia anmelden
 local FLAT_TEX = "Forever Flat"
 local function RegisterFlatTexture()
@@ -3290,8 +3298,8 @@ local function DetailsSkin()
             titlebar_height = 20,
             titlebar_texture = titleTex,
             titlebar_texture_color = { C.header[1], C.header[2], C.header[3], a },
-            -- Flaeche hinter den Balken wie die Fenster von ForeverQuests
-            bg_r = C.panel[1], bg_g = C.panel[2], bg_b = C.panel[3], bg_alpha = a,
+            -- Flaeche hinter den Balken wie die Chat-Flaeche (Farbe und Durchsichtigkeit aus ForeverChat)
+            bg_r = C.background[1], bg_g = C.background[2], bg_b = C.background[3], bg_alpha = ChatAlpha(),
             backdrop_texture = "Details Ground",
             fullborder_shown = true, fullborder_color = { C.border[1], C.border[2], C.border[3], 1 }, fullborder_size = 1,
             rowareaborder_shown = false,
