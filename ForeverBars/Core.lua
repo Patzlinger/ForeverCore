@@ -102,7 +102,7 @@ ns.defaults = {
         xp = BarDefaults(true), rep = BarDefaults(true), queue = BarDefaults(true),
     },
     -- (Profile verwaltet seit 0.41b ForeverCore – je Charakter, siehe RegisterSettings am Ende dieser Datei)
-    layoutVersion = 14,        -- Stand der Standard-Anordnung (siehe MigrateLayout)
+    layoutVersion = 15,      -- Stand der Standard-Anordnung (siehe MigrateLayout)
     skin = "FLAT",           -- Aussehen der Knöpfe (ns.SKINS in Bars.lua)
     hoverAlpha = 15,         -- Stärke des Hover-Leuchtens über den Knöpfen (%)
     procGlow = "FOREVER",    -- Leuchten bei Procs: "FOREVER" (goldener Rahmen), "BLIZZARD", "OFF"
@@ -166,6 +166,9 @@ for _, key in ipairs({ "prof", "food" }) do
     bar.slots, bar.slotsAuto, bar.excluded = {}, {}, {}
     bar.collapseArrow, bar.collapsed = true, false
 end
+-- Warteschlangen-Auge: standardmäßig aus (dann nicht zu sehen), eingeschaltet halb so groß
+ns.defaults.bars.queue.enabled = false
+ns.defaults.bars.queue.scale = 50
 ns.defaults.bars.xp.point = "TOP"
 ns.defaults.bars.rep.point = "TOP"
 -- Leiste 1 macht in Fahrzeugen der Blizzard-Fahrzeugleiste Platz; die Begleiterleiste nur mit Begleiter
@@ -209,7 +212,8 @@ ns.FillDefaults = FillDefaults
 --  12 (0.41b+): Mikromenü ohne Abstand, Rucksack in Mikromenü-Größe direkt darüber
 --  13 (0.41b+): Taschenleiste 20 % größer (76 %)
 --  14 (0.41b+): im Standardprofil nichts am Chat angeheftet (Anheften nur per Häkchen)
-local LAYOUT_VERSION = 14
+--  15 (0.41b+): Warteschlangen-Auge aus und halb so groß (50 %)
+local LAYOUT_VERSION = 15
 local STANDARD_LAYOUT_BARS = { "bar1", "bar2", "bar3", "bar6", "bar7", "bar8", "pet", "stance", "prof", "food",
                                "micro", "bags", "xp", "rep", "vehicle" }
 function ns.MigrateLayout(db)
@@ -282,6 +286,11 @@ function ns.MigrateLayout(db)
                         bar.x, bar.y = nil, nil
                     end
                 end
+            end
+            if version < 15 and target.bars.queue then
+                local queue = target.bars.queue
+                queue.enabled = false
+                if queue.scale == nil or queue.scale == 100 then queue.scale = ns.defaults.bars.queue.scale end
             end
             if version < 14 then
                 for _, key in ipairs({ "micro", "bags" }) do
