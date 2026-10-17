@@ -42,46 +42,65 @@ function ns.BagIDs()
     return list
 end
 
--- Bank: Bankfach, Bank-Taschen (und Reagenzienbank, falls es sie gibt)
+-- Bank: neuere Blizzard-Bank mit Bankfächern (CharacterBankTab_1 …), sonst die klassische Bank (Bankfach -1,
+-- Bank-Taschen) und Reagenzienbank, falls es sie gibt. Leere Nummern stören nicht (Größe 0 = übersprungen).
 function ns.BankIDs()
     local bi = Enum and Enum.BagIndex or {}
-    local list = { bi.Bank or -1 }
-    local first = bi.BankBag_1 or ((NUM_BAG_SLOTS or 4) + 1)
-    for i = 0, (NUM_BANKBAGSLOTS or 7) - 1 do list[#list + 1] = first + i end
+    local list = {}
+    if bi.CharacterBankTab_1 then
+        for i = 1, 6 do
+            local id = bi["CharacterBankTab_" .. i]
+            if id then list[#list + 1] = id end
+        end
+    end
+    list[#list + 1] = bi.Bank or -1
+    if not bi.CharacterBankTab_1 then
+        local first = bi.BankBag_1 or ((NUM_BAG_SLOTS or 4) + 1)
+        for i = 0, (NUM_BANKBAGSLOTS or 7) - 1 do list[#list + 1] = first + i end
+    end
     if bi.Reagentbank then list[#list + 1] = bi.Reagentbank end
     return list
 end
 
+-- Inhalt lesen; Rückgabe: Tabelle, Anzahl Plätze. Fehlt der Link noch (Gegenstand noch nicht geladen), reicht die
+-- Gegenstands-Nummer – der Tooltip holt sich den Rest später selbst.
 local function ReadContainers(ids)
-    local out = {}
+    local out, slots = {}, 0
     for _, bag in ipairs(ids) do
         local size = C_Container.GetContainerNumSlots(bag) or 0
         if size > 0 then
             local entry = { size = size }
             for slot = 1, size do
                 local info = C_Container.GetContainerItemInfo(bag, slot)
-                if info and info.hyperlink then
-                    entry[slot] = { info.hyperlink, info.stackCount or 1, info.iconFileID, info.quality }
+                local link = info and (info.hyperlink or (info.itemID and ("item:" .. info.itemID)))
+                if link then
+                    entry[slot] = { link, info.stackCount or 1, info.iconFileID, info.quality }
                 end
             end
             out[bag] = entry
+            slots = slots + size
         end
     end
-    return out
+    return out, slots
 end
 
+-- Nie mit einem leeren Stand überschreiben: beim Ein- und Ausloggen liefert das Spiel kurz gar keine Taschen
 function ns.SaveBags()
+    local data, slots = ReadContainers(ns.BagIDs())
     local c = Me()
-    c.bags = ReadContainers(ns.BagIDs())
     c.money = GetMoney()
+    if slots == 0 then return end
+    c.bags = data
     c.updated = time()
 end
 
 local bankOpen = false
 function ns.SaveBank()
     if not bankOpen then return end
+    local data, slots = ReadContainers(ns.BankIDs())
+    if slots == 0 then return end
     local c = Me()
-    c.bank = ReadContainers(ns.BankIDs())
+    c.bank = data
     c.bankUpdated = time()
 end
 
@@ -136,22 +155,24 @@ end
 
 local events = CreateFrame("Frame")
 for _, event in ipairs({ "PLAYER_LOGIN", "BAG_UPDATE_DELAYED", "PLAYER_MONEY", "BANKFRAME_OPENED", "BANKFRAME_CLOSED",
-    "PLAYERBANKSLOTS_CHANGED", "PLAYER_LOGOUT" }) do
+    "PLAYERBANKSLOTS_CHANGED", "BAG_UPDATE" }) do
     pcall(events.RegisterEvent, events, event)
 end
+-- (kein Speichern beim Ausloggen: dann sind die Taschen evtl. schon leer – gespeichert wird bei jeder Änderung)
 events:SetScript("OnEvent", function(_, event)
     if event == "PLAYER_LOGIN" then
-        ns.SaveBags()
+        -- die Taschen sind beim Login oft noch nicht geladen: ein paar Sekunden später lesen (zweimal zur Sicherheit)
+        C_Timer.After(3, ns.SaveBags)
+        C_Timer.After(10, ns.SaveBags)
     elseif event == "PLAYER_MONEY" then
         ns.SaveMoney()
     elseif event == "BANKFRAME_OPENED" then
         bankOpen = true
         C_Timer.After(0.5, ns.SaveBank)
+        C_Timer.After(2, ns.SaveBank) -- Bankfächer laden manchmal etwas später
     elseif event == "BANKFRAME_CLOSED" then
         -- nicht mehr speichern: nach dem Schließen ist die Bank evtl. schon nicht mehr lesbar (wäre dann leer)
         bankOpen = false
-    elseif event == "PLAYER_LOGOUT" then
-        ns.SaveBags()
     else
         QueueSave()
     end

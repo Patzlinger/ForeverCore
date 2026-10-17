@@ -118,9 +118,16 @@ local function UpdateSlot(button, bag, slot)
     else
         button:SetAlpha(filtered and 0.3 or 1)
     end
-    -- Neu erhaltene Gegenstände
+    -- Neu erhaltene Gegenstände (erst nach dem Login erhaltene – siehe ClearAll beim Einloggen). Blizzards
+    -- Leucht-Animationen der Vorlage sonst anhalten, sonst leuchten alle Plätze
     local isNew = ns.db.highlightNew and C_NewItems and C_NewItems.IsNewItem and C_NewItems.IsNewItem(bag, slot)
     if button.NewItemTexture then button.NewItemTexture:SetShown(isNew and true or false) end
+    if not isNew then
+        for _, anim in ipairs({ button.newitemglowAnim, button.flashAnim }) do
+            if anim and anim.Stop then anim:Stop() end
+        end
+        if button.BattlepayItemTexture then button.BattlepayItemTexture:Hide() end
+    end
     -- Abklingzeit
     if button.UpdateCooldown then pcall(button.UpdateCooldown, button, texture) end
     button:Show()
@@ -655,7 +662,12 @@ local function QueueRefresh()
 end
 
 local events = CreateFrame("Frame")
-events:SetScript("OnEvent", function(_, event)
+events:SetScript("OnEvent", function(_, event, isInitialLogin)
+    if event == "PLAYER_ENTERING_WORLD" then
+        -- beim Einloggen meldet das Spiel viele Gegenstände als "neu": nicht alles leuchten lassen
+        if isInitialLogin and C_NewItems and C_NewItems.ClearAll then C_NewItems.ClearAll() end
+        return
+    end
     if event == "PLAYER_REGEN_ENABLED" then
         if createPending and window and window:IsShown() then ns.LayoutBags() end
         return
@@ -670,7 +682,7 @@ function ns.SetupBags()
     EnsureSlots() -- alle Plätze gleich beim Login anlegen: dann muss im Kampf nichts Neues entstehen
     for _, event in ipairs({ "BAG_UPDATE_DELAYED", "ITEM_LOCK_CHANGED", "BAG_UPDATE_COOLDOWN", "PLAYER_MONEY",
         "INVENTORY_SEARCH_UPDATE", "BAG_NEW_ITEMS_UPDATED", "PLAYER_REGEN_ENABLED", "BAG_CONTAINER_UPDATE",
-        "PLAYER_EQUIPMENT_CHANGED" }) do
+        "PLAYER_EQUIPMENT_CHANGED", "PLAYER_ENTERING_WORLD" }) do
         pcall(events.RegisterEvent, events, event)
     end
 end
