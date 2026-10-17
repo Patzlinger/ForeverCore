@@ -441,14 +441,27 @@ function ns.StyleMicroMenu()
 end
 
 ---------------------------------------------------------------------------
--- Eigenes Mikromenü: flache Text-Knöpfe wie "Menü", "Filter", "Dungeons" in ForeverQuests (18 hoch, Hover = goldener
--- Rand). Jeder Knopf ist ein geschützter Klick-Knopf (type "click"), der den passenden Blizzard-Menüknopf drückt –
--- so öffnet das Spiel seine Fenster selbst, ohne dass ForeverBars-Code sie aufruft (kein taint). Blizzards Mikromenü
--- liegt dann unsichtbar im Ablageort.
+-- Eigenes Mikromenü: flache quadratische Knöpfe wie die Knöpfe in ForeverQuests (dunkel, Hover = goldener Rand) mit
+-- eigenen schlichten Symbolen (Media\Micro\*.tga, weiß – grau gefärbt, beim Darüberfahren gold; Name im Tooltip).
+-- Jeder Knopf ist ein geschützter Klick-Knopf (type "click"), der den passenden Blizzard-Menüknopf drückt – so öffnet
+-- das Spiel seine Fenster selbst, ohne dass ForeverBars-Code sie aufruft (kein taint). Blizzards Mikromenü liegt dann
+-- unsichtbar im Ablageort.
 ---------------------------------------------------------------------------
 
-local MICRO_HEIGHT = 18
+local MICRO_HEIGHT = 22 -- quadratisch: so breit wie hoch
+local MICRO_ICON = 15
 local MICRO_MAX = 16
+local MICRO_ICON_PATH = "Interface\\AddOns\\ForeverBars\\Media\\Micro\\"
+local MICRO_ICON_COLOR = { 0.85, 0.85, 0.85 }
+-- Symbol je Blizzard-Knopf (Dateiname in Media\Micro; unbekannte Knöpfe: "Generic")
+local MICRO_ICONS = {
+    CharacterMicroButton = "Character", ProfessionMicroButton = "Professions", PlayerSpellsMicroButton = "Spells",
+    SpellbookMicroButton = "Spells", TalentMicroButton = "Talents", AchievementMicroButton = "Achievements",
+    QuestLogMicroButton = "Quests", GuildMicroButton = "Guild", SocialsMicroButton = "Social", LFDMicroButton = "Group",
+    LFGMicroButton = "Group", PVPMicroButton = "PvP", CollectionsMicroButton = "Collections", EJMicroButton = "Journal",
+    WorldMapMicroButton = "Map", StoreMicroButton = "Shop", MainMenuMicroButton = "Menu", HelpMicroButton = "Help",
+    HousingMicroButton = "Housing",
+}
 -- Kurze Beschriftungen je Blizzard-Knopf (sonst dessen Tooltip-Text)
 local MICRO_LABELS = {
     CharacterMicroButton = "MICRO_CHARACTER", ProfessionMicroButton = "MICRO_PROFESSIONS",
@@ -492,24 +505,29 @@ local function GetOwnMicroButton(index, holder)
     local button = _G[name]
     if button then return button end
     button = CreateFrame("Button", name, holder, "SecureActionButtonTemplate, BackdropTemplate")
-    button:SetHeight(MICRO_HEIGHT)
+    button:SetSize(MICRO_HEIGHT, MICRO_HEIGHT)
     button:RegisterForClicks("AnyUp")
     button:SetAttribute("type", "click")
     button:SetAttribute("useOnKeyDown", false)
     ns.Style.SetFlat(button, COLOR.button)
-    button.label = button:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    button.label:SetPoint("CENTER")
+    button.icon = button:CreateTexture(nil, "ARTWORK")
+    button.icon:SetSize(MICRO_ICON, MICRO_ICON)
+    button.icon:SetPoint("CENTER")
+    button.icon:SetVertexColor(unpack(MICRO_ICON_COLOR))
     button:SetScript("OnEnter", function(self)
         self:SetBackdropColor(unpack(COLOR.buttonHover))
         self:SetBackdropBorderColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3], 0.9)
+        self.icon:SetVertexColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3])
         local tip = ns.Style.GetTooltip()
         tip:SetOwner(self, "ANCHOR_TOP")
-        tip:AddLine(self.fbTitle or self.label:GetText(), 1, 0.82, 0)
+        tip:AddLine(self.fbLabel or "", 1, 0.82, 0)
+        if self.fbTitle and self.fbTitle ~= self.fbLabel then tip:AddLine(self.fbTitle, 0.9, 0.9, 0.9) end
         tip:Show()
     end)
     button:SetScript("OnLeave", function(self)
         self:SetBackdropColor(unpack(COLOR.button))
         self:SetBackdropBorderColor(unpack(COLOR.border))
+        self.icon:SetVertexColor(unpack(MICRO_ICON_COLOR))
         ns.Style.GetTooltip():Hide()
     end)
     return button
@@ -531,9 +549,9 @@ local function LayoutOwnMicro(def, cfg, holder)
         local button = GetOwnMicroButton(index, holder)
         button:SetParent(holder)
         button:SetAttribute("clickbutton", MicroTarget(blizzard))
-        button.label:SetText(MicroLabel(blizzard))
+        button.icon:SetTexture(MICRO_ICON_PATH .. (MICRO_ICONS[blizzard:GetName()] or "Generic"))
+        button.fbLabel = MicroLabel(blizzard)
         button.fbTitle = blizzard.tooltipText
-        button:SetWidth(math.max(28, math.floor(button.label:GetStringWidth() + 12.5)))
         if (index - 1) % perRow == 0 and index > 1 then
             x, y = 0, y - MICRO_HEIGHT - gap
         end
