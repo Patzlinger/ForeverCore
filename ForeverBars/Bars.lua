@@ -513,19 +513,46 @@ local function GetOwnMicroButton(index, holder)
     button.icon = button:CreateTexture(nil, "ARTWORK")
     button.icon:SetSize(MICRO_ICON, MICRO_ICON)
     button.icon:SetPoint("CENTER")
-    button.icon:SetVertexColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3])
     return button
 end
 
+-- Dünner Rand um jeden Menüknopf: Farbe wie der Rand der Aktionsknöpfe (Knopf-Stil), beim Darüberfahren gold
+local MICRO_BORDER = { 0.42, 0.42, 0.48, 1 }
 local function SetMicroHover(own, hovered)
     if hovered then
         own:SetBackdropColor(unpack(COLOR.buttonHover))
         own:SetBackdropBorderColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3], 0.9)
-        own.icon:SetVertexColor(unpack(MICRO_ICON_HOVER))
     else
         own:SetBackdropColor(unpack(COLOR.button))
-        own:SetBackdropBorderColor(unpack(COLOR.border))
+        own:SetBackdropBorderColor(unpack(MICRO_BORDER))
+    end
+    -- Blizzards Symbole sind farbig und bleiben so; die eigenen (weißen) Ersatz-Symbole gold, beim Darüberfahren weiß
+    if own.fbBlizzardIcon then
+        own.icon:SetVertexColor(1, 1, 1)
+        own.icon:SetAlpha(hovered and 1 or 0.9)
+    elseif hovered then
+        own.icon:SetVertexColor(unpack(MICRO_ICON_HOVER))
+    else
         own.icon:SetVertexColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3])
+    end
+end
+
+-- Symbol des Blizzard-Knopfes übernehmen (seine Grafik "-Up" aus dem Atlas, im Seitenverhältnis des Originals,
+-- so hoch wie unser Knopf ohne Rand). Ohne Atlas-Grafik: eigenes Ersatz-Symbol aus Media\Micro.
+local function SetMicroIcon(own, blizzard)
+    local normal = blizzard.GetNormalTexture and blizzard:GetNormalTexture()
+    local atlas = normal and normal.GetAtlas and normal:GetAtlas()
+    local info = atlas and C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(atlas)
+    if info and info.width and info.height and info.height > 0 then
+        own.icon:SetAtlas(atlas)
+        local height = MICRO_HEIGHT - 2
+        own.icon:SetSize(math.min(MICRO_HEIGHT - 2, height * info.width / info.height), height)
+        own.fbBlizzardIcon = true
+    else
+        own.icon:SetTexture(MICRO_ICON_PATH .. (MICRO_ICONS[blizzard:GetName()] or "Generic"))
+        own.icon:SetTexCoord(0, 1, 0, 1)
+        own.icon:SetSize(MICRO_ICON, MICRO_ICON)
+        own.fbBlizzardIcon = false
     end
 end
 
@@ -555,36 +582,17 @@ local function OverlayBlizzardButton(blizzard, own, holder)
         -- Darüberfahren: unsere Optik reagiert, Blizzards Tooltip bleibt
         blizzard:HookScript("OnEnter", function(self) if self.fbOwn then SetMicroHover(self.fbOwn, true) end end)
         blizzard:HookScript("OnLeave", function(self) if self.fbOwn then SetMicroHover(self.fbOwn, false) end end)
+        -- Wechselt Blizzard die Grafik (z. B. Gilden-Wappen, Hinweis-Zustände), unser Symbol mitziehen
+        if blizzard.SetNormalAtlas then
+            hooksecurefunc(blizzard, "SetNormalAtlas", function(self)
+                if self.fbOwn then
+                    SetMicroIcon(self.fbOwn, self)
+                    SetMicroHover(self.fbOwn, self:IsMouseOver())
+                end
+            end)
+        end
     end
     Place(blizzard)
-end
-
--- Zusätzlicher Knopf am Ende: Interface neu laden (wie /reload)
-local function GetReloadButton(holder)
-    local button = _G.ForeverBarsMicroReload
-    if button then return button end
-    button = CreateFrame("Button", "ForeverBarsMicroReload", holder, "BackdropTemplate")
-    button:SetSize(MICRO_HEIGHT, MICRO_HEIGHT)
-    button:RegisterForClicks("AnyUp")
-    ns.Style.SetFlat(button, COLOR.button)
-    button.icon = button:CreateTexture(nil, "ARTWORK")
-    button.icon:SetSize(MICRO_ICON, MICRO_ICON)
-    button.icon:SetPoint("CENTER")
-    button.icon:SetTexture(MICRO_ICON_PATH .. "Reload")
-    button:SetScript("OnClick", function() ReloadUI() end)
-    button:SetScript("OnEnter", function(self)
-        SetMicroHover(self, true)
-        local tip = ns.Style.GetTooltip()
-        tip:SetOwner(self, "ANCHOR_TOP")
-        tip:AddLine(L("MICRO_RELOAD_UI"), 1, 0.82, 0)
-        tip:AddLine("/reload", 0.9, 0.9, 0.9)
-        tip:Show()
-    end)
-    button:SetScript("OnLeave", function(self)
-        SetMicroHover(self, false)
-        ns.Style.GetTooltip():Hide()
-    end)
-    return button
 end
 
 -- Eigene Knöpfe anordnen (nur außerhalb des Kampfes); "Knöpfe pro Reihe" bricht um, "Abstand" wie bei Leisten
@@ -624,7 +632,7 @@ local function LayoutOwnMicro(def, cfg, holder)
         if index > MICRO_MAX then break end
         local own = GetOwnMicroButton(index, holder)
         own:SetParent(holder)
-        own.icon:SetTexture(MICRO_ICON_PATH .. (MICRO_ICONS[blizzard:GetName()] or "Generic"))
+        SetMicroIcon(own, blizzard)
         if (index - 1) % perRow == 0 and index > 1 then
             x, y = 0, y - MICRO_HEIGHT - gap
         end
@@ -641,15 +649,8 @@ local function LayoutOwnMicro(def, cfg, holder)
         local own = _G["ForeverBarsMicroButton" .. index]
         if own then own:Hide() end
     end
-    -- Am Ende: Interface neu laden (bricht wie die anderen nach "Knöpfe pro Reihe" um)
-    local reload = GetReloadButton(holder)
-    if used > 0 and used % perRow == 0 then x, y = 0, y - MICRO_HEIGHT - gap end
-    reload:SetParent(holder)
-    reload:ClearAllPoints()
-    reload:SetPoint("TOPLEFT", holder, "TOPLEFT", x, y)
-    reload:Show()
-    SetMicroHover(reload, false)
-    width = math.max(width, x + MICRO_HEIGHT)
+    -- (früherer Neu-laden-Knopf am Ende: entfernt)
+    if _G.ForeverBarsMicroReload then _G.ForeverBarsMicroReload:Hide() end
     holder:SetSize(math.max(1, width), math.max(MICRO_HEIGHT, -y + MICRO_HEIGHT))
 end
 
@@ -657,7 +658,6 @@ end
 -- (sie liegen bis dahin unsichtbar über den ausgeblendeten Knöpfen)
 local function HideOwnMicro()
     local wasOwn = false
-    if _G.ForeverBarsMicroReload then _G.ForeverBarsMicroReload:Hide() end
     for index = 1, MICRO_MAX do
         local own = _G["ForeverBarsMicroButton" .. index]
         if own then
@@ -2204,23 +2204,33 @@ function ns.UpdateCollapseArrow(def, cfg, holder)
         end)
         holder.fbCollapseArrow = arrow
     end
-    -- Innenseite: die Seite zur Bildschirmmitte hin
-    local centerX = holder:GetCenter()
-    local onLeftHalf = centerX and centerX * holder:GetEffectiveScale() < UIParent:GetWidth() * UIParent:GetEffectiveScale() / 2
+    -- Seite des Pfeils: im Menü wählbar (arrowSide); "AUTO" = Innenseite, also die Seite zur Bildschirmmitte hin
+    local side = cfg.arrowSide or "AUTO"
+    if side == "AUTO" then
+        local centerX = holder:GetCenter()
+        local onLeftHalf = centerX and centerX * holder:GetEffectiveScale() < UIParent:GetWidth() * UIParent:GetEffectiveScale() / 2
+        side = onLeftHalf and "RIGHT" or "LEFT"
+    end
     local edge = (cfg.frame and holder.fbFrame) or holder
     arrow:ClearAllPoints()
     arrow:SetScale(holder:GetScale())
-    arrow:SetWidth(ARROW_WIDTH)
-    if onLeftHalf then
-        arrow:SetPoint("TOPLEFT", edge, "TOPRIGHT", 2, 0)
-        arrow:SetPoint("BOTTOMLEFT", edge, "BOTTOMRIGHT", 2, 0)
+    if side == "RIGHT" or side == "LEFT" then
+        arrow:SetWidth(ARROW_WIDTH)
+        local x = side == "RIGHT" and 2 or -2
+        local near, far = side == "RIGHT" and "LEFT" or "RIGHT", side
+        arrow:SetPoint("TOP" .. near, edge, "TOP" .. far, x, 0)
+        arrow:SetPoint("BOTTOM" .. near, edge, "BOTTOM" .. far, x, 0)
     else
-        arrow:SetPoint("TOPRIGHT", edge, "TOPLEFT", -2, 0)
-        arrow:SetPoint("BOTTOMRIGHT", edge, "BOTTOMLEFT", -2, 0)
+        arrow:SetHeight(ARROW_WIDTH)
+        local y = side == "TOP" and 2 or -2
+        local near, far = side == "TOP" and "BOTTOM" or "TOP", side
+        arrow:SetPoint(near .. "LEFT", edge, far .. "LEFT", 0, y)
+        arrow:SetPoint(near .. "RIGHT", edge, far .. "RIGHT", 0, y)
     end
-    -- Die Grafik zeigt von sich aus nach rechts; ausgeklappt nach innen, eingeklappt nach außen
-    local pointRight = (onLeftHalf and not cfg.collapsed) or (not onLeftHalf and cfg.collapsed)
-    arrow.icon:SetRotation(pointRight and 0 or math.pi)
+    -- Die Grafik zeigt von sich aus nach rechts; ausgeklappt zeigt der Pfeil von der Leiste weg, eingeklappt zu ihr hin
+    local ROTATION = { RIGHT = 0, LEFT = math.pi, TOP = math.pi / 2, BOTTOM = -math.pi / 2 }
+    local OPPOSITE = { RIGHT = "LEFT", LEFT = "RIGHT", TOP = "BOTTOM", BOTTOM = "TOP" }
+    arrow.icon:SetRotation(ROTATION[cfg.collapsed and OPPOSITE[side] or side])
     arrow:Show()
 end
 

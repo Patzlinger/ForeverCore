@@ -31,6 +31,14 @@ local GROW_Y_CHOICES = {
     { value = "DOWN", textKey = "GROW_DOWN" },
     { value = "UP", textKey = "GROW_UP" },
 }
+-- Seite des Einklapp-Pfeils (Berufe, Verpflegung)
+local ARROW_SIDE_CHOICES = {
+    { value = "AUTO", textKey = "SIDE_AUTO" },
+    { value = "LEFT", textKey = "SIDE_LEFT" },
+    { value = "RIGHT", textKey = "SIDE_RIGHT" },
+    { value = "TOP", textKey = "SIDE_TOP" },
+    { value = "BOTTOM", textKey = "SIDE_BOTTOM" },
+}
 local FLYOUT_CHOICES = {
     { value = "UP", textKey = "DIR_UP" },
     { value = "DOWN", textKey = "DIR_DOWN" },
@@ -363,7 +371,11 @@ local function CreateOptions()
     -- Nur Berufe- und Verpflegungsleiste: Pfeil auf der Innenseite zum Ein-/Ausklappen
     options.collapseArrowCheck = CreateCheckbox(layoutPage, L("OPT_COLLAPSE_ARROW"), RIGHT_X, -192,
         function() return SelectedConfig().collapseArrow end,
-        function(value) SelectedConfig().collapseArrow = value; Changed() end)
+        function(value) SelectedConfig().collapseArrow = value; Changed(); ns.RefreshOptions() end)
+    -- Auf welcher Seite der Leiste der Pfeil sitzt
+    options.arrowSideSelector = CreateSmallSelector(layoutPage, L("OPT_ARROW_SIDE"), RIGHT_X + 16, -216, 154, ARROW_SIDE_CHOICES,
+        function() return SelectedConfig().arrowSide or "AUTO" end,
+        function(value) SelectedConfig().arrowSide = value; Changed() end)
     -- Nur Taschenleiste (an der Stelle der Ausklapp-Richtung, die es nur bei Aktionsleisten gibt)
     -- Taschenleiste ausklappbar: eingeklappt nur der Rucksack, ein Pfeil klappt die Taschen aus
     options.backpackCheck = CreateCheckbox(layoutPage, L("OPT_BAGS_COLLAPSIBLE"), RIGHT_X, -192,
@@ -451,6 +463,7 @@ local function CreateOptions()
         { x = RIGHT_X, rows = {
             { options.growXSelector, 48 }, { options.growYSelector, 48 }, { options.flyoutSelector, 48 },
             { options.microOwnCheck, 24 }, { options.microGreyCheck, 24 }, { options.collapseArrowCheck, 24 },
+            { options.arrowSideSelector, 46, 16 },
             { options.backpackCheck, 24 }, { options.keyringCheck, 24 }, { options.foodResetButton, 30 },
             { options.frameCheck, 24 }, { options.frameTitleCheck, 22, 16 }, { titleBox, 32, 16 },
             { spacer = 8 }, { options.centerXButton, 26 }, { options.centerYButton, 38 }, { resetButton, 26 },
@@ -1050,6 +1063,7 @@ function ns.RefreshOptions()
     options.flyoutSelector:SetShown(def.kind == "action")
     options.backpackCheck:SetShown(def.kind == "bags")
     options.collapseArrowCheck:SetShown(def.kind == "prof" or def.kind == "food")
+    options.arrowSideSelector:SetShown((def.kind == "prof" or def.kind == "food") and SelectedConfig().collapseArrow == true)
     options.perRowSlider:SetShown(hasButtons)
     options.keyringCheck:SetShown(def.kind == "bags" and ns.HasKeyring())
     options.foodResetButton:SetShown(def.kind == "food" or def.kind == "prof")
