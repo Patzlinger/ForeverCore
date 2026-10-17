@@ -357,7 +357,38 @@ local function UpcomingList()
         return { name = s.name, sub = s.rank, icon = s.icon, level = s.level or 0, cost = s.cost or 0,
             now = (s.level or 0) <= level, trainer = true }
     end
-    local function Open(s) return s.stype ~= "used" end -- schon gelernt: nicht anzeigen
+
+    -- Schon gelernt? Gegen das echte Zauberbuch pruefen (der Stand beim Lehrerbesuch kann veraltet sein).
+    -- Forever liefert beim Lehrer keinen Rang: Eintraege gleichen Namens sind nach Stufe die Raenge 1, 2, 3 …
+    local knownRank = {}
+    for _, line in ipairs(lines) do
+        for _, e in ipairs(line.spells) do
+            if not e.future then
+                local r = e.rank or 1
+                if r > (knownRank[e.name] or 0) then knownRank[e.name] = r end
+            end
+        end
+    end
+    local learnedSet = {}
+    for _, rec in ipairs(recs) do
+        local byName = {}
+        for _, s in ipairs(rec.list) do
+            if s.stype == "used" then learnedSet[s] = true end
+            byName[s.name] = byName[s.name] or {}
+            tinsert(byName[s.name], s)
+        end
+        for name, list in pairs(byName) do
+            local known = knownRank[name]
+            if known then
+                table.sort(list, function(a, b) return (a.level or 0) < (b.level or 0) end)
+                for i, s in ipairs(list) do
+                    local r = RankNumber(s.rank) or i
+                    if r <= known then learnedSet[s] = true end
+                end
+            end
+        end
+    end
+    local function Open(s) return not learnedSet[s] end -- schon gelernt: nicht anzeigen
 
     local main, portal, groups = {}, {}, {}
     local classRec = buckets.class and buckets.class.rec
