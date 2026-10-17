@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### New
+- **Snapping for every frame:** all movable Forever Core frames (unit frames, party frames, cast bar, XP bar, buffs, loot window, vendor icon, quest tracker and your action bars) now snap to each other, to the minimap, to the main chat, to the screen center and to the grid while you drag them. Yellow guide lines show where it snaps.
+- Hold **Shift** while dragging to move freely. To turn snapping off for good, untick "Snap while moving" in the hub (/forever) or type **/fmove snap**.
+
 ## 0.44b – October 17, 2026
 
 ### New

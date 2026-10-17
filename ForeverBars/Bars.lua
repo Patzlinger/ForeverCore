@@ -1694,6 +1694,9 @@ local function GetHolder(def)
     holder:SetClampedToScreen(true)
     holder.def = def
     holders[def.key] = holder
+    -- andere Forever-Rahmen (Tracker, Zauberleiste, Fenster ...) rasten an den Leisten ein
+    local hub = _G.ForeverHub and _G.ForeverHub.UI
+    if hub and hub.AddMover then hub.AddMover(holder) end
     return holder
 end
 
@@ -2035,6 +2038,14 @@ local function SnapPosition(key, x, y)
             end
         end
     end
+    -- Rahmen anderer Forever-Addons (und Bildschirmmitte/Raster): gemeinsamer Hub-Versatz, wo oben nichts einrastete.
+    -- (Der Halter steht dafuer schon auf der Mausposition, siehe OnUpdate beim Ziehen.)
+    local hub = _G.ForeverHub and _G.ForeverHub.UI
+    if hub and hub.SnapOffset and (distanceX > SNAP_DISTANCE or distanceY > SNAP_DISTANCE) then
+        local dx, dy = hub.SnapOffset()
+        if distanceX > SNAP_DISTANCE then bestX = bestX + dx end
+        if distanceY > SNAP_DISTANCE then bestY = bestY + dy end
+    end
     return bestX, bestY
 end
 
@@ -2082,6 +2093,8 @@ local function UpdateMover(def, holder)
             local cursorX, cursorY = CursorPosition()
             self.offsetX, self.offsetY = centerX - cursorX, centerY - cursorY
             self.isMoving = true
+            local hub = _G.ForeverHub and _G.ForeverHub.UI
+            if hub and hub.BeginDrag then hub.BeginDrag(holders[self.key], { snap = ns.db.snap }) end
             -- Die Leiste selbst wandert mit (der Griff hängt an ihr), damit man sie beim Ziehen sieht;
             -- dabei rastet sie magnetisch ein (Shift gedrückt halten = frei schieben)
             self:SetScript("OnUpdate", function(frame)
@@ -2100,6 +2113,10 @@ local function UpdateMover(def, holder)
                 end
                 frame.dock = false
                 if frame.key == "micro" then holder:SetScale(math.max(0.3, (ns.db.bars.micro.scale or 100) / 100)) end
+                -- erst frei an die Mausposition, damit der Hub die Kanten der Leiste dort misst
+                local rawScale = holder:GetScale()
+                holder:ClearAllPoints()
+                holder:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x / rawScale, y / rawScale)
                 x, y = SnapPosition(frame.key, x, y)
                 frame.dropX, frame.dropY = x, y
                 local scale = holder:GetScale()
@@ -2116,6 +2133,8 @@ local function UpdateMover(def, holder)
             if button ~= "LeftButton" or not self.isMoving then return end
             self:SetScript("OnUpdate", nil)
             self.isMoving = false
+            local hub = _G.ForeverHub and _G.ForeverHub.UI
+            if hub and hub.EndDrag then hub.EndDrag() end
             -- Die (ggf. eingerastete) Position vom Ziehen übernehmen
             local x, y = self.dropX, self.dropY
             if not x or not y then

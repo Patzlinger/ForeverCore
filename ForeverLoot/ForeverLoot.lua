@@ -401,11 +401,21 @@ local function RestorePosition()
     frame:SetScale(GetDB().scale)
 end
 
+UI.AddMover(frame) -- andere Forever-Rahmen rasten am Fenster ein
 frame:SetScript("OnDragStart", function(self)
-    if not GetDB().locked then self:StartMoving() end
+    if GetDB().locked then return end
+    UI.BeginDrag(self) -- Einrasten an anderen Rahmen (Umschalt = aus, Schalter im Hub)
+    self:StartMoving()
 end)
 frame:SetScript("OnDragStop", function(self)
     self:StopMovingOrSizing()
+    local dx, dy = UI.EndDrag()
+    local left, top = self:GetLeft(), self:GetTop()
+    if (dx ~= 0 or dy ~= 0) and left and top then
+        local s = self:GetEffectiveScale() / UIParent:GetEffectiveScale()
+        self:ClearAllPoints()
+        self:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", left + dx / s, top + dy / s)
+    end
     SavePosition()
     RestorePosition()
 end)

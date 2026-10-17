@@ -644,6 +644,7 @@ function ns.ToggleChatLock()
 end
 
 -- Gemeinsamer Verschiebe-Modus (/fmove): sperrt/entsperrt die Chatfenster mit
+if UI.AddMover and ChatFrame1 then UI.AddMover(ChatFrame1) end -- andere Forever-Rahmen rasten am Hauptchat ein
 if UI.RegisterMovable then
     UI.RegisterMovable(ADDON_NAME, function() return ns.IsLocked() end, function(locked) ns.SetLocked(locked) end)
 end

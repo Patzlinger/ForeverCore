@@ -418,10 +418,22 @@ bar:SetPoint("LEFT", anchor, "LEFT", 4, 0)
 bar:Hide()
 
 local ToggleLock -- weiter unten
-anchor:SetScript("OnDragStart", function(self) if not InCombatLockdown() then self:StartMoving() end end)
+UI.AddMover(bar) -- andere Forever-Rahmen rasten an der Leiste ein
+anchor:SetScript("OnDragStart", function(self)
+    if InCombatLockdown() then return end
+    UI.BeginDrag(self) -- Einrasten an anderen Rahmen (Umschalt = aus, Schalter im Hub)
+    self:StartMoving()
+end)
 anchor:SetScript("OnDragStop", function(self)
     self:StopMovingOrSizing()
+    local dx, dy = UI.EndDrag()
     local point, _, relPoint, x, y = self:GetPoint()
+    if dx ~= 0 or dy ~= 0 then
+        local s = self:GetEffectiveScale() / UIParent:GetEffectiveScale()
+        x, y = x + dx / s, y + dy / s
+        self:ClearAllPoints()
+        self:SetPoint(point, UIParent, relPoint, x, y)
+    end
     GetDB().pos = { point, relPoint, x, y }
 end)
 anchor:SetScript("OnMouseUp", function(_, button)

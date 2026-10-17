@@ -1449,6 +1449,10 @@ function ns.CreateTracker()
     if tracker then return end
 
     tracker = CreateFrame("Frame", "ForeverQuestsTracker", UIParent)
+    do -- andere Forever-Rahmen rasten am Tracker ein
+        local hub = _G.ForeverHub and _G.ForeverHub.UI
+        if hub and hub.AddMover then hub.AddMover(tracker) end
+    end
     -- Über den Aktionsleisten (z. B. Bartender4), damit deren - auch leere/unsichtbare - Knöpfe
     -- nicht die Maus über dem Tracker abfangen. Menüs, Dungeonfenster und Tooltips liegen noch höher.
     tracker:SetFrameStrata("HIGH")
@@ -1522,8 +1526,24 @@ function ns.CreateTracker()
         { Style.COLOR.accent[1], Style.COLOR.accent[2], Style.COLOR.accent[3], 1 })
     overlay:EnableMouse(true)
     overlay:RegisterForDrag("LeftButton")
-    overlay:SetScript("OnDragStart", function() tracker:StartMoving() end)
-    overlay:SetScript("OnDragStop", SaveFromFrame)
+    overlay:SetScript("OnDragStart", function()
+        local hub = _G.ForeverHub and _G.ForeverHub.UI
+        if hub and hub.BeginDrag then hub.BeginDrag(tracker) end -- Einrasten an anderen Rahmen (Umschalt = aus)
+        tracker:StartMoving()
+    end)
+    overlay:SetScript("OnDragStop", function()
+        tracker:StopMovingOrSizing()
+        local hub = _G.ForeverHub and _G.ForeverHub.UI
+        local dx, dy = 0, 0
+        if hub and hub.EndDrag then dx, dy = hub.EndDrag() end
+        local left, top = tracker:GetLeft(), tracker:GetTop()
+        if (dx ~= 0 or dy ~= 0) and left and top then
+            local s = tracker:GetEffectiveScale() / UIParent:GetEffectiveScale()
+            tracker:ClearAllPoints()
+            tracker:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", left + dx / s, top + dy / s)
+        end
+        SaveFromFrame()
+    end)
 
     unlockHint = overlay:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     unlockHint:SetPoint("CENTER")

@@ -319,6 +319,14 @@ Damit alle Einstellungsfenster gleich aussehen, gelten diese Maße. Quelle: `For
 - Alle Rahmen starten **gesperrt**; entsperren per Menü, Rechtsklick auf den Minimap-Knopf oder `/fmove`
 - Entsperrt: sichtbarer Griff mit Namen, Ziehen mit Raster/Einrasten, **Shift = frei schieben**; X/Y-Felder im Menü
 - Positionen relativ zu einem festen Bezugspunkt (Bildschirmmitte oder -rand) speichern und auf ganze Pixel runden
+- **Einrasten gilt fÃ¼r ALLE verschiebbaren Forever-Fenster** (seit Hub v36) und Ã¼ber Addons hinweg:
+  - Jeder Rahmen, an dem andere einrasten sollen, meldet sich mit `UI.AddMover(frame)` an (nur sichtbare zÃ¤hlen).
+  - Beim Ziehen `UI.BeginDrag(frame, { snap, grid, edges })`, am Ende `local dx, dy = UI.EndDrag()` und die Position
+    um (dx, dy) verschieben (Muster: ForeverCast, ForeverBuffs, ForeverLoot). Rahmen, die sich beim Ziehen selbst
+    nachfÃ¼hren (ForeverBars), holen den Versatz live mit `UI.SnapOffset()` (Halter vorher auf die Mausposition setzen).
+  - Umschalt beim Ziehen = nicht einrasten; globaler Schalter: Hub-Fenster â€žEinrasten beim Verschiebenâ€œ bzw.
+    `/fmove snap` (`ForeverHubDB.noSnap`, `UI.SnapEnabled()`); zusÃ¤tzlich hat ein Addon ggf. eine eigene Option `snap`.
+  - Neue verschiebbare Fenster **mÃ¼ssen** das einbauen; Minimap und Hauptchat (Bearbeitungsmodus) sind nur Ziele.
 
 ## 11. Chatbefehle
 - Jedes Addon: kurze Form `/f<kürzel>` und lange Form `/forever<name>`; ohne Zusatz öffnet sich das Menü

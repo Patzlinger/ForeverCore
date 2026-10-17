@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 35
+local VERSION = 36
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -1563,8 +1563,16 @@ end
 -- Versatz zum Einrasten: zuerst an anderen Rahmen und der Bildschirmmitte, sonst am Raster.
 -- Umschalt gedrueckt = nicht einrasten.
 local drag -- { frame, edges, snap, grid }
+-- Einrasten gilt fuer alle Forever-Rahmen gemeinsam: ForeverHubDB.noSnap schaltet es aus (Hub-Fenster, /fmove snap)
+local function SnapDB()
+    if type(_G.ForeverHubDB) ~= "table" then _G.ForeverHubDB = {} end
+    return _G.ForeverHubDB
+end
+function UI.SnapEnabled() return not SnapDB().noSnap end
+function UI.SetSnapEnabled(on) SnapDB().noSnap = (not on) or nil end
+
 local function SnapOffset()
-    if not drag or not drag.snap or IsShiftKeyDown() then return 0, 0 end
+    if not drag or not drag.snap or IsShiftKeyDown() or SnapDB().noSnap then return 0, 0 end
     local mx, my = Edges(drag.edges)
     if not mx then return 0, 0 end
     local tx, ty = { 0 }, { 0 } -- Bildschirmmitte
@@ -1607,6 +1615,13 @@ guides:SetScript("OnUpdate", function()
     guideV:SetShown(lx and true or false)
     guideH:SetShown(ly and true or false)
 end)
+
+-- Fuer Rahmen, die beim Ziehen selbst nachgefuehrt werden (z. B. ForeverBars): Versatz (dx, dy), um den der gerade
+-- gezogene Rahmen an andere Rahmen, die Bildschirmmitte oder das Raster einrasten wuerde (Umschalt/Schalter aus = 0, 0)
+function UI.SnapOffset()
+    local dx, dy = SnapOffset()
+    return dx, dy
+end
 
 -- Ziehen beginnt. o = { snap = true/false, grid = Rasterabstand oder nil,
 -- edges = sichtbarer Teil, dessen Kanten zaehlen (Standard: der gezogene Rahmen) }
@@ -1695,6 +1710,10 @@ SlashCmdList["FOREVERMOVE"] = function(msg)
     msg = strtrim(msg or ""):lower()
     if msg == "lock" then UI.MoveAll(true)
     elseif msg == "unlock" then UI.MoveAll(false)
+    elseif msg == "snap" then
+        UI.SetSnapEnabled(not UI.SnapEnabled())
+        UI.Chat("Forever", UI.SnapEnabled() and T("Einrasten beim Verschieben: an (Umschalt = kurz aus).", "Snapping while moving: on (Shift = off for one move).")
+            or T("Einrasten beim Verschieben: aus.", "Snapping while moving: off."))
     else UI.MoveAll() end
 end
 
@@ -2239,6 +2258,19 @@ local function BuildHubWindow()
     end)
     mm:SetPoint("LEFT", move, "RIGHT", 18, 0)
 
+    local snapCheck = UI.Check(f, nil, nil, T("Einrasten beim Verschieben", "Snap while moving"), function(checked)
+        UI.SetSnapEnabled(checked)
+    end)
+    snapCheck:SetPoint("BOTTOMLEFT", 270, 148)
+    snapCheck:HookScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:AddLine(T("Einrasten", "Snapping"))
+        GameTooltip:AddLine(T("Entsperrte Rahmen rasten an anderen Rahmen, der Bildschirmmitte und dem Raster ein. Umschalt beim Ziehen = kurz nicht einrasten. Auch: /fmove snap",
+            "Unlocked frames snap to other frames, the screen center and the grid. Hold Shift while dragging to skip it. Also: /fmove snap"), 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    snapCheck:HookScript("OnLeave", GameTooltip_Hide)
+
     local hint = UI.Hint(f, nil, nil, nil, T("/forever öffnet dieses Fenster · /fmove verschiebt alle Rahmen · /forever reset holt die Knöpfe zurück",
         "/forever opens this window · /fmove moves all frames · /forever reset brings the buttons back"))
     hint:SetPoint("BOTTOMLEFT", 16, 14)
@@ -2261,6 +2293,7 @@ local function BuildHubWindow()
         Refresh()
         move:SetText(UI.AnyUnlocked() and T("Alle sperren", "Lock all") or T("Alle verschieben", "Move all"))
         mm:SetChecked(not GetDB().hideButton)
+        snapCheck:SetChecked(UI.SnapEnabled())
         perChar:SetChecked(GetDB().perCharacter and true or false)
         detailsBtn.Update()
         if lang then lang.Load() end

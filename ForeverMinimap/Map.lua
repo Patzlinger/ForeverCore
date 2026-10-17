@@ -364,6 +364,7 @@ end
 
 local function BuildBar()
     bar = CreateFrame("Button", "ForeverMinimapBar", Minimap, "BackdropTemplate")
+    if UI.AddMover then UI.AddMover(bar) UI.AddMover(Minimap) end -- andere Forever-Rahmen rasten an Karte und Leiste ein
     bar:SetHeight(BAR_H)
     bar:SetFrameLevel(Minimap:GetFrameLevel() + 6)
     UI.SetFlat(bar, { C.header[1], C.header[2], C.header[3], 0.92 }, { 0, 0, 0, 0 })
