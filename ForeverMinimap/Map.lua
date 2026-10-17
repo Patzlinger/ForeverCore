@@ -309,11 +309,6 @@ local function OpenTracking()
     if tb and tb.OpenMenu then pcall(tb.OpenMenu, tb) end
 end
 
-local function OpenCompartment()
-    local ac = _G.AddonCompartmentFrame
-    if ac and ac.OpenMenu then pcall(ac.OpenMenu, ac) end
-end
-
 local function HasMail() return HasNewMail and HasNewMail() end
 local function PendingInvites()
     return C_Calendar and C_Calendar.GetNumPendingInvites and (C_Calendar.GetNumPendingInvites() or 0) or 0
@@ -331,7 +326,8 @@ local TOOL_DEFS = {
     { key = "tracking", icon = "Interface\\Icons\\INV_Misc_Spyglass_03",
       tip = function() GameTooltip:AddLine(T("Verfolgung", "Tracking")) GameTooltip:AddLine(T("Auch: Rechtsklick auf die Minimap", "Also: right-click the minimap"), 0.6, 0.6, 0.6) end,
       click = OpenTracking },
-    { key = "calendar", icon = "Interface\\Icons\\INV_Misc_Note_05",
+    -- Kalender: Forevers eigenes Minimap-Kalendersymbol mit dem heutigen Tag darauf (wie bei Blizzard)
+    { key = "calendar", atlas = "ui-hud-minimap-calendar-button", icon = "Interface\\Icons\\INV_Misc_Note_05", showDay = true,
       tip = function()
           GameTooltip:AddLine(T("Kalender", "Calendar"))
           local n = PendingInvites()
@@ -339,11 +335,14 @@ local TOOL_DEFS = {
       end,
       click = function() if ToggleCalendar then ToggleCalendar() end end,
       alert = function() return PendingInvites() > 0 end },
-    { key = "addons", icon = "Interface\\Icons\\INV_Misc_Gear_01",
-      tip = function() GameTooltip:AddLine(T("Addon-Menü", "Addon menu")) GameTooltip:AddLine(T("Einträge anderer Addons", "Entries of other addons"), 0.6, 0.6, 0.6) end,
-      click = OpenCompartment,
-      shown = function() return _G.AddonCompartmentFrame ~= nil end },
+    -- (kein Knopf fuer Blizzards Addon-Menue: die Addons sitzen mit ihren eigenen Knoepfen schon in der Leiste)
 }
+
+-- heutiger Tag (fuer das Kalendersymbol)
+local function Today()
+    local t = C_DateAndTime and C_DateAndTime.GetCurrentCalendarTime and C_DateAndTime.GetCurrentCalendarTime()
+    return (t and t.monthDay) or tonumber(date("%d"))
+end
 
 local function ToolButton(def)
     local b = CreateFrame("Button", nil, Minimap, "BackdropTemplate")
@@ -352,8 +351,22 @@ local function ToolButton(def)
     b.icon = b:CreateTexture(nil, "ARTWORK")
     b.icon:SetPoint("TOPLEFT", 2, -2)
     b.icon:SetPoint("BOTTOMRIGHT", -2, 2)
-    b.icon:SetTexture(def.icon)
-    if def.icon ~= UI.LOGO then b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92) end
+    local atlas = def.atlas and C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(def.atlas)
+    if atlas then
+        b.icon:SetAtlas(def.atlas)
+    else
+        b.icon:SetTexture(def.icon)
+        if def.icon ~= UI.LOGO then b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92) end
+    end
+    if def.showDay then
+        -- Forevers Kalendersymbol hat selbst kein Datum: Tag in Weiss mit Schatten darauf (auf jedem Grund lesbar)
+        b.day = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        b.day:SetPoint("CENTER", 0, -2)
+        b.day:SetTextColor(1, 1, 1)
+        b.day:SetShadowColor(0, 0, 0, 1)
+        b.day:SetShadowOffset(1, -1)
+        b.day:SetText(Today())
+    end
     b.def = def
     b:RegisterForClicks("LeftButtonUp")
     b:SetScript("OnClick", function() if def.click then def.click() end end)
@@ -476,6 +489,7 @@ function ns.UpdateTools()
         local alert = b.def.alert and b.def.alert()
         b:ClearAllPoints()
         b.alert = alert
+        if b.day then b.day:SetText(Today()) end -- neuer Tag
         if wanted and inBar then
             b:SetSize(TOOL, TOOL)
             if prev then b:SetPoint("RIGHT", prev, "LEFT", -2, 0)
