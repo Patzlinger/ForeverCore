@@ -43,6 +43,7 @@ ns.DEFAULTS = {
     locked = true,
     tooltip = true,
     syncLook = true,               -- Optik von ForeverFrames uebernehmen (falls installiert)
+    skin = "DEFAULT",              -- "DEFAULT" (wie bisher) | "FOREVER" (Testskin im Stil der Forever-Fenster)
 
     -- eigene Optik (gilt, wenn nicht von ForeverFrames uebernommen)
     texture = "raid",

@@ -900,8 +900,71 @@ local function SetFont(fs, look, size, justify)
     fs:SetJustifyH(justify)
 end
 
+-- Skin "Forever" (optional, nur Aussehen): der Stil der Forever-Fenster – schlanker grauer Rand, flache Balken,
+-- Schrift mit Schatten statt Umriss, dunkles Namensband mit feiner Goldlinie und Goldkante oben. Farben (Klasse,
+-- Reaktion), Texte und Funktionen bleiben unberührt; ein Schalter in den Einstellungen (Optik) wechselt zurück.
+local function SkinLook(look)
+    local C = UI.COLOR
+    local s = {}
+    for k, val in pairs(look) do s[k] = val end
+    s.texture = WHITE
+    s.borderSize = 1
+    s.borderColor = { C.border[1], C.border[2], C.border[3], 1 }
+    s.outline = ""
+    s.shadow = true
+    return s
+end
+
+-- Zusatzflächen des Skins (einmalig angelegt, ohne Skin versteckt)
+local function ApplySkinParts(b, enabled, stacked, size)
+    local v = b.v
+    local sk = v.skin
+    if not enabled then
+        if sk then
+            sk.top:Hide() sk.band:Hide() sk.line:Hide()
+        end
+        return
+    end
+    if not sk then
+        sk = {
+            top = v.top:CreateTexture(nil, "BORDER"),
+            band = v.top:CreateTexture(nil, "BORDER"),
+            line = v.top:CreateTexture(nil, "BORDER"),
+        }
+        v.skin = sk
+    end
+    local a = UI.COLOR.accent
+    -- Goldkante oben (wie die Linie unter der Titelleiste der Fenster)
+    sk.top:ClearAllPoints()
+    sk.top:SetPoint("TOPLEFT", v.content, "TOPLEFT", 0, 0)
+    sk.top:SetPoint("TOPRIGHT", v.content, "TOPRIGHT", 0, 0)
+    sk.top:SetHeight(1)
+    sk.top:SetColorTexture(a[1], a[2], a[3], 0.55)
+    sk.top:Show()
+    -- Namensband mit feiner Linie darunter (nur wenn Name und LP in zwei Zeilen stehen)
+    if stacked then
+        sk.band:ClearAllPoints()
+        sk.band:SetPoint("TOPLEFT", v.health, "TOPLEFT", 0, 0)
+        sk.band:SetPoint("TOPRIGHT", v.health, "TOPRIGHT", 0, 0)
+        sk.band:SetHeight(size + 5)
+        sk.band:SetColorTexture(0, 0, 0, 0.38)
+        sk.band:Show()
+        sk.line:ClearAllPoints()
+        sk.line:SetPoint("TOPLEFT", sk.band, "BOTTOMLEFT", 0, 0)
+        sk.line:SetPoint("TOPRIGHT", sk.band, "BOTTOMRIGHT", 0, 0)
+        sk.line:SetHeight(1)
+        sk.line:SetColorTexture(a[1], a[2], a[3], 0.35)
+        sk.line:Show()
+    else
+        sk.band:Hide()
+        sk.line:Hide()
+    end
+end
+
 function ns.Layout(b)
     local d, f, look = GetDB(), FrameDB(b.key), Look()
+    local skinned = d.skin == "FOREVER"
+    if skinned then look = SkinLook(look) end
     local v = b.v
     ns.OutOfCombat("pos-" .. b.key, function()
         b:SetSize(f.width, f.height)
@@ -1023,6 +1086,8 @@ function ns.Layout(b)
     else
         v.resting:SetPoint("CENTER", v.content, "TOPRIGHT", 2, -2)
     end
+
+    ApplySkinParts(b, skinned, stacked, size)
 
     -- Verschiebe-Hinweis
     v.mover:SetShown(not d.locked)

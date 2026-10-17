@@ -346,6 +346,14 @@ do
     Color(p, R + 220, -167, "", "healColor", true)
     Check(p, R, -188, T("Schilde (Absorption)", "Shields (absorbs)"), G("shields"))
     Color(p, R + 220, -191, "", "shieldColor", true)
+
+    UI.Header(p, R, -228, T("Skin (Test)", "Skin (test)"))
+    Choice(p, R, -250, T("Aussehen", "Style"), 170, {
+        { key = "DEFAULT", label = T("Standard", "Default") },
+        { key = "FOREVER", label = T("Forever (Test)", "Forever (test)") },
+    }, G("skin"))
+    UI.Hint(p, R + 4, -278, 300, T("Nur das Aussehen: flache Balken, grauer Rand mit Goldkante und ein dunkles Namensband wie in den Forever-Fenstern. Farben, Texte und Funktionen bleiben, wie sie sind.",
+        "Look only: flat bars, a grey border with a gold edge and a dark name band like in the Forever windows. Colors, texts and functions stay as they are."))
 end
 
 options:SetScript("OnShow", Safe(SETTINGS, function()
