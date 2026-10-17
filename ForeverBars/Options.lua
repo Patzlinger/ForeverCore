@@ -420,12 +420,14 @@ local function CreateOptions()
         ns.SetBarCenter(selectedKey, UIParent:GetWidth() / 2, nil)
         Changed()
         ns.RefreshOptions()
-    end):SetPoint("TOPLEFT", RIGHT_X, -326)
+    end)
+    options.centerXButton:SetPoint("TOPLEFT", RIGHT_X, -326)
     options.centerYButton = CreateSearchButton(layoutPage, L("BTN_CENTER_Y"), 170, 22, function()
         ns.SetBarCenter(selectedKey, nil, UIParent:GetHeight() / 2)
         Changed()
         ns.RefreshOptions()
-    end):SetPoint("TOPLEFT", RIGHT_X, -352)
+    end)
+    options.centerYButton:SetPoint("TOPLEFT", RIGHT_X, -352)
 
     local resetButton = CreateSearchButton(layoutPage, L("BTN_RESET_BAR"), 170, 22, function()
         ns.ResetBar(selectedKey)
@@ -433,6 +435,24 @@ local function CreateOptions()
         ns.RefreshOptions()
     end)
     resetButton:SetPoint("TOPLEFT", RIGHT_X, -390)
+
+    -- Reihenfolge der beiden Spalten; RefreshOptions setzt die gerade sichtbaren lückenlos untereinander
+    -- (je Zeile: Element, Höhe, Einrückung; spacer = zusätzlicher Abstand)
+    options.layoutPage = layoutPage
+    options.layoutColumns = {
+        { x = 14, rows = {
+            { options.buttonsSlider, 44 }, { options.perRowSlider, 44 }, { options.spacingSlider, 44 },
+            { options.scaleSlider, 44 }, { options.alphaSlider, 44 }, { options.posXSlider, 44 },
+            { options.posYSlider, 50 }, { options.chatCheck, 24 },
+        } },
+        { x = RIGHT_X, rows = {
+            { options.growXSelector, 48 }, { options.growYSelector, 48 }, { options.flyoutSelector, 48 },
+            { options.microOwnCheck, 24 }, { options.microGreyCheck, 24 }, { options.collapseArrowCheck, 24 },
+            { options.backpackCheck, 24 }, { options.keyringCheck, 24 }, { options.foodResetButton, 30 },
+            { options.frameCheck, 24 }, { options.frameTitleCheck, 22, 16 }, { titleBox, 32, 16 },
+            { spacer = 8 }, { options.centerXButton, 26 }, { options.centerYButton, 38 }, { resetButton, 26 },
+        } },
+    }
 
     -- Reiter "Sichtbarkeit": wann die Leiste zu sehen ist
     -- Links: Grundeinstellung und Einblenden bei Maus darüber
@@ -1034,7 +1054,7 @@ function ns.RefreshOptions()
     options.microOwnCheck:SetShown(def.key == "micro")
     options.microGreyCheck:SetShown(def.key == "micro" and not SelectedConfig().microOwn)
     -- Spalten im Reiter "Anordnung" lückenlos von oben nach unten anordnen
-    for _, column in ipairs(options.layoutColumns) do
+    for _, column in ipairs(options.layoutColumns or {}) do
         local y = -74
         for _, row in ipairs(column.rows) do
             if row.spacer then
