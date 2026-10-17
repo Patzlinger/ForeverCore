@@ -7,17 +7,18 @@ local T, GetDB, IsSecret = ns.T, ns.GetDB, ns.IsSecret
 local WHITE = "Interface\\Buttons\\WHITE8x8"
 local ROUND = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
 local MAX_PIPS = 10
-local GAP = 2
+local GAP = 3   -- Abstand der Punkte: 1 px dunkler Rand je Punkt + 1 px Lücke
+local GLOW = 3  -- so weit leuchtet ein gefüllter Punkt über seinen Rand hinaus
 
 local combo -- { frame, pips = { {bar, bg, edge} } }
 
 local _, playerClass = UnitClass("player")
 local COMBO_POWER = Enum and Enum.PowerType and Enum.PowerType.ComboPoints or 4
 
--- Farbe je Punkt: von Gold (erster) zu Orangerot (letzter)
+-- Farbe je Punkt: von hellem Gold (erster) zu leuchtendem Orangerot (letzter)
 local function PipColor(i, count)
     local t = count > 1 and (i - 1) / (count - 1) or 1
-    return 1, 0.82 - 0.5 * t, 0.2 - 0.1 * t
+    return 1, 0.92 - 0.52 * t, 0.35 - 0.2 * t
 end
 
 -- gesperrte Werte nicht prüfen oder vergleichen, nur weiterreichen
@@ -52,7 +53,16 @@ local function Build(b)
     f:SetFrameLevel(b.v.top:GetFrameLevel() + 2) -- über Namen und Lebensbalken
     combo.frame = f
     for i = 1, MAX_PIPS do
+        -- Leuchten: gleicher Wert wie der Punkt, etwas größer, hinter ihm und additiv (nur gefüllt sichtbar)
+        local glow = CreateFrame("StatusBar", nil, f)
+        glow:SetFrameLevel(f:GetFrameLevel())
+        glow:SetStatusBarTexture(WHITE)
+        glow:GetStatusBarTexture():SetBlendMode("ADD")
+        glow:SetMinMaxValues(i - 1, i)
+        glow:SetValue(0)
         local bar = CreateFrame("StatusBar", nil, f)
+        bar:SetFrameLevel(f:GetFrameLevel() + 1)
+        bar.glow = glow
         local bg = bar:CreateTexture(nil, "BACKGROUND")
         bg:SetAllPoints(bar)
         local edge = bar:CreateTexture(nil, "BACKGROUND", nil, -1) -- 1 px dunkler Rand um den Punkt
@@ -86,9 +96,14 @@ local function LayoutCombo(b)
         if combo then combo.frame:Hide() end
         return
     end
+    -- einmalig: neuer Standard 10 px (vorher 8) für alle, die die Größe nicht selbst geändert haben
+    if not d.comboSizeV2 then
+        if d.comboSize == 8 then d.comboSize = 10 end
+        d.comboSizeV2 = true
+    end
     local c = Build(b)
     local v = b.v
-    local size = d.comboSize or 8
+    local size = d.comboSize or 10
     local count = MaxPoints()
     local where = d.comboPoint or "PORTRAIT"
     local frame = c.frame
@@ -108,11 +123,11 @@ local function LayoutCombo(b)
         frame:SetSize(count * dot + (count - 1) * (GAP + 1), dot)
         frame:SetPoint("BOTTOM", v.health, "TOP", 0, 10)
     else
-        -- senkrechte Spalte direkt neben dem Porträt (auf der Seite des Lebensbalkens); ohne Porträt an der Außenkante
+        -- senkrechte Spalte außen neben dem Porträt, genau so hoch wie der Rahmen (samt 1-px-Rand der Punkte)
         vertical = true
-        local h = fdb.height - 4
-        pipW, pipH = size, (h - (count - 1) * GAP) / count
-        frame:SetSize(size, h)
+        local h = fdb.height
+        pipW, pipH = size, (h - 2 - (count - 1) * GAP) / count
+        frame:SetSize(size + 2, h)
         -- außen am Rahmen auf der Seite des Porträts (beim Ziel: rechts neben dem Porträt)
         if fdb.portraitSide == "LEFT" then
             frame:SetPoint("RIGHT", v.content, "LEFT", -3, 0)
@@ -127,14 +142,23 @@ local function LayoutCombo(b)
             bar:SetSize(pipW, pipH)
             if vertical then
                 -- von unten nach oben füllen
-                bar:SetPoint("BOTTOM", frame, "BOTTOM", 0, (i - 1) * (pipH + GAP))
+                bar:SetPoint("BOTTOM", frame, "BOTTOM", 0, 1 + (i - 1) * (pipH + GAP))
             elseif round then
                 bar:SetPoint("LEFT", frame, "LEFT", (i - 1) * (pipW + GAP + 1), 0)
             else
                 bar:SetPoint("LEFT", frame, "LEFT", (i - 1) * (pipW + GAP), 0)
             end
             bar:SetStatusBarTexture(round and ROUND or WHITE)
-            bar:SetStatusBarColor(PipColor(i, count))
+            local r, g, bl = PipColor(i, count)
+            bar:SetStatusBarColor(r, g, bl)
+            local glow = bar.glow
+            glow:ClearAllPoints()
+            glow:SetPoint("TOPLEFT", bar, "TOPLEFT", -GLOW, GLOW)
+            glow:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", GLOW, -GLOW)
+            glow:SetStatusBarTexture(round and ROUND or WHITE)
+            glow:GetStatusBarTexture():SetBlendMode("ADD")
+            glow:SetStatusBarColor(r, g, bl, 0.35)
+            glow:Show()
             p.bg:SetTexture(round and ROUND or WHITE)
             p.bg:SetVertexColor(0.08, 0.08, 0.08, 0.85)
             p.edge:SetTexture(round and ROUND or WHITE)
@@ -142,6 +166,7 @@ local function LayoutCombo(b)
             bar:Show()
         else
             bar:Hide()
+            bar.glow:Hide()
         end
     end
     c.count = count
@@ -163,7 +188,11 @@ function ns.UpdateCombo()
         if not IsSecret(attackable) and not attackable and (IsSecret(n) or n <= 0) then show = false end
     end
     if not show then frame:Hide() return end
-    for i = 1, (combo.count or 5) do combo.pips[i].bar:SetValue(n) end
+    for i = 1, (combo.count or 5) do
+        local bar = combo.pips[i].bar
+        bar:SetValue(n)
+        bar.glow:SetValue(n)
+    end
     frame:Show()
 end
 
