@@ -2221,16 +2221,26 @@ function ns.ApplyLayout()
         if not x or not y then x, y = ns.GetBarPosition(def.key) end
         holder:ClearAllPoints()
         -- Am Chatfenster angeheftet (Häkchen; früher auch "unter dem Chat" – das gilt jetzt als "über dem Chat")
-        -- Bezugspunkt ist der sichtbare Hintergrund des Chatfensters (er ist etwas größer als das Textfeld),
-        -- damit die Leiste genau auf seiner Ecke sitzt
+        -- Die Leiste soll genau auf der Ecke des sichtbaren Chat-Hintergrunds sitzen (er ist etwas größer als das
+        -- Textfeld). An den Hintergrund selbst darf sie nicht geheftet werden (geschützte Leisten dürfen nur an
+        -- Fenster, nicht an Texturen); deshalb am Chatfenster mit dem gemessenen Überstand des Hintergrunds.
         local chat = (def.key == "micro" or def.kind == "bags") and ns.IsAttachedToChat(cfg) and ChatFrame1
-        local chatEdge = chat and (chat.Background or _G.ChatFrame1Background or chat)
-        if chat and def.key == "micro" then
-            -- Mikromenü über dem Chatfenster (oberhalb der Chat-Reiter), linksbündig
-            holder:SetPoint("BOTTOMLEFT", chatEdge, "TOPLEFT", 0, 24 / scale)
-        elseif chat then
-            -- Taschen über dem Chatfenster, bündig mit der rechten Ecke; sie klappen nach oben aus
-            holder:SetPoint("BOTTOMRIGHT", chatEdge, "TOPRIGHT", 0, 24 / scale)
+        if chat then
+            local background = chat.Background or _G.ChatFrame1Background
+            local ratio = chat:GetEffectiveScale() / holder:GetEffectiveScale()
+            local function Overhang(edge, fallback)
+                local outer = background and background["Get" .. edge](background)
+                local inner = chat["Get" .. edge](chat)
+                if not outer or not inner then return fallback / scale end
+                return (outer - inner) * ratio
+            end
+            if def.key == "micro" then
+                -- Mikromenü über dem Chatfenster (oberhalb der Chat-Reiter), linksbündig
+                holder:SetPoint("BOTTOMLEFT", chat, "TOPLEFT", Overhang("Left", -2), Overhang("Top", 0) + 24 / scale)
+            else
+                -- Taschen über dem Chatfenster, bündig mit der rechten Ecke; sie klappen nach oben aus
+                holder:SetPoint("BOTTOMRIGHT", chat, "TOPRIGHT", Overhang("Right", 2), Overhang("Top", 0) + 24 / scale)
+            end
         else
             holder:SetPoint(cfg.point or "CENTER", UIParent, "BOTTOMLEFT", x / scale, y / scale)
         end
