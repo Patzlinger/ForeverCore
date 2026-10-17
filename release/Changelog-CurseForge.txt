@@ -3,11 +3,15 @@
 ## Unreleased
 
 ### New
+- **ForeverChat: a "+" button for your custom channels.** As soon as you are in a custom channel, a "+" button appears right next to the General and Combat Log tabs. Click it to pick a channel (the input line then writes to it and the channel is shown in the chat window you have selected) or to leave it. The menu also lists all your chat windows, so you can switch even if Blizzard's overflow arrow hides tabs. You can turn the button off in the ForeverChat settings.
 - **ForeverUnits: optional "Forever" skin (test).** In the Look tab you can switch the unit frames to the style of the Forever windows: flat bars, a slim grey border with a gold edge on top and a dark name band with a fine gold line. Class and reaction colors, texts and all functions stay exactly as they are, and you can switch back to the default look any time.
 - **ForeverXP is now part of ForeverBars – one addon for your bars, experience and reputation.** The experience bar and a new, slimmer **reputation bar** are bars like your action bars: you can move them (unlock, drag), they snap to the other bars, you can show or hide them, fade them out, and save them in profiles. By default both are as wide as action bar 1 and sit right below it (the action bars moved up a bit). The reputation bar shows the faction you are watching – name and standing, progress, how much is left, the reputation earned this session, reputation per hour and the time until the next rank. Mouse-over still shows more info on the bar and a detailed tooltip; click the reputation bar to open the reputation panel. Blizzard's own bars are hidden while yours are on. Settings: /fb (or /fxp).
 - **Snapping for every frame:** all movable Forever Core frames (unit frames, party frames, cast bar, XP bar, buffs, loot window, vendor icon, quest tracker and your action bars) now snap to each other, to the minimap, to the main chat, to the screen center and to the grid while you drag them. Yellow guide lines show where it snaps.
 - Hold **Shift** while dragging to move freely. To turn snapping off for good, untick "Snap while moving" in the hub (/forever) or type **/fmove snap**.
 - **ForeverFrames – separate settings for party and raid:** at the top of the settings (/ff) you choose "Party" or "Raid", and every tab below then sets up only those frames – size, layout, position, look, texts, icons, buffs and debuffs. The frames switch automatically when you join or leave a raid. Your raid settings start as a copy of your current ones. While the settings are open, the frames (and test mode) show the tab you picked. Lock, grid, snapping, click casting, own buff lists and the Blizzard frame options stay shared.
+
+### Fixed
+- ForeverChat settings: options no longer overlap each other (e.g. "Input box in Forever style" and "only while typing").
 
 ## 0.44b – October 17, 2026
 

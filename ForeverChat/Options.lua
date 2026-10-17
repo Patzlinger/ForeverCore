@@ -2,7 +2,7 @@
 local ADDON_NAME, ns = ...
 local UI, T = ns.UI, ns.T
 
-local options = UI.Window("ForeverChatOptions", T("ForeverChat – Einstellungen", "ForeverChat – Settings"), 660, 680)
+local options = UI.Window("ForeverChatOptions", T("ForeverChat – Einstellungen", "ForeverChat – Settings"), 660, 780)
 local loaders = {} -- Funktionen, die beim Oeffnen die aktuellen Werte anzeigen
 
 local function Changed()
@@ -61,13 +61,16 @@ end, { width = 200 })
 loaders[#loaders + 1] = function() fontSlider:Load(ns.GetFontSize()) end
 Check(L - 4, -184, T("Reiter im Forever-Stil", "Tabs in Forever style"), "styleTabs")
 Check(L - 4, -208, T("Eingabefeld im Forever-Stil", "Input box in Forever style"), "styleEditBox")
-Check(L + 160, -208, T("nur beim Schreiben", "only while typing"), "autoHideEditBox")
-Check(L - 4, -232, T("Blizzard-Knöpfe neben dem Chat ausblenden", "Hide Blizzard buttons next to the chat"), "hideSideButtons")
-Check(L - 4, -256, T("Knopfleiste in der Reiterzeile", "Button bar in the tab row"), "toolbar")
-Check(L + 160, -232, T("mit „Vorlesen“", "with \"Text to speech\""), "ttsButton")
+Check(L + 16, -232, T("nur beim Schreiben", "only while typing"), "autoHideEditBox")
+Check(L - 4, -256, T("Blizzard-Knöpfe neben dem Chat ausblenden", "Hide Blizzard buttons next to the chat"), "hideSideButtons")
+Check(L - 4, -280, T("Knopfleiste in der Reiterzeile", "Button bar in the tab row"), "toolbar")
+Check(L + 16, -304, T("mit „Vorlesen“", "with \"Text to speech\""), "ttsButton")
+Check(L - 4, -328, T("„+“-Knopf für eigene Kanäle", "\"+\" button for custom channels"), "channelButton", function()
+    if ns.UpdateChannelButton then ns.UpdateChannelButton() end
+end)
 
-UI.Header(options, L, -298, T("Position und Sperre", "Position and lock"), 300)
-local lockCheck = UI.Check(options, L - 4, -320, T("Chatfenster sperren", "Lock chat windows"), function(checked)
+UI.Header(options, L, -370, T("Position und Sperre", "Position and lock"), 300)
+local lockCheck = UI.Check(options, L - 4, -392, T("Chatfenster sperren", "Lock chat windows"), function(checked)
     ns.SetLocked(checked)
 end)
 loaders[#loaders + 1] = function() lockCheck:SetChecked(ns.IsLocked()) end
@@ -75,22 +78,22 @@ local editBtn = UI.Button(options, T("Im Bearbeitungsmodus verschieben", "Move i
     options:Hide()
     ns.OpenEditMode()
 end)
-editBtn:SetPoint("TOPLEFT", L, -348)
-UI.Hint(options, L + 2, -376, 300, T("Den Hauptchat verwaltet Blizzards Bearbeitungsmodus (Position und Größe). "
+editBtn:SetPoint("TOPLEFT", L, -420)
+UI.Hint(options, L + 2, -448, 300, T("Den Hauptchat verwaltet Blizzards Bearbeitungsmodus (Position und Größe). "
     .. "Entsperrte Zusatzfenster lassen sich am Reiter ziehen.",
     "Blizzard's Edit Mode manages the main chat (position and size). Unlocked extra windows can be dragged by their tab."))
 
-UI.Header(options, L, -434, T("Eingabe", "Input"), 300)
-Check(L - 4, -456, T("Pfeiltasten blättern im Verlauf (ohne Alt)", "Arrow keys browse history (no Alt)"), "arrowHistory")
-Check(L - 4, -480, T("Umschalt + Mausrad: ganz nach oben/unten", "Shift + mouse wheel: jump to top/bottom"), "shiftScroll")
+UI.Header(options, L, -506, T("Eingabe", "Input"), 300)
+Check(L - 4, -528, T("Pfeiltasten blättern im Verlauf (ohne Alt)", "Arrow keys browse history (no Alt)"), "arrowHistory")
+Check(L - 4, -552, T("Umschalt + Mausrad: ganz nach oben/unten", "Shift + mouse wheel: jump to top/bottom"), "shiftScroll")
 
-UI.Header(options, L, -522, T("Instant Messaging", "Instant messaging"), 300)
-Check(L - 4, -544, T("Reiter „IM“: je Person ein Unterreiter", "“IM” tab: one sub-tab per person"), "messenger", function(on)
+UI.Header(options, L, -594, T("Instant Messaging", "Instant messaging"), 300)
+Check(L - 4, -616, T("Reiter „IM“: je Person ein Unterreiter", "“IM” tab: one sub-tab per person"), "messenger", function(on)
     if not on and ns.HideIM then ns.HideIM() end
     Changed()
 end)
-Check(L + 16, -568, T("Flüstern zusätzlich im normalen Chat", "Also show whispers in the normal chat"), "whispersInMain")
-UI.Hint(options, L + 2, -594, 300, T("Im IM-Reiter schreibt die Eingabezeile (Enter) an die gewählte Person. "
+Check(L + 16, -640, T("Flüstern zusätzlich im normalen Chat", "Also show whispers in the normal chat"), "whispersInMain")
+UI.Hint(options, L + 2, -666, 300, T("Im IM-Reiter schreibt die Eingabezeile (Enter) an die gewählte Person. "
     .. "/r kennt Absender nur, wenn Flüstern auch im normalen Chat steht.",
     "In the IM tab the input line (Enter) writes to the selected person. /r only knows senders shown in the normal chat."))
 

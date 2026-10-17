@@ -15,6 +15,7 @@
 Core.lua
 Messages.lua
 Skin.lua
+Channels.lua
 Messenger.lua
 Copy.lua
 Options.lua

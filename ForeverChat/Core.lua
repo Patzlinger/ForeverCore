@@ -27,6 +27,7 @@ ns.DEFAULTS = {
     hideSideButtons = true,  -- Blizzards Knopfleiste neben dem Chat ausblenden (Ersatz: eigene Knopfleiste)
     toolbar = true,          -- eigene kleine Knopfleiste ueber dem Chat
     ttsButton = false,       -- Knopf "Vorlesen" (Text zu Sprache) in der Knopfleiste
+    channelButton = true,    -- "+"-Knopf neben den Reitern, sobald man in eigenen Kanälen ist (Channels.lua)
     -- Namen
     classColors = true,      -- Spielernamen in Klassenfarbe
     showLevel = true,        -- Stufe vor dem Namen, sofern bekannt
@@ -196,6 +197,7 @@ events:SetScript("OnEvent", ns.Safe(T("Ereignis", "Event"), function(_, event, a
         ns.GetDB()
         if ns.SetupMessages then ns.SetupMessages() end
         if ns.SetupSkin then ns.SetupSkin() end
+        if ns.SetupChannels then ns.SetupChannels() end
         if ns.SetupOptions then ns.SetupOptions() end
         ScanGroup()
         if C_GuildInfo and C_GuildInfo.GuildRoster then C_GuildInfo.GuildRoster() end
