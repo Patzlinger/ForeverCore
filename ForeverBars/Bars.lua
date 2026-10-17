@@ -487,6 +487,16 @@ local function BlizzardMicroButtons()
     return list
 end
 
+-- Alle Blizzard-Menüknöpfe, auch die gerade versteckten (z. B. Shop, wenn er nicht verfügbar ist)
+local function AllBlizzardMicroButtons()
+    BlizzardMicroButtons() -- Namen merken
+    local list = {}
+    for _, name in ipairs(microNames or {}) do
+        if _G[name] then table.insert(list, _G[name]) end
+    end
+    return list
+end
+
 -- Sichtbarer Knopf (nur Optik, nimmt keine Maus an)
 local function GetOwnMicroButton(index, holder)
     local name = "ForeverBarsMicroButton" .. index
@@ -575,12 +585,32 @@ end
 
 -- Eigene Knöpfe anordnen (nur außerhalb des Kampfes); "Knöpfe pro Reihe" bricht um, "Abstand" wie bei Leisten
 local function LayoutOwnMicro(def, cfg, holder)
-    local buttons = BlizzardMicroButtons() -- vor dem Ablegen merken (siehe oben)
-    -- Blizzards Mikromenü unsichtbar ablegen; seine Knöpfe kommen einzeln über unsere Knöpfe
+    local buttons = BlizzardMicroButtons() -- vor dem Umhängen merken (siehe oben)
+    -- Blizzards Mikromenü bleibt sichtbar in unserem Halter, nur mit Deckkraft 0. Wichtig: Beim Umhängen eines Knopfes
+    -- ordnet Blizzard das Mikromenü neu an und fragt dabei nach den Bildschirmpositionen der übrigen Knöpfe – liegt
+    -- das Mikromenü im unsichtbaren Ablageort, gibt es keine Positionen (Fehler "compare two nil values").
     local blizzardMenu = FindFrame(def.frames)
     if blizzardMenu then
-        blizzardMenu.fbHolder = nil -- nicht mehr in den Halter zurückholen (siehe LayoutContainer)
-        if blizzardMenu:GetParent() ~= hiddenParent then blizzardMenu:SetParent(hiddenParent) end
+        blizzardMenu.fbHolder = holder
+        if blizzardMenu:GetParent() ~= holder then blizzardMenu:SetParent(holder) end
+        blizzardMenu.fbPositioning = true
+        blizzardMenu:ClearAllPoints()
+        blizzardMenu:SetPoint("CENTER", holder, "CENTER")
+        blizzardMenu.fbPositioning = false
+        blizzardMenu:SetAlpha(0)
+    end
+    -- Versteckte Blizzard-Knöpfe ebenfalls aus dem Mikromenü holen (unsichtbar im Halter). Ist das Mikromenü leer,
+    -- bricht Blizzards Anordnung sauber ab. Zeigt Blizzard einen davon später, wird neu angeordnet.
+    for _, blizzard in ipairs(AllBlizzardMicroButtons()) do
+        if not blizzard:IsShown() then
+            blizzard.fbOwn = nil
+            if blizzard:GetParent() ~= holder then blizzard:SetParent(holder) end
+            blizzard:SetAlpha(0)
+            if not blizzard.fbShowHooked then
+                blizzard.fbShowHooked = true
+                hooksecurefunc(blizzard, "Show", function() ns.RequestLayout() end)
+            end
+        end
     end
     -- Abstand 0 = Knöpfe stoßen aneinander, ihre 1-px-Ränder liegen übereinander (eine feine Linie)
     local gap = math.max(0, cfg.spacing or 0) - 1
@@ -1746,7 +1776,10 @@ local function LayoutContainer(def, cfg, holder)
             if frame[method] then hooksecurefunc(frame, method, BackToHolder) end
         end
     end
-    if def.key == "micro" then ns.StyleMicroMenu() end
+    if def.key == "micro" then
+        frame:SetAlpha(1) -- war bei den eigenen Knöpfen unsichtbar
+        ns.StyleMicroMenu()
+    end
     -- Mindestgröße, damit der Halter auch dann Platz hat, wenn Blizzard das Element gerade ausblendet
     local minSize = def.minSize or 1
     holder:SetSize(math.max(minSize, frame:GetWidth()), math.max(minSize, frame:GetHeight()))
