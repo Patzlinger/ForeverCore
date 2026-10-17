@@ -102,18 +102,21 @@ local TAB_ART = { "Left", "Middle", "Right", "ActiveLeft", "ActiveMiddle", "Acti
 
 -- Flaeche des Reiters: feste Hoehe 18 px wie IM-Reiter und Knoepfe, senkrecht mittig um den Reitertext
 -- (Blizzards Text selbst wird nicht verschoben) – unabhaengig davon, wie hoch Blizzard den Reiter macht
+-- Die Flaeche haengt direkt am Text (9 px ueber und unter seiner Mitte), damit sie immer mit ihm mitgeht
 local function AlignTabArea(tab)
     local area = tab.fcArea
-    local fs = tab:GetFontString()
     if not area then return end
-    local tt, tb = tab:GetTop(), tab:GetBottom()
-    local ft, fb = fs and fs:GetTop(), fs and fs:GetBottom()
-    local dy = 0
-    if tt and tb and ft and fb then dy = (ft + fb) / 2 - (tt + tb) / 2 end
+    local fs = tab:GetFontString()
     area:ClearAllPoints()
-    area:SetHeight(18)
-    area:SetPoint("LEFT", tab, "LEFT", 2, dy)
-    area:SetPoint("RIGHT", tab, "RIGHT", -2, dy)
+    if fs then
+        area:SetPoint("TOP", fs, "CENTER", 0, 9)
+        area:SetPoint("BOTTOM", fs, "CENTER", 0, -9)
+        area:SetWidth(math.max(10, (tab:GetWidth() or 24) - 4))
+    else
+        area:SetHeight(18)
+        area:SetPoint("LEFT", tab, "LEFT", 2, 0)
+        area:SetPoint("RIGHT", tab, "RIGHT", -2, 0)
+    end
 end
 
 local function UpdateTabLook(tab, selected)
@@ -163,6 +166,7 @@ local function SkinTab(frame)
     area:SetPoint("LEFT", tab, "LEFT", 2, 0)
     area:SetPoint("RIGHT", tab, "RIGHT", -2, 0)
     tab.fcArea = area
+    tab:HookScript("OnSizeChanged", AlignTabArea) -- Blizzard passt die Reiterbreite an den Text an
     tab.fcFlat = FlatTextures(tab, area, "BACKGROUND")
     tab.fcHover = HoverEdges(tab, area)
     UpdateTabLook(tab)
@@ -294,25 +298,110 @@ end
 -- die Reiter dann selbst auf die verbleibende Breite (bei vielen Reitern wie gewohnt mit Ueberlauf-Pfeil).
 ---------------------------------------------------------------------------
 local TOOL_SIZE, TOOL_GAP = 18, 3
+local TOOL_ALPHA = 0.85 -- gut sichtbar; beim Darueberfahren voll
 local toolbar
-local function ToolButton(parent, icon, tip, onClick)
+
+local function HasAtlas(name) return C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(name) ~= nil end
+local function InVoice()
+    return C_VoiceChat and C_VoiceChat.GetActiveChannelID and C_VoiceChat.GetActiveChannelID() ~= nil
+end
+local function VoiceState(fnName)
+    local fn = C_VoiceChat and C_VoiceChat[fnName]
+    return fn and fn() or false
+end
+
+-- Knoepfe von rechts nach links. Die Funktionen von Blizzards Knoepfen neben dem Chat (die unsichtbar bleiben)
+-- werden ueber Blizzards eigene Funktionen bzw. Menues aufgerufen.
+local TOOL_DEFS = {
+    { key = "lock", file = "Interface\\Buttons\\LockButton-Locked-Up", noCrop = true, inset = 1,
+      tip = T("Chat entsperren / sperren", "Unlock / lock chat"), click = function() ns.ToggleChatLock() end },
+    { key = "settings", file = "Interface\\Icons\\INV_Misc_Gear_01", tip = T("ForeverChat-Einstellungen", "ForeverChat settings"),
+      click = function() ns.ToggleOptions() end },
+    { key = "copy", file = "Interface\\Buttons\\UI-GuildButton-PublicNote-Up", noCrop = true, tip = T("Chat kopieren", "Copy chat"),
+      click = function() ns.ShowCopyChat() end },
+    { key = "bottom", file = "Interface\\ChatFrame\\UI-ChatIcon-ScrollEnd-Up", noCrop = true, tip = T("Zum Ende springen", "Jump to the end"),
+      click = function() ns.SelectedChatFrame():ScrollToBottom() end },
+    { key = "channels", file = "Interface\\ChatFrame\\UI-ChatIcon-Chat-Up", noCrop = true, tip = T("Kanäle", "Channels"),
+      click = function() if ToggleChannelFrame then ToggleChannelFrame() end end },
+    { key = "emotes", file = "Interface\\GossipFrame\\GossipGossipIcon", noCrop = true,
+      tip = T("Emotes, Sprachen und Chat-Kurzbefehle", "Emotes, languages and chat shortcuts"),
+      click = function() local b = _G.ChatFrameMenuButton if b and b.OpenMenu then pcall(b.OpenMenu, b) end end },
+    { key = "social", file = "Interface\\Icons\\Achievement_GuildPerk_EverybodysFriend", tip = T("Sozial (Freunde, Gilde)", "Social (friends, guild)"),
+      click = function() if ToggleFriendsFrame then ToggleFriendsFrame() end end },
+    { key = "tts", atlas = "chatframe-button-icon-tts", file = "Interface\\Icons\\INV_Misc_Book_11", tip = T("Vorlesen (Text zu Sprache)", "Text to speech"),
+      shown = function() return _G.TextToSpeechButton ~= nil end,
+      click = function() local b = _G.TextToSpeechButton if b then b:Click() end end },
+    -- Sprachchat: nur im Sprachkanal; gold, wenn stumm bzw. Ton aus
+    { key = "deafen", atlas = "voicechat-icon-headphone", atlasOn = "voicechat-icon-headphone-mute", file = "Interface\\Icons\\INV_Misc_Ear_NightElf_01",
+      tip = T("Ton des Sprachchats aus / an", "Voice chat sound off / on"), shown = InVoice, on = function() return VoiceState("IsDeafened") end,
+      click = function() if C_VoiceChat and C_VoiceChat.ToggleDeafened then C_VoiceChat.ToggleDeafened() end end },
+    { key = "mute", atlas = "voicechat-icon-mic", atlasOn = "voicechat-icon-mic-mute", file = "Interface\\Icons\\Spell_Holy_Silence",
+      tip = T("Mikrofon stumm / an", "Microphone mute / on"), shown = InVoice, on = function() return VoiceState("IsMuted") end,
+      click = function() if C_VoiceChat and C_VoiceChat.ToggleMuted then C_VoiceChat.ToggleMuted() end end },
+}
+
+local function ToolIcon(b)
+    local def = b.def
+    if def.key == "lock" then return end -- Schloss: siehe ns.UpdateLockButton
+    local atlas = (def.on and def.on() and def.atlasOn) or def.atlas
+    if atlas and HasAtlas(atlas) then
+        b.icon:SetTexCoord(0, 1, 0, 1)
+        b.icon:SetAtlas(atlas)
+    else
+        b.icon:SetTexture(def.file)
+        if def.noCrop then b.icon:SetTexCoord(0, 1, 0, 1) else b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92) end
+    end
+    local on = def.on and def.on()
+    local c = on and C.accent or C.border
+    b:SetBackdropBorderColor(c[1], c[2], c[3], 1)
+end
+
+local function ToolButton(parent, def)
     local b = CreateFrame("Button", nil, parent, "BackdropTemplate")
     b:SetSize(TOOL_SIZE, TOOL_SIZE)
-    UI.SetFlat(b, { C.button[1], C.button[2], C.button[3], 0.85 })
+    UI.SetFlat(b, { C.button[1], C.button[2], C.button[3], 0.9 })
     HoverEdges(b, b)
+    local inset = def.inset or 2
     b.icon = b:CreateTexture(nil, "ARTWORK")
-    b.icon:SetPoint("TOPLEFT", 3, -3)
-    b.icon:SetPoint("BOTTOMRIGHT", -3, 3)
-    b.icon:SetTexture(icon)
-    b:SetScript("OnClick", onClick)
+    b.icon:SetPoint("TOPLEFT", inset, -inset)
+    b.icon:SetPoint("BOTTOMRIGHT", -inset, inset)
+    b.def = def
+    b:SetScript("OnClick", function(self)
+        def.click()
+        C_Timer.After(0.2, function() ToolIcon(self) end)
+    end)
     b:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        GameTooltip:AddLine(tip)
+        GameTooltip:AddLine(def.tip)
         GameTooltip:Show()
         toolbar:SetAlpha(1)
     end)
-    b:SetScript("OnLeave", function() GameTooltip_Hide() toolbar:SetAlpha(0.55) end)
+    b:SetScript("OnLeave", function() GameTooltip_Hide() toolbar:SetAlpha(TOOL_ALPHA) end)
+    ToolIcon(b)
     return b
+end
+
+-- sichtbare Knoepfe von rechts nach links anordnen, IM-Reiter links daneben
+local function LayoutToolbar()
+    if not toolbar then return end
+    local prev
+    toolbar.iconWidth = 0
+    for _, b in ipairs(toolbar.buttons) do
+        local wanted = not b.def.shown or b.def.shown()
+        b:SetShown(wanted)
+        b:ClearAllPoints()
+        if wanted then
+            if prev then b:SetPoint("RIGHT", prev, "LEFT", -TOOL_GAP, 0) else b:SetPoint("RIGHT", toolbar, "RIGHT", 0, 0) end
+            ToolIcon(b)
+            prev = b
+            toolbar.iconWidth = toolbar.iconWidth + TOOL_SIZE + (toolbar.iconWidth > 0 and TOOL_GAP or 0)
+        end
+    end
+    toolbar.lastIcon = prev
+    if toolbar.imTab then
+        toolbar.imTab:ClearAllPoints()
+        toolbar.imTab:SetPoint("RIGHT", prev or toolbar, prev and "LEFT" or "RIGHT", -6, 0)
+    end
 end
 
 local function BuildToolbar()
@@ -324,37 +413,23 @@ local function BuildToolbar()
     -- senkrecht mittig in der Reiterzeile, rechts buendig im Rahmen
     toolbar:SetPoint("RIGHT", bd, "TOPRIGHT", -4, -(TAB_ROOM / 2) - 1)
     toolbar:SetFrameStrata("MEDIUM") -- wie die Reiter
-    toolbar:SetAlpha(0.55)
-    local buttons = {
-        { "Interface\\Buttons\\LockButton-Locked-Up", T("Chat entsperren / sperren", "Unlock / lock chat"),
-            function() ns.ToggleChatLock() end, "lock" },
-        { "Interface\\Buttons\\UI-OptionsButton", T("ForeverChat-Einstellungen", "ForeverChat settings"),
-            function() ns.ToggleOptions() end },
-        { "Interface\\Buttons\\UI-GuildButton-PublicNote-Up", T("Chat kopieren", "Copy chat"),
-            function() ns.ShowCopyChat() end },
-        -- (Kanaele sitzen in der linken Knopfleiste, siehe unten)
-        { "Interface\\ChatFrame\\UI-ChatIcon-ScrollEnd-Up", T("Zum Ende springen", "Jump to the end"),
-            function() ns.SelectedChatFrame():ScrollToBottom() end },
-    }
-    local prev
-    toolbar.iconWidth = 0
-    for _, def in ipairs(buttons) do
-        local b = ToolButton(toolbar, def[1], def[2], def[3])
-        if def[4] == "lock" then
-            toolbar.lockButton = b
-            b.icon:SetPoint("TOPLEFT", 1, -1) -- Schloss-Symbol etwas groesser
-            b.icon:SetPoint("BOTTOMRIGHT", -1, 1)
-        end
-        if prev then b:SetPoint("RIGHT", prev, "LEFT", -TOOL_GAP, 0) else b:SetPoint("RIGHT", toolbar, "RIGHT", 0, 0) end
-        prev = b
-        toolbar.iconWidth = toolbar.iconWidth + TOOL_SIZE + (toolbar.iconWidth > 0 and TOOL_GAP or 0)
+    toolbar:SetAlpha(TOOL_ALPHA)
+    toolbar.buttons = {}
+    for _, def in ipairs(TOOL_DEFS) do
+        local b = ToolButton(toolbar, def)
+        if def.key == "lock" then toolbar.lockButton = b end
+        toolbar.buttons[#toolbar.buttons + 1] = b
     end
-    toolbar.lastIcon = prev
     -- Reiter "IM" (Messenger) links neben den Knoepfen
-    if ns.CreateIMTab then
-        toolbar.imTab = ns.CreateIMTab(toolbar)
-        toolbar.imTab:SetPoint("RIGHT", prev, "LEFT", -6, 0)
+    if ns.CreateIMTab then toolbar.imTab = ns.CreateIMTab(toolbar) end
+    LayoutToolbar()
+    -- Sprachchat betreten/verlassen, stumm/Ton: Knoepfe und Platz der Reiter anpassen
+    local ev = CreateFrame("Frame")
+    for _, e in ipairs({ "VOICE_CHAT_CHANNEL_ACTIVATED", "VOICE_CHAT_CHANNEL_DEACTIVATED", "VOICE_CHAT_MUTED_CHANGED",
+        "VOICE_CHAT_DEAFENED_CHANGED", "PLAYER_ENTERING_WORLD" }) do
+        pcall(ev.RegisterEvent, ev, e)
     end
+    ev:SetScript("OnEvent", function() if ns.ApplyToolbar then ns.ApplyToolbar() end end)
 end
 
 -- Breite der Knopfleiste (mit IM-Reiter, falls der Messenger an ist)
@@ -377,143 +452,17 @@ local function ApplyDockSpace()
 end
 ns.ApplyDockSpace = ApplyDockSpace
 
----------------------------------------------------------------------------
--- Linke Knopfleiste – wie die Reiterzeile oben, nur senkrecht: Sozial, Emotes und Sprachen, Kanaele, Sprachchat
--- (Mikrofon, Ton) und Vorlesen. Ersetzt Blizzards Knoepfe neben dem Chat (die bleiben unsichtbar; ihre Funktionen
--- werden ueber Blizzards eigene Funktionen bzw. Menues aufgerufen).
----------------------------------------------------------------------------
-local SIDE_W = TOOL_SIZE + 8
-local sidebar
-
-local function HasAtlas(name) return C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(name) ~= nil end
-local function InVoice()
-    return C_VoiceChat and C_VoiceChat.GetActiveChannelID and C_VoiceChat.GetActiveChannelID() ~= nil
-end
-local function VoiceState(fnName)
-    local fn = C_VoiceChat and C_VoiceChat[fnName]
-    return fn and fn() or false
-end
-
-local SIDE_DEFS = {
-    { file = "Interface\\Icons\\Achievement_GuildPerk_EverybodysFriend", tip = T("Sozial (Freunde, Gilde)", "Social (friends, guild)"),
-      click = function() if ToggleFriendsFrame then ToggleFriendsFrame() end end },
-    { file = "Interface\\GossipFrame\\GossipGossipIcon", noCrop = true,
-      tip = T("Emotes, Sprachen und Chat-Kurzbefehle", "Emotes, languages and chat shortcuts"),
-      click = function() local b = _G.ChatFrameMenuButton if b and b.OpenMenu then pcall(b.OpenMenu, b) end end },
-    { file = "Interface\\ChatFrame\\UI-ChatIcon-Chat-Up", noCrop = true, tip = T("Kanäle", "Channels"),
-      click = function() if ToggleChannelFrame then ToggleChannelFrame() end end },
-    { atlas = "voicechat-icon-mic", atlasOn = "voicechat-icon-mic-mute", file = "Interface\\Icons\\Spell_Holy_Silence",
-      tip = T("Mikrofon stumm / an", "Microphone mute / on"), shown = InVoice, on = function() return VoiceState("IsMuted") end,
-      click = function() if C_VoiceChat and C_VoiceChat.ToggleMuted then C_VoiceChat.ToggleMuted() end end },
-    { atlas = "voicechat-icon-headphone", atlasOn = "voicechat-icon-headphone-mute", file = "Interface\\Icons\\INV_Misc_Ear_NightElf_01",
-      tip = T("Ton des Sprachchats aus / an", "Voice chat sound off / on"), shown = InVoice, on = function() return VoiceState("IsDeafened") end,
-      click = function() if C_VoiceChat and C_VoiceChat.ToggleDeafened then C_VoiceChat.ToggleDeafened() end end },
-    { atlas = "chatframe-button-icon-tts", file = "Interface\\Icons\\INV_Misc_Book_11", tip = T("Vorlesen (Text zu Sprache)", "Text to speech"),
-      shown = function() return _G.TextToSpeechButton ~= nil end,
-      click = function() local b = _G.TextToSpeechButton if b then b:Click() end end },
-}
-
-local function SideIcon(b)
-    local def = b.def
-    local atlas = (def.on and def.on() and def.atlasOn) or def.atlas
-    if atlas and HasAtlas(atlas) then
-        b.icon:SetTexCoord(0, 1, 0, 1)
-        b.icon:SetAtlas(atlas)
-    else
-        b.icon:SetTexture(def.file)
-        if def.noCrop then b.icon:SetTexCoord(0, 1, 0, 1) else b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92) end
-    end
-    -- eingeschaltet (stumm / Ton aus): goldener Rand
-    local on = def.on and def.on()
-    b:SetBackdropBorderColor(on and C.accent[1] or C.border[1], on and C.accent[2] or C.border[2], on and C.accent[3] or C.border[3], 1)
-end
-
-local function LayoutSidebar()
-    if not sidebar then return end
-    local prev
-    for _, b in ipairs(sidebar.buttons) do
-        local wanted = not b.def.shown or b.def.shown()
-        b:SetShown(wanted)
-        b:ClearAllPoints()
-        if wanted then
-            -- erster Knopf auf der Mittellinie der Reiterzeile, dann nach unten
-            if prev then b:SetPoint("TOP", prev, "BOTTOM", 0, -TOOL_GAP)
-            else b:SetPoint("CENTER", sidebar, "TOP", 0, -(TAB_ROOM / 2) - 1) end
-            SideIcon(b)
-            prev = b
-        end
-    end
-end
-
-local function BuildSidebar()
-    local bd = backdrops[ns.MainChatFrame()]
-    if not bd or sidebar then return end
-    sidebar = CreateFrame("Frame", "ForeverChatSidebar", UIParent, "BackdropTemplate")
-    sidebar:SetFrameStrata("BACKGROUND")
-    sidebar:SetBackdrop({ bgFile = WHITE, edgeFile = WHITE, edgeSize = 1 })
-    sidebar:SetPoint("TOPRIGHT", bd, "TOPLEFT", -2, 0)
-    sidebar:SetPoint("BOTTOMRIGHT", bd, "BOTTOMLEFT", -2, 0)
-    sidebar:SetWidth(SIDE_W)
-    -- feine goldene Linie an der Innenseite (wie unter der Reiterzeile)
-    sidebar.line = sidebar:CreateTexture(nil, "ARTWORK")
-    sidebar.line:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 0.35)
-    sidebar.line:SetWidth(1)
-    sidebar.line:SetPoint("TOPRIGHT", -1, -1)
-    sidebar.line:SetPoint("BOTTOMRIGHT", -1, 1)
-    -- Knoepfe in eigener Ebene: gedimmt wie oben, beim Darueberfahren voll
-    sidebar.holder = CreateFrame("Frame", nil, sidebar)
-    sidebar.holder:SetAllPoints()
-    sidebar.holder:SetFrameStrata("MEDIUM")
-    sidebar.holder:SetAlpha(0.55)
-    sidebar.buttons = {}
-    for _, def in ipairs(SIDE_DEFS) do
-        local b = ToolButton(sidebar.holder, def.file, def.tip, function(self)
-            def.click()
-            C_Timer.After(0.2, function() SideIcon(self) end)
-        end)
-        b.def = def
-        b:SetScript("OnEnter", function(self)
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-            GameTooltip:AddLine(def.tip)
-            GameTooltip:Show()
-            sidebar.holder:SetAlpha(1)
-        end)
-        b:SetScript("OnLeave", function() GameTooltip_Hide() sidebar.holder:SetAlpha(0.55) end)
-        sidebar.buttons[#sidebar.buttons + 1] = b
-    end
-    -- Sprachchat betreten/verlassen, stumm/Ton: Knoepfe anpassen
-    local ev = CreateFrame("Frame")
-    for _, e in ipairs({ "VOICE_CHAT_CHANNEL_ACTIVATED", "VOICE_CHAT_CHANNEL_DEACTIVATED", "VOICE_CHAT_MUTED_CHANGED",
-        "VOICE_CHAT_DEAFENED_CHANGED", "PLAYER_ENTERING_WORLD" }) do
-        pcall(ev.RegisterEvent, ev, e)
-    end
-    ev:SetScript("OnEvent", function() LayoutSidebar() end)
-end
-
-local function ApplySidebar()
-    local d = ns.GetDB()
-    BuildSidebar()
-    if not sidebar then return end
-    local bd = backdrops[ns.MainChatFrame()]
-    -- nur, wenn Blizzards Knoepfe ausgeblendet sind (sonst gaebe es alles doppelt)
-    sidebar:SetShown(d.sidebar and d.hideSideButtons and bd and bd:IsShown() and true or false)
-    sidebar:SetBackdropColor(C.background[1], C.background[2], C.background[3], (d.bgAlpha or 20) / 100)
-    sidebar:SetBackdropBorderColor(C.border[1], C.border[2], C.border[3], (d.borderAlpha or 50) / 100)
-    sidebar.line:SetAlpha((d.borderAlpha or 50) / 100)
-    LayoutSidebar()
-end
-
 local function ApplyToolbar()
     BuildToolbar()
-    ApplySidebar()
     if not toolbar then return end
+    LayoutToolbar()
     toolbar:SetShown(ns.GetDB().toolbar and true or false)
     if toolbar.imTab then toolbar.imTab:SetShown(ns.GetDB().messenger and true or false) end
     toolbar:SetWidth(math.max(1, ToolbarWidth()))
     ApplyDockSpace()
     if ns.UpdateLockButton then ns.UpdateLockButton() end
 end
-
+ns.ApplyToolbar = ApplyToolbar
 -- Schloss-Symbol: zu = gesperrt, offen = entsperrt (offen leuchtet gold)
 function ns.UpdateLockButton()
     local b = toolbar and toolbar.lockButton

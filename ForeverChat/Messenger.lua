@@ -158,7 +158,7 @@ function ns.CreateIMTab(parent)
         GameTooltip:Show()
         parent:SetAlpha(1)
     end)
-    imTab:SetScript("OnLeave", function() GameTooltip_Hide() parent:SetAlpha(0.55) end)
+    imTab:SetScript("OnLeave", function() GameTooltip_Hide() parent:SetAlpha(0.85) end) -- wie die Knopfleiste
     UpdateIMTab()
     return imTab
 end
