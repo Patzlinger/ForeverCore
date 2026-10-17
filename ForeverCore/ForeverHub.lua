@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 31
+local VERSION = 32
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -2205,6 +2205,28 @@ local function BuildHubWindow()
     end)
     profilesBtn:SetPoint("BOTTOMLEFT", 14, 82)
 
+    -- Details! (falls aktiv): eigenes Profil im Forever-Look bzw. zurueck zum vorherigen
+    local detailsBtn = UI.Button(f, "", 200, function(self)
+        if UI.DetailsForeverActive and UI.DetailsForeverActive() then UI.DetailsRestore() else UI.DetailsApplyForever() end
+        if self.Update then self.Update() end
+    end)
+    detailsBtn:SetPoint("BOTTOMRIGHT", -14, 82)
+    function detailsBtn.Update()
+        local available = UI.DetailsAvailable and UI.DetailsAvailable()
+        detailsBtn:SetShown(available)
+        if not available then return end
+        detailsBtn:SetText(UI.DetailsForeverActive() and T("Details: vorheriges Profil", "Details: previous profile")
+            or T("Details im Forever-Look", "Details in the Forever look"))
+    end
+    detailsBtn:HookScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:AddLine("Details!")
+        GameTooltip:AddLine(T("Legt eine Kopie deines Details-Profils namens „Forever Core“ an und gibt dort allen Fenstern den Forever-Look. Dein bisheriges Profil bleibt unverändert; ein zweiter Klick wechselt zurück.",
+            "Creates a copy of your Details profile named \"Forever Core\" and gives all windows the Forever look there. Your previous profile stays unchanged; a second click switches back."), 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    detailsBtn:HookScript("OnLeave", GameTooltip_Hide)
+
     local move = UI.Button(f, "", 150, function()
         f:Hide()
         UI.MoveAll()
@@ -2240,6 +2262,7 @@ local function BuildHubWindow()
         move:SetText(UI.AnyUnlocked() and T("Alle sperren", "Lock all") or T("Alle verschieben", "Move all"))
         mm:SetChecked(not GetDB().hideButton)
         perChar:SetChecked(GetDB().perCharacter and true or false)
+        detailsBtn.Update()
         if lang then lang.Load() end
     end)
     f:HookScript("OnHide", function() f.welcome = nil end)
@@ -3192,6 +3215,135 @@ end
 function UI.ShowProfiles()
     if not profileWindow then BuildProfileWindow() end
     if profileWindow:IsShown() then profileWindow:RefreshAll() else profileWindow:Show() end
+end
+
+---------------------------------------------------------------------------
+-- 9. Details! (falls installiert) im Forever-Look – nur auf Wunsch, ohne fremde Profile anzufassen
+---------------------------------------------------------------------------
+-- * Skin "Forever Core" wird ueber Details' eigene Schnittstelle angemeldet (no_cache: nichts landet in Details'
+--   gespeicherten Daten). Man kann ihn auch in Details selbst je Fenster waehlen.
+-- * UI.DetailsApplyForever(): sichert das aktuelle Details-Profil als Kopie "Forever Core", wechselt (nur fuer diesen
+--   Charakter – Details merkt sich das aktive Profil je Charakter) dorthin und gibt dort allen Fenstern den Skin.
+--   Das bisherige Profil bleibt unveraendert; UI.DetailsRestore() wechselt zurueck.
+local DETAILS_NAME = "Forever Core"
+
+local function DetailsReady()
+    local D = _G.Details
+    return D and D.InstallSkin and D.GetProfile and D.ApplyProfile and D.SaveProfile and D.GetCurrentProfileName and D
+end
+
+local function DetailsSkin()
+    local font = "Friz Quadrata TT"
+    local bar = [[Interface\AddOns\Details\images\bar_background]]
+    return {
+        file = [[Interface\AddOns\Details\images\skins\simplygray_skin.blp]],
+        author = "Forever Core", version = "1.0", site = "", no_cache = true,
+        desc = "Flat and dark like the Forever Core addons: fine border, gold title, class-colored bars.",
+        can_change_alpha_head = true,
+        icon_anchor_main = { -1, -5 }, icon_anchor_plugins = { -7, -13 }, icon_plugins_size = { 19, 18 },
+        micro_frames = { color = { 0.75, 0.75, 0.75, 1 }, font = font, size = 10, textymod = 1 },
+        icon_point_anchor = { -37, 0 }, left_corner_anchor = { -107, 0 }, right_corner_anchor = { 96, 0 },
+        icon_point_anchor_bottom = { -37, 12 }, left_corner_anchor_bottom = { -107, 0 }, right_corner_anchor_bottom = { 96, 0 },
+        icon_ignore_alpha = true, icon_titletext_position = { 3, 4 },
+        callback = function() end,
+        instance_cprops = {
+            menu_icons_alpha = 0.92,
+            hide_in_combat_type = 1,
+            color = { C.button[1], C.button[2], C.button[3], 1 },          -- Titelleiste und feine Raender
+            bg_r = C.background[1], bg_g = C.background[2], bg_b = C.background[3], bg_alpha = 0.85,
+            backdrop_texture = "Details Ground",
+            color_buttons = { 0.85, 0.85, 0.85, 1 },
+            menu_anchor = { 14, 2, side = 2 }, menu_anchor_down = { 14, -2 },
+            instance_button_anchor = { -27, 1 },
+            attribute_text = {                                                  -- Titel in Gold (Akzentfarbe)
+                enabled = true, shadow = true, side = 1, text_color = { C.accent[1], C.accent[2], C.accent[3], 1 },
+                custom_text = "{name}", text_face = font, anchor = { -15, 5 }, text_size = 11, enable_custom_text = false,
+            },
+            menu_icons = { true, true, true, true, true, false, space = -1, shadow = true },
+            desaturated_menu = false,
+            show_sidebars = true,
+            show_statusbar = false,
+            statusbar_info = { alpha = 1, overlay = { 0, 0, 0 } },
+            micro_displays_side = 2,
+            toolbar_side = 1, bars_grow_direction = 1, bars_sort_direction = 1,
+            window_scale = 1,
+            hide_icon = true,
+            auto_hide_menu = { left = false, right = false },
+            wallpaper = { enabled = false },
+            row_info = {
+                texture = "Details Flat", texture_file = bar,
+                texture_class_colors = true,                                    -- Klassenfarben wie in ForeverFrames
+                texture_background = "Details Flat", texture_background_file = bar,
+                texture_background_class_color = false,
+                fixed_texture_background_color = { C.panel[1], C.panel[2], C.panel[3], 0.6 },
+                texture_highlight = [[Interface\FriendsFrame\UI-FriendsList-Highlight]],
+                font_face = font, font_face_file = STANDARD_TEXT_FONT, font_size = 11,
+                textL_outline = false, textR_outline = false,
+                fixed_text_color = { 1, 1, 1 },
+                textL_show_number = true,
+                height = 18, space = { right = -10, left = 3, between = 1 },
+                alpha = 1, no_icon = false, start_after_icon = false,
+                use_spec_icons = true, icon_file = [[Interface\AddOns\Details\images\spec_icons_normal_alpha]],
+                backdrop = { enabled = false, size = 12, color = { 1, 1, 1, 1 }, texture = "Details BarBorder 2" },
+                percent_type = 1,
+            },
+        },
+    }
+end
+
+-- Skin anmelden, sobald beide geladen sind (Details laedt vor ForeverCore; sonst beim ADDON_LOADED von Details)
+local function InstallDetailsSkin()
+    local D = DetailsReady()
+    if not D or SHARED.detailsSkin then return end
+    local ok = pcall(D.InstallSkin, D, DETAILS_NAME, DetailsSkin())
+    if ok then SHARED.detailsSkin = true end
+end
+do
+    local f = CreateFrame("Frame")
+    f:RegisterEvent("PLAYER_LOGIN")
+    f:RegisterEvent("ADDON_LOADED")
+    f:SetScript("OnEvent", function(_, event, name)
+        if event == "PLAYER_LOGIN" or name == "Details" then InstallDetailsSkin() end
+    end)
+end
+
+function UI.DetailsAvailable() return DetailsReady() ~= nil end
+
+function UI.DetailsForeverActive()
+    local D = DetailsReady()
+    return D and D:GetCurrentProfileName() == DETAILS_NAME or false
+end
+
+function UI.DetailsApplyForever()
+    local D = DetailsReady()
+    if not D then return false end
+    if InCombatLockdown() then UI.Chat("Forever", T("Im Kampf nicht möglich.", "Not possible in combat.")) return false end
+    InstallDetailsSkin()
+    local current = D:GetCurrentProfileName()
+    if current ~= DETAILS_NAME then
+        GetDB().detailsPrevious = current
+        -- Kopie des aktuellen Stands (Fenster, Positionen, Einstellungen); ein frueheres "Forever Core" bleibt, wie es ist
+        if not D:GetProfile(DETAILS_NAME, false) then D:SaveProfile(DETAILS_NAME) end
+        D:ApplyProfile(DETAILS_NAME)
+    end
+    if D.ListInstances then
+        for _, instance in D:ListInstances() do
+            if instance and instance.ChangeSkin then pcall(instance.ChangeSkin, instance, DETAILS_NAME) end
+        end
+    end
+    UI.Chat("Forever", string.format(T("Details nutzt jetzt das Profil „%s“ im Forever-Look. Dein bisheriges Profil „%s“ ist unverändert.",
+        "Details now uses the profile \"%s\" in the Forever look. Your previous profile \"%s\" is unchanged."), DETAILS_NAME, tostring(current)))
+    return true
+end
+
+function UI.DetailsRestore()
+    local D = DetailsReady()
+    local prev = GetDB().detailsPrevious
+    if not (D and prev and D:GetProfile(prev, false)) then return false end
+    if InCombatLockdown() then UI.Chat("Forever", T("Im Kampf nicht möglich.", "Not possible in combat.")) return false end
+    D:ApplyProfile(prev)
+    UI.Chat("Forever", string.format(T("Details nutzt wieder dein Profil „%s“.", "Details uses your profile \"%s\" again."), prev))
+    return true
 end
 
 ---------------------------------------------------------------------------
