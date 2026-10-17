@@ -2358,6 +2358,267 @@ end
 -- Einklapp-Pfeil an Berufe- und Verpflegungsleiste: sitzt auf der Innenseite (zu den Aktionsleisten hin), so hoch
 -- wie die Leiste samt Rahmen. Ausgeklappt zeigt er nach innen ("einklappen"), eingeklappt nach außen. Eingeklappt
 -- ist die Leiste ausgeblendet (über ihre Sichtbarkeits-Bedingung, im Kampf erst danach); der Pfeil bleibt stehen.
+---------------------------------------------------------------------------
+-- Zahnrad oben rechts in der Berufe- und Verbrauchbar-Leiste: kleines Fenster mit "Leiste ausschalten";
+-- bei Verbrauchbar zusätzlich Zielmarkierungen ("Einheit": aufs Ziel, "Boden": Bodenmarkierung) und
+-- "Pings beschränken auf" – wie in Blizzards Raid-Werkzeug.
+-- Bodenmarkierungen setzt das Spiel nur über geschützte Knöpfe (SecureActionButton, type "worldmarker");
+-- die klicken auch im Kampf, das Fenster selbst öffnet und schließt aber nur außerhalb des Kampfes.
+---------------------------------------------------------------------------
+-- Reihenfolge wie bei Blizzard: Totenkopf, Kreuz, Quadrat, Mond, Dreieck, Diamant, Kreis, Stern.
+-- raid = Index der Zielmarkierung (UI-RaidTargetingIcon_N), world = Nummer der Bodenmarkierung
+local MARKERS = {
+    { raid = 8, world = 8 }, { raid = 7, world = 4 }, { raid = 6, world = 1 }, { raid = 5, world = 7 },
+    { raid = 4, world = 2 }, { raid = 3, world = 3 }, { raid = 2, world = 6 }, { raid = 1, world = 5 },
+}
+local MARK_ICON = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_"
+local CLEAR_ICON = "Interface\\Buttons\\UI-GroupLoot-Pass-Up"
+local GEAR_ICON = "Interface\\Icons\\INV_Misc_Gear_01"
+local barPanel, barPanelKey, barPanelHidePending
+
+local function PingChoices()
+    local e = Enum and Enum.RestrictPingsTo
+    if not (e and C_PartyInfo and C_PartyInfo.SetRestrictPings) then return nil end
+    return {
+        { value = e.None, text = L("PING_NONE") },
+        { value = e.Lead, text = L("PING_LEAD") },
+        { value = e.Assist, text = L("PING_ASSIST") },
+        { value = e.TankHealer, text = L("PING_TANKHEALER") },
+    }
+end
+
+local function MarkButton(parent, size, secure)
+    local button = CreateFrame("Button", nil, parent, secure and "SecureActionButtonTemplate,BackdropTemplate" or "BackdropTemplate")
+    button:SetSize(size, size)
+    ns.Style.SetFlat(button, COLOR.button)
+    button.icon = button:CreateTexture(nil, "ARTWORK")
+    button.icon:SetPoint("TOPLEFT", 3, -3)
+    button.icon:SetPoint("BOTTOMRIGHT", -3, 3)
+    button:HookScript("OnEnter", function(self)
+        self:SetBackdropBorderColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3], 0.9)
+    end)
+    button:HookScript("OnLeave", function(self) self:SetBackdropBorderColor(unpack(COLOR.border)) end)
+    return button
+end
+
+local function HideBarPanel()
+    if not barPanel or not barPanel:IsShown() then return end
+    if InCombatLockdown() then
+        barPanelHidePending = true -- geschützte Knöpfe darin: erst nach dem Kampf schließen
+        ns.Print(L("COMBAT_QUEUED"))
+        return
+    end
+    barPanel:Hide()
+end
+
+local function BuildBarPanel()
+    local p = CreateFrame("Frame", "ForeverBarsBarPanel", UIParent, "BackdropTemplate")
+    p:SetFrameStrata("DIALOG")
+    p:SetClampedToScreen(true)
+    p:EnableMouse(true)
+    ns.Style.SetFlat(p, { COLOR.background[1], COLOR.background[2], COLOR.background[3], 0.95 })
+    p:Hide()
+    local SIZE, GAP, PAD = 26, 4, 8
+
+    p.disable = ns.Style.CreateButton(p, L("OPT_DISABLE_BAR"), 4 * SIZE + 3 * GAP - 14, 20, function()
+        if barPanelKey and ns.db.bars[barPanelKey] then
+            ns.db.bars[barPanelKey].enabled = false
+            ns.Print(L("BAR_DISABLED_HINT"))
+            HideBarPanel()
+            ns.RequestLayout()
+            if ns.RefreshOptions then ns.RefreshOptions() end
+        end
+    end)
+
+    -- Markierungen: Reiter "Einheit" / "Boden"
+    p.marks = CreateFrame("Frame", nil, p)
+    local tabW = (4 * SIZE + 3 * GAP - GAP) / 2
+    p.unitTab = ns.Style.CreateButton(p.marks, L("MARK_UNIT"), tabW, 18, function() p:SelectMarks("unit") end)
+    p.groundTab = ns.Style.CreateButton(p.marks, L("MARK_GROUND"), tabW, 18, function() p:SelectMarks("ground") end)
+    p.unitTab:SetPoint("TOPLEFT", 0, 0)
+    p.groundTab:SetPoint("LEFT", p.unitTab, "RIGHT", GAP, 0)
+    p.unitPage = CreateFrame("Frame", nil, p.marks)
+    p.groundPage = CreateFrame("Frame", nil, p.marks)
+    for _, page in ipairs({ p.unitPage, p.groundPage }) do
+        page:SetPoint("TOPLEFT", 0, -18 - GAP)
+        page:SetSize(4 * SIZE + 3 * GAP, 3 * SIZE + 2 * GAP)
+    end
+    local function Place(button, i)
+        local col, row = (i - 1) % 4, math.floor((i - 1) / 4)
+        button:SetPoint("TOPLEFT", col * (SIZE + GAP), -row * (SIZE + GAP))
+    end
+    for i, m in ipairs(MARKERS) do
+        -- Einheit: Markierung aufs Ziel (gleiche noch einmal = entfernen)
+        local unitButton = MarkButton(p.unitPage, SIZE)
+        unitButton.icon:SetTexture(MARK_ICON .. m.raid)
+        unitButton:SetScript("OnClick", function()
+            if not UnitExists("target") then return end
+            SetRaidTarget("target", GetRaidTargetIndex("target") == m.raid and 0 or m.raid)
+        end)
+        Place(unitButton, i)
+        -- Boden: Bodenmarkierung an die Mausposition setzen bzw. entfernen (geschützter Knopf)
+        local groundButton = MarkButton(p.groundPage, SIZE, true)
+        groundButton.icon:SetTexture(MARK_ICON .. m.raid)
+        groundButton:RegisterForClicks("AnyUp", "AnyDown")
+        groundButton:SetAttribute("type", "worldmarker")
+        groundButton:SetAttribute("marker", m.world)
+        groundButton:SetAttribute("action", "toggle")
+        Place(groundButton, i)
+    end
+    -- Entfernen: Ziel-Markierung weg bzw. alle Bodenmarkierungen weg
+    local clearUnit = MarkButton(p.unitPage, SIZE)
+    clearUnit.icon:SetTexture(CLEAR_ICON)
+    clearUnit:SetScript("OnClick", function() if UnitExists("target") then SetRaidTarget("target", 0) end end)
+    Place(clearUnit, 9)
+    local clearGround = MarkButton(p.groundPage, SIZE, true)
+    clearGround.icon:SetTexture(CLEAR_ICON)
+    clearGround:RegisterForClicks("AnyUp", "AnyDown")
+    clearGround:SetAttribute("type", "worldmarker")
+    clearGround:SetAttribute("action", "clear")
+    Place(clearGround, 9)
+
+    function p:SelectMarks(which)
+        self.unitPage:SetShown(which == "unit")
+        self.groundPage:SetShown(which == "ground")
+        for tab, key in pairs({ [self.unitTab] = "unit", [self.groundTab] = "ground" }) do
+            local active = key == which
+            tab:GetFontString():SetTextColor(active and COLOR.accent[1] or 0.9, active and COLOR.accent[2] or 0.9,
+                active and COLOR.accent[3] or 0.9)
+        end
+    end
+    p.marks:SetSize(4 * SIZE + 3 * GAP, 18 + GAP + 3 * SIZE + 2 * GAP)
+
+    -- Pings beschränken (nur Gruppenleiter / Assistenten dürfen das ändern)
+    p.pingLabel = p:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    p.pingLabel:SetText(L("PING_RESTRICT"))
+    p.ping = ns.Style.CreateDropdown(p, 4 * SIZE + 3 * GAP)
+    p.ping:SetScript("OnClick", function(self)
+        local choices = PingChoices()
+        if not choices then return end
+        local items = {}
+        for _, c in ipairs(choices) do
+            table.insert(items, { radio = true, text = c.text,
+                checked = function() return C_PartyInfo.GetRestrictPings and C_PartyInfo.GetRestrictPings() == c.value end,
+                onClick = function() pcall(C_PartyInfo.SetRestrictPings, c.value) p:Refresh() end })
+        end
+        ns.Style.ShowMenu(self, items, { align = "LEFT" })
+    end)
+
+    function p:Refresh()
+        local choices = PingChoices()
+        local current = choices and C_PartyInfo.GetRestrictPings and C_PartyInfo.GetRestrictPings()
+        self.ping:SetText("")
+        for _, c in ipairs(choices or {}) do
+            if c.value == current then self.ping:SetText(c.text) end
+        end
+    end
+
+    -- Schließen: Zahnrad noch einmal oder das Kreuz oben rechts (keine Tastatur-Abfrage – das Fenster enthält
+    -- geschützte Knöpfe, Tastatur-Einstellungen daran wären im Kampf gesperrt)
+    p.close = CreateFrame("Button", nil, p)
+    p.close:SetSize(12, 12)
+    p.close:SetPoint("TOPRIGHT", -3, -3)
+    p.close.icon = p.close:CreateTexture(nil, "ARTWORK")
+    p.close.icon:SetAllPoints()
+    p.close.icon:SetTexture(CLEAR_ICON)
+    p.close:SetScript("OnClick", HideBarPanel)
+    local events = CreateFrame("Frame")
+    events:RegisterEvent("PLAYER_REGEN_ENABLED")
+    events:SetScript("OnEvent", function()
+        if barPanelHidePending then
+            barPanelHidePending = false
+            p:Hide()
+        end
+    end)
+    p.SIZE, p.GAP, p.PAD = SIZE, GAP, PAD
+    return p
+end
+
+-- Fenster für eine Leiste zusammenstellen und am Zahnrad öffnen (zweiter Klick schließt)
+local function ToggleBarPanel(key, gear)
+    if InCombatLockdown() then
+        ns.Print(L("PANEL_NO_COMBAT"))
+        return
+    end
+    barPanel = barPanel or BuildBarPanel()
+    local p = barPanel
+    if p:IsShown() and barPanelKey == key then
+        p:Hide()
+        return
+    end
+    barPanelKey = key
+    local PAD, GAP = p.PAD, p.GAP
+    local width = 4 * p.SIZE + 3 * GAP
+    local withMarks = key == "food"
+    local y = -PAD
+    p.disable:ClearAllPoints()
+    p.disable:SetPoint("TOPLEFT", PAD, y)
+    y = y - 20 - GAP * 2
+    p.marks:SetShown(withMarks)
+    local pings = withMarks and PingChoices() ~= nil
+    p.pingLabel:SetShown(pings)
+    p.ping:SetShown(pings)
+    if withMarks then
+        p.marks:ClearAllPoints()
+        p.marks:SetPoint("TOPLEFT", PAD, y)
+        y = y - p.marks:GetHeight() - GAP * 2
+        p:SelectMarks("unit")
+        if pings then
+            p.pingLabel:ClearAllPoints()
+            p.pingLabel:SetPoint("TOPLEFT", PAD, y)
+            y = y - 14
+            p.ping:ClearAllPoints()
+            p.ping:SetPoint("TOPLEFT", PAD, y)
+            y = y - 22 - GAP
+            p:Refresh()
+        end
+    end
+    p:SetSize(width + 2 * PAD, -y + PAD - GAP)
+    p:ClearAllPoints()
+    p:SetPoint("TOPLEFT", gear, "TOPRIGHT", 4, 0)
+    p:Show()
+end
+
+-- Zahnrad in der Ecke der Leiste (ausgeklappt sichtbar; eingeklappt ist die Leiste samt Zahnrad ausgeblendet)
+function ns.UpdateBarGear(def, cfg, holder)
+    local gear = holder.fbGear
+    if not gear then
+        gear = CreateFrame("Button", nil, holder, "BackdropTemplate")
+        gear:SetSize(14, 14)
+        gear.icon = gear:CreateTexture(nil, "ARTWORK")
+        gear.icon:SetAllPoints()
+        gear.icon:SetTexture(GEAR_ICON)
+        gear.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+        gear.icon:SetAlpha(0.8)
+        gear:SetScript("OnClick", function(self) ToggleBarPanel(def.key, self) end)
+        gear:SetScript("OnEnter", function(self)
+            self.icon:SetAlpha(1)
+            local tip = ns.Style.GetTooltip()
+            tip:SetOwner(self, "ANCHOR_TOP")
+            tip:AddLine(L("GEAR_TIP"))
+            tip:Show()
+        end)
+        gear:SetScript("OnLeave", function(self)
+            self.icon:SetAlpha(0.8)
+            ns.Style.GetTooltip():Hide()
+        end)
+        holder.fbGear = gear
+    end
+    -- in der Kopfzeile des Rahmens (falls an), sonst an der oberen rechten Ecke der Leiste
+    local frame = cfg.frame and holder.fbFrame
+    gear:ClearAllPoints()
+    if frame and frame.header and frame.header:IsShown() then
+        gear:SetPoint("RIGHT", frame.header, "RIGHT", -2, 0)
+    elseif frame then
+        gear:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -2, -2)
+    else
+        gear:SetPoint("BOTTOMRIGHT", holder, "TOPRIGHT", 0, 2)
+    end
+    gear:SetFrameLevel(holder:GetFrameLevel() + 10)
+    gear:SetShown(cfg.enabled)
+    if (not cfg.enabled or cfg.collapsed) and barPanel and barPanelKey == def.key then HideBarPanel() end
+end
+
 local ARROW_WIDTH = 20
 -- Symbol je Leiste im eingeklappten Pfeil-Knopf
 local COLLAPSE_SYMBOLS = {
@@ -2523,7 +2784,10 @@ function ns.ApplyLayout()
             RegisterStateDriver(holder, "visibility", "[petbattle] hide; show")
         end
         UpdateBarFrame(def, cfg, holder)
-        if def.kind == "prof" or def.kind == "food" then ns.UpdateCollapseArrow(def, cfg, holder) end
+        if def.kind == "prof" or def.kind == "food" then
+            ns.UpdateCollapseArrow(def, cfg, holder)
+            ns.UpdateBarGear(def, cfg, holder)
+        end
         UpdateMover(def, holder)
     end
     -- Flächen zum Hineinziehen (einmalig anlegen, sobald die Halter da sind)
