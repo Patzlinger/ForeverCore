@@ -464,6 +464,26 @@ local function CreateOptions()
         ns.ResetXPRate()
     end)
 
+    -- Nur Aktionsleisten: alle Einstellungen einer anderen Aktionsleiste übernehmen (Größe, Reihen, Abstand,
+    -- Sichtbarkeit, Rahmen …). Position und "Leiste anzeigen" bleiben, damit die Leiste nicht verschwindet/springt.
+    local COPY_SKIP = { x = true, y = true, point = true, enabled = true }
+    local copyChoices = {}
+    for _, def in ipairs(ns.BAR_DEFS) do
+        if def.kind == "action" then table.insert(copyChoices, { value = def.key, textKey = def.textKey }) end
+    end
+    options.copySelector = CreateSmallSelector(layoutPage, L("OPT_COPY_FROM"), 14, -470, 180, copyChoices,
+        function() return nil end,
+        function(source)
+            if source == selectedKey then return end
+            local from, to = ns.db.bars[source], SelectedConfig()
+            if not from then return end
+            for key, value in pairs(from) do
+                if not COPY_SKIP[key] then to[key] = type(value) == "table" and CopyTable(value) or value end
+            end
+            ns.Print(L("COPY_DONE", L(ns.GetBarDef(source).textKey), L(ns.GetBarDef(selectedKey).textKey)))
+            Changed()
+        end)
+
     -- Reihenfolge der beiden Spalten; RefreshOptions setzt die gerade sichtbaren lückenlos untereinander
     -- (je Zeile: Element, Höhe, Einrückung; spacer = zusätzlicher Abstand)
     options.layoutPage = layoutPage
@@ -472,7 +492,7 @@ local function CreateOptions()
             { options.buttonsSlider, 44 }, { options.perRowSlider, 44 }, { options.spacingSlider, 44 },
             { options.scaleSlider, 44 }, { options.statusWidthSlider, 44 }, { options.statusHeightSlider, 44 },
             { options.alphaSlider, 44 }, { options.posXSlider, 44 },
-            { options.posYSlider, 50 },
+            { options.posYSlider, 50 }, { options.copySelector, 48 },
         } },
         { x = RIGHT_X, rows = {
             { options.growXSelector, 48 }, { options.growYSelector, 48 }, { options.flyoutSelector, 48 },
@@ -1067,6 +1087,7 @@ function ns.RefreshOptions()
     options.growXSelector:SetShown(hasButtons)
     options.growYSelector:SetShown(hasButtons)
     options.flyoutSelector:SetShown(def.kind == "action")
+    options.copySelector:SetShown(def.kind == "action")
     options.backpackCheck:SetShown(def.kind == "bags")
     options.collapseArrowCheck:SetShown(def.kind == "prof" or def.kind == "food")
     options.arrowSideSelector:SetShown((def.kind == "prof" or def.kind == "food") and SelectedConfig().collapseArrow == true)
