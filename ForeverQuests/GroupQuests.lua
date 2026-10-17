@@ -56,10 +56,26 @@ local function QuestTitle(questID, fallback)
     return (C_QuestLog.GetTitleForQuestID and C_QuestLog.GetTitleForQuestID(questID)) or fallback or ("Quest " .. questID)
 end
 
+-- Klasse eines Gruppenmitglieds: über die Gruppen-Einheiten suchen (der angeglichene Vorname allein reicht
+-- UnitClass nicht, wenn das Spiel den Namen mit Nachnamen führt)
 local function ClassOf(name)
+    if not name then return nil end
+    local prefix, count = "party", GetNumSubgroupMembers and GetNumSubgroupMembers() or 0
+    if IsInRaid() then prefix, count = "raid", GetNumGroupMembers() end
+    for i = 1, count do
+        local unit = prefix .. i
+        local unitName = UnitName(unit)
+        if unitName and not issecret(unitName) then
+            local full = Ambiguate and Ambiguate(unitName, "short") or unitName
+            if (full:match("^[^%s%-]+") or full) == name then
+                local _, class = UnitClass(unit)
+                if class and not issecret(class) then return class end
+            end
+        end
+    end
     local _, class = UnitClass(name)
-    if issecret(class) then return nil end
-    return class
+    if class and not issecret(class) then return class end
+    return nil
 end
 
 local function AddQuest(questID, title)
