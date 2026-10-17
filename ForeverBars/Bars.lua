@@ -2095,11 +2095,14 @@ local HIDE_CONDITIONS = {
     { key = "hideStance", condition = "[stance]" },
 }
 
-local function VisibilityDriver(def, cfg)
+-- ignoreCollapse: das Einklappen regelt der geschützte Pfeil selbst (Attribut "fbcollapsed", Treiber "fbvis")
+local function VisibilityDriver(def, cfg, ignoreCollapse)
     if not cfg.enabled then return "hide" end
     if ns.unlocked or ns.testMode then return "show" end
     -- Mit dem Pfeil eingeklappt (Berufe, Verpflegung)
-    if (def.kind == "prof" or def.kind == "food") and cfg.collapseArrow and cfg.collapsed then return "hide" end
+    if not ignoreCollapse and (def.kind == "prof" or def.kind == "food") and cfg.collapseArrow and cfg.collapsed then
+        return "hide"
+    end
     -- Haltungsleiste ohne Haltungen, Auren oder Gestalten ausblenden
     if def.kind == "stance" and (GetNumShapeshiftForms and GetNumShapeshiftForms() or 0) == 0 then return "hide" end
     -- Eigene Bedingung ersetzt alle anderen Einstellungen
@@ -2664,17 +2667,32 @@ function ns.UpdateCollapseArrow(def, cfg, holder)
         return
     end
     if not arrow then
-        arrow = CreateFrame("Button", nil, UIParent, "BackdropTemplate")
+        -- Geschützter Knopf: klappt die Leiste auch im Kampf aus und ein (die Leiste selbst ist geschützt und darf
+        -- im Kampf nur aus geschütztem Code gezeigt/versteckt werden). Den Zustand hält der Halter als Attribut
+        -- "fbcollapsed", sein Sichtbarkeits-Treiber "fbvis" beachtet es (siehe ApplyLayout).
+        arrow = CreateFrame("Button", nil, UIParent, "SecureHandlerClickTemplate, BackdropTemplate")
         arrow:SetFrameStrata("MEDIUM")
         ns.Style.SetFlat(arrow, COLOR.button)
         arrow.icon = arrow:CreateTexture(nil, "OVERLAY")
         arrow.icon:SetSize(12, 12)
         arrow.icon:SetPoint("CENTER")
         arrow.icon:SetTexture("Interface\\ChatFrame\\ChatFrameExpandArrow")
-        arrow:SetScript("OnClick", function(self)
+        arrow:SetFrameRef("holder", holder)
+        arrow:SetAttribute("_onclick", [[
+            local h = self:GetFrameRef("holder")
+            local collapsed = not h:GetAttribute("fbcollapsed")
+            h:SetAttribute("fbcollapsed", collapsed)
+            if h:GetAttribute("fbvisstate") ~= "hide" and not collapsed then h:Show() else h:Hide() end
+        ]])
+        -- danach (ungeschützt): Einstellung merken; außerhalb des Kampfes alles neu anordnen, im Kampf nur den
+        -- Pfeil drehen und das Symbol zeigen/verstecken – Größe und Lage des Knopfs folgen nach dem Kampf
+        arrow:HookScript("OnClick", function(self)
             local barCfg = ns.db.bars[def.key]
-            barCfg.collapsed = not barCfg.collapsed
-            if InCombatLockdown() then ns.Print(L("COMBAT_QUEUED")) end
+            barCfg.collapsed = holder:GetAttribute("fbcollapsed") and true or false
+            if InCombatLockdown() then
+                if self.fbRotate then self.fbRotate(barCfg.collapsed) end
+                if self.label then self.label:SetShown(barCfg.collapsed) end
+            end
             ns.RequestLayout()
             -- Tooltip nach dem Umbau neu schreiben (sonst stünde noch die alte Richtung da)
             C_Timer.After(0.05, function()
@@ -2716,6 +2734,7 @@ function ns.UpdateCollapseArrow(def, cfg, holder)
     local ROTATION = { RIGHT = 0, LEFT = math.pi, TOP = math.pi / 2, BOTTOM = -math.pi / 2 }
     local OPPOSITE = { RIGHT = "LEFT", LEFT = "RIGHT", TOP = "BOTTOM", BOTTOM = "TOP" }
     arrow.icon:SetRotation(ROTATION[cfg.collapsed and OPPOSITE[side] or side])
+    arrow.fbRotate = function(collapsed) arrow.icon:SetRotation(ROTATION[collapsed and OPPOSITE[side] or side]) end
     -- Symbol im Knopf (nur eingeklappt) zeigt, welche Leiste es ist; was der Klick tut, sagt der Tooltip.
     -- Pfeil links/rechts: Symbol unter dem Pfeil, Pfeil oben/unten: Symbol rechts daneben
     if not arrow.label then
@@ -2820,8 +2839,28 @@ function ns.ApplyLayout()
         end
         SetupPaging(def, cfg, holder)
         -- Abgesichert, damit eine fehlerhafte eigene Bedingung keinen Fehler auslöst
-        if not pcall(RegisterStateDriver, holder, "visibility", VisibilityDriver(def, cfg)) then
-            RegisterStateDriver(holder, "visibility", "[petbattle] hide; show")
+        local securedCollapse = (def.kind == "prof" or def.kind == "food") and cfg.enabled and cfg.collapseArrow
+        if securedCollapse then
+            -- Einklappbare Leiste: eigener Treiber "fbvis"; gezeigt wird nur, wenn er "show" sagt und die Leiste
+            -- nicht eingeklappt ist – so kann der geschützte Pfeil auch im Kampf aus- und einklappen
+            UnregisterStateDriver(holder, "visibility")
+            holder:SetAttribute("fbcollapsed", (cfg.collapsed and not ns.unlocked and not ns.testMode) and true or false)
+            holder:SetAttribute("_onstate-fbvis", [[
+                self:SetAttribute("fbvisstate", newstate)
+                if newstate ~= "hide" and not self:GetAttribute("fbcollapsed") then self:Show() else self:Hide() end
+            ]])
+            if not pcall(RegisterStateDriver, holder, "fbvis", VisibilityDriver(def, cfg, true)) then
+                RegisterStateDriver(holder, "fbvis", "[petbattle] hide; show")
+            end
+            -- gleich anwenden (ändert sich nur das Einklappen, meldet der Treiber keinen neuen Zustand)
+            local state = holder:GetAttribute("state-fbvis")
+            if state then holder:SetAttribute("fbvisstate", state) end
+            holder:SetShown(state ~= "hide" and not holder:GetAttribute("fbcollapsed"))
+        else
+            UnregisterStateDriver(holder, "fbvis")
+            if not pcall(RegisterStateDriver, holder, "visibility", VisibilityDriver(def, cfg)) then
+                RegisterStateDriver(holder, "visibility", "[petbattle] hide; show")
+            end
         end
         UpdateBarFrame(def, cfg, holder)
         if def.kind == "prof" or def.kind == "food" then
