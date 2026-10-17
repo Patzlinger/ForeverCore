@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 32
+local VERSION = 33
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -3232,26 +3232,69 @@ local function DetailsReady()
     return D and D.InstallSkin and D.GetProfile and D.ApplyProfile and D.SaveProfile and D.GetCurrentProfileName and D
 end
 
+-- Transparenz wie in ForeverQuests (dessen Einstellung "Hintergrund-Transparenz", Standard 65 % = 35 % Deckkraft)
+local function QuestsAlpha()
+    local q = _G.ForeverQuestsDB
+    local tr = q and tonumber(q.backgroundTransparency) or 65
+    return math.max(0.15, 1 - tr / 100)
+end
+
+-- schlichte, einfarbige Leisten-Textur (fuer Details' Titelleiste) in LibSharedMedia anmelden
+local FLAT_TEX = "Forever Flat"
+local function RegisterFlatTexture()
+    local lsm = LibStub and LibStub("LibSharedMedia-3.0", true)
+    if lsm and not lsm:IsValid("statusbar", FLAT_TEX) then lsm:Register("statusbar", FLAT_TEX, WHITE) end
+    return lsm ~= nil
+end
+
+-- feine goldene Linie unter Details' Titelleiste (nur solange ein Fenster unseren Skin nutzt)
+local function DetailsAccent(instance)
+    local tb = instance and instance.baseframe and instance.baseframe.titleBar
+    if not tb then return end
+    if not tb.fcAccent then
+        tb.fcAccent = tb:CreateTexture(nil, "OVERLAY")
+        tb.fcAccent:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 0.6)
+        tb.fcAccent:SetHeight(1)
+        tb.fcAccent:SetPoint("BOTTOMLEFT")
+        tb.fcAccent:SetPoint("BOTTOMRIGHT")
+    end
+    tb.fcAccent:SetShown(instance.skin == DETAILS_NAME and instance.titlebar_shown ~= false)
+end
+
+-- Look wie ForeverQuests: Titelleiste in Kopffarbe, Flaeche hinter den Balken wie dessen Fenster (Feldfarbe,
+-- gleiche Transparenz, feiner grauer Rand), Titel gold, Balken in Klassenfarbe
 local function DetailsSkin()
     local font = "Friz Quadrata TT"
     local bar = [[Interface\AddOns\Details\images\bar_background]]
+    local a = QuestsAlpha()
+    local titleTex = RegisterFlatTexture() and FLAT_TEX or "Details Flat"
     return {
         file = [[Interface\AddOns\Details\images\skins\simplygray_skin.blp]],
-        author = "Forever Core", version = "1.0", site = "", no_cache = true,
-        desc = "Flat and dark like the Forever Core addons: fine border, gold title, class-colored bars.",
+        author = "Forever Core", version = "1.1", site = "", no_cache = true,
+        desc = "Like the Forever Core windows: header in Forever color, transparent body, fine border, gold title.",
         can_change_alpha_head = true,
         icon_anchor_main = { -1, -5 }, icon_anchor_plugins = { -7, -13 }, icon_plugins_size = { 19, 18 },
         micro_frames = { color = { 0.75, 0.75, 0.75, 1 }, font = font, size = 10, textymod = 1 },
         icon_point_anchor = { -37, 0 }, left_corner_anchor = { -107, 0 }, right_corner_anchor = { 96, 0 },
         icon_point_anchor_bottom = { -37, 12 }, left_corner_anchor_bottom = { -107, 0 }, right_corner_anchor_bottom = { 96, 0 },
         icon_ignore_alpha = true, icon_titletext_position = { 3, 4 },
-        callback = function() end,
+        callback = function(_, instance) DetailsAccent(instance) end,
         instance_cprops = {
             menu_icons_alpha = 0.92,
             hide_in_combat_type = 1,
-            color = { C.button[1], C.button[2], C.button[3], 1 },          -- Titelleiste und feine Raender
-            bg_r = C.background[1], bg_g = C.background[2], bg_b = C.background[3], bg_alpha = 0.85,
+            -- alte Skin-Grafik (Ecken/Seiten) unsichtbar – Titelleiste und Rand zeichnen wir flach
+            color = { C.header[1], C.header[2], C.header[3], 0 },
+            show_sidebars = false,
+            -- Titelleiste wie in ForeverQuests
+            titlebar_shown = true,
+            titlebar_height = 20,
+            titlebar_texture = titleTex,
+            titlebar_texture_color = { C.header[1], C.header[2], C.header[3], a },
+            -- Flaeche hinter den Balken wie die Fenster von ForeverQuests
+            bg_r = C.panel[1], bg_g = C.panel[2], bg_b = C.panel[3], bg_alpha = a,
             backdrop_texture = "Details Ground",
+            fullborder_shown = true, fullborder_color = { C.border[1], C.border[2], C.border[3], 1 }, fullborder_size = 1,
+            rowareaborder_shown = false,
             color_buttons = { 0.85, 0.85, 0.85, 1 },
             menu_anchor = { 14, 2, side = 2 }, menu_anchor_down = { 14, -2 },
             instance_button_anchor = { -27, 1 },
@@ -3261,7 +3304,6 @@ local function DetailsSkin()
             },
             menu_icons = { true, true, true, true, true, false, space = -1, shadow = true },
             desaturated_menu = false,
-            show_sidebars = true,
             show_statusbar = false,
             statusbar_info = { alpha = 1, overlay = { 0, 0, 0 } },
             micro_displays_side = 2,
@@ -3275,7 +3317,7 @@ local function DetailsSkin()
                 texture_class_colors = true,                                    -- Klassenfarben wie in ForeverFrames
                 texture_background = "Details Flat", texture_background_file = bar,
                 texture_background_class_color = false,
-                fixed_texture_background_color = { C.panel[1], C.panel[2], C.panel[3], 0.6 },
+                fixed_texture_background_color = { C.panel[1], C.panel[2], C.panel[3], 0.25 }, -- dezent wie Quest-Zeilen
                 texture_highlight = [[Interface\FriendsFrame\UI-FriendsList-Highlight]],
                 font_face = font, font_face_file = STANDARD_TEXT_FONT, font_size = 11,
                 textL_outline = false, textR_outline = false,
@@ -3291,12 +3333,18 @@ local function DetailsSkin()
     }
 end
 
--- Skin anmelden, sobald beide geladen sind (Details laedt vor ForeverCore; sonst beim ADDON_LOADED von Details)
-local function InstallDetailsSkin()
+-- Skin anmelden (Details laedt vor ForeverCore; sonst beim ADDON_LOADED von Details). force: neu anmelden, z. B.
+-- damit eine geaenderte Transparenz in ForeverQuests uebernommen wird
+local function InstallDetailsSkin(force)
     local D = DetailsReady()
-    if not D or SHARED.detailsSkin then return end
+    if not D or (SHARED.detailsSkin and not force) then return end
     local ok = pcall(D.InstallSkin, D, DETAILS_NAME, DetailsSkin())
     if ok then SHARED.detailsSkin = true end
+    -- Skin gewechselt (auch zu einem anderen): goldene Linie ein-/ausblenden
+    if ok and not SHARED.detailsHooked and D.ChangeSkin then
+        SHARED.detailsHooked = true
+        hooksecurefunc(D, "ChangeSkin", function(instance) pcall(DetailsAccent, instance) end)
+    end
 end
 do
     local f = CreateFrame("Frame")
@@ -3306,7 +3354,6 @@ do
         if event == "PLAYER_LOGIN" or name == "Details" then InstallDetailsSkin() end
     end)
 end
-
 function UI.DetailsAvailable() return DetailsReady() ~= nil end
 
 function UI.DetailsForeverActive()
@@ -3318,7 +3365,7 @@ function UI.DetailsApplyForever()
     local D = DetailsReady()
     if not D then return false end
     if InCombatLockdown() then UI.Chat("Forever", T("Im Kampf nicht möglich.", "Not possible in combat.")) return false end
-    InstallDetailsSkin()
+    InstallDetailsSkin(true) -- aktuelle Transparenz aus ForeverQuests
     local current = D:GetCurrentProfileName()
     if current ~= DETAILS_NAME then
         GetDB().detailsPrevious = current
