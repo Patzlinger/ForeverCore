@@ -101,6 +101,12 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
             if ns.db.height == 400 or ns.db.height == 480 then ns.db.height = ns.defaults.height end
             ns.db.layoutVersion = 3
         end
+        -- Einmalig: wieder unter der Minimap andocken (so breit wie Karte samt ausgeklappter Knopfleiste);
+        -- wer den Tracker früher selbst gezogen hatte, hatte das Andocken dadurch ausgeschaltet
+        if ns.db.layoutVersion < 4 then
+            ns.db.followMinimap = true
+            ns.db.layoutVersion = 4
+        end
         if ns.ApplyBetaFilter then ns.ApplyBetaFilter() end
         ns.CreateTracker()
         ns.UpdateBlizzardTracker()

@@ -98,7 +98,7 @@ local STATUS_TOP_GAP = 7 -- zusätzlicher Abstand zwischen der obersten dieser L
 local BAR_GAP = 1.5    -- Abstand zwischen aneinanderliegenden Leisten (wie "Abstand" der Knöpfe)
 local SIDE_GAP = 24    -- Abstand von Berufe-/Verpflegungsleiste zu den Aktionsleisten (Platz für den Einklapp-Pfeil)
 local FRAME_SPACE = 4  -- Rand des Rahmens um eine Leiste (siehe UpdateBarFrame)
-local PET_GAP = 8      -- kleiner Abstand der Begleiter-/Haltungsleiste zu den Aktionsleisten (Flächen berühren sich nicht)
+local PET_GAP = 8     -- kleiner Abstand der Begleiter-/Haltungsleiste zu den Aktionsleisten (Flächen berühren sich nicht)
 
 -- Tatsächliche Größe einer Leiste. Aktionsleisten: "100 %" im Menü sind 105 % der Blizzard-Knopfgröße
 -- (die Knöpfe sollten größer werden, ohne dass im Menü ein krummer Wert steht)
@@ -144,7 +144,9 @@ local function DefaultPosition(key)
             end
         end
     end
-    if statusBase == STATUS_EDGE then statusBase = statusBase + STATUS_TOP_GAP end -- Luft zu den Aktionsleisten
+    -- Luft zwischen der obersten Statusleiste (Ruf) und Aktionsleiste 1 – nur, wenn überhaupt eine Statusleiste da ist
+    -- (früher "== STATUS_EDGE": das traf bei sichtbaren Leisten nie zu, die Luft fehlte)
+    if statusBase > EDGE then statusBase = statusBase + STATUS_TOP_GAP end
     local function BarCenter(row) return statusBase + barHeight / 2 + row * (barHeight + BAR_GAP) end
     local stackTop = statusBase + 3 * barHeight + 2 * BAR_GAP     -- Oberkante der drei Aktionsleisten
     local smallRow = ACTION_SIZE * Scale("pet")                    -- Höhe der Begleiter-/Haltungsreihe
