@@ -1013,18 +1013,32 @@ local function ShowEmptySlots(key)
     return ns.db.showGrid or slotDragActive or (GetCursorInfo() == SLOT_BARS[key].cursorKind)
 end
 
--- Wie viele Plätze die Leiste gerade zeigt. Berufe: nur bis zum letzten belegten Platz (die Leiste wächst mit
--- den Berufen; "Anzahl Knöpfe" ist die Höchstzahl), beim Hineinziehen/Verschieben ein freier Platz mehr.
--- Verpflegung: immer alle Plätze (festes Raster).
+-- Raster der Berufe-/Verpflegungsleiste: mindestens 2 Reihen; die Leiste wächst nach der Seite (Spalte für
+-- Spalte, so behält jeder Knopf seinen Platz). Erst wenn "Knöpfe pro Reihe" voll ist, kommt eine Reihe dazu.
+local SLOT_MIN_ROWS = 2
+local function SlotRows(cfg, count)
+    local perRow = math.max(1, cfg.perRow or count)
+    return math.max(1, math.min(count, math.max(SLOT_MIN_ROWS, math.ceil(count / perRow))))
+end
+-- Spalte und Reihe (ab 0) eines Platzes
+local function SlotCell(index, rows)
+    return math.floor((index - 1) / rows), (index - 1) % rows
+end
+
+-- Wie viele Plätze die Leiste gerade zeigt: bis zum letzten belegten Platz (die Leiste wächst mit; "Anzahl
+-- Knöpfe" ist die Höchstzahl), beim Hineinziehen/Verschieben ein freier Platz mehr. Mindestens 2 Plätze
+-- (übereinander), aufgerundet auf volle Spalten.
+local SLOT_MIN = 2
 local slotShown = {}
 local function ShownSlotCount(key, cfg, capacity)
-    if key ~= "prof" then return capacity end
     local last = 0
     for slot in pairs(cfg.slots) do
         if slot <= capacity and slot > last then last = slot end
     end
     if slotDragActive or GetCursorInfo() == SLOT_BARS[key].cursorKind then last = last + 1 end
-    return math.max(1, math.min(capacity, last))
+    local count = math.max(SLOT_MIN, last)
+    local rows = SlotRows(cfg, count)
+    return math.max(1, math.min(capacity, math.ceil(count / rows) * rows))
 end
 
 -- Knöpfe belegen (nur außerhalb des Kampfes); Rückgabe: Anzahl gezeigter Plätze
@@ -1189,12 +1203,13 @@ local function DropSlot(key)
     local step = ACTION_SIZE + ns.ButtonGap(cfg)
     local col = cfg.growX == "LEFT" and math.floor((holder:GetRight() - x) / step) or math.floor((x - holder:GetLeft()) / step)
     local row = cfg.growY == "UP" and math.floor((y - holder:GetBottom()) / step) or math.floor((holder:GetTop() - y) / step)
-    -- Raster wie beim Anordnen: Breite = "Knöpfe pro Reihe", höchstens so viele wie gezeigte Plätze
+    -- Raster wie beim Anordnen (siehe SlotRows/SlotCell)
     local count = slotShown[key] or SlotCount(key, cfg)
-    local perRow = math.max(1, math.min(cfg.perRow or count, count))
-    col = math.max(0, math.min(perRow - 1, col))
-    row = math.max(0, row)
-    return math.min(count, row * perRow + col + 1)
+    local rows = SlotRows(cfg, count)
+    local columns = math.ceil(count / rows)
+    col = math.max(0, math.min(columns - 1, col))
+    row = math.max(0, math.min(rows - 1, row))
+    return math.min(count, col * rows + row + 1)
 end
 
 local lastCursorKind
@@ -1712,7 +1727,14 @@ local function LayoutButtons(def, cfg, holder)
     local rows = math.ceil(count / perRow)
     -- Platz (Spalte, Reihe) je Knopf, Reihe für Reihe
     local slots = {}
-    for i = 1, count do slots[i] = { (i - 1) % perRow, math.floor((i - 1) / perRow) } end
+    if def.kind == "prof" or def.kind == "food" then
+        -- Berufe/Verpflegung: Spalte für Spalte, mindestens 2 Reihen (siehe SlotRows)
+        rows = SlotRows(cfg, count)
+        perRow = math.ceil(count / rows)
+        for i = 1, count do slots[i] = { SlotCell(i, rows) } end
+    else
+        for i = 1, count do slots[i] = { (i - 1) % perRow, math.floor((i - 1) / perRow) } end
+    end
     local gap = ns.ButtonGap(cfg)
     local toLeft, toTop = cfg.growX == "LEFT", cfg.growY == "UP"
     local corner = (toTop and "BOTTOM" or "TOP") .. (toLeft and "RIGHT" or "LEFT")
