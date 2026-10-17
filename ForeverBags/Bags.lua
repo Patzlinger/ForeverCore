@@ -413,18 +413,30 @@ end
 ---------------------------------------------------------------------------
 -- Gold aller Charaktere (Tooltip über dem Gold)
 ---------------------------------------------------------------------------
+-- Tooltip im Forever-Stil (dunkel, goldene Linie oben) – für alles außer Gegenständen (die bleiben im
+-- Blizzard-Tooltip, an den sich andere Addons hängen, z. B. Preise)
+local function Tip() return UI.GetTooltip and UI.GetTooltip() or GameTooltip end
+local function SimpleTip(owner, text)
+    local tip = Tip()
+    tip:SetOwner(owner, "ANCHOR_TOP")
+    tip:AddLine(text, 1, 1, 1)
+    tip:Show()
+end
+local function HideTip() Tip():Hide() end
+
 local function MoneyTooltip(owner)
-    GameTooltip:SetOwner(owner, "ANCHOR_TOP")
-    GameTooltip:AddLine(L("MONEY_TITLE"))
+    local tip = Tip()
+    tip:SetOwner(owner, "ANCHOR_TOP")
+    tip:AddLine(L("MONEY_TITLE"), C.accent[1], C.accent[2], C.accent[3])
     local sum = 0
     for _, entry in ipairs(ns.Characters()) do
         local money = entry.key == ns.CharKey() and GetMoney() or (entry.data.money or 0)
         sum = sum + money
-        GameTooltip:AddDoubleLine(ns.ColoredName(entry.data), GetMoneyString(money, true), 1, 1, 1, 1, 1, 1)
+        tip:AddDoubleLine(ns.ColoredName(entry.data), GetMoneyString(money, true), 1, 1, 1, 1, 1, 1)
     end
-    GameTooltip:AddLine(" ")
-    GameTooltip:AddDoubleLine(L("MONEY_TOTAL"), GetMoneyString(sum, true), 1, 0.82, 0, 1, 1, 1)
-    GameTooltip:Show()
+    tip:AddLine(" ")
+    tip:AddDoubleLine(L("MONEY_TOTAL"), GetMoneyString(sum, true), C.accent[1], C.accent[2], C.accent[3], 1, 1, 1)
+    tip:Show()
 end
 
 ---------------------------------------------------------------------------
@@ -477,13 +489,11 @@ local function HeaderButton(texture, tip, onClick)
     b:SetScript("OnClick", onClick)
     b:SetScript("OnEnter", function(self)
         self.icon:SetAlpha(1)
-        GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        GameTooltip:AddLine(tip)
-        GameTooltip:Show()
+        SimpleTip(self, tip)
     end)
     b:SetScript("OnLeave", function(self)
         self.icon:SetAlpha(0.8)
-        GameTooltip:Hide()
+        HideTip()
     end)
     return b
 end
@@ -511,12 +521,8 @@ local function CreateWindow()
         if view == nil and C_Container.SortBags then C_Container.SortBags() end
     end)
     sort:SetPoint("TOPRIGHT", -PAD, -HEADER - 4)
-    sort:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        GameTooltip:AddLine(L("TIP_SORT"))
-        GameTooltip:Show()
-    end)
-    sort:SetScript("OnLeave", GameTooltip_Hide)
+    sort:HookScript("OnEnter", function(self) SimpleTip(self, L("TIP_SORT")) end)
+    sort:HookScript("OnLeave", HideTip)
 
     local bagsToggle = UI.Button(window, "", 22, function()
         ns.db.showBagBar = not ns.db.showBagBar
@@ -528,12 +534,8 @@ local function CreateWindow()
     bagIcon:SetPoint("BOTTOMRIGHT", -3, 3)
     bagIcon:SetTexture("Interface\\Icons\\INV_Misc_Bag_08")
     bagIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-    bagsToggle:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        GameTooltip:AddLine(L("TIP_BAGBAR"))
-        GameTooltip:Show()
-    end)
-    bagsToggle:SetScript("OnLeave", GameTooltip_Hide)
+    bagsToggle:HookScript("OnEnter", function(self) SimpleTip(self, L("TIP_BAGBAR")) end)
+    bagsToggle:HookScript("OnLeave", HideTip)
 
     -- Suche (eigene Taschen: Blizzards Taschensuche, gilt wie bei Blizzard auch für die Bank)
     searchBox = UI.EditBox(window, 100, 22)
@@ -572,7 +574,7 @@ local function CreateWindow()
     moneyText:SetJustifyH("RIGHT")
     moneyArea:EnableMouse(true)
     moneyArea:SetScript("OnEnter", MoneyTooltip)
-    moneyArea:SetScript("OnLeave", GameTooltip_Hide)
+    moneyArea:SetScript("OnLeave", HideTip)
 
     -- HookScript statt SetScript: der Hub hängt eigene Dinge an OnShow (Fenster-Stapel, Größen-Griff)
     window:HookScript("OnShow", function()
