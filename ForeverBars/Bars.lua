@@ -2272,54 +2272,64 @@ function ns.UpdateCollapseArrow(def, cfg, holder)
         side = onLeftHalf and "RIGHT" or "LEFT"
     end
     local edge = (cfg.frame and holder.fbFrame) or holder
-    arrow:ClearAllPoints()
-    arrow:SetScale(holder:GetScale())
-    if side == "RIGHT" or side == "LEFT" then
-        arrow:SetWidth(ARROW_WIDTH)
-        local x = side == "RIGHT" and 2 or -2
-        local near, far = side == "RIGHT" and "LEFT" or "RIGHT", side
-        arrow:SetPoint("TOP" .. near, edge, "TOP" .. far, x, 0)
-        arrow:SetPoint("BOTTOM" .. near, edge, "BOTTOM" .. far, x, 0)
-    else
-        arrow:SetHeight(ARROW_WIDTH)
-        local y = side == "TOP" and 2 or -2
-        local near, far = side == "TOP" and "BOTTOM" or "TOP", side
-        arrow:SetPoint(near .. "LEFT", edge, far .. "LEFT", 0, y)
-        arrow:SetPoint(near .. "RIGHT", edge, far .. "RIGHT", 0, y)
-    end
+    local vertical = side == "RIGHT" or side == "LEFT"
     -- Die Grafik zeigt von sich aus nach rechts; ausgeklappt zeigt der Pfeil von der Leiste weg, eingeklappt zu ihr hin
     local ROTATION = { RIGHT = 0, LEFT = math.pi, TOP = math.pi / 2, BOTTOM = -math.pi / 2 }
     local OPPOSITE = { RIGHT = "LEFT", LEFT = "RIGHT", TOP = "BOTTOM", BOTTOM = "TOP" }
     arrow.icon:SetRotation(ROTATION[cfg.collapsed and OPPOSITE[side] or side])
-    -- Eingeklappt: Name der Leiste neben dem Pfeil (dort, wo die Leiste war); Pfeil links/rechts: Buchstaben von
-    -- oben nach unten, Pfeil oben/unten: waagerecht
+    -- Beschriftung im Knopf (nur eingeklappt): Name der Leiste, kräftige Schrift mit Kontur; Pfeil links/rechts:
+    -- Buchstaben von oben nach unten unter dem Pfeil, Pfeil oben/unten: waagerecht rechts neben dem Pfeil
     if not arrow.label then
-        arrow.label = arrow:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        arrow.label = arrow:CreateFontString(nil, "OVERLAY")
+        arrow.label:SetFont(STANDARD_TEXT_FONT, 11, "OUTLINE")
         arrow.label:SetTextColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3])
+        arrow.label:SetShadowOffset(1, -1)
+        arrow.label:SetShadowColor(0, 0, 0, 1)
     end
-    local titleText = strtrim(cfg.frameTitleText or "")
-    local name = titleText ~= "" and titleText or L(def.titleKey or def.textKey)
     local label = arrow.label
     label:ClearAllPoints()
+    arrow.icon:ClearAllPoints()
+    arrow:ClearAllPoints()
+    arrow:SetScale(holder:GetScale())
+    local offset = (side == "RIGHT" or side == "TOP") and 2 or -2
+    local near, far = OPPOSITE[side], side
     if cfg.collapsed then
-        local vertical = side == "LEFT" or side == "RIGHT"
+        -- Eingeklappt: Knopf breiter und so hoch wie nötig, mittig an der Stelle der Leiste
+        local titleText = strtrim(cfg.frameTitleText or "")
+        local name = titleText ~= "" and titleText or L(def.titleKey or def.textKey)
         if vertical then
             local letters = {}
             for char in name:gmatch("[%z\1-\127\194-\244][\128-\191]*") do letters[#letters + 1] = char end
             label:SetText(table.concat(letters, "\n"))
             label:SetJustifyH("CENTER")
-            label:SetSpacing(0)
+            label:SetSpacing(1)
+            arrow.icon:SetPoint("TOP", 0, -5)
+            label:SetPoint("TOP", arrow.icon, "BOTTOM", 0, -4)
+            arrow:SetSize(ARROW_WIDTH + 6, math.max(edge:GetHeight(), label:GetStringHeight() + 12 + 5 + 4 + 6))
+            arrow:SetPoint(near, edge, far, offset, 0)
         else
             label:SetText(name)
+            label:SetJustifyH("LEFT")
+            label:SetSpacing(0)
+            arrow.icon:SetPoint("LEFT", 6, 0)
+            label:SetPoint("LEFT", arrow.icon, "RIGHT", 4, 0)
+            arrow:SetSize(math.max(edge:GetWidth(), label:GetStringWidth() + 12 + 6 + 4 + 8), ARROW_WIDTH + 6)
+            arrow:SetPoint(near, edge, far, 0, offset)
         end
-        local inward = OPPOSITE[side] -- Richtung, in der die Leiste lag
-        if inward == "LEFT" then label:SetPoint("RIGHT", arrow, "LEFT", -3, 0)
-        elseif inward == "RIGHT" then label:SetPoint("LEFT", arrow, "RIGHT", 3, 0)
-        elseif inward == "TOP" then label:SetPoint("BOTTOM", arrow, "TOP", 0, 3)
-        else label:SetPoint("TOP", arrow, "BOTTOM", 0, -3) end
         label:Show()
     else
+        -- Ausgeklappt: schmaler Streifen über die ganze Seite der Leiste
         label:Hide()
+        arrow.icon:SetPoint("CENTER")
+        if vertical then
+            arrow:SetWidth(ARROW_WIDTH)
+            arrow:SetPoint("TOP" .. near, edge, "TOP" .. far, offset, 0)
+            arrow:SetPoint("BOTTOM" .. near, edge, "BOTTOM" .. far, offset, 0)
+        else
+            arrow:SetHeight(ARROW_WIDTH)
+            arrow:SetPoint(near .. "LEFT", edge, far .. "LEFT", 0, offset)
+            arrow:SetPoint(near .. "RIGHT", edge, far .. "RIGHT", 0, offset)
+        end
     end
     arrow:Show()
 end

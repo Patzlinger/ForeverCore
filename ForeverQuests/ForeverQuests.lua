@@ -62,6 +62,22 @@ local function FillDefaults()
     end
 end
 
+-- Alle Einstellungen auf Standard (Knopf "Zurücksetzen" im Menü, /fq reset). Bleiben: angeheftete Quests, Sprache,
+-- Profil-Verwaltung von ForeverCore (_fc) und interne Stände; gilt sofort, ohne Neuladen
+local KEEP_ON_RESET = { version = true, pinned = true, language = true, _fc = true, layoutVersion = true }
+function ns.ResetSettings()
+    for key in pairs(ForeverQuestsDB) do
+        if not KEEP_ON_RESET[key] then ForeverQuestsDB[key] = nil end
+    end
+    FillDefaults()
+    if ns.ResetExpanded then ns.ResetExpanded() end
+    if ns.UpdateBlizzardTracker then ns.UpdateBlizzardTracker() end
+    if ns.UpdateMinimapButton then ns.UpdateMinimapButton() end
+    if ns.ResetPosition then ns.ResetPosition() end -- setzt auch Position/Größe neu und frischt das Menü auf
+    if ns.UpdateVisibility then ns.UpdateVisibility() end
+    if ns.RequestUpdate then ns.RequestUpdate() end
+end
+
 local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("ADDON_LOADED")
 eventFrame:RegisterEvent("PLAYER_LOGIN")
@@ -106,7 +122,7 @@ SLASH_FOREVERQUESTS2 = "/foreverquests"
 SlashCmdList.FOREVERQUESTS = function(msg)
     msg = strtrim(msg or ""):lower()
     if msg == "reset" then
-        ns.ResetPosition()
+        ns.ResetSettings()
         print(ns.ChatPrefix() .. ": " .. L("RESET_DONE"))
     elseif msg == "dungeons" then
         ns.ToggleDungeons()

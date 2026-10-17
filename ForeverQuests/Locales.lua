@@ -7,7 +7,7 @@ local STRINGS = {
     deDE = {
         ADDON_NAME = "ForeverQuests (Beta)",
         LOADED = "geladen. Menü: /fq",
-        RESET_DONE = "Position und Größe zurückgesetzt.",
+        RESET_DONE = "Alle Einstellungen zurückgesetzt (angeheftete Quests und Sprache bleiben).",
         TRACKER_UNLOCKED = "Tracker entsperrt.",
         TRACKER_LOCKED = "Tracker gesperrt.",
 
@@ -89,7 +89,7 @@ local STRINGS = {
         OPT_BETA_DUNGEONS = "Beta-Modus: Dungeons nur bis Stufe 30",
         OPT_WIDTH = "Breite", OPT_HEIGHT = "Höhe",
         OPT_POS_X = "Position X (von links)", OPT_POS_Y = "Position Y (von unten)",
-        BTN_RESET = "Zurücksetzen", TIP_RESET = "Position und Größe des Trackers zurücksetzen",
+        BTN_RESET = "Zurücksetzen", TIP_RESET = "Alle Einstellungen auf Standard zurücksetzen (angeheftete Quests und Sprache bleiben)",
         BTN_CLOSE = "Schließen",
 
         -- Dungeon-Fenster
@@ -171,7 +171,7 @@ local STRINGS = {
     enUS = {
         ADDON_NAME = "ForeverQuests (Beta)",
         LOADED = "loaded. Menu: /fq",
-        RESET_DONE = "Position and size reset.",
+        RESET_DONE = "All settings reset (pinned quests and language are kept).",
         TRACKER_UNLOCKED = "Tracker unlocked.",
         TRACKER_LOCKED = "Tracker locked.",
 
@@ -248,7 +248,7 @@ local STRINGS = {
         OPT_BETA_DUNGEONS = "Beta mode: dungeons up to level 30 only",
         OPT_WIDTH = "Width", OPT_HEIGHT = "Height",
         OPT_POS_X = "Position X (from left)", OPT_POS_Y = "Position Y (from bottom)",
-        BTN_RESET = "Reset", TIP_RESET = "Reset tracker position and size",
+        BTN_RESET = "Reset", TIP_RESET = "Reset all settings to defaults (pinned quests and language are kept)",
         BTN_CLOSE = "Close",
 
         DUNGEONS_TITLE = "Dungeons",

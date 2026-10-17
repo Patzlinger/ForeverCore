@@ -259,7 +259,10 @@ local function CreateOptions()
     CreateLayoutSlider(layout, L("OPT_POS_Y"), PANEL_WIDTH + 26, -86, "y", function() return 0 end, screenHeight)
 
     -- Fußleiste
-    ns.Style.CreateButton(options, L("BTN_RESET"), 150, 26, ns.ResetPosition, L("TIP_RESET"))
+    ns.Style.CreateButton(options, L("BTN_RESET"), 150, 26, function()
+        ns.ResetSettings()
+        print(ns.ChatPrefix() .. ": " .. L("RESET_DONE"))
+    end, L("TIP_RESET"))
         :SetPoint("BOTTOMLEFT", 12, 12)
 
     ns.Style.CreateButton(options, L("BTN_CLOSE"), 150, 26, function() options:Hide() end)
