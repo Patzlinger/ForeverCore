@@ -1181,8 +1181,8 @@ end
 
 -- Wie viele Plätze die Leiste gerade zeigt: bis zum letzten belegten Platz (die Leiste wächst mit; "Anzahl
 -- Knöpfe" ist die Höchstzahl), beim Hineinziehen/Verschieben ein freier Platz mehr. Mindestgröße, damit der
--- Titel über der Leiste Platz hat: Berufe 2×2, Verpflegung 2 breit × 3 hoch; aufgerundet auf volle Spalten.
-local SLOT_MIN = { prof = 4, food = 6 }
+-- Titel über der Leiste Platz hat: Berufe 2×2, Verpflegung 3×3; aufgerundet auf volle Spalten.
+local SLOT_MIN = { prof = 4, food = 9 } -- Berufe 2 x 2, Verbrauchbar 3 x 3
 local slotShown = {}
 local function ShownSlotCount(key, cfg, capacity)
     local last = 0
@@ -1776,6 +1776,10 @@ local function UpdateBarFrame(def, cfg, holder)
         frame.line:SetHeight(1)
         frame.title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         frame.title:SetPoint("LEFT", frame.header, "LEFT", 6, 0)
+        -- endet vor dem Zahnrad (Berufe/Verbrauchbar) und wird bei schmaler Leiste gekürzt statt überzulaufen
+        frame.title:SetPoint("RIGHT", frame.header, "RIGHT", -20, 0)
+        frame.title:SetJustifyH("LEFT")
+        frame.title:SetWordWrap(false)
         holder.fbFrame = frame
     end
     -- Unter den Knöpfen (die Knöpfe liegen eine Ebene höher im Halter)
@@ -2574,8 +2578,16 @@ local function ToggleBarPanel(key, gear)
         end
     end
     p:SetSize(width + 2 * PAD, -y + PAD - GAP)
+    -- Das Fenster enthält geschützte Knöpfe (Bodenmarkierungen) und gilt damit selbst als geschützt: es darf nicht
+    -- an das (ungeschützte) Zahnrad geheftet werden. Darum fest an UIParent, an der Stelle rechts neben dem Zahnrad.
+    local ratio = gear:GetEffectiveScale() / UIParent:GetEffectiveScale()
+    local right, top = gear:GetRight(), gear:GetTop()
     p:ClearAllPoints()
-    p:SetPoint("TOPLEFT", gear, "TOPRIGHT", 4, 0)
+    if right and top then
+        p:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", right * ratio + 4, top * ratio)
+    else
+        p:SetPoint("CENTER", UIParent, "CENTER")
+    end
     p:Show()
 end
 
