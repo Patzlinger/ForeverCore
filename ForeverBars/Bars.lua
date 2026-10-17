@@ -130,7 +130,6 @@ local function DefaultPosition(key)
     if bars.micro.dockMinimap and C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("ForeverMinimap") then
         microHeight = 1
     end
-    local xpHeight = HolderHeight("xp", 12)
     local positions = {
         bar1 = { width / 2, BarCenter(0) }, bar2 = { width / 2, BarCenter(1) }, bar3 = { width / 2, BarCenter(2) },
         bar6 = { width / 2, aboveSmall + barHeight / 2 },
@@ -143,8 +142,6 @@ local function DefaultPosition(key)
         food = { right + SIDE_GAP + FRAME_SPACE, EDGE + FRAME_SPACE }, -- BOTTOMLEFT, gespiegelt zur Berufeleiste
         micro = { width - EDGE, EDGE },                        -- BOTTOMRIGHT
         bags = { width - EDGE, EDGE + microHeight - 1 },       -- BOTTOMRIGHT, direkt auf dem Mikromenü (Ränder übereinander)
-        xp = { width / 2, height - EDGE },                     -- TOP
-        rep = { width / 2, height - EDGE - xpHeight - 2 },     -- TOP
         vehicle = { width / 2, aboveSmall + 20 }, queue = { width - 290, 120 },
     }
     local position = positions[key] or { width / 2, height / 2 }
@@ -1842,10 +1839,8 @@ local function LayoutContainer(def, cfg, holder)
     if keepParent then
         local manager = _G.StatusTrackingBarManager
         if frame:GetParent() == holder and manager then frame:SetParent(manager) end
-        if not ns.IsExternal(def.key) then
-            frame:SetScale(math.max(0.3, (cfg.scale or 100) / 100))
-            frame:SetAlpha(cfg.enabled and (cfg.alpha or 100) / 100 or 0)
-        end
+        frame:SetScale(math.max(0.3, (cfg.scale or 100) / 100))
+        frame:SetAlpha(cfg.enabled and (cfg.alpha or 100) / 100 or 0)
     elseif frame:GetParent() ~= holder then
         frame:SetParent(holder)
     end
@@ -1946,8 +1941,6 @@ local HIDE_CONDITIONS = {
 }
 
 local function VisibilityDriver(def, cfg)
-    -- Erfahrungsleiste von ForeverXP: immer da (ForeverXP regelt seine Sichtbarkeit selbst)
-    if ns.IsExternal(def.key) then return "[petbattle] hide; show" end
     if not cfg.enabled then return "hide" end
     if ns.unlocked or ns.testMode then return "show" end
     -- Mit dem Pfeil eingeklappt (Berufe, Verpflegung)
@@ -2060,8 +2053,7 @@ end
 
 local function UpdateMover(def, holder)
     local mover = movers[def.key]
-    -- Kein Griff für die Erfahrungsleiste von ForeverXP (verschoben wird sie im ForeverXP-Menü)
-    if not ns.unlocked or not ns.db.bars[def.key].enabled or ns.IsExternal(def.key) then
+    if not ns.unlocked or not ns.db.bars[def.key].enabled then
         if mover then mover:Hide() end
         return
     end
@@ -2334,20 +2326,6 @@ function ns.UpdateCollapseArrow(def, cfg, holder)
     arrow:Show()
 end
 
--- Erfahrungsleiste und ForeverXP: Ist ForeverXP aktiv, gehört ihm die Erfahrungsleiste. ForeverBars hält
--- Blizzards Leiste nur fest an ihrem Standardplatz (oben mittig), damit ForeverXP sich mit "An Blizzards Platz"
--- dort darüberlegt; Position, Größe und Sichtbarkeit stellt man im ForeverXP-Menü ein.
-function ns.IsExternal(key)
-    return key == "xp" and ns.xpByForeverXP == true
-end
-
-local function ExternalXPConfig()
-    local cfg = CopyTable(ns.defaults.bars.xp)
-    cfg.enabled = true
-    cfg.x, cfg.y = DefaultPosition("xp")
-    return cfg
-end
-
 function ns.ApplyLayout()
     layoutPending = false
     if ns.disabledByBartender then return end
@@ -2357,8 +2335,6 @@ function ns.ApplyLayout()
     end
     for _, def in ipairs(ns.BAR_DEFS) do
         local cfg = ns.db.bars[def.key]
-        -- Erfahrungsleiste von ForeverXP: feste Standardwerte statt der eigenen Einstellungen
-        if ns.IsExternal(def.key) then cfg = ExternalXPConfig() end
         local holder = GetHolder(def)
         HideBlizzardBars(def)
         if def.key == "micro" and cfg.microOwn then
@@ -2486,7 +2462,7 @@ local function UpdateFading()
         local cfg = ns.db.bars[def.key]
         local holder = holders[def.key]
         if holder and cfg.enabled and (cfg.fadeMouseover or ns.db.hideOutOfCombat) and not ns.unlocked
-            and not ns.testMode and not ns.IsExternal(def.key) then
+            and not ns.testMode then
             local full = (cfg.alpha or 100) / 100
             local mouseOver = holder:IsMouseOver()
                 or (SpellFlyout and SpellFlyout:IsShown() and SpellFlyout:IsMouseOver())
@@ -2659,9 +2635,7 @@ end
 
 function ns.SetupBars()
     ns.ready = true
-    -- Ist ForeverXP aktiv, gehört ihm die Erfahrungsleiste (siehe ns.IsExternal)
     local isLoaded = C_AddOns and C_AddOns.IsAddOnLoaded or IsAddOnLoaded
-    ns.xpByForeverXP = isLoaded and isLoaded("ForeverXP") and true or false
     if isLoaded and isLoaded("Blizzard_NewPlayerExperience") then
         DisableTutorials()
     elseif NPE_LoadUI then

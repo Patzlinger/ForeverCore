@@ -48,6 +48,7 @@ Every addon needs the small base addon **ForeverCore**. It's included in the pac
 - A slim bar in Blizzard style that takes the place of the default XP bar
 - Your level, XP per hour, time to level-up, and the XP your completed quests will give you
 - Hover over it to see mobs and quests left until level-up, plus rested XP
+- A slimmer **reputation bar** in the same style sits next to it and shows your watched faction: standing, progress, reputation per hour and the time to the next rank
 - Prefer a box? The classic style is still there
 - Settings: /fxp
 

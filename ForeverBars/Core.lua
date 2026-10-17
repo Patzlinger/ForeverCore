@@ -54,12 +54,7 @@ ns.BAR_DEFS = {
     -- Warteschlangen-Auge (Gruppensuche, Schlachtfeld); Blizzard setzt es mit UpdatePosition gern zurück
     { key = "queue", textKey = "BAR_QUEUE", kind = "single", frames = { "QueueStatusButton" },
       hookMethods = { "UpdatePosition" }, minSize = 45 },
-    -- Erfahrung und Ruf: Blizzard zeigt in der ersten Statusleiste beim Leveln die Erfahrung,
-    -- in der zweiten den beobachteten Ruf (ältere Namen als Ersatz)
-    { key = "xp", textKey = "BAR_XP", kind = "container",
-      frames = { "MainStatusTrackingBarContainer", "MainMenuExpBar" } },
-    { key = "rep", textKey = "BAR_REP", kind = "container",
-      frames = { "SecondaryStatusTrackingBarContainer", "ReputationWatchBar" } },
+    -- (Erfahrungs- und Rufleiste gehören seit 0.44b ForeverXP; Stand davor: Git-Markierung snapshot-vor-xp-rep-umbau)
 }
 
 -- Standardwerte je Leiste. x/y = nil: Standardposition (wird beim ersten Anzeigen berechnet)
@@ -99,7 +94,7 @@ ns.defaults = {
         food = BarDefaults(true, 6),
         -- (Haltungsleiste: "enabled" hängt von der Klasse ab, siehe ADDON_LOADED)
         micro = BarDefaults(true), bags = BarDefaults(true), vehicle = BarDefaults(true),
-        xp = BarDefaults(true), rep = BarDefaults(true), queue = BarDefaults(true),
+        queue = BarDefaults(true),
     },
     -- (Profile verwaltet seit 0.41b ForeverCore – je Charakter, siehe RegisterSettings am Ende dieser Datei)
     layoutVersion = 18,-- Stand der Standard-Anordnung (siehe MigrateLayout)
@@ -173,8 +168,6 @@ end
 -- Warteschlangen-Auge: standardmäßig aus (dann nicht zu sehen), eingeschaltet halb so groß
 ns.defaults.bars.queue.enabled = false
 ns.defaults.bars.queue.scale = 53
-ns.defaults.bars.xp.point = "TOP"
-ns.defaults.bars.rep.point = "TOP"
 -- Leiste 1 macht in Fahrzeugen der Blizzard-Fahrzeugleiste Platz; die Begleiterleiste nur mit Begleiter
 ns.defaults.bars.bar1.hideVehicle = true
 ns.defaults.bars.bar1.hideOverride = true
@@ -225,7 +218,7 @@ local LAYOUT_VERSION = 18
 -- Standardgrößen vor 16 (nur Leisten, die noch darauf stehen, wachsen mit)
 local OLD_SCALES = { pet = 56, stance = 56, prof = 80, food = 80, bags = 76, queue = 50 }
 local STANDARD_LAYOUT_BARS = { "bar1", "bar2", "bar3", "bar6", "bar7", "bar8", "pet", "stance", "prof", "food",
-                               "micro", "bags", "xp", "rep", "vehicle" }
+                               "micro", "bags", "vehicle" }
 function ns.MigrateLayout(db)
     local version = db.layoutVersion or 1
     if version >= LAYOUT_VERSION then return end

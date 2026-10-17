@@ -29,7 +29,9 @@ Die Addons (jedes funktioniert auch einzeln, zusammen mit ForeverCore):
   ForeverLoot    Zeigt bei Würfel-Drops, wer Bedarf/Gier/Passen gewählt hat. /floot
   ForeverXP      XP-Balken im Blizzard-Stil (ersetzt die Blizzard-Leiste) mit XP/Stunde, Zeit bis
                  Level-Up, Mobs/Quests bis Level-Up und XP aus fertigen Quests – mehr bei
-                 Mouse-over. Alternativ als Kasten wie früher. Einstellungen: /fxp
+                 Mouse-over. Dazu eine schmalere Ruf-Leiste für den beobachteten Ruf (Rang,
+                 Fortschritt, Ruf/Stunde, Zeit bis zum nächsten Rang). Alternativ als Kasten
+                 wie früher. Einstellungen: /fxp
   ForeverBuffs   Erinnert unaufdringlich an fehlende Buffs, niedrige Ränge, Essen/Trinken
                  und eigene Verbrauchsgüter – Klick aufs Symbol wirkt den Buff. /fbuffs (verschieben: /fbuffs lock)
   ForeverVendor  Händler-Helfer: verkauft Graues, repariert auf Wunsch und kauft Reagenzien,
@@ -92,7 +94,8 @@ The addons (each one also works on its own, together with ForeverCore):
   ForeverLoot    Shows who chose need/greed/pass on loot rolls. /floot
   ForeverXP      Blizzard-style XP bar (replaces the Blizzard bar) with XP/hour, time to level-up,
                  mobs/quests to level-up and XP from completed quests – more on mouse-over.
-                 Classic box style also available. Settings: /fxp
+                 Plus a slimmer reputation bar for your watched faction (standing, progress,
+                 reputation/hour, time to the next rank). Classic box style also available. Settings: /fxp
   ForeverBuffs   Unobtrusive reminder for missing buffs, lower ranks, food/drink and
                  your own consumables – click an icon to cast the buff. /fbuffs (move: /fbuffs lock)
   ForeverVendor  Merchant helper: sells junk, repairs on request and restocks reagents,

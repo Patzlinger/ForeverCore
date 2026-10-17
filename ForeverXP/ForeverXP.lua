@@ -1,5 +1,6 @@
--- ForeverXP: minimalistische XP-Anzeige
-local ADDON_NAME = ...
+-- ForeverXP: minimalistische XP-Anzeige (mit Ruf-Leiste, siehe Reputation.lua)
+local ADDON_NAME, ns = ...
+ns.xp = {} -- Schnittstelle fuer Reputation.lua (am Ende dieser Datei gefuellt)
 local UI = ForeverHub.UI -- gemeinsamer Stil aller Forever-Addons (ForeverHub.lua)
 local T = UI.T
 
@@ -27,7 +28,9 @@ local DEFAULTS = {
     barHeightScale = 85,   -- an Blizzards Platz: Hoehe in % von Blizzards Leiste
     barTexts = true,       -- Infos an den Enden (Stufe, Mobs, Quests, Tempo, Level-Up)
     barTicks = true,       -- Zehntel-Striche wie bei Blizzard
-    hideBlizzard = true,   -- Blizzard-Erfahrungsleiste unsichtbar machen
+    hideBlizzard = true,   -- Blizzards Erfahrungs- und Rufleiste unsichtbar machen (Ruf nur mit eigener Ruf-Leiste)
+    repShow = true,        -- Ruf-Leiste (beobachteter Ruf) neben dem Balken, siehe Reputation.lua
+    repHeightScale = 70,   -- Hoehe der Ruf-Leiste in % der Erfahrungsleiste
     texture = "blizzard",  -- Balken-Textur
     font = "friz",         -- Schrift
     fontSize = 11,
@@ -649,13 +652,29 @@ local function ShowsExperience(c)
     return c.shownBarIndex == enum.Experience
 end
 
+-- Zeigt der Behaelter gerade den beobachteten Ruf? (den ersetzt die eigene Ruf-Leiste, siehe Reputation.lua)
+local function ShowsReputation(c)
+    local enum = _G.StatusTrackingBarInfo and _G.StatusTrackingBarInfo.BarsEnum
+    if not (enum and enum.Reputation and c.shownBarIndex ~= nil) then
+        return c == _G.SecondaryStatusTrackingBarContainer -- unbekannter Aufbau: die zweite Leiste
+    end
+    return c.shownBarIndex == enum.Reputation
+end
+
+-- Unsichtbar machen: den Behaelter mit der Erfahrung (Balken-Modus) und den mit dem Ruf (solange die Ruf-Leiste laeuft)
+local function ShouldHide(c)
+    local d = GetDB()
+    if not d.hideBlizzard then return false end
+    return (IsBar() and ShowsExperience(c)) or (ns.repWanted == true and ShowsReputation(c))
+end
+
 local HideBlizzardBar
 local function HideSplitContainers()
     local target
     for _, name in ipairs(XP_CONTAINERS) do
         local c = _G[name]
-        if WantHidden() and ShowsExperience(c) then
-            UI.HideBlizzard(c, { when = function() return WantHidden() and ShowsExperience(c) end })
+        if ShouldHide(c) then
+            UI.HideBlizzard(c, { when = function() return ShouldHide(c) end })
         else
             UI.ShowBlizzard(c)
         end
@@ -1178,6 +1197,7 @@ local function Refresh()
     HideBlizzardBar()
     UpdateDisplay()
     UpdateXPGrid()
+    if ns.RepRefresh then ns.RepRefresh() end
 end
 
 local function Check(x, y, label, get, set)
@@ -1259,7 +1279,7 @@ Slider(L + 2, -268, T("Eigene Breite", "Own width"), "barWidth", 100, 2560, 10, 
 Slider(L + 2, -308, T("Eigene Höhe", "Own height"), "barHeight", 8, 48, 1, { width = 190, unit = " px" })
 KeyCheck(L - 4, -348, T("Infos an den Enden", "Info at the ends"), "barTexts")
 KeyCheck(L - 4, -372, T("Zehntel-Striche", "Tenth markers"), "barTicks")
-KeyCheck(L - 4, -396, T("Blizzard-Erfahrungsleiste ersetzen", "Replace the Blizzard XP bar"), "hideBlizzard")
+KeyCheck(L - 4, -396, T("Blizzards Erfahrungs- und Rufleiste ersetzen", "Replace Blizzard's XP and reputation bar"), "hideBlizzard")
 UI.Hint(options, L + 2, -420, 300, T("An Blizzards Platz passt sich die Länge an. Oben, unten und frei gelten eigene Breite und Höhe. Ziehen (entsperrt) stellt auf \"Frei\".",
     "At Blizzard's spot the length adapts. Top, bottom and free use your own width and height. Dragging (unlocked) switches to \"Free\"."))
 
@@ -1316,7 +1336,27 @@ end)
 options:SetScript("OnHide", UpdateXPGrid)
 
 function ToggleOptions() options:SetShown(not options:IsShown()) end
+
+-- fuer Reputation.lua: eigener Abschnitt "Ruf-Leiste" im selben Fenster
+ns.optionsApi = { frame = options, R = R, KeyCheck = KeyCheck, Slider = Slider }
 end -- Ende Block "Einstellungsfenster"
+
+-- Schnittstelle fuer Reputation.lua (die Ruf-Leiste haengt am Balken und teilt Look, Schrift und Texturen)
+ns.xp.bar = bar
+ns.xp.GetDB = GetDB
+ns.xp.IsBar = IsBar
+ns.xp.MediaPath = MediaPath
+ns.xp.TEXTURES = TEXTURES
+ns.xp.FONTS = FONTS
+ns.xp.GOLD_EDGE = GOLD_EDGE
+ns.xp.INSET = INSET
+ns.xp.Num = Num
+ns.xp.FormatTime = FormatTime
+ns.xp.IsSecret = IsSecret
+ns.xp.BarFont = BarFont
+ns.xp.HideBlizzardBar = function() HideBlizzardBar() end
+ns.xp.ToggleOptions = function() ToggleOptions() end
+ns.xp.Chat = Chat
 
 ---------------------------------------------------------------------------
 -- Minimap-Button
@@ -1432,6 +1472,11 @@ SlashCmdList["FOREVERXP"] = function(msg)
         ToggleCompact()
     elseif msg == "show" or msg == "hide" then
         ToggleShown()
+    elseif msg == "rep" or msg == "ruf" then
+        GetDB().repShow = not GetDB().repShow
+        if ns.RepRefresh then ns.RepRefresh() end
+        HideBlizzardBar()
+        Chat(GetDB().repShow and T("Ruf-Leiste an.", "Reputation bar on.") or T("Ruf-Leiste aus.", "Reputation bar off."))
     elseif msg == "status" then
         -- Hilfe bei der Fehlersuche: wo ist der Balken?
         local d = GetDB()

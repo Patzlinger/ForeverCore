@@ -284,21 +284,6 @@ local function CreateOptions()
     options.barPanel = bar
     pageInfo[bar] = { view = "bar", path = L("SEC_BAR") }
 
-    -- Erfahrungsleiste von ForeverXP: statt der Einstellungen ein Hinweis mit Knopf ins ForeverXP-Menü
-    local external = CreateFrame("Frame", nil, bar)
-    external:SetAllPoints()
-    local externalText = external:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    externalText:SetPoint("TOPLEFT", 14, -48)
-    externalText:SetPoint("RIGHT", -14, 0)
-    externalText:SetJustifyH("LEFT")
-    externalText:SetText(L("XP_EXTERNAL_TEXT"))
-    ns.Style.CreateButton(external, L("BTN_OPEN_FOREVERXP"), 220, 24, function()
-        -- ForeverBars-Menü bleibt offen; ForeverXP öffnet sein eigenes Fenster
-        if SlashCmdList and SlashCmdList.FOREVERXP then SlashCmdList.FOREVERXP("") end
-    end):SetPoint("TOPLEFT", externalText, "BOTTOMLEFT", 0, -14)
-    external:Hide()
-    options.externalXP = external
-
     options.enabledCheck = CreateCheckbox(bar, L("OPT_ENABLED"), 14, -44,
         function() return SelectedConfig().enabled end,
         function(value) SelectedConfig().enabled = value; Changed() end)
@@ -1010,18 +995,8 @@ function ns.RefreshOptions()
             button:SetBackdropBorderColor(unpack(ns.Style.COLOR.border))
         end
     end
-    -- Erfahrungsleiste von ForeverXP: nur der Hinweis, keine eigenen Einstellungen
-    local external = ns.IsExternal and ns.IsExternal(selectedKey)
-    options.externalXP:SetShown(external)
-    options.enabledCheck:SetShown(not external)
-    for _, button in ipairs(barButtons) do
-        if button.key == "xp" then
-            button:SetText(L("BAR_XP") .. (ns.IsExternal and ns.IsExternal("xp") and " |cff8a8a8a(ForeverXP)|r" or ""))
-        end
-    end
     -- Reiter: gewählte Seite zeigen und hervorheben
-    for key, page in pairs(options.pages) do page:SetShown(not external and key == options.page) end
-    for _, tab in ipairs(options.tabs) do tab:SetShown(not external) end
+    for key, page in pairs(options.pages) do page:SetShown(key == options.page) end
     for _, tab in ipairs(options.tabs) do
         if tab.key == options.page then
             tab:GetFontString():SetTextColor(accent[1], accent[2], accent[3])

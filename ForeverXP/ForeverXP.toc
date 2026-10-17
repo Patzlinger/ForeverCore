@@ -2,8 +2,8 @@
 ## Title: ForeverXP |cff8a8a8a(Beta)|r
 ## IconTexture: Interface\AddOns\ForeverXP\Media\ForeverCore
 ## Category: Forever Core
-## Notes: Minimalist XP display with XP/hour, time to level-up and XP from completed quests
-## Notes-deDE: Minimalistische XP-Anzeige mit XP/Stunde, Zeit bis Level-Up und XP aus fertigen Quests
+## Notes: Minimalist XP display with XP/hour, time to level-up, XP from completed quests and a reputation bar
+## Notes-deDE: Minimalistische XP-Anzeige mit XP/Stunde, Zeit bis Level-Up, XP aus fertigen Quests und Ruf-Leiste
 ## Version: 0.44b
 ## X-Curse-Project-ID: 1743753
 ## Author: Patzlinger
@@ -14,3 +14,5 @@
 ## SavedVariablesPerCharacter: ForeverXPCharDB
 
 ForeverXP.lua
+Reputation.lua
+

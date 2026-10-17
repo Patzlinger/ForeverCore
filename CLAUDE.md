@@ -376,14 +376,15 @@ Damit alle Einstellungsfenster gleich aussehen, gelten diese Maße. Quelle: `For
 - Nach jeder Änderung kurz notieren, was der Mitarbeiter im Spiel prüfen soll
 
 ## 14. Bekannte Wechselwirkungen
-- **ForeverBars ↔ ForeverXP**: ForeverBars setzt die Blizzard-XP-Leiste (`MainStatusTrackingBarContainer`) in
-  seinen Halter "xp"; ForeverXP macht sie unsichtbar (Alpha 0) und legt seinen Balken genau darüber.
-  Ist ForeverXP aktiv (ab ForeverBars 0.12.0), gehört ihm die Erfahrungsleiste: ForeverBars hält Blizzards Leiste
-  fest am Standardplatz (oben mittig, ohne Griff, ohne Größe/Sichtbarkeit aus den eigenen Einstellungen) und
-  verweist im Menü mit einem Knopf auf `/fxp`. Position, Größe und Sichtbarkeit stellt man nur in ForeverXP ein
-  (Standard "An Blizzards Platz" = oben mittig). ForeverXP macht nur den Behälter unsichtbar, der gerade die
-  Erfahrung zeigt (`shownBarIndex == StatusTrackingBarInfo.BarsEnum.Experience`, neu verteilt per Hook auf
-  `ApplyPendingBarToShow`) – nie den ganzen `StatusTrackingBarManager`, sonst ist die Rufleiste mit unsichtbar
+- **Erfahrungs- und Rufleiste gehören ForeverXP** (seit 0.44b): ForeverBars hat die Leisten "xp" und "rep" nicht mehr
+  (Stand davor: Git-Markierung `snapshot-vor-xp-rep-umbau`). ForeverXP macht Blizzards Behälter unsichtbar (Alpha 0)
+  und legt seinen Erfahrungsbalken (`ForeverXP.lua`) bzw. die schmalere Ruf-Leiste (`Reputation.lua`) an deren Stelle.
+  Nur der Behälter wird unsichtbar, der gerade Erfahrung (`shownBarIndex == StatusTrackingBarInfo.BarsEnum.Experience`,
+  neu verteilt per Hook auf `ApplyPendingBarToShow`) bzw. – solange die Ruf-Leiste läuft – Ruf (`BarsEnum.Reputation`)
+  zeigt; nie den ganzen `StatusTrackingBarManager`. Die Ruf-Leiste hängt am Erfahrungsbalken (`ForeverXPBar`; darunter,
+  wenn der oben steht, sonst darüber; ohne Erfahrungsbalken nimmt sie dessen Platz) und teilt Breite, Textur und Schrift.
+  Alte Bearbeitungsmodus-Layouts, die noch an `ForeverBars_xp`/`ForeverBars_rep` hängen, bedient der Hub mit
+  Platzhaltern (`EDITMODE_ANCHORS`, `always = true`)
 - **ForeverBars ↔ ForeverSpellbook**: ForeverSpellbook legt einen Klick-Knopf über den Zauberbuch-Knopf im
   Mikromenü; ForeverBars verschiebt das Mikromenü – der Knopf hängt am Mikromenü-Knopf und wandert mit.
   Mit den **eigenen Menüknöpfen** von ForeverBars (Standard) sind die eigenen Knöpfe nur Optik; Blizzards echte
