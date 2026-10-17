@@ -534,9 +534,9 @@ local function LayoutAuras(b)
             if where == "ABOVE" then
                 dc:SetPoint("BOTTOMLEFT", b, "TOPLEFT", dx, 3 + dy + (ns.ComboSpace and ns.ComboSpace(b, "ABOVE") or 0))
             elseif where == "LEFT" then
-                dc:SetPoint("TOPRIGHT", b, "TOPLEFT", -3 + dx, dy)
+                dc:SetPoint("TOPRIGHT", b, "TOPLEFT", -3 + dx - (ns.ComboSpace and ns.ComboSpace(b, "LEFT") or 0), dy)
             elseif where == "RIGHT" then
-                dc:SetPoint("TOPLEFT", b, "TOPRIGHT", 3 + dx, dy)
+                dc:SetPoint("TOPLEFT", b, "TOPRIGHT", 3 + dx + (ns.ComboSpace and ns.ComboSpace(b, "RIGHT") or 0), dy)
             elseif where == "FREE" then
                 -- eigener Anker: Leisten haengen nicht mehr am Rahmen
                 local a = DotAnchor(b)

@@ -222,7 +222,7 @@ do
     UI.Header(p, R, -240, T("Kombopunkte (Ziel)", "Combo points (target)"))
     Check(p, R, -260, T("Kombopunkte anzeigen", "Show combo points"), G("comboShow"))
     Choice(p, R, -288, T("Ort", "Place"), 170, {
-        { key = "PORTRAIT", label = T("Spalte neben dem Porträt", "Column next to the portrait") },
+        { key = "PORTRAIT", label = T("Spalte außen am Porträt", "Column outside the portrait") },
         { key = "BELOW",    label = T("Balken mit Strichen unten", "Bar with segments below") },
         { key = "ABOVE",    label = T("Punkte oben", "Dots above") },
     }, G("comboPoint"))

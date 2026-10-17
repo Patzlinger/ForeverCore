@@ -69,10 +69,14 @@ end
 -- Platz, den die Kombopunkte unter bzw. über dem Rahmen brauchen (Auren und DoT-Leisten rücken dann weiter weg)
 function ns.ComboSpace(b, where)
     local d = GetDB()
-    if b.key ~= "target" or not d.comboShow or d.comboPoint ~= where then return 0 end
+    if b.key ~= "target" or not d.comboShow then return 0 end
     if not (playerClass == "ROGUE" or playerClass == "DRUID") then return 0 end
-    if where == "BELOW" then return (d.comboSize or 8) + 3 end
-    if where == "ABOVE" then return (d.comboSize or 8) + 4 + 10 end
+    local point = d.comboPoint or "PORTRAIT"
+    if point == "BELOW" and where == "BELOW" then return (d.comboSize or 8) + 3 end
+    if point == "ABOVE" and where == "ABOVE" then return (d.comboSize or 8) + 4 + 10 end
+    -- Spalte außen neben dem Porträt: DoT-Leisten auf derselben Seite rücken weiter weg
+    local side = ns.FrameDB("target").portraitSide == "LEFT" and "LEFT" or "RIGHT"
+    if point == "PORTRAIT" and where == side then return (d.comboSize or 8) + 3 end
     return 0
 end
 
@@ -109,37 +113,11 @@ local function LayoutCombo(b)
         local h = fdb.height - 4
         pipW, pipH = size, (h - (count - 1) * GAP) / count
         frame:SetSize(size, h)
-        local hasPortrait = fdb.portrait ~= "none"
-        local inset = size + 6 -- so weit rücken die Texte auf dieser Seite des Lebensbalkens ein
-        if fdb.portraitSide == "RIGHT" then
-            if hasPortrait then
-                frame:SetPoint("RIGHT", v.portrait, "LEFT", -3, 0)
-                -- Name (zweizeilig) bzw. Lebenspunkte (einzeilig) enden vor der Spalte
-                if v.name:GetNumPoints() > 0 then
-                    local stacked = fdb.textLayout ~= "inline"
-                    if stacked then
-                        v.name:SetPoint("RIGHT", v.health, "RIGHT", -inset, 0)
-                    else
-                        v.hp:ClearAllPoints()
-                        v.hp:SetPoint("RIGHT", v.health, "RIGHT", -inset, 0)
-                    end
-                end
-            else
-                frame:SetPoint("LEFT", v.content, "RIGHT", 3, 0)
-            end
+        -- außen am Rahmen auf der Seite des Porträts (beim Ziel: rechts neben dem Porträt)
+        if fdb.portraitSide == "LEFT" then
+            frame:SetPoint("RIGHT", v.content, "LEFT", -3, 0)
         else
-            if hasPortrait then
-                frame:SetPoint("LEFT", v.portrait, "RIGHT", 3, 0)
-                -- Stufe/Name und Lebenspunkte beginnen hinter der Spalte
-                for _, fs in ipairs({ v.level, v.name, v.hp }) do
-                    local point, rel, relPoint, x, y = fs:GetPoint(1)
-                    if point and rel == v.health and x and x < inset then
-                        fs:SetPoint(point, rel, relPoint, inset, y)
-                    end
-                end
-            else
-                frame:SetPoint("RIGHT", v.content, "LEFT", -3, 0)
-            end
+            frame:SetPoint("LEFT", v.content, "RIGHT", 3, 0)
         end
     end
     for i, p in ipairs(c.pips) do
