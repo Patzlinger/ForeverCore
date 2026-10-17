@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Fixed
+- ForeverQuests: Blizzard's quest tracker no longer pops up for a moment behind yours (e.g. when you loot a quest item during combat).
+
 ## 0.44b – October 18, 2026
 
 ### Four new addons
