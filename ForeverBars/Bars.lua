@@ -129,7 +129,7 @@ local function DefaultPosition(key)
         prof = { left - SIDE_GAP - FRAME_SPACE, EDGE + FRAME_SPACE }, -- BOTTOMRIGHT (Rahmen eingerechnet)
         food = { right + SIDE_GAP + FRAME_SPACE, EDGE + FRAME_SPACE }, -- BOTTOMLEFT, gespiegelt zur Berufeleiste
         micro = { width - EDGE, EDGE },                        -- BOTTOMRIGHT
-        bags = { width - EDGE, EDGE + microHeight + 2 },       -- BOTTOMRIGHT
+        bags = { width - EDGE, EDGE + microHeight - 1 },       -- BOTTOMRIGHT, direkt auf dem Mikromenü (Ränder übereinander)
         xp = { width / 2, height - EDGE },                     -- TOP
         rep = { width / 2, height - EDGE - xpHeight - 2 },     -- TOP
         vehicle = { width / 2, aboveSmall + 20 }, queue = { width - 290, 120 },
@@ -582,7 +582,8 @@ local function LayoutOwnMicro(def, cfg, holder)
         blizzardMenu.fbHolder = nil -- nicht mehr in den Halter zurückholen (siehe LayoutContainer)
         if blizzardMenu:GetParent() ~= hiddenParent then blizzardMenu:SetParent(hiddenParent) end
     end
-    local gap = math.max(0, cfg.spacing or 1) + 1
+    -- Abstand 0 = Knöpfe stoßen aneinander, ihre 1-px-Ränder liegen übereinander (eine feine Linie)
+    local gap = math.max(0, cfg.spacing or 0) - 1
     local perRow = math.max(1, cfg.perRow or MICRO_MAX)
     local x, y, width, used = 0, 0, 0, 0
     for index, blizzard in ipairs(buttons) do
