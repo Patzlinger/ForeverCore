@@ -20,14 +20,16 @@ Philosophie, Regeln, Design und Abläufe. Wenn etwas hier nicht steht: am besteh
 | ForeverFrames, ForeverUnits, ForeverCast, ForeverLoot, ForeverXP, ForeverBuffs, ForeverVendor | Patzlinger | im Release |
 | ForeverSpellbook | Patzlinger | im Release (seit 0.32b) |
 | ForeverChat | Patzlinger | im Release (seit 0.32b) |
-| ForeverCore (Hauptaddon: nur `ForeverHub.lua`, hält den Hub am Leben) | gemeinsam | neu, noch nicht im Release |
+| ForeverCore (Hauptaddon: `ForeverHub.lua` = Hub und Stil-Bibliothek; Abhängigkeit aller Addons) | gemeinsam | im Release (seit 0.41b) |
 | ForeverQuests | flowfy | im Repository, noch nicht im Release |
 | ForeverBars | flowfy | im Repository, noch nicht im Release |
-| `Shared/ForeverHub.lua`, `tools/`, `release/` | gemeinsam | – |
+| `tools/`, `release/` | gemeinsam | – |
 
 - Funktionale Änderungen an einem Addon des anderen nur nach Absprache. Triviale, gefahrlose Angleichungen
   (Schreibweise, .toc-Felder, Kommentare) sind erlaubt, im Commit kurz benennen.
-- Wer ein Addon verantwortet, entscheidet über dessen Funktionen, Version und Lizenz.
+- Wer ein Addon verantwortet, entscheidet über dessen Funktionen und Lizenz.
+- **Eine Version für alle**: seit 0.41b tragen alle Forever-Addons (auch ForeverQuests/ForeverBars und ForeverCore)
+  dieselbe Suite-Version (`## Version: 0.41b`); Versionssprünge gemeinsam in allen .toc
 - Entscheidungen, die alle Addons betreffen (Hub, Design, Regeln hier), gemeinsam treffen.
 
 ## 3. Zielclient und API
@@ -78,24 +80,27 @@ Philosophie, Regeln, Design und Abläufe. Wenn etwas hier nicht steht: am besteh
   ## IconTexture: Interface\AddOns\ForeverName\Media\ForeverCore
   ## Category: Forever Core
   ## Author: <Name>
-  ## Version: <Version>
+  ## Version: 0.41b
+  ## Dependencies: ForeverCore
   ## SavedVariables: ForeverNameDB, ForeverHubDB
 
-  ForeverHub.lua
   ... eigene Dateien ...
   ```
-  - `ForeverHub.lua` wird **immer als erste Datei** geladen, `ForeverHubDB` steht immer in den SavedVariables
+  - `## Dependencies: ForeverCore`: ForeverCore lädt garantiert vorher, `ForeverHub.UI` steht ab der ersten Zeile bereit.
+    **Keine eigene Kopie von `ForeverHub.lua`** mehr ins Addon legen
+  - `ForeverHubDB` steht vorerst weiter in den SavedVariables jedes Addons (Übergang: so übernehmen Spieler ihre
+    Hub-Einstellungen aus den alten Speicherständen; kann später auf ForeverCore allein reduziert werden)
   - Der Titel trägt den dezenten Beta-Hinweis (nur in der Addon-Liste sichtbar)
   - `Media\ForeverCore.tga` (Logo) liegt in jedem Addon (Kopie z. B. aus ForeverXP)
   - Release-Addons zusätzlich: `## X-License: MIT`, `## X-Curse-Project-ID: 1743753`, `LICENSE.txt`
 - Datei-Aufteilung frei; bewährt: `Core.lua` (Defaults, Start, Chatbefehl), `Locales.lua`, `Options.lua`, Funktionsdateien
-- Neues Addon zusätzlich: in `Shared/ForeverHub.lua` in die Liste `KNOWN` eintragen (Name + Minimap-Knopf) und
+- Neues Addon zusätzlich: in `ForeverCore/ForeverHub.lua` in die Liste `KNOWN` eintragen (Name + Minimap-Knopf) und
   einmal `tools/link-addons.ps1` ausführen
 
 ## 6. ForeverHub (gemeinsame Bibliothek)
-- `Shared/ForeverHub.lua` liegt als Kopie in jedem Addon; im Spiel arbeitet nur die Kopie mit der höchsten `VERSION`
-- **Nur `Shared/ForeverHub.lua` bearbeiten**, dabei `VERSION` erhöhen, danach `tools/sync-hub.ps1` (verteilt die Datei
-  in alle Addons, deren .toc `ForeverHub.lua` lädt). Alle Kopien im Repository müssen identisch sein.
+- Der Hub liegt **nur einmal**: `ForeverCore/ForeverHub.lua` im Hauptaddon ForeverCore (seit 0.41b; vorher Kopie in
+  jedem Addon – Stand davor: Git-Markierung `snapshot-vor-core-abhaengigkeit`). Bei Änderungen `VERSION` erhöhen
+- Gemeinsames (Stil, Sprache, Hilfsfunktionen, Begrüßung, Platzhalter …) gehört in den Hub, nicht in einzelne Addons
 - Erweiterungen müssen abwärtskompatibel sein (andere Addons rufen die Funktionen auf); Funktionen bei Bedarf mit
   `if UI.Funktion then … end` aufrufen
 - Was der Hub kann:
@@ -114,9 +119,8 @@ Philosophie, Regeln, Design und Abläufe. Wenn etwas hier nicht steht: am besteh
      (`ForeverHubDB.perCharacter`, sonst alle Charaktere) über `C_AddOns.EnableAddOn/DisableAddOn` + `SaveAddOns`;
      wirkt erst nach "Neu laden" (kein Nachladen zur Laufzeit – Rahmen müssen beim Laden entstehen, siehe Abschnitt 14).
      **Begrüßung**: beim allerersten Start öffnet sich das Fenster einmal (`ForeverHubDB.welcomeDone`, accountweit;
-     wird sofort beim Anzeigen gesetzt, damit es nie wieder aufpoppt). Das Hauptaddon `ForeverCore` enthält nur
-     `ForeverHub.lua` und steht nicht in `KNOWN`; es hält Hub, Optionsmenü und Addon-Menü-Eintrag am Leben,
-     wenn alle anderen aus sind. Einzelne Addons funktionieren weiter ohne ForeverCore (keine Abhängigkeit eintragen)
+     wird sofort beim Anzeigen gesetzt, damit es nie wieder aufpoppt). ForeverCore selbst steht nicht in `KNOWN`
+     (ohne ForeverCore lädt kein Forever-Addon); Hub, Optionsmenü und Addon-Menü-Eintrag bleiben, auch wenn alle anderen aus sind
   4. **Gemeinsamer Verschiebe-Modus** `/fmove`: entsperrt/sperrt alle angemeldeten Addons auf einmal
   5. **Blizzard-Optionsmenü** (Esc » Optionen » Reiter "AddOns"): Eintrag "Forever Core" mit Übersicht und je
      Forever-Addon eine Unterseite mit "Einstellungen öffnen" (öffnet das eigene Fenster, Optionsmenü schließt sich).
@@ -130,9 +134,10 @@ Philosophie, Regeln, Design und Abläufe. Wenn etwas hier nicht steht: am besteh
      - `UI.HideBlizzard(frame, { when, children, noMouse })` / `UI.ShowBlizzard(frame)`: Blizzard-Teil taint-frei
        unsichtbar halten (Alpha 0 + Absicherung). Nicht für Rahmen mit geschützten, anklickbaren Knöpfen
        (z. B. Questgegenstände im Questtracker) – die blieben unsichtbar anklickbar
-- **Mehrere Hub-Versionen gleichzeitig** (Spieler aktualisiert nur einzelne Addons): ab v21 teilen alle Kopien ihren
-  Zustand über `ForeverHub.shared`, ältere UI-Tabellen werden auf die neueste Kopie umgeleitet. Neuer gemeinsamer
-  Zustand im Hub gehört deshalb in `SHARED` (nicht in lokale Tabellen), sonst geht er beim Versionswechsel verloren
+- **Übergang von alten Kopien**: Addons bis 0.32b brachten eine eigene Hub-Kopie mit. Hat ein Spieler noch so ein
+  altes Addon neben dem neuen ForeverCore, übernimmt trotzdem die neueste Version (Versionsprüfung am Dateianfang,
+  gemeinsamer Zustand `ForeverHub.shared`, Umleitung älterer UI-Tabellen). Neuer gemeinsamer Zustand gehört deshalb
+  weiter in `SHARED`; diese Übergangs-Technik kann entfallen, wenn keine 0.32b-Stände mehr im Umlauf sind
 - Damit ein Addon voll eingebunden ist:
   - Minimap-Knopf **immer über `UI.MinimapButton({...})`** bauen, globaler Name `Forever<Name>MinimapButton`,
     **Linksklick öffnet das Menü**, Rechtsklick frei (meist: entsperren/sperren bzw. ein-/ausblenden); in `KNOWN`
@@ -377,10 +382,11 @@ Damit alle Einstellungsfenster gleich aussehen, gelten diese Maße. Quelle: `For
 
 ## 16. Release
 - `release/addons.txt` = Addons im Release; Prototypen erst nach Freigabe eintragen
-- Alle Release-Addons tragen dieselbe `## Version` (Suite-Version, z. B. `0.32b`); `tools/build-release.ps1` prüft das
+- Alle Release-Addons tragen dieselbe `## Version` (Suite-Version, z. B. `0.41b`); `tools/build-release.ps1` prüft das
 - Alle Release-.toc: `## Title: <Addon> |cff8a8a8a(Beta)|r`, `## X-Curse-Project-ID: 1743753`, `## X-License: MIT`
 - `release/README.txt` (DE/EN, kommt ins Gesamt-Zip) bei neuen Befehlen/Funktionen anpassen
 - `release/Changelog-CurseForge.txt` = Englisch, für Spieler geschrieben; wandert nicht ins Zip
 - `release/Description-CurseForge.txt` = Text der CurseForge-Hauptseite (Englisch, Markdown); bei neuen Addons/Funktionen anpassen, nicht ins Zip
-- Bauen mit `tools/build-release.ps1` (Hub-Abgleich, Versionsprüfung, Addon-Ordner, Einzel-Zips, Gesamt-Zip);
+- ForeverCore ist immer im Release und steckt in **jedem Einzel-Zip** mit (sonst lädt das Addon nicht)
+- Bauen mit `tools/build-release.ps1` (Versionsprüfung, Addon-Ordner, Einzel-Zips, Gesamt-Zip);
   fremde Zips im Zielordner werden nie angefasst

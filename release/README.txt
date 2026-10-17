@@ -1,16 +1,22 @@
 Forever Core – für World of Warcraft: Forever (Interface 16001)
 ===============================================================
 Less clutter. More control. Just the essentials.
-Version 0.32b (Beta) · by Patzlinger · MIT License
+Version 0.41b (Beta) · by Patzlinger · MIT License
 
 DEUTSCH
 -------
 Installation:
-  Die gewünschten Ordner (z. B. "ForeverFrames") in diesen Ordner kopieren:
+  Den Ordner "ForeverCore" und die gewünschten Addons (z. B. "ForeverFrames") in diesen Ordner kopieren:
   World of Warcraft\_classic_beta_\Interface\AddOns\
   Danach das Spiel neu starten oder /reload eingeben.
+  ForeverCore wird immer gebraucht (gemeinsame Grundlage); in jedem Einzel-Zip ist es schon dabei.
 
-Die Addons (jedes funktioniert auch einzeln):
+Beim ersten Start öffnet sich einmal der Forever Core Hub: Dort wählst du per Häkchen, welche
+Addons du nutzen möchtest, und lädst neu. Ein- und ausschalten geht später jederzeit mit /forever.
+
+Die Addons (jedes funktioniert auch einzeln, zusammen mit ForeverCore):
+  ForeverCore    Grundlage aller Forever-Addons: Hub-Fenster (/forever) zum Ein- und Ausschalten
+                 und zum Öffnen der Einstellungen, gemeinsamer Stil, Sammelknopf an der Minimap.
   ForeverFrames  Schlanke Gruppen- und Raidrahmen mit Klick-Zaubern, Debuffs/HoTs,
                  Heilvorhersage, Begleitern. Position per X/Y, Raster und Einrasten.
                  Einstellungen: /ff
@@ -44,7 +50,8 @@ Fenster: Alle Forever-Einstellungsfenster lassen sich an der Ecke unten rechts g
 kleiner ziehen; das zuletzt geöffnete Fenster liegt immer oben.
 
 Forever Core Hub: /forever (oder /fhub) öffnet ein Fenster mit allen Forever-Addons –
-ein Klick auf "Öffnen" führt direkt ins Menü des Addons. Dort lässt sich auch der
+Häkchen schaltet ein Addon ein oder aus (gilt nach "Neu laden", auf Wunsch nur für diesen
+Charakter), ein Klick auf "Öffnen" führt direkt ins Menü des Addons. Dort lässt sich auch der
 Minimap-Knopf ausblenden und die Sprache für alle Forever-Addons auf Englisch umstellen.
 Außerdem steht "Forever Core" im Blizzard-Optionsmenü (Esc » Optionen » AddOns) – mit
 einer Unterseite pro Addon, die dessen Einstellungen öffnet. /forever options springt direkt dorthin. /forever reset holt die Knöpfe zurück und setzt die Position zurück.
@@ -58,11 +65,17 @@ Sprache: Deutscher Client = Deutsch, alle anderen = Englisch.
 ENGLISH
 -------
 Installation:
-  Copy the folders you want (e.g. "ForeverFrames") into:
+  Copy the "ForeverCore" folder and the addons you want (e.g. "ForeverFrames") into:
   World of Warcraft\_classic_beta_\Interface\AddOns\
   Then restart the game or type /reload.
+  ForeverCore is always required (shared base); every single-addon zip already includes it.
 
-The addons (each one also works on its own):
+On your first login the Forever Core Hub opens once: tick the addons you want to use and reload.
+You can turn addons on or off at any time later with /forever.
+
+The addons (each one also works on its own, together with ForeverCore):
+  ForeverCore    Base of all Forever addons: hub window (/forever) to turn addons on or off and
+                 open their settings, shared look, one collector button at the minimap.
   ForeverFrames  Slim party and raid frames with click casting, debuffs/HoTs,
                  heal prediction and pets. Position via X/Y, grid and snapping.
                  Settings: /ff
@@ -96,7 +109,8 @@ Windows: drag the bottom-right corner of any Forever settings window to resize i
 the window you opened last always stays on top.
 
 Forever Core Hub: /forever (or /fhub) opens a window listing all Forever addons –
-click "Open" to go straight to that addon's settings. The minimap button can be hidden
+tick or untick an addon to turn it on or off (applies after "Reload", optionally for this
+character only), and click "Open" to go straight to that addon's settings. The minimap button can be hidden
 there as well (German clients can also switch all Forever addons to English there).
 "Forever Core" also appears in the Blizzard options (Esc » Options » AddOns) with one page
 per addon that opens its settings. /forever options jumps straight there. /forever reset brings the buttons back and resets their position.

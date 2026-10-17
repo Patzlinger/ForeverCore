@@ -4,12 +4,12 @@
 ## Category: Forever Core
 ## Notes: Merchant helper: sells junk, repairs and restocks reagents, food, drink, ammo and your own list
 ## Notes-deDE: Händler-Helfer: verkauft Graues, repariert und kauft Reagenzien, Essen, Trinken, Munition und eigene Liste nach
-## Version: 0.32b
+## Version: 0.41b
 ## Author: Patzlinger
 ## X-License: MIT
 ## X-Curse-Project-ID: 1743753
+## Dependencies: ForeverCore
 ## SavedVariables: ForeverVendorDB, ForeverHubDB
 
-ForeverHub.lua
 Data.lua
 ForeverVendor.lua

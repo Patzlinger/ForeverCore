@@ -5,10 +5,10 @@
 ## IconTexture: Interface\AddOns\ForeverQuests\Media\ForeverCore
 ## Category: Forever Core
 ## Author: flowfy
-## Version: 0.27.2
+## Version: 0.41b
+## Dependencies: ForeverCore
 ## SavedVariables: ForeverQuestsDB, ForeverHubDB
 
-ForeverHub.lua
 Locales.lua
 ForeverQuests.lua
 Style.lua

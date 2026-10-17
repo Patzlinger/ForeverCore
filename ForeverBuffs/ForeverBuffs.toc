@@ -4,12 +4,12 @@
 ## Category: Forever Core
 ## Notes: Unobtrusive reminder for missing buffs, lower ranks, food, drink and your own consumables
 ## Notes-deDE: Unaufdringliche Erinnerung an fehlende Buffs, niedrige Ränge, Essen, Trinken und eigene Verbrauchsgüter
-## Version: 0.32b
+## Version: 0.41b
 ## X-Curse-Project-ID: 1743753
 ## Author: Patzlinger
 ## X-License: MIT
+## Dependencies: ForeverCore
 ## SavedVariables: ForeverBuffsDB, ForeverHubDB
 
-ForeverHub.lua
 Data.lua
 ForeverBuffs.lua

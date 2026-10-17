@@ -1,5 +1,19 @@
 # Forever Core – Changelog
 
+## 0.41b – October 17, 2026
+
+### New
+- **ForeverCore – one base for all addons.** The shared parts of Forever Core (look, hub, minimap button, settings entry) now live in their own small addon, **ForeverCore**. Every Forever Core addon needs it. It is already included in the full package and in every single-addon download, so you don't have to do anything extra.
+- **Choose what you want:** turn every addon on or off right in the hub (/forever). Use "All on" / "All off" if you like, or limit your choice to one character. Changes apply after you click "Reload".
+- **A short welcome:** on your very first login the hub opens once and shows you how it works. After that it stays closed – you'll find it via /forever, the addon menu at the minimap or Esc » Options » AddOns.
+
+### Improved
+- All Forever Core addons now share one version number (0.41b), so it's easy to see that everything is up to date.
+- The addons got a bit smaller and load more cleanly, because the shared parts exist only once.
+
+### Good to know
+- Updating from an older version: install the new package (with ForeverCore). Your settings are kept.
+
 ## 0.32b – October 17, 2026
 
 ### New

@@ -8,6 +8,13 @@ All addons share one flat, dark look with gold accents. They're available in Eng
 
 ---
 
+## Pick what you need
+Install the package and log in. The **Forever Core Hub** opens once and lets you tick the addons you want, then click "Reload". You can change your choice at any time with **/forever**.
+
+Every addon needs the small base addon **ForeverCore**. It's included in the package and in every single-addon download.
+
+---
+
 ## The addons
 
 **ForeverFrames – party and raid frames**

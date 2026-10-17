@@ -1,5 +1,6 @@
 -- ForeverHub: gemeinsame Grundlage aller Forever-Addons
--- Diese Datei liegt (identisch) in jedem Forever-Addon. Nur die neueste geladene Kopie arbeitet.
+-- Liegt (seit 0.41b) nur noch im Hauptaddon ForeverCore. Alle anderen Forever-Addons tragen
+-- "## Dependencies: ForeverCore" – ForeverCore laedt damit immer vor ihnen, ForeverHub.UI steht bereit.
 --  1. ForeverHub.UI: einheitlicher Stil (Fenster, Ueberschriften, Knoepfe, Regler, Minimap-Knopf,
 --     Chat-Ausgabe, Sprache). Jedes Forever-Addon baut seine Oberflaeche damit.
 --  2. Sammelknopf: Sind mindestens zwei Forever-Addons aktiv, werden deren Minimap-Knoepfe
@@ -7,17 +8,16 @@
 --  3. Hub-Fenster (/forever): Liste aller Forever-Addons mit direktem Weg in ihr Menue –
 --     auch ohne Minimap-Knoepfe. Addons dort ein-/ausschalten (gilt nach dem Neuladen);
 --     beim allerersten Start oeffnet es sich einmal als Begruessung.
---     Das Hauptaddon "ForeverCore" enthaelt nur diese Datei: so bleibt der Hub da, auch wenn alle
---     anderen Forever-Addons aus sind.
+--     ForeverCore selbst steht nicht in der Liste (ohne ForeverCore laeuft kein Forever-Addon).
 --  4. Eintrag "Forever Core" im Blizzard-Optionsmenue (Reiter AddOns) mit Unterseite je Addon.
 --  5. Eintrag "Forever Core" im Addon-Menue an der Minimap (falls der Client es hat).
 --
--- Mehrere Versionen gleichzeitig (z. B. nur ein Addon aktualisiert): die neueste Kopie uebernimmt.
--- Ab v21 teilen alle Kopien ihren Zustand (hub.shared: Anmeldungen fuer /fmove, Einrast-Rahmen,
+-- Uebergang: Addons bis 0.32b hatten eine eigene Kopie dieser Datei. Laedt so ein altes Addon (ohne Abhaengigkeit)
+-- vor ForeverCore, uebernimmt trotzdem die neueste Version. Ab v21 teilen alle Kopien ihren Zustand (hub.shared: Anmeldungen fuer /fmove, Einrast-Rahmen,
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 26
+local VERSION = 27
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 

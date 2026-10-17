@@ -4,13 +4,13 @@
 ## Category: Forever Core
 ## Notes: Slim party and raid frames in the style of Cell, with click casting
 ## Notes-deDE: Schlanke Gruppen- und Raidrahmen im Stil von Cell, mit Klick-Zaubern
-## Version: 0.32b
+## Version: 0.41b
 ## X-Curse-Project-ID: 1743753
 ## Author: Patzlinger
 ## X-License: MIT
+## Dependencies: ForeverCore
 ## SavedVariables: ForeverFramesDB, ForeverHubDB
 
-ForeverHub.lua
 Core.lua
 Frames.lua
 Auras.lua

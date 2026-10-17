@@ -10,7 +10,7 @@ Autoren: Patzlinger, flowfy · CurseForge-Projekt 1743753
 | ForeverFrames, ForeverUnits, ForeverCast, ForeverLoot, ForeverXP, ForeverBuffs, ForeverVendor | Patzlinger | im Release (MIT) |
 | ForeverSpellbook, ForeverChat | Patzlinger | im Release (seit 0.32b) |
 | ForeverQuests, ForeverBars | flowfy | im Repository, noch nicht im Release |
-| ForeverCore (Hauptaddon, nur der Hub) | gemeinsam | neu, noch nicht im Release |
+| ForeverCore (Hauptaddon: Hub + Stil-Bibliothek, Abhängigkeit aller Addons) | gemeinsam | im Release (seit 0.41b) |
 
 **Regeln, Design und Abläufe stehen in [CLAUDE.md](CLAUDE.md)** – bitte vor dem ersten Arbeiten lesen.
 Im Spiel: `/forever` zeigt alle Forever-Addons, `/fmove` verschiebt alle Rahmen.
@@ -20,14 +20,14 @@ Im Spiel: `/forever` zeigt alle Forever-Addons, `/fmove` verschiebt alle Rahmen.
 ```
 _Forever-Source/
   ForeverXP/ ...          ein Ordner pro Addon (Ordnername = .toc-Name)
-  Shared/ForeverHub.lua   gemeinsame Bibliothek – NUR HIER bearbeiten
+  ForeverCore/            Hauptaddon: ForeverHub.lua = gemeinsame Bibliothek, Hub-Fenster, Begrüßung
   release/                README/Changelog fürs Paket, addons.txt = was ins Release kommt
   tools/                  Skripte (siehe unten)
 ```
 
-Jedes Addon enthält eine Kopie von `ForeverHub.lua` (WoW braucht sie im Addon-Ordner).
-Die Vorlage ist `Shared/ForeverHub.lua`; nach einer Änderung `tools/sync-hub.ps1` ausführen,
-dann sind alle Kopien gleich. Erhöhe dabei `VERSION` in der Hub-Datei – die neueste Version gewinnt im Spiel.
+Alle Addons tragen `## Dependencies: ForeverCore` – ForeverCore lädt immer zuerst, `ForeverHub.UI` steht bereit.
+Den Hub gibt es nur einmal (`ForeverCore/ForeverHub.lua`); bei Änderungen dort `VERSION` erhöhen.
+Alle Addons tragen dieselbe Version (seit 0.41b). Stand vor der Umstellung: Git-Markierung `snapshot-vor-core-abhaengigkeit`.
 
 ## Einrichten (einmalig)
 
@@ -58,8 +58,8 @@ Danach ist der AddOns-Ordner nur noch eine Verknüpfung: Was du im Repository ä
 ```
 .\tools\build-release.ps1
 ```
-Gleicht den Hub ab, prüft, dass alle `.toc` dieselbe `## Version` haben, und baut
-`..\_Forever-Release-<Version>\` mit Addon-Ordnern, `Einzeln\*.zip` und `ForeverCore-<Version>.zip`.
+Prüft, dass alle `.toc` dieselbe `## Version` haben, und baut
+`..\_Forever-Release-<Version>\` mit Addon-Ordnern, `Einzeln\*.zip` (jedes mit ForeverCore) und `ForeverCore-<Version>.zip`.
 Welche Addons hineinkommen, steht in `release/addons.txt`.
 
 ## Achtung CurseForge-App

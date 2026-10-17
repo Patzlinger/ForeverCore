@@ -5,12 +5,12 @@
 ## IconTexture: Interface\AddOns\ForeverChat\Media\ForeverCore
 ## Category: Forever Core
 ## Author: Patzlinger
-## Version: 0.32b
+## Version: 0.41b
 ## X-License: MIT
 ## X-Curse-Project-ID: 1743753
+## Dependencies: ForeverCore
 ## SavedVariables: ForeverChatDB, ForeverHubDB
 
-ForeverHub.lua
 Core.lua
 Messages.lua
 Skin.lua

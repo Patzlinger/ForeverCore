@@ -10,9 +10,10 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
 
-& (Join-Path $PSScriptRoot 'sync-hub.ps1')
-
 $addons = Get-Content (Join-Path $root 'release\addons.txt') | Where-Object { $_ -and $_ -notmatch '^\s*#' } | ForEach-Object { $_.Trim() }
+# ForeverCore (Hub) ist Abhängigkeit aller Forever-Addons: immer dabei und zuerst gebaut
+$core = 'ForeverCore'
+$addons = @($core) + @($addons | Where-Object { $_ -ne $core })
 
 # Version prüfen: alle Release-Addons müssen dieselbe ## Version haben
 $versions = foreach ($a in $addons) {
@@ -45,11 +46,14 @@ function New-Zip($path, $folders, $extraFiles) {
     } finally { $zip.Dispose() }
 }
 
+# Einzel-Zips enthalten ForeverCore mit, damit jedes Addon auch allein heruntergeladen funktioniert
+$coreDest = Join-Path $addonOut $core
 $copied = foreach ($a in $addons) {
     $dest = Join-Path $addonOut $a
     if (Test-Path $dest) { Remove-Item $dest -Recurse -Force }
     Copy-Item (Join-Path $root $a) $dest -Recurse
-    New-Zip (Join-Path $singleOut "$a.zip") @($dest)
+    $folders = if ($a -eq $core) { @($dest) } else { @($dest, $coreDest) }
+    New-Zip (Join-Path $singleOut "$a.zip") $folders
     $dest
 }
 New-Zip (Join-Path $ReleaseDir "ForeverCore-$Version.zip") $copied @(Join-Path $root 'release\README.txt')
