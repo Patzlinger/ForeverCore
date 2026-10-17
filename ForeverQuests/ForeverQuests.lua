@@ -21,6 +21,7 @@ ns.defaults = {
     width = 260,
     height = 400,
     -- x/y = nil bedeutet: Standardposition am rechten Bildschirmrand
+    followMinimap = true, -- mit ForeverMinimap: direkt darunter und gleich breit (aus, sobald man den Tracker selbst zieht)
     hideBlizzard = true,
     hideInCombat = false,
     onlyTracked = true,
