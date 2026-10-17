@@ -556,8 +556,9 @@ do
     Block(R, -4, T("Anführer / Assistent", "Leader / assistant"), "leader")
     Block(L, -200, T("Zielmarkierung", "Raid marker"), "mark")
     Block(R, -200, T("Bereitschaftscheck", "Ready check"), "ready", function(x, y)
-        W.Check(p, x, y, T("Wiederbelebung / Beschwörung unterwegs", "Incoming resurrection / summon"), "incomingShow")
-        W.Hint(p, x + 4, y - 26, 300, T("Erscheint am Platz des Bereitschaftschecks.", "Shown in the ready check spot."))
+        W.Check(p, x, y, T("Vor dem Namen (statt Position oben)", "Before the name (instead of position above)"), "readyAtName")
+        W.Check(p, x, y - 24, T("Wiederbelebung / Beschwörung unterwegs", "Incoming resurrection / summon"), "incomingShow")
+        W.Hint(p, x + 4, y - 50, 300, T("Erscheint am Platz des Bereitschaftschecks.", "Shown in the ready check spot."))
     end)
 end
 

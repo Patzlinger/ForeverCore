@@ -83,6 +83,7 @@ ns.DEFAULTS = {
     leaderShow = true, leaderSize = 11, leaderPoint = "TOPRIGHT", leaderX = -2, leaderY = -2,
     markShow = true, markSize = 14, markPoint = "TOP", markX = 0, markY = 5,
     readyShow = true, readySize = 18, readyPoint = "CENTER", readyX = 0, readyY = 0,
+    readyAtName = true,               -- Bereitschaftscheck links in der Namenszeile statt frei platziert
     incomingShow = true,              -- Symbol fuer Wiederbelebung / Beschwoerung unterwegs
 
     -- Debuffs

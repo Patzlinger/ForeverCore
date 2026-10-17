@@ -374,6 +374,15 @@ function ns.ApplyButtonLayout(b)
     PlaceIcon(v, v.mark, "mark")
     PlaceIcon(v, v.ready, "ready")
     PlaceIcon(v, v.incoming, "ready") -- gleicher Platz wie der Bereitschaftscheck
+    if db.readyAtName and db.nameShow then
+        -- links in der Namenszeile (vor dem Namen), so groß wie die Schrift – deckt den Namen nicht ab
+        local size = math.min(db.readySize, (db.nameSize or 11) + 4)
+        for _, t in ipairs({ v.ready, v.incoming }) do
+            t:ClearAllPoints()
+            t:SetPoint("LEFT", v.name, "LEFT", 0, 0)
+            t:SetSize(size, size)
+        end
+    end
 
     v.targetBorder:SetBackdropBorderColor(ns.Color("targetColor"))
     v.aggroBorder:SetBackdropBorderColor(ns.Color("aggroColor"))
