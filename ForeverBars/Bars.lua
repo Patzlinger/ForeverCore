@@ -2223,6 +2223,11 @@ end
 -- wie die Leiste samt Rahmen. Ausgeklappt zeigt er nach innen ("einklappen"), eingeklappt nach außen. Eingeklappt
 -- ist die Leiste ausgeblendet (über ihre Sichtbarkeits-Bedingung, im Kampf erst danach); der Pfeil bleibt stehen.
 local ARROW_WIDTH = 20
+-- Symbol je Leiste im eingeklappten Pfeil-Knopf
+local COLLAPSE_SYMBOLS = {
+    prof = "Interface\\Icons\\Trade_BlackSmithing", -- Amboss: Berufe
+    food = "Interface\\Icons\\INV_Potion_51",       -- Fläschchen: Verbrauchbares
+}
 function ns.UpdateCollapseArrow(def, cfg, holder)
     local arrow = holder.fbCollapseArrow
     if not cfg.enabled or not cfg.collapseArrow then
@@ -2245,9 +2250,12 @@ function ns.UpdateCollapseArrow(def, cfg, holder)
         end)
         arrow:SetScript("OnEnter", function(self)
             self:SetBackdropBorderColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3], 0.9)
+            local barCfg = ns.db.bars[def.key]
+            local titleText = strtrim(barCfg.frameTitleText or "")
+            local name = titleText ~= "" and titleText or L(def.titleKey or def.textKey)
             local tip = ns.Style.GetTooltip()
             tip:SetOwner(self, "ANCHOR_TOP")
-            tip:AddLine(L(ns.db.bars[def.key].collapsed and "BAR_EXPAND" or "BAR_COLLAPSE"))
+            tip:AddLine(L(barCfg.collapsed and "BAR_EXPAND_NAME" or "BAR_COLLAPSE_NAME", name))
             tip:Show()
         end)
         arrow:SetScript("OnLeave", function(self)
@@ -2269,14 +2277,13 @@ function ns.UpdateCollapseArrow(def, cfg, holder)
     local ROTATION = { RIGHT = 0, LEFT = math.pi, TOP = math.pi / 2, BOTTOM = -math.pi / 2 }
     local OPPOSITE = { RIGHT = "LEFT", LEFT = "RIGHT", TOP = "BOTTOM", BOTTOM = "TOP" }
     arrow.icon:SetRotation(ROTATION[cfg.collapsed and OPPOSITE[side] or side])
-    -- Beschriftung im Knopf (nur eingeklappt): Name der Leiste, kräftige Schrift mit Kontur; Pfeil links/rechts:
-    -- Buchstaben von oben nach unten unter dem Pfeil, Pfeil oben/unten: waagerecht rechts neben dem Pfeil
+    -- Symbol im Knopf (nur eingeklappt) zeigt, welche Leiste es ist; was der Klick tut, sagt der Tooltip.
+    -- Pfeil links/rechts: Symbol unter dem Pfeil, Pfeil oben/unten: Symbol rechts daneben
     if not arrow.label then
-        arrow.label = arrow:CreateFontString(nil, "OVERLAY")
-        arrow.label:SetFont(STANDARD_TEXT_FONT, 11, "OUTLINE")
-        arrow.label:SetTextColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3])
-        arrow.label:SetShadowOffset(1, -1)
-        arrow.label:SetShadowColor(0, 0, 0, 1)
+        arrow.label = arrow:CreateTexture(nil, "OVERLAY")
+        arrow.label:SetSize(16, 16)
+        arrow.label:SetTexture(COLLAPSE_SYMBOLS[def.key] or COLLAPSE_SYMBOLS.prof)
+        arrow.label:SetTexCoord(0.08, 0.92, 0.08, 0.92)
     end
     local label = arrow.label
     label:ClearAllPoints()
@@ -2286,26 +2293,16 @@ function ns.UpdateCollapseArrow(def, cfg, holder)
     local offset = (side == "RIGHT" or side == "TOP") and 2 or -2
     local near, far = OPPOSITE[side], side
     if cfg.collapsed then
-        -- Eingeklappt: Knopf breiter und so hoch wie nötig, mittig an der Stelle der Leiste
-        local titleText = strtrim(cfg.frameTitleText or "")
-        local name = titleText ~= "" and titleText or L(def.titleKey or def.textKey)
+        -- Eingeklappt: Knopf etwas breiter, so hoch bzw. breit wie die Leiste, Pfeil und Symbol mittig
         if vertical then
-            local letters = {}
-            for char in name:gmatch("[%z\1-\127\194-\244][\128-\191]*") do letters[#letters + 1] = char end
-            label:SetText(table.concat(letters, "\n"))
-            label:SetJustifyH("CENTER")
-            label:SetSpacing(1)
-            arrow.icon:SetPoint("TOP", 0, -5)
-            label:SetPoint("TOP", arrow.icon, "BOTTOM", 0, -4)
-            arrow:SetSize(ARROW_WIDTH + 6, math.max(edge:GetHeight(), label:GetStringHeight() + 12 + 5 + 4 + 6))
+            arrow.icon:SetPoint("BOTTOM", arrow, "CENTER", 0, 2)
+            label:SetPoint("TOP", arrow, "CENTER", 0, -2)
+            arrow:SetSize(ARROW_WIDTH + 4, math.max(edge:GetHeight(), 44))
             arrow:SetPoint(near, edge, far, offset, 0)
         else
-            label:SetText(name)
-            label:SetJustifyH("LEFT")
-            label:SetSpacing(0)
-            arrow.icon:SetPoint("LEFT", 6, 0)
-            label:SetPoint("LEFT", arrow.icon, "RIGHT", 4, 0)
-            arrow:SetSize(math.max(edge:GetWidth(), label:GetStringWidth() + 12 + 6 + 4 + 8), ARROW_WIDTH + 6)
+            arrow.icon:SetPoint("RIGHT", arrow, "CENTER", -2, 0)
+            label:SetPoint("LEFT", arrow, "CENTER", 2, 0)
+            arrow:SetSize(math.max(edge:GetWidth(), 44), ARROW_WIDTH + 4)
             arrow:SetPoint(near, edge, far, 0, offset)
         end
         label:Show()
