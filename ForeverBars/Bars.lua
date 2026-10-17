@@ -96,6 +96,7 @@ local EDGE = 4         -- Abstand zum Bildschirmrand
 local BAR_GAP = 1.5    -- Abstand zwischen aneinanderliegenden Leisten (wie "Abstand" der Knöpfe)
 local SIDE_GAP = 24    -- Abstand von Berufe-/Verpflegungsleiste zu den Aktionsleisten (Platz für den Einklapp-Pfeil)
 local FRAME_SPACE = 4  -- Rand des Rahmens um eine Leiste (siehe UpdateBarFrame)
+local PET_GAP = 8      -- kleiner Abstand der Begleiter-/Haltungsleiste zu den Aktionsleisten (Flächen berühren sich nicht)
 
 -- Tatsächliche Größe einer Leiste. Aktionsleisten: "100 %" im Menü sind 105 % der Blizzard-Knopfgröße
 -- (die Knöpfe sollten größer werden, ohne dass im Menü ein krummer Wert steht)
@@ -137,7 +138,8 @@ local function DefaultPosition(key)
     local function BarCenter(row) return statusBase + barHeight / 2 + row * (barHeight + BAR_GAP) end
     local stackTop = statusBase + 3 * barHeight + 2 * BAR_GAP     -- Oberkante der drei Aktionsleisten
     local smallRow = ACTION_SIZE * Scale("pet")                    -- Höhe der Begleiter-/Haltungsreihe
-    local aboveSmall = stackTop + BAR_GAP + smallRow + BAR_GAP    -- darüber beginnen Leisten 6-8
+    local smallBottom = stackTop + PET_GAP                          -- Unterkante der Begleiter-/Haltungsreihe
+    local aboveSmall = smallBottom + smallRow + PET_GAP             -- darüber beginnen Leisten 6-8
     local microHeight = HolderHeight("micro", 40)
     -- Mikromenü unter der Minimap angedockt: die Taschen sitzen allein unten rechts in der Ecke
     if bars.micro.dockMinimap and C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("ForeverMinimap") then
@@ -149,8 +151,8 @@ local function DefaultPosition(key)
         bar7 = { width / 2, aboveSmall + barHeight * 1.5 + BAR_GAP },
         bar8 = { width / 2, aboveSmall + barHeight * 2.5 + BAR_GAP * 2 },
         bar4 = { width - 30, height / 2 }, bar5 = { width - 30 - ACTION_SIZE - 8, height / 2 },
-        pet = { left, stackTop + BAR_GAP },     -- BOTTOMLEFT
-        stance = { right, stackTop + BAR_GAP }, -- BOTTOMRIGHT
+        pet = { left, smallBottom },     -- BOTTOMLEFT
+        stance = { right, smallBottom }, -- BOTTOMRIGHT
         prof = { left - SIDE_GAP - FRAME_SPACE, statusBase + FRAME_SPACE }, -- BOTTOMRIGHT (Rahmen eingerechnet)
         food = { right + SIDE_GAP + FRAME_SPACE, statusBase + FRAME_SPACE }, -- BOTTOMLEFT, gespiegelt zur Berufeleiste
         xp = { width / 2, statusCenter.xp or (EDGE + 9) }, rep = { width / 2, statusCenter.rep or (EDGE + 30) },
@@ -217,6 +219,12 @@ ns.SetTextFont = SetTextFont
 -- und Hintergrund leerer Plätze
 local COLOR = ns.Style.COLOR
 ns.SKINS = {
+    -- Forever: wie die Fenster der Forever-Addons – heller 1-px-Rand, darin ein schwarzer Ring, dunkle Fläche,
+    -- beim Darüberfahren goldener Rand; Aktions-, Begleiter- und Haltungsleisten liegen auf einer dunklen Fläche
+    -- (wie der Körper eines Forever-Fensters)
+    { key = "FOREVER", textKey = "SKIN_FOREVER", border = { 0.34, 0.34, 0.40, 1 }, size = 1, inset = 2,
+      inner = { 0, 0, 0, 0.9 }, hoverGold = true, barBackdrop = true,
+      background = { 0.10, 0.10, 0.12, 0.92 } },
     { key = "FLAT", textKey = "SKIN_FLAT", border = COLOR.border, size = 1, inset = 1,
       background = { 0.06, 0.06, 0.08, 0.85 } },
     { key = "GOLD", textKey = "SKIN_GOLD", border = { COLOR.accent[1], COLOR.accent[2], COLOR.accent[3], 0.55 }, size = 1,
@@ -238,8 +246,9 @@ end
 -- Knöpfe liegen übereinander (sonst wirken Rand + Lücke + Rand wie ein Balken). Bei Abstand 1 und 1-px-Rand
 -- bleibt genau eine feine Linie.
 function ns.ButtonGap(cfg)
-    local inset = ns.db.showBorder and GetSkin().inset or 0
-    return (cfg.spacing or 1) - 2 * inset
+    -- Es überlappen nur die äußeren Ränder (Stärke size); ein innerer Ring (Stil "Forever") bleibt je Knopf sichtbar
+    local border = ns.db.showBorder and GetSkin().size or 0
+    return (cfg.spacing or 1.5) - 2 * border
 end
 
 -- Breite der Aktionsleiste 1 in Bildschirmeinheiten: Erfahrungs- und Ruf-Leiste sind standardmäßig genauso breit
@@ -287,6 +296,26 @@ local HOTKEY_POSITIONS = {
     TOP = { "TOP", 0, -3, "CENTER" },
 }
 
+-- Lange Tastennamen kürzen, damit sie auf den Knopf passen (Blizzard kürzt nur teilweise, z. B. "Mausrad hoch")
+local KEY_SHORT = {
+    { "SHIFT%-", "S" }, { "Shift%-", "S" }, { "Umschalt%-", "S" }, { "UMSCHALT%-", "S" },
+    { "STRG%-", "C" }, { "Strg%-", "C" }, { "CTRL%-", "C" }, { "Ctrl%-", "C" },
+    { "ALT%-", "A" }, { "Alt%-", "A" }, { "META%-", "M" },
+    { "Mausrad hoch", "MU" }, { "Mausrad runter", "MD" }, { "Mausrad unten", "MD" },
+    { "Mouse Wheel Up", "MU" }, { "Mouse Wheel Down", "MD" },
+    { "Mittlere Maustaste", "M3" }, { "Middle Mouse", "M3" },
+    { "Maustaste (%d+)", "M%1" }, { "Mouse Button (%d+)", "M%1" },
+    { "Ziffernblock ?", "N" }, { "Num Pad ?", "N" }, { "Numpad ?", "N" },
+    { "Leertaste", "Spc" }, { "Spacebar", "Spc" }, { "Rücktaste", "BS" }, { "Backspace", "BS" },
+    { "Einfg", "Ins" }, { "Entf", "Del" }, { "Bild auf", "PU" }, { "Bild ab", "PD" },
+    { "Page Up", "PU" }, { "Page Down", "PD" }, { "Pos1", "Hm" },
+}
+function ns.ShortKey(text)
+    if type(text) ~= "string" or text == "" then return text end
+    for _, pair in ipairs(KEY_SHORT) do text = text:gsub(pair[1], pair[2]) end
+    return text
+end
+
 -- Texte (Tastenbelegung, Makroname, Anzahl), Schrift, Rand und Symbol-Zuschnitt eines Knopfes
 local function UpdateButtonLook(button)
     local name = button:GetName()
@@ -301,6 +330,17 @@ local function UpdateButtonLook(button)
         hotkey:ClearAllPoints()
         hotkey:SetPoint(position[1], button, position[1], position[2], position[3])
         hotkey:SetJustifyH(position[4])
+        -- Blizzards Feld ist fest 32 x 10 groß: bei unserer Schrift wurden längere Tasten abgeschnitten oder
+        -- gar nicht gezeigt. Darum so breit wie der Knopf und so hoch wie die Schrift.
+        local width = button:GetWidth()
+        if not width or width < 10 then width = ACTION_SIZE end
+        hotkey:SetSize(width - 4, db.fontSize + 4)
+        hotkey:SetWordWrap(false)
+        local text = hotkey:GetText()
+        if text and text ~= "" and text ~= RANGE_INDICATOR then
+            local short = ns.ShortKey(text)
+            if short ~= text then hotkey:SetText(short) end
+        end
     end
     if macro then
         macro:SetAlpha(db.showMacroNames and 1 or 0)
@@ -322,6 +362,19 @@ local function UpdateButtonLook(button)
         button.fbBorder:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = skin.size })
         button.fbBorder:SetBackdropBorderColor(unpack(skin.border))
         button.fbBorder:SetShown(db.showBorder)
+        -- Innerer Ring zwischen Rand und Symbol (Stil "Forever")
+        if skin.inner and not button.fbInner then
+            local inner = CreateFrame("Frame", nil, button.fbBorder, "BackdropTemplate")
+            inner:SetPoint("TOPLEFT", skin.size, -skin.size)
+            inner:SetPoint("BOTTOMRIGHT", -skin.size, skin.size)
+            inner:EnableMouse(false)
+            inner:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 })
+            button.fbInner = inner
+        end
+        if button.fbInner then
+            button.fbInner:SetShown(skin.inner ~= nil and db.showBorder)
+            if skin.inner then button.fbInner:SetBackdropBorderColor(unpack(skin.inner)) end
+        end
     end
     if button.fbBackground then button.fbBackground:SetColorTexture(unpack(skin.background)) end
     -- Grüner "Ausgerüstet"-Rand, Zuschnitt des Symbols
@@ -390,11 +443,18 @@ local function StyleButton(button)
             hooksecurefunc(button, "UpdateHotkeys", UpdateButtonLook)
         end
         -- Tooltip des Knopfes nach Einstellung wieder ausblenden (nie bzw. nicht im Kampf)
-        button:HookScript("OnEnter", function()
+        button:HookScript("OnEnter", function(self)
             local mode = ns.db.buttonTooltip
             if mode == "NEVER" or (mode == "NOCOMBAT" and InCombatLockdown()) then
                 GameTooltip:Hide()
             end
+            -- Stil "Forever": goldener Rand beim Darüberfahren
+            if GetSkin().hoverGold and self.fbBorder then
+                self.fbBorder:SetBackdropBorderColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3], 0.9)
+            end
+        end)
+        button:HookScript("OnLeave", function(self)
+            if self.fbBorder then self.fbBorder:SetBackdropBorderColor(unpack(GetSkin().border)) end
         end)
     end
     UpdateButtonLook(button)
@@ -1256,7 +1316,7 @@ function ns.UpdateOwnHotkeys()
         local button = _G["ForeverBarsFoodButton" .. i]
         if button then
             local key = GetBindingKey and GetBindingKey("CLICK ForeverBarsFoodButton" .. i .. ":LeftButton")
-            button.HotKey:SetText(key and GetBindingText and GetBindingText(key, true) or "")
+            button.HotKey:SetText(key and GetBindingText and ns.ShortKey(GetBindingText(key, true)) or "")
         end
     end
 end
@@ -1671,9 +1731,13 @@ end
 
 local FRAME_PAD, FRAME_TITLE = 4, 18
 
+local BACKDROP_PAD = 3 -- Stil "Forever": Fläche unter Aktions-, Begleiter- und Haltungsleisten
+
 local function UpdateBarFrame(def, cfg, holder)
     local frame = holder.fbFrame
-    if not cfg.frame then
+    local backdropOnly = not cfg.frame and GetSkin().barBackdrop
+        and (def.kind == "action" or def.kind == "pet" or def.kind == "stance")
+    if not cfg.frame and not backdropOnly then
         if frame then frame:Hide() end
         return
     end
@@ -1697,6 +1761,20 @@ local function UpdateBarFrame(def, cfg, holder)
     end
     -- Unter den Knöpfen (die Knöpfe liegen eine Ebene höher im Halter)
     frame:SetFrameLevel(holder:GetFrameLevel())
+    if backdropOnly then
+        -- nur die dunkle Fläche, ohne Kopfzeile und ohne Rand (übereinanderliegende Leisten verschmelzen so zu
+        -- einer Fläche, statt dass sich ihre Ränder kreuzen), eng um die Knöpfe
+        frame.header:Hide()
+        frame.line:Hide()
+        frame.title:Hide()
+        frame:SetBackdropBorderColor(0, 0, 0, 0)
+        frame:ClearAllPoints()
+        frame:SetPoint("TOPLEFT", holder, "TOPLEFT", -BACKDROP_PAD, BACKDROP_PAD)
+        frame:SetPoint("BOTTOMRIGHT", holder, "BOTTOMRIGHT", BACKDROP_PAD, -BACKDROP_PAD)
+        frame:Show()
+        return
+    end
+    frame:SetBackdropBorderColor(unpack(COLOR.border))
     local withTitle = cfg.frameTitle and true or false
     frame.header:SetShown(withTitle)
     frame.line:SetShown(withTitle)
@@ -2266,11 +2344,19 @@ function ns.UpdateCollapseArrow(def, cfg, holder)
         arrow.icon:SetSize(12, 12)
         arrow.icon:SetPoint("CENTER")
         arrow.icon:SetTexture("Interface\\ChatFrame\\ChatFrameExpandArrow")
-        arrow:SetScript("OnClick", function()
+        arrow:SetScript("OnClick", function(self)
             local barCfg = ns.db.bars[def.key]
             barCfg.collapsed = not barCfg.collapsed
             if InCombatLockdown() then ns.Print(L("COMBAT_QUEUED")) end
             ns.RequestLayout()
+            -- Tooltip nach dem Umbau neu schreiben (sonst stünde noch die alte Richtung da)
+            C_Timer.After(0.05, function()
+                local tip = ns.Style.GetTooltip()
+                if tip:GetOwner() == self or self:IsMouseOver() then
+                    tip:Hide()
+                    if self:IsMouseOver() then self:GetScript("OnEnter")(self) end
+                end
+            end)
         end)
         arrow:SetScript("OnEnter", function(self)
             self:SetBackdropBorderColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3], 0.9)

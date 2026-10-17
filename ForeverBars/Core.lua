@@ -101,8 +101,8 @@ ns.defaults = {
         xp = BarDefaults(true), rep = BarDefaults(true),
     },
     -- (Profile verwaltet seit 0.41b ForeverCore – je Charakter, siehe RegisterSettings am Ende dieser Datei)
-    layoutVersion = 18,-- Stand der Standard-Anordnung (siehe MigrateLayout)
-    skin = "FLAT",           -- Aussehen der Knöpfe (ns.SKINS in Bars.lua)
+    layoutVersion = 20,-- Stand der Standard-Anordnung (siehe MigrateLayout)
+    skin = "FOREVER",        -- Aussehen der Knöpfe (ns.SKINS in Bars.lua)
     hoverAlpha = 15,         -- Stärke des Hover-Leuchtens über den Knöpfen (%)
     procGlow = "FOREVER",    -- Leuchten bei Procs: "FOREVER" (goldener Rahmen), "BLIZZARD", "OFF"
     hideOutOfCombat = false, -- alle Leisten außerhalb des Kampfes abblenden (auf oocAlpha, Maus darüber = voll)
@@ -131,9 +131,9 @@ ns.defaults.bars.stance.buttons = 10 -- Haltungsleiste zeigt immer so viele Knö
 -- Standard-Anordnung (Positionen in Bars.lua, DefaultPosition): Begleiter- und Haltungsleiste halb so groß,
 -- links bzw. rechts bündig über den Aktionsleisten; Berufeleiste mit Rahmen links daneben;
 -- Menü und Taschen unten rechts; Erfahrung und Ruf oben mittig
-ns.defaults.bars.pet.scale = 59
+ns.defaults.bars.pet.scale = 66
 ns.defaults.bars.pet.point = "BOTTOMLEFT"
-ns.defaults.bars.stance.scale = 59
+ns.defaults.bars.stance.scale = 66
 ns.defaults.bars.stance.point = "BOTTOMRIGHT"
 ns.defaults.bars.stance.growX = "LEFT" -- erster Knopf rechts, damit die Leiste rechtsbündig wächst
 ns.defaults.bars.prof.point = "BOTTOMRIGHT"
@@ -228,7 +228,9 @@ ns.FillDefaults = FillDefaults
 --  17 (0.44b+): Taschenleiste doppelt so groß (160 %), Rucksack mit Blizzards Symbol
 --  19 (0.44b+): Erfahrungs- und Ruf-Leiste unter Aktionsleiste 1 (statt Addon ForeverXP), alle Leisten rücken nach oben
 --  18 (0.44b+): Aktionsleisten-Größe neu gezählt (105 % heißen jetzt 100 %), Symbol-Zuschnitt 4 %, Taschenleiste aus
-local LAYOUT_VERSION = 19
+--  20 (0.44b+): Stil "Forever" als Standard, Begleiter-/Haltungsleiste größer (66 %) mit kleinem Abstand
+--               zu den Aktionsleisten – Positionen neu berechnet
+local LAYOUT_VERSION = 20
 -- Standardgrößen vor 16 (nur Leisten, die noch darauf stehen, wachsen mit)
 local OLD_SCALES = { pet = 56, stance = 56, prof = 80, food = 80, bags = 76, queue = 50 }
 local STANDARD_LAYOUT_BARS = { "bar1", "bar2", "bar3", "bar6", "bar7", "bar8", "pet", "stance", "prof", "food",
@@ -304,7 +306,15 @@ function ns.MigrateLayout(db)
                     end
                 end
             end
-            if version < 19 then
+            if version < 20 then
+                if target.skin == nil or target.skin == "FLAT" then target.skin = "FOREVER" end
+                for _, key in ipairs({ "pet", "stance" }) do
+                    local bar = target.bars[key]
+                    -- 59 = Standard aus 16, 56 = davor (die Umrechnung auf 16 läuft danach und greift dann nicht mehr)
+                    if bar and (bar.scale == nil or bar.scale == 59 or bar.scale == 56) then bar.scale = 66 end
+                end
+            end
+            if version < 20 then -- (19: Erfahrung/Ruf unten, 20: Begleiter-/Haltungsleiste) Positionen neu
                 for _, key in ipairs(STANDARD_LAYOUT_BARS) do
                     local bar = target.bars[key]
                     if bar then bar.x, bar.y = nil, nil end
