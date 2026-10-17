@@ -3352,8 +3352,22 @@ do
     f:RegisterEvent("ADDON_LOADED")
     f:SetScript("OnEvent", function(_, event, name)
         if event == "PLAYER_LOGIN" or name == "Details" then InstallDetailsSkin() end
+        -- Fenster mit unserem Skin bekommen nach dem Laden die aktuelle Fassung (neue Version, Transparenz)
+        if event == "PLAYER_LOGIN" then
+            C_Timer.After(4, function()
+                local D = DetailsReady()
+                if not (D and D.ListInstances) then return end
+                InstallDetailsSkin(true)
+                for _, instance in D:ListInstances() do
+                    if instance and instance.skin == DETAILS_NAME and instance.ChangeSkin then
+                        pcall(instance.ChangeSkin, instance, DETAILS_NAME)
+                    end
+                end
+            end)
+        end
     end)
 end
+
 function UI.DetailsAvailable() return DetailsReady() ~= nil end
 
 function UI.DetailsForeverActive()

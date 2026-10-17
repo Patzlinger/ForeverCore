@@ -26,6 +26,7 @@ ns.DEFAULTS = {
     autoHideEditBox = true,  -- Eingabezeile nur beim Schreiben bzw. mit der Maus darueber zeigen
     hideSideButtons = true,  -- Blizzards Knopfleiste neben dem Chat ausblenden (Ersatz: eigene Knopfleiste)
     toolbar = true,          -- eigene kleine Knopfleiste ueber dem Chat
+    sidebar = true,          -- Knopfleiste links (Sozial, Emotes, Kanaele, Sprachchat, Vorlesen) statt Blizzards Knoepfen
     -- Namen
     classColors = true,      -- Spielernamen in Klassenfarbe
     showLevel = true,        -- Stufe vor dem Namen, sofern bekannt

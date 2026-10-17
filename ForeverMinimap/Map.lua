@@ -1084,8 +1084,10 @@ local function ScheduleZoomOut()
     local token = zoomToken
     C_Timer.After(10, function()
         if token ~= zoomToken or not DB().autoZoom then return end
+        -- nur herauszoomen, nie hinein: nach Teleports (z. B. Blinzeln) setzt das Spiel den Zoom selbst zurueck –
+        -- das soll nicht als "zurueck auf die Grundstufe" ein Hineinzoomen ausloesen
         local base = BaseZoom()
-        if Minimap:GetZoom() ~= base then SetZoomSafe(base) end
+        if Minimap:GetZoom() > base then SetZoomSafe(base) end
     end)
 end
 
