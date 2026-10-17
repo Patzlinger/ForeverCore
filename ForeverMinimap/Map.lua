@@ -844,9 +844,18 @@ end
 local function LayoutRound(items, side)
     local mapR = Minimap:GetWidth() / 2
     local baseR = mapR + ITEM / 2 + 5
-    local maxSpan = math.rad(150)               -- Bogen von oben-seitlich bis unten-seitlich
-    local center = side == "RIGHT" and 0 or math.pi
+    -- Bogen (Grad, linke Seite: 90 = oben, 180 = Mitte links, 270 = unten). Die Seite mit der Kopfleiste bleibt frei,
+    -- damit die Knoepfe nicht in die Leiste ragen: Leiste oben -> von 145 bis 265 Grad, Leiste unten -> von 95 bis 215.
+    local d = DB()
+    local barTop = d.bar and d.barPosition ~= "BOTTOM"
+    local barBottom = d.bar and d.barPosition == "BOTTOM"
+    local topDeg = barTop and 145 or 100
+    local bottomDeg = barBottom and 215 or 262
+    local maxSpan = math.rad(bottomDeg - topDeg)
+    local startLeft = math.rad(topDeg)          -- oberster Platz (linke Seite)
     local dirA = side == "RIGHT" and -1 or 1    -- Richtung "nach unten" auf dem Bogen
+    -- rechte Seite gespiegelt: 180 - Winkel
+    local start = side == "RIGHT" and (math.pi - startLeft) or startLeft
     local total = 0
     for i, it in ipairs(items) do total = total + (it.h + (i > 1 and GAP or 0)) / baseR end
     local overflow = total > maxSpan
@@ -855,7 +864,7 @@ local function LayoutRound(items, side)
         local r = baseR + ringNo * (ITEM + GAP)
         local need = (h + GAP) / r
         if used > 0 and used + h / r > maxSpan then ringNo, used = ringNo + 1, 0 r = baseR + ringNo * (ITEM + GAP) need = (h + GAP) / r end
-        local a = center - dirA * (maxSpan / 2) + dirA * (used + (h / 2) / r)
+        local a = start + dirA * (used + (h / 2) / r)
         used = used + need
         return { point = "CENTER", rel = Minimap, relPoint = "CENTER", x = math.cos(a) * r, y = math.sin(a) * r, angle = a }
     end
