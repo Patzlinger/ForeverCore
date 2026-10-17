@@ -1359,6 +1359,32 @@ do
                 end
             end)
         end
+        -- Breite hängt an Karte und Knopfleiste von ForeverMinimap: ändern die sich (Größe, ein-/ausgeblendet –
+        -- z. B. erst ein paar Sekunden nach dem Bearbeitungsmodus), sofort nachziehen statt einen Zwischenstand
+        -- zu behalten (sonst war die Breite nach jedem Bearbeitungsmodus eine andere)
+        local queued = false
+        local function Reapply()
+            if queued then return end
+            queued = true
+            C_Timer.After(0.1, function()
+                queued = false
+                if ns.ApplyLayout then ns.ApplyLayout() end
+            end)
+        end
+        local hooked = {}
+        local function HookFrames()
+            for _, name in ipairs({ "Minimap", "ForeverMinimapStrip", "ForeverMinimapBar" }) do
+                local frame = _G[name]
+                if frame and frame.HookScript and not hooked[frame] then
+                    hooked[frame] = true
+                    frame:HookScript("OnSizeChanged", Reapply)
+                    frame:HookScript("OnShow", Reapply)
+                    frame:HookScript("OnHide", Reapply)
+                end
+            end
+        end
+        HookFrames()
+        C_Timer.After(3, HookFrames) -- falls ForeverMinimap seine Leisten erst nach uns baut
     end)
 end
 
@@ -1408,7 +1434,7 @@ function ns.ApplyLayout()
             shift = ((left + right) / 2 - anchor:GetCenter() * anchor:GetEffectiveScale()) / trackerScale
         end
         tracker:SetPoint("TOP", anchor, "BOTTOM", shift, offset)
-        tracker:SetSize(width, db.height)
+        tracker:SetSize(math.floor(width + 0.5), db.height)
         ns.UpdateVisibility()
         ns.RequestUpdate()
         return
