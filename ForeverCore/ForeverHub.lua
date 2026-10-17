@@ -2952,7 +2952,7 @@ local function BuildProfileWindow()
     local addons = UI.SettingsAddons()
     local ROW = 28
     local topH = 44 + math.max(#addons, 1) * ROW + 8
-    local bottomH = 44 + 4 * 30 + 8
+    local bottomH = 44 + 5 * 30 + 8
     local W = 680
     local H = M.headerHeight + M.pad + topH + M.pad + bottomH + M.pad + M.footerHeight + M.pad + 2
     local f = UI.MenuWindow("ForeverCoreProfiles", T("Profile", "Profiles"), UI.NAME, W, H)
@@ -3048,6 +3048,13 @@ local function BuildProfileWindow()
         f:RefreshAll()
     end)
     delBtn:SetPoint("LEFT", delDD, "RIGHT", 6, 0)
+    -- Alles auf Standard: in jedem Addon das Profil dieses Charakters zuruecksetzen (wie die Knoepfe oben je Addon)
+    local resetAll = ConfirmButton(all, T("Alles auf Standard zurücksetzen", "Reset everything to defaults"), half - 2 * M.contentX, function()
+        for _, addon in ipairs(UI.SettingsAddons()) do UI.ResetProfile(addon) end
+        f:RefreshAll()
+    end, T("Setzt in allen Addons das Profil, das dieser Charakter nutzt, auf Standardwerte (gilt nach dem Neuladen). Andere Profile bleiben erhalten.",
+        "Resets the profile this character uses in every addon to defaults (applies after reloading). Other profiles are kept."))
+    resetAll:SetPoint("TOPLEFT", M.contentX, M.contentY - 120)
 
     -- unten rechts: Austausch
     local tr = UI.MenuPanel(f, T("Austausch", "Transfer"))
