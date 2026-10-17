@@ -101,7 +101,7 @@ ns.defaults = {
         xp = BarDefaults(true), rep = BarDefaults(true),
     },
     -- (Profile verwaltet seit 0.41b ForeverCore – je Charakter, siehe RegisterSettings am Ende dieser Datei)
-    layoutVersion = 20,-- Stand der Standard-Anordnung (siehe MigrateLayout)
+    layoutVersion = 21,-- Stand der Standard-Anordnung (siehe MigrateLayout)
     skin = "FOREVER",        -- Aussehen der Knöpfe (ns.SKINS in Bars.lua)
     hoverAlpha = 15,         -- Stärke des Hover-Leuchtens über den Knöpfen (%)
     procGlow = "FOREVER",    -- Leuchten bei Procs: "FOREVER" (goldener Rahmen), "BLIZZARD", "OFF"
@@ -174,7 +174,7 @@ end
 ns.defaults.bars.queue.enabled = false
 ns.defaults.bars.queue.scale = 53
 -- Erfahrungs- und Ruf-Leiste: Größe 100 %, Breite = Aktionsleiste 1 (width = nil), Höhe in px; Infos an den Enden und Striche an
-for key, height in pairs({ xp = 18, rep = 13 }) do
+for key, height in pairs({ xp = 16, rep = 12 }) do
     local bar = ns.defaults.bars[key]
     bar.scale = 100
     bar.height = height
@@ -230,7 +230,8 @@ ns.FillDefaults = FillDefaults
 --  18 (0.44b+): Aktionsleisten-Größe neu gezählt (105 % heißen jetzt 100 %), Symbol-Zuschnitt 4 %, Taschenleiste aus
 --  20 (0.44b+): Stil "Forever" als Standard, Begleiter-/Haltungsleiste größer (66 %) mit kleinem Abstand
 --               zu den Aktionsleisten – Positionen neu berechnet
-local LAYOUT_VERSION = 20
+--  21 (0.44b+): Erfahrungs-/Ruf-Leiste flacher (16/12 px), mit Luft unter der untersten Leiste, Positionen neu berechnet
+local LAYOUT_VERSION = 21
 -- Standardgrößen vor 16 (nur Leisten, die noch darauf stehen, wachsen mit)
 local OLD_SCALES = { pet = 56, stance = 56, prof = 80, food = 80, bags = 76, queue = 50 }
 local STANDARD_LAYOUT_BARS = { "bar1", "bar2", "bar3", "bar6", "bar7", "bar8", "pet", "stance", "prof", "food",
@@ -314,7 +315,14 @@ function ns.MigrateLayout(db)
                     if bar and (bar.scale == nil or bar.scale == 59 or bar.scale == 56) then bar.scale = 66 end
                 end
             end
-            if version < 20 then -- (19: Erfahrung/Ruf unten, 20: Begleiter-/Haltungsleiste) Positionen neu
+            if version < 21 then
+                -- alte Standardhöhen (18/13) auf die neuen setzen; eigene Werte bleiben
+                for key, old in pairs({ xp = 18, rep = 13 }) do
+                    local bar = target.bars[key]
+                    if bar and (bar.height == nil or bar.height == old) then bar.height = ns.defaults.bars[key].height end
+                end
+            end
+            if version < 21 then -- (19: Erfahrung/Ruf unten, 20: Begleiter-/Haltungsleiste, 21: flachere Leisten) Positionen neu
                 for _, key in ipairs(STANDARD_LAYOUT_BARS) do
                     local bar = target.bars[key]
                     if bar then bar.x, bar.y = nil, nil end

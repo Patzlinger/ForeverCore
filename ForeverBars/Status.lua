@@ -18,9 +18,11 @@ local AVERAGE_OF = 5        -- Kills/Quests bis Level-Up: Schnitt der letzten 5
 local HISTORY_SIZE = 10     -- so viele vergangene Level merken
 local MATCH_WINDOW = 1.5    -- Sekunden, in denen XP und Kill-/Quest-Meldung zusammengehören
 local FLAT = "Interface\\Buttons\\WHITE8x8"
+local INSET = 3                                  -- Dicke des Rands (Füllung liegt innen)
+local GOLD_EDGE = { 0.85, 0.70, 0.35, 0.90 }     -- dezent goldener Rand wie die alte Erfahrungsleiste
 
 -- Standardhöhen (px); die Breite ist standardmäßig die der Aktionsleiste 1
-ns.STATUS_HEIGHT = { xp = 18, rep = 13 }
+ns.STATUS_HEIGHT = { xp = 16, rep = 12 }
 
 local widgets = {}          -- [xp|rep] = Inhalt der Leiste
 
@@ -271,9 +273,16 @@ local function StandingLabel(reaction)
     return _G[key] or ""
 end
 
+-- Farben dezent: ein Stück zum Grau hin und etwas dunkler (Blizzards Rangfarben sind sehr grell)
+local function Mute(r, g, b)
+    local grey = (r + g + b) / 3
+    local function M(v) return (v + (grey - v) * 0.35) * 0.85 end
+    return M(r), M(g), M(b)
+end
+
 local function StandingColor(reaction)
     local c = _G.FACTION_BAR_COLORS and _G.FACTION_BAR_COLORS[reaction] or FALLBACK_COLORS[reaction] or FALLBACK_COLORS[5]
-    return c.r or c[1], c.g or c[2], c.b or c[3]
+    return Mute(c.r or c[1], c.g or c[2], c.b or c[3])
 end
 
 -- liefert { id, name, label, nextLabel, r, g, b, value, max, total, maxed, reward, atWar } oder nil
@@ -302,7 +311,7 @@ local function ReadFaction()
             f.max = math.max(1, mf.renownLevelThreshold or 1)
             f.value = math.min(f.max, mf.renownReputationEarned or 0)
             f.total = (mf.renownLevel or 0) * f.max + f.value
-            f.r, f.g, f.b = 0.00, 0.55, 0.95
+            f.r, f.g, f.b = Mute(0.00, 0.55, 0.95)
             return f
         end
     end
@@ -336,7 +345,7 @@ local function ReadFaction()
             f.value = hasReward and threshold or (value % threshold)
             f.reward = hasReward and true or nil
             f.total = value
-            f.r, f.g, f.b = 0.00, 0.50, 0.90
+            f.r, f.g, f.b = Mute(0.00, 0.50, 0.90)
             return f
         end
     end
@@ -407,19 +416,22 @@ local function Build(key, holder)
     local w = { key = key, textParts = {}, hovered = false }
     local root = CreateFrame("Frame", nil, holder, "BackdropTemplate")
     root:SetAllPoints(holder)
-    Style.SetFlat(root, { 0.05, 0.05, 0.07, 0.92 }, COLOR.border)
+    root:SetBackdrop({ bgFile = FLAT, edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", edgeSize = 10,
+        insets = { left = 3, right = 3, top = 3, bottom = 3 } })
+    root:SetBackdropColor(0.04, 0.04, 0.05, 0.95)
+    root:SetBackdropBorderColor(GOLD_EDGE[1], GOLD_EDGE[2], GOLD_EDGE[3], GOLD_EDGE[4])
     root:EnableMouse(true)
     w.root = root
     w.inner = CreateFrame("Frame", nil, root)
-    w.inner:SetPoint("TOPLEFT", 1, -1)
-    w.inner:SetPoint("BOTTOMRIGHT", -1, 1)
+    w.inner:SetPoint("TOPLEFT", INSET, -INSET)
+    w.inner:SetPoint("BOTTOMRIGHT", -INSET, INSET)
 
     if key == "xp" then
-        w.rested = Layer(w, 0.20, 0.50, 1.00, 0.60, 1)  -- Erholung (blau)
-        w.quest = Layer(w, 1.00, 0.80, 0.10, 0.85, 2)   -- fertige Quests (gold)
-        w.fill = Layer(w, 0.60, 0.20, 0.90, 1.00, 3)    -- aktuelle XP (lila)
+        w.rested = Layer(w, 0.30, 0.46, 0.76, 0.50, 1)  -- Erholung (blau, gedeckt)
+        w.quest = Layer(w, 0.82, 0.68, 0.30, 0.70, 2)   -- fertige Quests (gold, gedeckt)
+        w.fill = Layer(w, 0.46, 0.30, 0.64, 1.00, 3)    -- aktuelle XP (lila, gedeckt)
     else
-        w.fill = Layer(w, 0.00, 0.60, 0.10, 1.00, 3)    -- Ruf (Farbe des Rangs)
+        w.fill = Layer(w, 0.30, 0.50, 0.30, 1.00, 3)    -- Ruf (Farbe des Rangs, gedeckt)
     end
 
     -- Zehntel-Striche über der Füllung, Texte noch darüber
@@ -526,7 +538,7 @@ end
 function ns.ApplyStatusLook(w)
     PlaceTicks(w)
     local innerH = (w.inner:GetHeight() or 12)
-    local size = math.max(7, math.min(ns.db.fontSize or 12, math.floor(innerH + 1)))
+    local size = math.max(7, math.min((ns.db.fontSize or 12) - 1, math.floor(innerH + 2)))
     for _, fs in ipairs({ w.center, w.left, w.right }) do ns.SetTextFont(fs, size) end
     ns.FitStatusTexts(w)
 end
@@ -572,7 +584,6 @@ local function RenderXP(w)
 
     local pctText = string.format("%.1f %%", xp / maxXP * 100)
     local xpText = string.format("%s / %s", Num(xp), Num(maxXP))
-    local restedText = rested > 0 and ("|cff66a3ff" .. T("erholt ", "rested ") .. Num(rested) .. "|r") or nil
     local mobs = xpStats.kills and string.format(T("≈ %s Mobs", "≈ %s mobs"), Num(xpStats.kills))
         or xpStats.killsGuess and string.format(T("~%s Mobs", "~%s mobs"), Num(xpStats.killsGuess)) or nil
     local quests = xpStats.quests and string.format(T("≈ %s Quests", "≈ %s quests"), Num(xpStats.quests)) or nil
@@ -595,13 +606,15 @@ local function RenderXP(w)
     }
     w.textParts.center = {
         rest = { xpText .. "  (" .. pctText .. ")", xpText, pctText },
-        hover = { Join(xpText .. "  (" .. pctText .. ")", T("noch ", "left ") .. Num(missing), restedText),
-            Join(xpText .. "  (" .. pctText .. ")", T("noch ", "left ") .. Num(missing)), xpText, pctText },
+        hover = { Join(xpText .. "  (" .. pctText .. ")", T("noch ", "left ") .. Num(missing)), xpText, pctText },
     }
+    -- rechts: Erholung und fertige Quests (auch in Ruhe), dazu die Zeit bis zum Level-Up
+    local restedShort = rested > 0 and ("|cff7f9fd6" .. T("Erholt ", "Rested ") .. Num(rested) .. "|r") or nil
     w.textParts.right = {
-        -- in Ruhe: reichen die Quests, ist das wichtiger als die Zeit
-        rest = { Join(eta, questShort), questShort, eta },
-        hover = { Join(rate > 0 and (Num(rate) .. " XP/h") or nil, eta, questLong), Join(eta, questShort), questShort or eta },
+        rest = { Join(restedShort, questShort, eta), Join(restedShort, questShort), Join(questShort, eta), questShort,
+            restedShort, eta },
+        hover = { Join(restedShort, questLong, eta), Join(restedShort, questShort, eta), Join(questShort, eta),
+            Join(restedShort, questShort), questShort or eta },
     }
     ns.FitStatusTexts(w)
 end
@@ -746,8 +759,11 @@ end
 Tooltip = function(w)
     if ns.unlocked then return end
     local tip = Style.GetTooltip()
-    local _, y = w.root:GetCenter()
-    tip:SetOwner(w.root, (y and y > UIParent:GetHeight() / 2) and "ANCHOR_BOTTOM" or "ANCHOR_TOP")
+    -- dort, wo auch sonst Tooltips erscheinen (unten rechts); sonst über/unter der Leiste
+    if not (GameTooltip_SetDefaultAnchor and pcall(GameTooltip_SetDefaultAnchor, tip, w.root)) then
+        local _, y = w.root:GetCenter()
+        tip:SetOwner(w.root, (y and y > UIParent:GetHeight() / 2) and "ANCHOR_BOTTOM" or "ANCHOR_TOP")
+    end
     if w.key == "xp" then XPTooltip(tip) else RepTooltip(tip) end
     tip:Show()
 end

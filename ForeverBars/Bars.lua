@@ -93,6 +93,7 @@ end
 -- (bündig zum ersten Knopf) und rechts die Haltungsleiste (bündig zum letzten Knopf), links daneben die
 -- Berufeleiste, unten rechts Menü und Taschen übereinander, oben mittig Erfahrung und Ruf.
 local EDGE = 4         -- Abstand zum Bildschirmrand
+local STATUS_EDGE = 9  -- Abstand der untersten Erfahrungs-/Ruf-Leiste zum Bildschirmrand (etwas Luft unter der Leiste)
 local BAR_GAP = 1.5    -- Abstand zwischen aneinanderliegenden Leisten (wie "Abstand" der Knöpfe)
 local SIDE_GAP = 24    -- Abstand von Berufe-/Verpflegungsleiste zu den Aktionsleisten (Platz für den Einklapp-Pfeil)
 local FRAME_SPACE = 4  -- Rand des Rahmens um eine Leiste (siehe UpdateBarFrame)
@@ -125,6 +126,13 @@ local function DefaultPosition(key)
     -- Erfahrungs- und Ruf-Leiste liegen ganz unten (Erfahrung unten, Ruf darüber, sonst ohne Lücke); die Aktionsleisten
     -- und alles daneben beginnen darüber. Bei Höchststufe (keine Erfahrung) und ausgeschalteten Leisten entfällt der Platz.
     local statusBase, statusCenter = EDGE, {}
+    for _, key in ipairs({ "xp", "rep" }) do
+        local cfg = bars[key]
+        if cfg and cfg.enabled and not (key == "xp" and ns.AtMaxLevel and ns.AtMaxLevel()) then
+            statusBase = STATUS_EDGE -- die unterste Leiste liegt nicht direkt am Bildschirmrand
+            break
+        end
+    end
     for _, key in ipairs({ "xp", "rep" }) do
         local cfg = bars[key]
         if cfg then
@@ -254,6 +262,11 @@ end
 -- Breite der Aktionsleiste 1 in Bildschirmeinheiten: Erfahrungs- und Ruf-Leiste sind standardmäßig genauso breit
 function ns.ActionBarWidth()
     local cfg = ns.db.bars.bar1
+    local holder = holders.bar1
+    -- tatsächliche Breite des Halters (nach dem Anordnen der Knöpfe), sonst aus den Einstellungen gerechnet
+    if holder and cfg.enabled and holder:GetWidth() > ACTION_SIZE then
+        return holder:GetWidth() * ns.BarScale("bar1", cfg)
+    end
     local count = math.max(1, math.min(cfg.perRow or 12, cfg.buttons or 12))
     return (count * ACTION_SIZE + (count - 1) * ns.ButtonGap(cfg)) * ns.BarScale("bar1", cfg)
 end
