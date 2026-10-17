@@ -2,9 +2,6 @@
 
 ## Unreleased
 
-### Fixed
-- ForeverQuests: Blizzard's quest tracker no longer pops up for a moment behind yours (e.g. when you loot a quest item during combat).
-
 ## 0.44b – October 18, 2026
 
 ### Four new addons
@@ -55,6 +52,7 @@
 - ForeverChat: the button bar could go missing with an error ("compare number with nil").
 - Blizzard's XP and reputation bars no longer show up after a reload.
 - The quest tracker no longer moves when you open and close Edit Mode.
+- ForeverQuests: Blizzard's quest tracker no longer pops up for a moment behind yours (e.g. when you loot a quest item during combat).
 - Bars you moved yourself no longer jump back to their old spot.
 
 ### Good to know
