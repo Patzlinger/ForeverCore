@@ -369,7 +369,11 @@ local function CreateOptions()
         function() return SelectedConfig().attachChat or "OFF" end,
         function(value) SelectedConfig().attachChat = value; Changed() end)
     -- Nur Mikromenü: schwarz-weiß (goldener Rand beim Darüberfahren bleibt)
-    options.microGreyCheck = CreateCheckbox(layoutPage, L("OPT_MICRO_GREY"), RIGHT_X, -146,
+    -- Nur Mikromenü: eigene flache Text-Knöpfe statt Blizzards Knöpfe
+    options.microOwnCheck = CreateCheckbox(layoutPage, L("OPT_MICRO_OWN"), RIGHT_X, -146,
+        function() return SelectedConfig().microOwn end,
+        function(value) SelectedConfig().microOwn = value; Changed(); ns.RefreshOptions() end)
+    options.microGreyCheck = CreateCheckbox(layoutPage, L("OPT_MICRO_GREY"), RIGHT_X, -170,
         function() return SelectedConfig().microGrey end,
         function(value) SelectedConfig().microGrey = value; ns.StyleMicroMenu() end)
     options.keyringCheck = CreateCheckbox(layoutPage, L("OPT_KEYRING"), RIGHT_X, -216,
@@ -1029,7 +1033,8 @@ function ns.RefreshOptions()
     options.keyringCheck:SetShown(def.kind == "bags" and ns.HasKeyring())
     options.foodResetButton:SetShown(def.kind == "food" or def.kind == "prof")
     options.chatSelector:SetShown(def.key == "micro")
-    options.microGreyCheck:SetShown(def.key == "micro")
+    options.microOwnCheck:SetShown(def.key == "micro")
+    options.microGreyCheck:SetShown(def.key == "micro" and not SelectedConfig().microOwn)
     for _, control in ipairs(controls) do
         control.Refresh()
     end

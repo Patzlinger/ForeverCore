@@ -440,6 +440,126 @@ function ns.StyleMicroMenu()
     for _, button in ipairs(MicroButtons()) do StyleMicroButton(button) end
 end
 
+---------------------------------------------------------------------------
+-- Eigenes Mikromenü: flache Text-Knöpfe wie "Menü", "Filter", "Dungeons" in ForeverQuests (18 hoch, Hover = goldener
+-- Rand). Jeder Knopf ist ein geschützter Klick-Knopf (type "click"), der den passenden Blizzard-Menüknopf drückt –
+-- so öffnet das Spiel seine Fenster selbst, ohne dass ForeverBars-Code sie aufruft (kein taint). Blizzards Mikromenü
+-- liegt dann unsichtbar im Ablageort.
+---------------------------------------------------------------------------
+
+local MICRO_HEIGHT = 18
+local MICRO_MAX = 16
+-- Kurze Beschriftungen je Blizzard-Knopf (sonst dessen Tooltip-Text)
+local MICRO_LABELS = {
+    CharacterMicroButton = "MICRO_CHARACTER", ProfessionMicroButton = "MICRO_PROFESSIONS",
+    PlayerSpellsMicroButton = "MICRO_SPELLS", SpellbookMicroButton = "MICRO_SPELLS", TalentMicroButton = "MICRO_TALENTS",
+    AchievementMicroButton = "MICRO_ACHIEVEMENTS", QuestLogMicroButton = "MICRO_QUESTS",
+    GuildMicroButton = "MICRO_GUILD", SocialsMicroButton = "MICRO_SOCIAL", LFDMicroButton = "MICRO_GROUP",
+    LFGMicroButton = "MICRO_GROUP", PVPMicroButton = "MICRO_PVP", CollectionsMicroButton = "MICRO_COLLECTIONS",
+    EJMicroButton = "MICRO_JOURNAL", WorldMapMicroButton = "MICRO_MAP", StoreMicroButton = "MICRO_SHOP",
+    MainMenuMicroButton = "MICRO_MENU", HelpMicroButton = "MICRO_HELP", HousingMicroButton = "MICRO_HOUSING",
+}
+
+-- Blizzards Menüknöpfe in ihrer Reihenfolge (nur die, die Blizzard gerade zeigt)
+local function BlizzardMicroButtons()
+    local list = {}
+    for _, button in ipairs(MicroButtons()) do
+        if button:IsShown() and button:GetName() then table.insert(list, button) end
+    end
+    table.sort(list, function(a, b) return (a.layoutIndex or 0) < (b.layoutIndex or 0) end)
+    return list
+end
+
+local function MicroLabel(blizzard)
+    local key = MICRO_LABELS[blizzard:GetName()]
+    if key then return L(key) end
+    local text = blizzard.tooltipText or blizzard:GetName():gsub("MicroButton", "")
+    return (tostring(text):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""))
+end
+
+-- Wohin klickt ein Knopf? Beim Zauberbuch ForeverSpellbook, falls aktiv (sein eigener Knopf öffnet sein Fenster)
+local function MicroTarget(blizzard)
+    local name = blizzard:GetName()
+    if (name == "SpellbookMicroButton" or name == "PlayerSpellsMicroButton") and _G.ForeverSpellbookToggle then
+        local isLoaded = C_AddOns and C_AddOns.IsAddOnLoaded or IsAddOnLoaded
+        if isLoaded and isLoaded("ForeverSpellbook") then return _G.ForeverSpellbookToggle end
+    end
+    return blizzard
+end
+
+local function GetOwnMicroButton(index, holder)
+    local name = "ForeverBarsMicroButton" .. index
+    local button = _G[name]
+    if button then return button end
+    button = CreateFrame("Button", name, holder, "SecureActionButtonTemplate, BackdropTemplate")
+    button:SetHeight(MICRO_HEIGHT)
+    button:RegisterForClicks("AnyUp")
+    button:SetAttribute("type", "click")
+    button:SetAttribute("useOnKeyDown", false)
+    ns.Style.SetFlat(button, COLOR.button)
+    button.label = button:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    button.label:SetPoint("CENTER")
+    button:SetScript("OnEnter", function(self)
+        self:SetBackdropColor(unpack(COLOR.buttonHover))
+        self:SetBackdropBorderColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3], 0.9)
+        local tip = ns.Style.GetTooltip()
+        tip:SetOwner(self, "ANCHOR_TOP")
+        tip:AddLine(self.fbTitle or self.label:GetText(), 1, 0.82, 0)
+        tip:Show()
+    end)
+    button:SetScript("OnLeave", function(self)
+        self:SetBackdropColor(unpack(COLOR.button))
+        self:SetBackdropBorderColor(unpack(COLOR.border))
+        ns.Style.GetTooltip():Hide()
+    end)
+    return button
+end
+
+-- Eigene Knöpfe anordnen (nur außerhalb des Kampfes); "Knöpfe pro Reihe" bricht um, "Abstand" wie bei Leisten
+local function LayoutOwnMicro(def, cfg, holder)
+    -- Blizzards Mikromenü unsichtbar ablegen (seine Knöpfe bleiben klickbar für unsere Klick-Knöpfe)
+    local blizzardMenu = FindFrame(def.frames)
+    if blizzardMenu then
+        blizzardMenu.fbHolder = nil -- nicht mehr in den Halter zurückholen (siehe LayoutContainer)
+        if blizzardMenu:GetParent() ~= hiddenParent then blizzardMenu:SetParent(hiddenParent) end
+    end
+    local gap = math.max(0, cfg.spacing or 1) + 1
+    local perRow = math.max(1, cfg.perRow or MICRO_MAX)
+    local x, y, rowWidth, width, used = 0, 0, 0, 0, 0
+    for index, blizzard in ipairs(BlizzardMicroButtons()) do
+        if index > MICRO_MAX then break end
+        local button = GetOwnMicroButton(index, holder)
+        button:SetParent(holder)
+        button:SetAttribute("clickbutton", MicroTarget(blizzard))
+        button.label:SetText(MicroLabel(blizzard))
+        button.fbTitle = blizzard.tooltipText
+        button:SetWidth(math.max(28, math.floor(button.label:GetStringWidth() + 12.5)))
+        if (index - 1) % perRow == 0 and index > 1 then
+            x, y = 0, y - MICRO_HEIGHT - gap
+        end
+        button:ClearAllPoints()
+        button:SetPoint("TOPLEFT", holder, "TOPLEFT", x, y)
+        button:Show()
+        x = x + button:GetWidth() + gap
+        rowWidth = x - gap
+        width = math.max(width, rowWidth)
+        used = index
+    end
+    for index = used + 1, MICRO_MAX do
+        local button = _G["ForeverBarsMicroButton" .. index]
+        if button then button:Hide() end
+    end
+    holder:SetSize(math.max(1, width), math.max(MICRO_HEIGHT, -y + MICRO_HEIGHT))
+end
+
+-- Eigene Knöpfe ausblenden (z. B. wenn man zu Blizzards Mikromenü zurückwechselt)
+local function HideOwnMicro()
+    for index = 1, MICRO_MAX do
+        local button = _G["ForeverBarsMicroButton" .. index]
+        if button then button:Hide() end
+    end
+end
+
 function ns.UpdateAllButtons()
     for _, def in ipairs(ns.BAR_DEFS) do
         for _, button in ipairs(GetAllButtons(def)) do
@@ -691,11 +811,12 @@ function ns.CreateProfessionButtons()
             -- normales Ziehen nimmt den Zauber auf (zum Verschieben in der Leiste oder auf eine Aktionsleiste)
             button:SetAttribute("shift-type1", "fbnone")
             button:RegisterForDrag("LeftButton")
+            button:SetScript("OnDragStop", function(self) ns.StopOwnDrag(self) end)
             button:SetScript("OnDragStart", function(self)
                 local entry = self.fbEntry
                 if not entry or InCombatLockdown() then return end
                 if IsShiftKeyDown() then
-                    ns.ProfRemove(entry.spell)
+                    ns.StartOwnDrag("prof", self) -- verschieben bzw. herausziehen (siehe StopOwnDrag)
                 elseif C_Spell and C_Spell.PickupSpell then
                     C_Spell.PickupSpell(entry.spell)
                 elseif PickupSpell then
@@ -1022,6 +1143,67 @@ local function CreateCatcher(key, kind, onDrop)
     end
 end
 
+-- Knöpfe der Verpflegungs- und Berufeleiste verschieben wie auf Aktionsleisten: Shift + ziehen nimmt den Knopf
+-- auf (ein Symbol folgt dem Mauszeiger). Loslassen in der Leiste = verschieben, aber nur innerhalb der Kategorie
+-- (Verpflegung: dieselbe Reihe, Berufe: der ganze Beruf wandert in die Zielspalte); loslassen daneben = entfernen.
+local dragIcon, dragState
+
+local function CursorOverHolder(key)
+    local holder = holders[key]
+    return holder ~= nil and holder:IsVisible() and holder:IsMouseOver(4, -4, -4, 4)
+end
+
+function ns.StartOwnDrag(key, button)
+    if InCombatLockdown() or not button.fbEntry then return end
+    dragState = { key = key, button = button, entry = button.fbEntry }
+    if not dragIcon then
+        dragIcon = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
+        dragIcon:SetSize(30, 30)
+        dragIcon:SetFrameStrata("TOOLTIP")
+        ns.Style.SetFlat(dragIcon, COLOR.background, { COLOR.accent[1], COLOR.accent[2], COLOR.accent[3], 1 })
+        dragIcon.icon = dragIcon:CreateTexture(nil, "ARTWORK")
+        dragIcon.icon:SetPoint("TOPLEFT", 1, -1)
+        dragIcon.icon:SetPoint("BOTTOMRIGHT", -1, 1)
+        dragIcon:EnableMouse(false)
+        dragIcon:SetScript("OnUpdate", function(self)
+            local x, y = GetCursorPosition()
+            local scale = UIParent:GetEffectiveScale()
+            self:ClearAllPoints()
+            self:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x / scale, y / scale)
+        end)
+    end
+    dragIcon.icon:SetTexture(button.icon:GetTexture())
+    dragIcon:Show()
+    button:SetAlpha(0.35)
+end
+
+function ns.StopOwnDrag(button)
+    local state = dragState
+    dragState = nil
+    if dragIcon then dragIcon:Hide() end
+    button:SetAlpha(1)
+    if not state or state.button ~= button then return end
+    local entry = state.entry
+    if CursorOverHolder(state.key) then
+        local row, col = DropTarget(state.key)
+        if state.key == "food" then
+            if not ns.db.bars.food.profRows then
+                ns.FoodInsert(entry.item)
+            elseif row ~= entry.row then
+                ns.Print(L("FOOD_SAME_ROW")) -- nur innerhalb der eigenen Reihe (Essen, Getränke, Fläschchen)
+            else
+                ns.FoodInsert(entry.item, row, col)
+            end
+        else
+            ns.ProfInsert(entry.spell, col)
+        end
+    elseif state.key == "food" then
+        ns.FoodRemove(entry.item)
+    else
+        ns.ProfRemove(entry.spell)
+    end
+end
+
 -- Hineingezogenes einsortieren: Verpflegung nach Reihe und Platz, Berufe nach Spalte
 local function OnFoodDrop(itemID, row, col)
     if ns.db.bars.food.profRows then ns.FoodInsert(itemID, row, col) else ns.FoodInsert(itemID) end
@@ -1045,8 +1227,9 @@ function ns.CreateFoodButtons()
             button:SetAttribute("shift-type1", "fbnone")
             button:RegisterForDrag("LeftButton")
             button:SetScript("OnDragStart", function(self)
-                if IsShiftKeyDown() and self.fbEntry then ns.FoodRemove(self.fbEntry.item) end
+                if IsShiftKeyDown() then ns.StartOwnDrag("food", self) end
             end)
+            button:SetScript("OnDragStop", function(self) ns.StopOwnDrag(self) end)
         end
     end
     ns.UpdateOwnHotkeys()
@@ -1422,6 +1605,29 @@ end
 -- Gibt es den Rahmen dann noch nicht, meldet Blizzard "Couldn't find region named 'ForeverBars_xp'".
 for _, def in ipairs(ns.BAR_DEFS) do GetHolder(def) end
 
+-- Taschenknöpfe festhalten: Blizzard ordnet die Taschen bei manchen Aktualisierungen selbst neu an (z. B. neue
+-- Tasche, Bearbeitungsmodus) – dann landete der Rucksack an Blizzards unsichtbarer Taschenleiste und nur der Pfeil
+-- blieb sichtbar. Verschiebt, versteckt oder hängt Blizzard einen unserer Taschenknöpfe um, setzen wir ihn
+-- sofort zurück (nur mitgehört über hooksecurefunc; Taschenknöpfe sind nicht geschützt).
+local function KeepBagButton(button)
+    if button.fbBagHooked then return end
+    button.fbBagHooked = true
+    local function Back(self)
+        local slot = self.fbSlot
+        if self.fbPositioning or not slot then return end
+        if InCombatLockdown() and self:IsProtected() then return end
+        self.fbPositioning = true
+        if self:GetParent() ~= slot[2] then self:SetParent(slot[2]) end
+        self:ClearAllPoints()
+        self:SetPoint(unpack(slot))
+        if not self:IsShown() then self:Show() end
+        self.fbPositioning = false
+    end
+    hooksecurefunc(button, "SetPoint", Back)
+    hooksecurefunc(button, "SetParent", Back)
+    hooksecurefunc(button, "Hide", Back)
+end
+
 -- Knöpfe in Reihen anordnen. Wachstumsrichtung: von links nach rechts bzw. rechts nach links,
 -- von oben nach unten bzw. unten nach oben (der erste Knopf sitzt in der Ecke, von der aus es wächst).
 local function LayoutButtons(def, cfg, holder)
@@ -1482,12 +1688,20 @@ local function LayoutButtons(def, cfg, holder)
     for i, button in ipairs(buttons) do
         if i <= count then
             shown[button] = true
+            local column, row = slots[i][1], slots[i][2]
+            local x = column * (size + gap) * (toLeft and -1 or 1)
+            local y = row * (size + gap) * (toTop and 1 or -1)
+            button.fbPositioning = true
             button:SetParent(holder)
             button:SetSize(size, size)
             button:ClearAllPoints()
-            local column, row = slots[i][1], slots[i][2]
-            button:SetPoint(corner, holder, corner,
-                column * (size + gap) * (toLeft and -1 or 1), row * (size + gap) * (toTop and 1 or -1))
+            button:SetPoint(corner, holder, corner, x, y)
+            button.fbPositioning = false
+            -- Taschen: Platz merken und festhalten (siehe KeepBagButton)
+            if def.kind == "bags" then
+                button.fbSlot = { corner, holder, corner, x, y }
+                if not button:IsShown() then button:Show() end
+            end
             -- Ausklapp-Richtung von Zauber-Gruppen (z. B. Portale); nur Aktionsknöpfe
             if def.kind == "action" then
                 button:SetAttribute("flyoutDirection", cfg.flyout or "UP")
@@ -1495,10 +1709,16 @@ local function LayoutButtons(def, cfg, holder)
             end
         end
         StyleButton(button)
+        if def.kind == "bags" then KeepBagButton(button) end
     end
     -- Nicht genutzte Knöpfe (zu viele bzw. ausgeschlossene Taschen) ablegen
     for _, button in ipairs(GetAllButtons(def)) do
-        if not shown[button] then button:SetParent(hiddenParent) end
+        if not shown[button] then
+            button.fbSlot = nil
+            button.fbPositioning = true
+            button:SetParent(hiddenParent)
+            button.fbPositioning = false
+        end
     end
     holder:SetSize(math.max(1, perRow * size + (perRow - 1) * gap), math.max(1, rows * size + (rows - 1) * gap))
 end
@@ -1877,7 +2097,10 @@ function ns.ApplyLayout()
         if ns.IsExternal(def.key) then cfg = ExternalXPConfig() end
         local holder = GetHolder(def)
         HideBlizzardBars(def)
-        if def.kind == "container" or def.kind == "single" then
+        if def.key == "micro" and cfg.microOwn then
+            LayoutOwnMicro(def, cfg, holder) -- eigene Knöpfe statt Blizzards Mikromenü
+        elseif def.kind == "container" or def.kind == "single" then
+            if def.key == "micro" then HideOwnMicro() end
             LayoutContainer(def, cfg, holder)
         else
             LayoutButtons(def, cfg, holder)

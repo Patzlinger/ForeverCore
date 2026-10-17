@@ -102,7 +102,7 @@ ns.defaults = {
         xp = BarDefaults(true), rep = BarDefaults(true), queue = BarDefaults(true),
     },
     -- (Profile verwaltet seit 0.41b ForeverCore – je Charakter, siehe RegisterSettings am Ende dieser Datei)
-    layoutVersion = 7,         -- Stand der Standard-Anordnung (siehe MigrateLayout)
+    layoutVersion = 8,         -- Stand der Standard-Anordnung (siehe MigrateLayout)
     skin = "FLAT",           -- Aussehen der Knöpfe (ns.SKINS in Bars.lua)
     hoverAlpha = 15,         -- Stärke des Hover-Leuchtens über den Knöpfen (%)
     procGlow = "FOREVER",    -- Leuchten bei Procs: "FOREVER" (goldener Rahmen), "BLIZZARD", "OFF"
@@ -148,8 +148,9 @@ ns.defaults.bars.food.frame = true
 ns.defaults.bars.food.scale = 80
 ns.defaults.bars.prof.growX = "LEFT"
 ns.defaults.bars.micro.point = "BOTTOMRIGHT"
-ns.defaults.bars.micro.scale = 40 -- Mikromenü klein und schwarz-weiß, Taschen etwas kleiner (dezent)
-ns.defaults.bars.micro.microGrey = true
+ns.defaults.bars.micro.scale = 100  -- eigene flache Text-Knöpfe (18 hoch) statt Blizzards Mikromenü
+ns.defaults.bars.micro.microOwn = true
+ns.defaults.bars.micro.microGrey = true -- nur für Blizzards Mikromenü (wenn die eigenen Knöpfe aus sind)
 ns.defaults.bars.bags.scale = 80
 ns.defaults.bars.bags.point = "BOTTOMRIGHT"
 ns.defaults.bars.bags.growX = "LEFT"
@@ -192,7 +193,8 @@ ns.FillDefaults = FillDefaults
 --               übereinander, darum Positionen der Standard-Anordnung neu berechnet
 --   6 (0.15.0): Mikromenü und Taschenleiste kleiner (80 %), Positionen unten rechts neu berechnet
 --   7 (0.15.1): Mikromenü 40 % und schwarz-weiß, Positionen unten rechts neu berechnet
-local LAYOUT_VERSION = 7
+--   8 (0.41b+): eigenes Mikromenü (Text-Knöpfe, 100 %), Positionen unten rechts neu berechnet
+local LAYOUT_VERSION = 8
 local STANDARD_LAYOUT_BARS = { "bar1", "bar2", "bar3", "bar6", "bar7", "bar8", "pet", "stance", "prof", "food",
                                "micro", "bags", "xp", "rep", "vehicle" }
 function ns.MigrateLayout(db)
@@ -242,6 +244,15 @@ function ns.MigrateLayout(db)
             if version < 7 and target.bars.micro then
                 local micro = target.bars.micro
                 if micro.scale == nil or micro.scale == 100 or micro.scale == 80 then
+                    micro.scale = ns.defaults.bars.micro.scale
+                end
+                micro.x, micro.y = nil, nil
+                if target.bars.bags then target.bars.bags.x, target.bars.bags.y = nil, nil end
+            end
+            if version < 8 and target.bars.micro then
+                local micro = target.bars.micro
+                -- 40 % war für Blizzards große Menüknöpfe gedacht; die eigenen Text-Knöpfe brauchen 100 %
+                if micro.scale == nil or micro.scale == 40 or micro.scale == 80 then
                     micro.scale = ns.defaults.bars.micro.scale
                 end
                 micro.x, micro.y = nil, nil

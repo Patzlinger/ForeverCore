@@ -16,8 +16,9 @@ function ns.CreateMinimapButton()
     if button or not Minimap then return end
     button = ForeverHub.UI.MinimapButton({
         name = "ForeverBarsMinimapButton",
-        icon = "Interface\\Icons\\INV_Misc_Toy_08",
-        texCoord = { 0.08, 0.92, 0.08, 0.92 },
+        -- Eigenes Symbol: Tastatur-Taste mit goldenem W (Media\KeyIcon.tga, 64 x 64)
+        icon = "Interface\\AddOns\\ForeverBars\\Media\\KeyIcon",
+        texCoord = { 0, 1, 0, 1 },
         title = ns.L("ADDON_NAME"),
         angle = function() return ns.db.minimapAngle or 200 end,
         setAngle = function(angle) ns.db.minimapAngle = angle end,
