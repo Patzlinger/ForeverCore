@@ -239,6 +239,11 @@ local function CreateOptions()
     CreateSettingCheckbox(looks, L("OPT_QUEST_TOOLTIP"), 14, -246, "showQuestTooltip")
     -- Hinweisfenster beim Betreten eines Dungeons (Quests dabei / fehlen noch)
     CreateSettingCheckbox(looks, L("OPT_INSTANCE_HINT"), 14, -270, "instanceHint")
+    -- Beta-Modus: Dungeonfenster nur bis Stufe 30 (Fenster wird mit der neuen Auswahl neu aufgebaut)
+    CreateSettingCheckbox(looks, L("OPT_BETA_DUNGEONS"), 14, -294, "betaDungeons", function()
+        ns.ApplyBetaFilter()
+        if ns.ResetDungeonWindow then ns.ResetDungeonWindow() end
+    end)
 
     -- Unten: Position und Größe
     local function screenWidth() return math.floor(UIParent:GetWidth()) end

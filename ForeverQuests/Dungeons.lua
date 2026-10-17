@@ -16,6 +16,39 @@ local LEVEL_EARLY = 2        -- Dungeons schon so viele Level vor dem Mindestlev
 local QUEST_LEVEL_RANGE = 5  -- Quests höchstens so viele Level über/unter dem eigenen Level
 local refreshPending = false
 
+-- Beta-Modus: in der Beta geht es nur bis Stufe 30 – Dungeons und Quests darüber werden ausgeblendet.
+-- Die Daten aus der Excel-Datei bleiben vollständig (ALL_DUNGEONS); ns.DUNGEON_DATA ist die angezeigte Auswahl.
+local BETA_MAX_LEVEL = 30
+local ALL_DUNGEONS = ns.DUNGEON_DATA
+
+local function FirstNumber(text)
+    return tonumber(tostring(text or ""):match("%d+"))
+end
+
+function ns.ApplyBetaFilter()
+    selectedDungeon = nil -- die Auswahl zeigt sonst auf einen Dungeon der alten Liste
+    if not (ns.db and ns.db.betaDungeons) then
+        ns.DUNGEON_DATA = ALL_DUNGEONS
+        return
+    end
+    local list = {}
+    for _, dungeon in ipairs(ALL_DUNGEONS) do
+        local minLevel = FirstNumber(dungeon.levels)
+        if not minLevel or minLevel <= BETA_MAX_LEVEL then
+            -- Kopie des Dungeons mit nur den Quests bis Stufe 30 (Mindeststufe bzw. Questlevel aus der Excel-Datei)
+            local copy = {}
+            for key, value in pairs(dungeon) do copy[key] = value end
+            copy.quests = {}
+            for _, quest in ipairs(dungeon.quests or {}) do
+                local level = quest.minLevel or FirstNumber(quest.level)
+                if not level or level <= BETA_MAX_LEVEL then table.insert(copy.quests, quest) end
+            end
+            table.insert(list, copy)
+        end
+    end
+    ns.DUNGEON_DATA = list
+end
+
 local LIST_WIDTH = 290
 local LIST_ROW_HEIGHT = 44
 local HEADER_HEIGHT = 40

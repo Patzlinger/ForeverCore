@@ -30,6 +30,7 @@ ns.defaults = {
     showQuestType = true,
     showQuestTooltip = true, -- Tooltip beim Darüberfahren über eine Quest im Tracker
     instanceHint = true,     -- Hinweis beim Betreten eines Dungeons
+    betaDungeons = true,     -- Beta-Modus: im Dungeonfenster nur Dungeons und Quests bis Stufe 30
     showMinimapButton = true,
     minimapAngle = 220,
     trackerHidden = false,
@@ -70,6 +71,7 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
 
         self:UnregisterEvent("ADDON_LOADED")
     elseif event == "PLAYER_LOGIN" then
+        if ns.ApplyBetaFilter then ns.ApplyBetaFilter() end
         ns.CreateTracker()
         ns.UpdateBlizzardTracker()
         ns.CreateMinimapButton()
