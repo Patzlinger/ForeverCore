@@ -1343,6 +1343,7 @@ function ns.UpdateOwnHotkeys()
             button.HotKey:SetText(key and GetBindingText and ns.ShortKey(GetBindingText(key, true)) or "")
         end
     end
+    if ns.UpdateMarkHotkeys then ns.UpdateMarkHotkeys() end
 end
 
 -- Hineinziehen: Fläche über einer Leiste, nur sichtbar, solange etwas Passendes am Mauszeiger hängt
@@ -2418,15 +2419,23 @@ function ns.FoodView(cfg)
     return FOOD_VIEWS[view] and view or "unit"
 end
 
--- Geschützter Markierungs-Knopf im Forever-Look (Rand wie der Knopf-Stil, beim Darüberfahren gold)
-local function MarkButton(parent, size)
-    local button = CreateFrame("Button", nil, parent, "SecureActionButtonTemplate,BackdropTemplate")
+-- Geschützter Markierungs-Knopf im Forever-Look (Rand wie der Knopf-Stil, beim Darüberfahren gold).
+-- name: fester Name für die Tastaturbelegung (Bindings.xml: "CLICK <name>:LeftButton")
+local markButtonNames = {}
+local function MarkButton(parent, size, name)
+    local button = CreateFrame("Button", name, parent, "SecureActionButtonTemplate,BackdropTemplate")
     button:SetSize(size, size)
     button:RegisterForClicks("AnyUp", "AnyDown")
     ns.Style.SetFlat(button, GetSkin().background or COLOR.button, GetSkin().border)
     button.icon = button:CreateTexture(nil, "ARTWORK")
     button.icon:SetPoint("TOPLEFT", 5, -5)
     button.icon:SetPoint("BOTTOMRIGHT", -5, 5)
+    -- Tastenbelegung oben rechts (Text setzt ns.UpdateOwnHotkeys)
+    button.HotKey = button:CreateFontString(nil, "OVERLAY")
+    SetTextFont(button.HotKey, ns.db.fontSize)
+    button.HotKey:SetPoint("TOPRIGHT", -2, -3)
+    button.HotKey:SetJustifyH("RIGHT")
+    if name then markButtonNames[#markButtonNames + 1] = name end
     button:HookScript("OnEnter", function(self)
         self:SetBackdropBorderColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3], 0.9)
     end)
@@ -2439,14 +2448,14 @@ local function GetMarkButtons(holder)
     if holder.fbMarks then return holder.fbMarks end
     local sets = { unit = {}, ground = {} }
     for i, m in ipairs(MARKERS) do
-        local unitButton = MarkButton(holder, ACTION_SIZE)
+        local unitButton = MarkButton(holder, ACTION_SIZE, "ForeverBarsMarkTarget" .. m.raid)
         unitButton.icon:SetTexture(MARK_ICON .. m.raid)
         unitButton:SetAttribute("type", "raidtarget")
         unitButton:SetAttribute("unit", "target")
         unitButton:SetAttribute("marker", m.raid)
         unitButton:SetAttribute("action", "toggle") -- gleiche Markierung noch einmal = entfernen
         sets.unit[i] = unitButton
-        local groundButton = MarkButton(holder, ACTION_SIZE)
+        local groundButton = MarkButton(holder, ACTION_SIZE, "ForeverBarsMarkWorld" .. m.raid)
         groundButton.icon:SetTexture(MARK_ICON .. m.raid)
         groundButton:SetAttribute("type", "worldmarker")
         groundButton:SetAttribute("marker", m.world)
@@ -2454,13 +2463,13 @@ local function GetMarkButtons(holder)
         sets.ground[i] = groundButton
     end
     -- 9. Platz: Entfernen (Markierung vom Ziel bzw. alle Bodenmarkierungen)
-    local clearUnit = MarkButton(holder, ACTION_SIZE)
+    local clearUnit = MarkButton(holder, ACTION_SIZE, "ForeverBarsMarkTargetClear")
     clearUnit.icon:SetTexture(CLEAR_ICON)
     clearUnit:SetAttribute("type", "raidtarget")
     clearUnit:SetAttribute("unit", "target")
     clearUnit:SetAttribute("action", "clear")
     sets.unit[9] = clearUnit
-    local clearGround = MarkButton(holder, ACTION_SIZE)
+    local clearGround = MarkButton(holder, ACTION_SIZE, "ForeverBarsMarkWorldClear")
     clearGround.icon:SetTexture(CLEAR_ICON)
     clearGround:SetAttribute("type", "worldmarker")
     clearGround:SetAttribute("action", "clear")
@@ -2469,12 +2478,14 @@ local function GetMarkButtons(holder)
     -- auf geschützten Knöpfen (die Funktionen selbst sind im Forever-Client geschützt)
     sets.extra = {}
     for i, e in ipairs({
-        { macro = "/readycheck", icon = "Interface\\RaidFrame\\ReadyCheck-Ready", tip = "TIP_READYCHECK" },
+        { macro = "/readycheck", icon = "Interface\\RaidFrame\\ReadyCheck-Ready", tip = "TIP_READYCHECK",
+          name = "ForeverBarsReadyCheck" },
         { macro = "/rolepoll", icon = "Interface\\LFGFrame\\UI-LFG-ICON-ROLES", coords = { 0, 0.2617, 0.2617, 0.5234 },
-          tip = "TIP_ROLEPOLL" },
-        { macro = "/countdown 10", icon = "Interface\\Icons\\Spell_Holy_BorrowedTime", tip = "TIP_COUNTDOWN" },
+          tip = "TIP_ROLEPOLL", name = "ForeverBarsRolePoll" },
+        { macro = "/countdown 10", icon = "Interface\\Icons\\Spell_Holy_BorrowedTime", tip = "TIP_COUNTDOWN",
+          name = "ForeverBarsCountdown" },
     }) do
-        local b = MarkButton(holder, ACTION_SIZE)
+        local b = MarkButton(holder, ACTION_SIZE, e.name)
         b.icon:SetTexture(e.icon)
         if e.coords then b.icon:SetTexCoord(unpack(e.coords)) end
         b:SetAttribute("type", "macro")
@@ -2489,7 +2500,21 @@ local function GetMarkButtons(holder)
         sets.extra[i] = b
     end
     holder.fbMarks = sets
+    ns.UpdateOwnHotkeys()
     return sets
+end
+
+-- Tastenbelegung auf den Markierungs-Knöpfen anzeigen (aus ns.UpdateOwnHotkeys)
+function ns.UpdateMarkHotkeys()
+    for _, name in ipairs(markButtonNames) do
+        local button = _G[name]
+        if button and button.HotKey then
+            local key = GetBindingKey and GetBindingKey("CLICK " .. name .. ":LeftButton")
+            button.HotKey:SetText(key and GetBindingText and ns.ShortKey(GetBindingText(key, true)) or "")
+            SetTextFont(button.HotKey, ns.db.fontSize)
+            button.HotKey:SetAlpha(ns.db.showHotkeys == false and 0 or 1)
+        end
+    end
 end
 
 -- Verbrauchbar in Markierungs-Ansicht anordnen (aus LayoutButtons, nur außerhalb des Kampfes).

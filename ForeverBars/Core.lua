@@ -538,12 +538,18 @@ end
 BINDING_HEADER_FOREVERBARS = L("BINDING_HEADER")
 BINDING_NAME_FOREVERBARS_OPTIONS = L("BINDING_OPTIONS")
 BINDING_NAME_FOREVERBARS_UNLOCK = L("BINDING_UNLOCK")
--- Verpflegungsleiste: je Platz eine Belegung (siehe Bindings.xml); bei 4 je Reihe: 1-4 Essen, 5-8 Getränke,
--- 9-12 Fläschchen/Tränke
-BINDING_HEADER_FOREVERBARS_FOOD = L("BINDING_HEADER_FOOD")
-for i = 1, 18 do
-    _G["BINDING_NAME_CLICK ForeverBarsFoodButton" .. i .. ":LeftButton"] = L("BINDING_FOOD", i)
+-- Markierungsleiste: je Knopf eine Belegung (siehe Bindings.xml). Namen der Symbole von Blizzard (RAID_TARGET_n)
+BINDING_HEADER_FOREVERBARS_MARKS = L("BINDING_HEADER_MARKS")
+for i = 1, 8 do
+    local icon = _G["RAID_TARGET_" .. i] or tostring(i)
+    _G["BINDING_NAME_CLICK ForeverBarsMarkTarget" .. i .. ":LeftButton"] = L("BINDING_MARK_TARGET", icon)
+    _G["BINDING_NAME_CLICK ForeverBarsMarkWorld" .. i .. ":LeftButton"] = L("BINDING_MARK_WORLD", icon)
 end
+_G["BINDING_NAME_CLICK ForeverBarsMarkTargetClear:LeftButton"] = L("BINDING_MARK_TARGET_CLEAR")
+_G["BINDING_NAME_CLICK ForeverBarsMarkWorldClear:LeftButton"] = L("BINDING_MARK_WORLD_CLEAR")
+_G["BINDING_NAME_CLICK ForeverBarsReadyCheck:LeftButton"] = L("TIP_READYCHECK")
+_G["BINDING_NAME_CLICK ForeverBarsRolePoll:LeftButton"] = L("TIP_ROLEPOLL")
+_G["BINDING_NAME_CLICK ForeverBarsCountdown:LeftButton"] = L("TIP_COUNTDOWN")
 function ForeverBars_ToggleOptions() if ns.ToggleOptions then ns.ToggleOptions() end end
 function ForeverBars_ToggleUnlock() if ns.SetUnlocked then ns.SetUnlocked(not ns.unlocked) end end
 

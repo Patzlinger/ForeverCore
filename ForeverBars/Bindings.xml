@@ -7,23 +7,26 @@
 	<Binding name="FOREVERBARS_UNLOCK" category="ADDONS">
 		ForeverBars_ToggleUnlock()
 	</Binding>
-	<!-- Verpflegungsleiste: ein Platz je Belegung (Namen setzt Bars.lua: BINDING_NAME_CLICK ...) -->
-	<Binding name="CLICK ForeverBarsFoodButton1:LeftButton" header="FOREVERBARS_FOOD" category="ADDONS"/>
-	<Binding name="CLICK ForeverBarsFoodButton2:LeftButton" category="ADDONS"/>
-	<Binding name="CLICK ForeverBarsFoodButton3:LeftButton" category="ADDONS"/>
-	<Binding name="CLICK ForeverBarsFoodButton4:LeftButton" category="ADDONS"/>
-	<Binding name="CLICK ForeverBarsFoodButton5:LeftButton" category="ADDONS"/>
-	<Binding name="CLICK ForeverBarsFoodButton6:LeftButton" category="ADDONS"/>
-	<Binding name="CLICK ForeverBarsFoodButton7:LeftButton" category="ADDONS"/>
-	<Binding name="CLICK ForeverBarsFoodButton8:LeftButton" category="ADDONS"/>
-	<Binding name="CLICK ForeverBarsFoodButton9:LeftButton" category="ADDONS"/>
-	<Binding name="CLICK ForeverBarsFoodButton10:LeftButton" category="ADDONS"/>
-	<Binding name="CLICK ForeverBarsFoodButton11:LeftButton" category="ADDONS"/>
-	<Binding name="CLICK ForeverBarsFoodButton12:LeftButton" category="ADDONS"/>
-	<Binding name="CLICK ForeverBarsFoodButton13:LeftButton" category="ADDONS"/>
-	<Binding name="CLICK ForeverBarsFoodButton14:LeftButton" category="ADDONS"/>
-	<Binding name="CLICK ForeverBarsFoodButton15:LeftButton" category="ADDONS"/>
-	<Binding name="CLICK ForeverBarsFoodButton16:LeftButton" category="ADDONS"/>
-	<Binding name="CLICK ForeverBarsFoodButton17:LeftButton" category="ADDONS"/>
-	<Binding name="CLICK ForeverBarsFoodButton18:LeftButton" category="ADDONS"/>
+	<!-- Markierungsleiste: je Knopf eine Belegung (geschützte Knöpfe, siehe Bars.lua MarkButton; Namen setzt Core.lua) -->
+	<Binding name="CLICK ForeverBarsMarkTarget8:LeftButton" header="FOREVERBARS_MARKS" category="ADDONS"/>
+	<Binding name="CLICK ForeverBarsMarkTarget7:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK ForeverBarsMarkTarget6:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK ForeverBarsMarkTarget5:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK ForeverBarsMarkTarget4:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK ForeverBarsMarkTarget3:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK ForeverBarsMarkTarget2:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK ForeverBarsMarkTarget1:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK ForeverBarsMarkTargetClear:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK ForeverBarsMarkWorld8:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK ForeverBarsMarkWorld7:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK ForeverBarsMarkWorld6:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK ForeverBarsMarkWorld5:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK ForeverBarsMarkWorld4:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK ForeverBarsMarkWorld3:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK ForeverBarsMarkWorld2:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK ForeverBarsMarkWorld1:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK ForeverBarsMarkWorldClear:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK ForeverBarsReadyCheck:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK ForeverBarsRolePoll:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK ForeverBarsCountdown:LeftButton" category="ADDONS"/>
 </Bindings>
