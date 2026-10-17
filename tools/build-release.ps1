@@ -27,13 +27,20 @@ if (!$Version) { $Version = $distinct }
 elseif ($Version -ne $distinct) { throw "Angegebene Version $Version passt nicht zu den .toc ($distinct)" }
 
 if (!$ReleaseDir) { $ReleaseDir = Join-Path (Split-Path $root -Parent) "_Forever-Release-$Version" }
+# immer als vollständiger Pfad: mit einem relativen Pfad (z. B. ..\_Forever-Release-0.3b) stimmten die Pfade im Zip
+# nicht (Ordner wie "ForeverBars/beta_\Interface\...") und .NET legt Zips relativ zu einem anderen Ordner an
+if (![IO.Path]::IsPathRooted($ReleaseDir)) { $ReleaseDir = Join-Path (Get-Location).Path $ReleaseDir }
+$ReleaseDir = [IO.Path]::GetFullPath($ReleaseDir)
 $addonOut = Join-Path $ReleaseDir 'ForeverAddons'
 $singleOut = Join-Path $ReleaseDir 'Einzeln'
 New-Item -ItemType Directory -Force $addonOut, $singleOut | Out-Null
 
 function Add-FolderToZip($zip, $folder, $name) {
-    Get-ChildItem $folder -Recurse -File | ForEach-Object {
-        $rel = $name + '/' + $_.FullName.Substring($folder.Length + 1).Replace('\', '/')
+    $base = [IO.Path]::GetFullPath($folder).TrimEnd('\', '/')
+    Get-ChildItem $base -Recurse -File | ForEach-Object {
+        $full = [IO.Path]::GetFullPath($_.FullName)
+        if (!$full.StartsWith($base + '\', [StringComparison]::OrdinalIgnoreCase)) { throw "Datei außerhalb von ${base}: $full" }
+        $rel = $name + '/' + $full.Substring($base.Length + 1).Replace('\', '/')
         [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, $_.FullName, $rel, 'Optimal') | Out-Null
     }
 }
@@ -56,7 +63,8 @@ $copied = foreach ($a in $addons) {
     New-Zip (Join-Path $singleOut "$a.zip") $folders
     $dest
 }
-New-Zip (Join-Path $ReleaseDir "ForeverCore-$Version.zip") $copied @(Join-Path $root 'release\README.txt')
+# Gesamt-Zip: nur die Addon-Ordner (so lädt CurseForge es hoch); das README liegt daneben im Release-Ordner
+New-Zip (Join-Path $ReleaseDir "ForeverCore-$Version.zip") $copied @()
 
 Copy-Item (Join-Path $root 'release\README.txt'), (Join-Path $root 'release\Changelog-CurseForge.txt'), (Join-Path $root 'release\Description-CurseForge.txt') $ReleaseDir -Force
 New-Item -ItemType Directory -Force (Join-Path $ReleaseDir 'Logo') | Out-Null

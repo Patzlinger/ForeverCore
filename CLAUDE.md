@@ -522,7 +522,7 @@ gilt für **beide** (und deren Claude) genau dieser Ablauf:
 - `release/addons.txt` = Addons im Release; Prototypen erst nach Freigabe eintragen
 - Alle Release-Addons tragen dieselbe `## Version` (Suite-Version, z. B. `0.44b`); `tools/build-release.ps1` prüft das
 - Alle Release-.toc: `## Title: <Addon> |cff8a8a8a(Beta)|r`, `## X-Curse-Project-ID: 1743753`, `## X-License: MIT`
-- `release/README.txt` (DE/EN, kommt ins Gesamt-Zip) bei neuen Befehlen/Funktionen anpassen
+- `release/README.txt` (DE/EN, liegt im Release-Ordner, NICHT im Zip – das Gesamt-Zip enthält nur die Addon-Ordner) bei neuen Befehlen/Funktionen anpassen
 - `release/Changelog-CurseForge.txt` = Englisch, für Spieler geschrieben; wandert nicht ins Zip
 - `release/Description-CurseForge.txt` = Text der CurseForge-Hauptseite (Englisch, Markdown); bei neuen Addons/Funktionen anpassen, nicht ins Zip
 - ForeverCore ist immer im Release und steckt in **jedem Einzel-Zip** mit (sonst lädt das Addon nicht)
