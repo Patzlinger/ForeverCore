@@ -45,14 +45,19 @@ local function Build()
     local btnP = UI.MenuPanel(options, T("Knöpfe", "Buttons"))
     btnP:SetPoint("TOPLEFT", shape, "TOPRIGHT", M.pad, 0)
     btnP:SetSize(COL, 44 + DS + 3 * CS + 8)
-    UI.MenuDropdown(btnP, x0, y0, T("Ort", "Place"), {
-        { key = "BAR", label = T("In der Leiste", "In the bar") },
+    UI.MenuDropdown(btnP, x0, y0, T("Knopfleiste", "Button bar"), {
         { key = "LEFT", label = T("Links neben der Karte", "Left of the map") },
         { key = "RIGHT", label = T("Rechts neben der Karte", "Right of the map") },
-    }, Get("buttons"), Set("buttons"))
-    UI.MenuCheck(btnP, x0, y0 - DS, T("Nur bei Maus über der Minimap", "Only with the mouse over the minimap"), Get("buttonsMouseover"), Set("buttonsMouseover"),
+        { key = "OFF", label = T("Aus (nach /reload)", "Off (after /reload)") },
+    }, Get("strip"), function(v)
+        ns.GetDB().strip = v
+        if ns.CollectEdgeButtons then ns.CollectEdgeButtons() end
+        if ns.ApplyAll then ns.ApplyAll() end
+    end)
+    UI.MenuCheck(btnP, x0, y0 - DS, T("Nur bei Maus über der Minimap", "Only with the mouse over the minimap"), Get("stripMouseover"), Set("stripMouseover"),
         T("Post und Kalender-Einladungen bleiben immer sichtbar (goldener Rand).", "Mail and calendar invites always stay visible (gold border)."))
-    UI.MenuCheck(btnP, x0, y0 - DS - CS, T("Knöpfe anderer Addons am Rand ebenso", "Buttons of other addons at the edge, too"), Get("edgeMouseover"), Set("edgeMouseover"))
+    UI.MenuCheck(btnP, x0, y0 - DS - CS, T("Eigene Knöpfe oben in der Leiste", "Own buttons in the top bar"), Get("toolsInBar"), Set("toolsInBar"),
+        T("Post, Verfolgung, Kalender und Addon-Menü in der Leiste statt in der Knopfleiste.", "Mail, tracking, calendar and addon menu in the top bar instead of the button bar."))
     UI.MenuCheck(btnP, x0, y0 - DS - 2 * CS, T("Blizzards Kopfzeile und Knöpfe ausblenden", "Hide Blizzard's header and buttons"), Get("hideBlizzard"), Set("hideBlizzard"))
 
     -- rechts: Komfort

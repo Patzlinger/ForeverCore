@@ -3,16 +3,17 @@ local ADDON_NAME, ns = ...
 local UI, T = ns.UI, ns.T
 local C = UI.COLOR
 
-local BAR_H = 18        -- Hoehe der Leiste
-local TOOL = 16         -- Knopfgroesse in der Leiste
-local TOOL_SIDE = 20    -- Knopfgroesse in der senkrechten Leiste
+local BAR_H = 22        -- Hoehe der Leiste
+local TOOL = 18         -- Knopfgroesse in der Leiste (wenn die eigenen Knoepfe dort sitzen)
+local ITEM = 22         -- Knopfgroesse in der senkrechten Knopfleiste
+local STRIP_W = 28      -- Breite der senkrechten Knopfleiste
 local SQUARE_MASK = "Interface\\BUTTONS\\WHITE8X8"
 local CIRCLE = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
 local ROUND_MASK = CIRCLE -- gleiche Kreismaske wie der Ring dahinter (deckungsgleich)
 
-local bar, ring, edges, coordBox, pingText
+local bar, ring, edges, coordBox, pingText, strip
 local tools = {}        -- eigene Knoepfe in Reihenfolge
-local edgeButtons = {}  -- Minimap-Knoepfe am Rand (Forever-Knopf, andere Addons)
+local edgeButtons = {}  -- Minimap-Knoepfe am Rand (Forever-Knopf, andere Addons) – kommen in die Knopfleiste
 local hovering = false
 
 local function DB() return ns.GetDB() end
@@ -107,13 +108,20 @@ local function BlizzParts()
 end
 
 function ns.ApplyBlizzard()
-    local hide = DB().hideBlizzard
+    local d = DB()
+    local hide = d.hideBlizzard
     for _, p in ipairs(BlizzParts()) do
         if hide then
             UI.HideBlizzard(p.frame, { children = p.children, noMouse = p.noMouse })
         else
             UI.ShowBlizzard(p.frame)
         end
+    end
+    -- Blizzards eigene Koordinaten unter der Karte (Einstellung minimapShowPlayerCoords): aus, solange unsere an sind
+    local mc = _G.MinimapCluster
+    local coords = mc and mc.MinimapContainer and mc.MinimapContainer.PlayerCoords
+    if coords then
+        if d.coords then UI.HideBlizzard(coords, { children = true, noMouse = {} }) else UI.ShowBlizzard(coords) end
     end
 end
 
@@ -224,10 +232,10 @@ local function BuildBar()
     bar.line = bar:CreateTexture(nil, "ARTWORK")
     bar.line:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 0.35)
     bar.line:SetHeight(1)
-    bar.clock = bar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    bar.clock:SetPoint("RIGHT", -6, 0)
-    bar.zone = bar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    bar.zone:SetPoint("LEFT", 6, 0)
+    bar.clock = bar:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    bar.clock:SetPoint("RIGHT", -7, 0)
+    bar.zone = bar:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    bar.zone:SetPoint("LEFT", 7, 0)
     bar.zone:SetJustifyH("LEFT")
     bar.zone:SetWordWrap(false)
     bar:RegisterForClicks("LeftButtonUp")
@@ -322,9 +330,6 @@ local TOOL_DEFS = {
       tip = function() GameTooltip:AddLine(T("Addon-Menü", "Addon menu")) GameTooltip:AddLine(T("Einträge anderer Addons", "Entries of other addons"), 0.6, 0.6, 0.6) end,
       click = OpenCompartment,
       shown = function() return _G.AddonCompartmentFrame ~= nil end },
-    { key = "forever", icon = UI.LOGO,
-      tip = function() GameTooltip:AddLine(UI.NAME) GameTooltip:AddLine(T("Alle Forever-Addons (/forever)", "All Forever addons (/forever)"), 0.6, 0.6, 0.6) end,
-      click = function() if _G.ForeverHub and _G.ForeverHub.ToggleWindow then _G.ForeverHub.ToggleWindow() end end },
 }
 
 local function ToolButton(def)
@@ -354,34 +359,85 @@ local function ToolButton(def)
     return b
 end
 
--- Knoepfe anordnen und einfaerben (Post/Einladung: goldener Rand, auch ohne Maus sichtbar)
+---------------------------------------------------------------------------
+-- Senkrechte Knopfleiste neben der Minimap: eigene Knoepfe (Post, Verfolgung, Kalender, Addon-Menue) und die
+-- Minimap-Knoepfe am Rand (Forever-Sammelknopf, andere Addons wie BugSack) – auf Wunsch nur bei Mausover.
+-- Fremde Knoepfe werden nur verschoben und verkleinert (keine Blizzard-Rahmen); Ziehen ist dort aus.
+---------------------------------------------------------------------------
+local function BuildStrip()
+    strip = CreateFrame("Frame", "ForeverMinimapStrip", Minimap, "BackdropTemplate")
+    strip:SetWidth(STRIP_W)
+    strip:SetFrameLevel(Minimap:GetFrameLevel() + 6)
+    UI.SetFlat(strip, { C.header[1], C.header[2], C.header[3], 0.92 })
+    strip:EnableMouse(true)
+    strip:SetScript("OnEnter", function() ns.UpdateHover() end)
+    strip:SetScript("OnLeave", function() ns.UpdateHoverSoon() end)
+end
+
+-- fremden Knopf an seinen Platz in der Leiste setzen (auch, wenn sein Addon ihn spaeter zurueckschiebt)
+local function PlaceForeign(b)
+    if not b.fmmY then return end
+    local s = ITEM / math.max(1, b:GetWidth())
+    b.fmmPlacing = true
+    b:SetScale(s)
+    b:ClearAllPoints()
+    b:SetPoint("TOP", strip, "TOP", 0, b.fmmY / s)
+    b:SetFrameLevel(strip:GetFrameLevel() + 2)
+    b.fmmPlacing = false
+end
+
+local function SortedForeign()
+    local list = {}
+    for b in pairs(edgeButtons) do
+        if b:IsShown() then list[#list + 1] = b end
+    end
+    table.sort(list, function(a, b) return (a:GetName() or "") < (b:GetName() or "") end)
+    return list
+end
+
+local function ToolVisible(b)
+    local def = b.def
+    return not def.shown or def.shown()
+end
+
+-- Knoepfe anordnen, ein-/ausblenden und einfaerben (Post/Einladung: goldener Rand, auch ohne Maus sichtbar)
 function ns.UpdateTools()
+    if not strip then return end
     local d = DB()
-    local mode = d.buttons
-    local inBar = mode == "BAR" and d.bar
-    local size = inBar and TOOL or TOOL_SIDE
+    local side = d.strip
+    local useStrip = side == "LEFT" or side == "RIGHT"
+    local inBar = d.toolsInBar and d.bar
+    local show = hovering or not d.stripMouseover
+
+    -- Leiste: neben Minimap (und Kopfleiste, falls sie oben sitzt)
+    local topRef = (d.bar and d.barPosition ~= "BOTTOM" and bar) or Minimap
+    strip:ClearAllPoints()
+    if side == "RIGHT" then strip:SetPoint("TOPLEFT", topRef, "TOPRIGHT", 4, 0)
+    else strip:SetPoint("TOPRIGHT", topRef, "TOPLEFT", -4, 0) end
+
+    local y, count = -3, 0
     local prev
     for _, b in ipairs(tools) do
-        local def = b.def
-        local wanted = not def.shown or def.shown()
-        local alert = def.alert and def.alert()
-        local visible = wanted and (hovering or alert or not d.buttonsMouseover)
-        b:SetSize(size, size)
+        local wanted = ToolVisible(b)
+        local alert = b.def.alert and b.def.alert()
         b:ClearAllPoints()
-        if wanted then
-            if inBar then
-                if prev then b:SetPoint("RIGHT", prev, "LEFT", -2, 0)
-                else b:SetPoint("RIGHT", d.clock and bar.clock or bar, d.clock and "LEFT" or "RIGHT", d.clock and -6 or -4, 0) end
-            else
-                local side = mode == "LEFT" and "RIGHT" or "LEFT"
-                local outer = mode == "LEFT" and "LEFT" or "RIGHT"
-                local x = mode == "LEFT" and -4 or 4
-                if prev then b:SetPoint("TOP", prev, "BOTTOM", 0, -2)
-                else b:SetPoint("TOP" .. side, Minimap, "TOP" .. outer, x, 0) end
-            end
+        if wanted and inBar then
+            b:SetSize(TOOL, TOOL)
+            if prev then b:SetPoint("RIGHT", prev, "LEFT", -2, 0)
+            else b:SetPoint("RIGHT", d.clock and bar.clock or bar, d.clock and "LEFT" or "RIGHT", d.clock and -6 or -4, 0) end
             prev = b
+            b:SetShown(show or alert)
+            b:SetAlpha(1)
+        elseif wanted and useStrip then
+            b:SetSize(ITEM, ITEM)
+            b:SetPoint("TOP", strip, "TOP", 0, y)
+            y = y - ITEM - 3
+            count = count + 1
+            b:Show()
+            b:SetAlpha((show or alert) and 1 or 0)
+        else
+            b:Hide()
         end
-        b:SetShown(visible)
         if alert then
             b:SetBackdropBorderColor(C.accent[1], C.accent[2], C.accent[3], 0.9)
             b.icon:SetDesaturated(false)
@@ -390,22 +446,40 @@ function ns.UpdateTools()
             b.icon:SetDesaturated(true)
         end
     end
-    -- Zonenname bis an die Knoepfe heran (abgeschnitten statt ueberlappt)
+
+    -- Minimap-Knoepfe am Rand: in die Leiste darunter
+    if useStrip then
+        local foreign = SortedForeign()
+        if count > 0 and #foreign > 0 then y = y - 3 end -- kleiner Abstand zwischen eigenen und fremden Knoepfen
+        for _, b in ipairs(foreign) do
+            b.fmmY = y
+            PlaceForeign(b)
+            b:SetAlpha(show and 1 or 0)
+            y = y - ITEM - 3
+            count = count + 1
+        end
+    end
+    strip:SetHeight(-y)
+    strip:SetShown(useStrip and count > 0)
+    strip:SetAlpha(show and 1 or 0)
+
+    -- Zonenname bis an Knoepfe/Uhr heran (abgeschnitten statt ueberlappt)
     if bar and bar:IsShown() then
-        local right = -6
-        if d.clock then right = right - (bar.clock:GetStringWidth() + 6) end
+        local right = -7
+        if d.clock then right = right - (bar.clock:GetStringWidth() + 8) end
         if inBar then
-            for _, b in ipairs(tools) do if b:IsShown() then right = right - (size + 2) end end
+            for _, b in ipairs(tools) do if b:IsShown() then right = right - (TOOL + 2) end end
         end
         bar.zone:SetPoint("RIGHT", bar, "RIGHT", right, 0)
     end
 end
 
 ---------------------------------------------------------------------------
--- Maus ueber Minimap/Leiste: Knoepfe zeigen; Knoepfe am Rand nur dann
+-- Maus ueber Minimap/Leisten: Knoepfe zeigen
 ---------------------------------------------------------------------------
 local function IsOverAny()
     if Minimap:IsMouseOver() or (bar and bar:IsShown() and bar:IsMouseOver()) then return true end
+    if strip and strip:IsShown() and strip:IsMouseOver() then return true end
     for _, b in ipairs(tools) do if b:IsShown() and b:IsMouseOver() then return true end end
     for b in pairs(edgeButtons) do if b:IsShown() and b:IsMouseOver() then return true end end
     return false
@@ -413,10 +487,6 @@ end
 
 function ns.UpdateHover()
     hovering = IsOverAny()
-    local d = DB()
-    for b in pairs(edgeButtons) do
-        b:SetAlpha((hovering or not d.edgeMouseover) and 1 or 0)
-    end
     ns.UpdateTools()
 end
 
@@ -424,26 +494,33 @@ function ns.UpdateHoverSoon()
     C_Timer.After(0.1, ns.UpdateHover)
 end
 
--- Knoepfe anderer Addons am Rand der Minimap einsammeln (nur fuer das Ein-/Ausblenden, sie bleiben, wo sie sind)
-local BLIZZ_PREFIX = { "Minimap", "MiniMap", "GameTime", "TimeManager", "Queue", "AddonCompartment", "ExpansionLanding",
-    "ForeverMinimap" }
+-- Minimap-Knoepfe am Rand einsammeln: benannte Knoepfe direkt an der Minimap, die nicht von Blizzard sind
+local BLIZZ_PREFIX = { "Minimap", "MiniMap", "GameTime", "TimeManager", "Queue", "AddonCompartment", "ExpansionLanding" }
+local OWN = { ForeverMinimapBar = true, ForeverMinimapStrip = true }
 local function IsForeignButton(child)
     if not (child.GetObjectType and child:GetObjectType() == "Button") then return false end
     local name = child:GetName()
-    if type(name) ~= "string" then return false end
+    if type(name) ~= "string" or OWN[name] then return false end
     for _, p in ipairs(BLIZZ_PREFIX) do if name:sub(1, #p) == p then return false end end
     return true
 end
 
 function ns.CollectEdgeButtons()
+    local d = DB()
+    if d.strip ~= "LEFT" and d.strip ~= "RIGHT" then return end
     for _, child in ipairs({ Minimap:GetChildren() }) do
         if not edgeButtons[child] and IsForeignButton(child) then
             edgeButtons[child] = true
             child:HookScript("OnEnter", function() ns.UpdateHover() end)
             child:HookScript("OnLeave", function() ns.UpdateHoverSoon() end)
+            child:HookScript("OnShow", function() ns.UpdateTools() end)
+            child:HookScript("OnHide", function() ns.UpdateTools() end)
+            -- sein Addon setzt ihn neu (z. B. nach Ziehen oder Formwechsel): zurueck an den Platz in der Leiste
+            hooksecurefunc(child, "SetPoint", function(self) if not self.fmmPlacing then PlaceForeign(self) end end)
+            if child.RegisterForDrag then child:RegisterForDrag() end -- in der Leiste nicht ziehbar
         end
     end
-    ns.UpdateHover()
+    ns.UpdateTools()
 end
 
 ---------------------------------------------------------------------------
@@ -517,6 +594,7 @@ function ns.SetupMap()
     ns.mapReady = true
     BuildFrame()
     BuildBar()
+    BuildStrip()
     for _, def in ipairs(TOOL_DEFS) do tools[#tools + 1] = ToolButton(def) end
 
     -- Blizzard setzt Form und Rahmen neu, wenn sich "Minimap drehen" aendert: danach wieder anwenden

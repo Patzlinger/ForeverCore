@@ -28,10 +28,10 @@ ns.DEFAULTS = {
     coords = true,           -- Koordinaten (nur draussen; in Instanzen gibt es keine)
     difficulty = true,       -- in Instanzen: Schwierigkeit (z. B. "Heroisch")
     barClickMap = true,      -- Klick auf den Zonennamen oeffnet die Weltkarte
-    -- Knoepfe
-    buttons = "BAR",         -- "BAR" (rechts in der Leiste), "LEFT" oder "RIGHT" (senkrecht neben der Minimap)
-    buttonsMouseover = true, -- eigene Knoepfe nur, solange die Maus ueber Minimap/Leiste ist (Post bleibt sichtbar)
-    edgeMouseover = true,    -- Minimap-Knoepfe am Rand (Forever-Knopf, andere Addons) nur bei Maus darueber
+    -- Knoepfe (ab Version 2: senkrechte Knopfleiste neben der Karte)
+    strip = "LEFT",          -- Knopfleiste "LEFT"/"RIGHT" neben der Minimap oder "OFF" (Knoepfe am Rand bleiben, wo sie sind)
+    stripMouseover = true,   -- Knopfleiste nur, solange die Maus ueber Minimap/Leisten ist (Post/Einladungen bleiben sichtbar)
+    toolsInBar = false,      -- eigene Knoepfe (Post, Verfolgung, Kalender, Addon-Menue) oben in der Leiste statt seitlich
     hideBlizzard = true,     -- Blizzards Kopfzeile, Rahmen und Knoepfe ausblenden (Ersatz: Leiste und eigene Knoepfe)
     -- Komfort
     rightClickTracking = true, -- Rechtsklick auf die Minimap: Verfolgung (Kraeuter, Erze, Personen …)
@@ -96,4 +96,13 @@ end
 ---------------------------------------------------------------------------
 -- Gemeinsame Einstellungs-Verwaltung (ForeverCore): Profile je Charakter, Zuruecksetzen, Export/Import
 ---------------------------------------------------------------------------
-UI.RegisterSettings({ addon = ADDON_NAME, sv = "ForeverMinimapDB", defaults = ns.DEFAULTS, version = 1 })
+UI.RegisterSettings({ addon = ADDON_NAME, sv = "ForeverMinimapDB", defaults = ns.DEFAULTS, version = 2,
+    -- Version 2: statt "buttons" (Leiste/links/rechts) eine senkrechte Knopfleiste; eigene Knoepfe raus aus der Leiste
+    migrate = function(data, from)
+        if from < 2 then
+            data.strip = data.buttons == "RIGHT" and "RIGHT" or "LEFT"
+            data.stripMouseover = data.buttonsMouseover ~= false
+            data.toolsInBar = false
+            data.buttons, data.buttonsMouseover, data.edgeMouseover = nil, nil, nil
+        end
+    end })
