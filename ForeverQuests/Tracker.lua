@@ -1332,7 +1332,18 @@ do
     local hubUI = _G.ForeverHub and _G.ForeverHub.UI
     if hubUI and hubUI.On then
         hubUI.On("ForeverMinimap.Layout", function() if ns.ApplyLayout then ns.ApplyLayout() end end)
+        -- ForeverBars: Mikromenü unter der Karte angedockt bzw. gelöst
+        hubUI.On("ForeverBars.Layout", function() if ns.ApplyLayout then ns.ApplyLayout() end end)
     end
+end
+
+-- Mikromenü von ForeverBars, wenn es unter der Minimap angedockt ist (dann kommt der Tracker darunter)
+local function DockedMicroMenu()
+    local bars = _G.ForeverBarsDB and _G.ForeverBarsDB.bars
+    local micro = _G.ForeverBars_micro
+    if not (bars and bars.micro and bars.micro.enabled and bars.micro.dockMinimap) then return nil end
+    if not (micro and micro:IsShown() and micro:GetBottom()) then return nil end
+    return micro
 end
 
 local function MinimapAnchor()
@@ -1353,7 +1364,17 @@ function ns.ApplyLayout()
     if anchor then
         local k = map:GetEffectiveScale() / tracker:GetEffectiveScale()
         tracker:ClearAllPoints()
-        tracker:SetPoint("TOP", anchor, "BOTTOM", 0, -8 / k)
+        local offset = -8 / k
+        -- Angedocktes Mikromenü von ForeverBars: der Tracker kommt 4 px darunter. Er hängt trotzdem an der Karte
+        -- (nicht am Menü – das ist ein geschützter Rahmen; daran gehängt dürfte der Tracker im Kampf nicht mehr
+        -- ein-/ausgeblendet werden), der Abstand wird aus der Lage des Menüs berechnet
+        local micro = DockedMicroMenu()
+        if micro then
+            local trackerScale = tracker:GetEffectiveScale()
+            offset = (micro:GetBottom() * micro:GetEffectiveScale() - anchor:GetBottom() * anchor:GetEffectiveScale())
+                / trackerScale - 4 / k
+        end
+        tracker:SetPoint("TOP", anchor, "BOTTOM", 0, offset)
         tracker:SetSize((map:GetWidth() + 2) * k + 12, db.height)
         ns.UpdateVisibility()
         ns.RequestUpdate()

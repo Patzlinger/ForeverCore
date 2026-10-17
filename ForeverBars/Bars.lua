@@ -93,7 +93,7 @@ end
 -- (bündig zum ersten Knopf) und rechts die Haltungsleiste (bündig zum letzten Knopf), links daneben die
 -- Berufeleiste, unten rechts Menü und Taschen übereinander, oben mittig Erfahrung und Ruf.
 local EDGE = 4         -- Abstand zum Bildschirmrand
-local BAR_GAP = 1      -- Abstand zwischen aneinanderliegenden Leisten
+local BAR_GAP = 1.5    -- Abstand zwischen aneinanderliegenden Leisten (wie "Abstand" der Knöpfe)
 local SIDE_GAP = 24    -- Abstand von Berufe-/Verpflegungsleiste zu den Aktionsleisten (Platz für den Einklapp-Pfeil)
 local FRAME_SPACE = 4  -- Rand des Rahmens um eine Leiste (siehe UpdateBarFrame)
 
@@ -117,6 +117,10 @@ local function DefaultPosition(key)
     local smallRow = ACTION_SIZE * Scale("pet")                    -- Höhe der Begleiter-/Haltungsreihe
     local aboveSmall = stackTop + BAR_GAP + smallRow + BAR_GAP    -- darüber beginnen Leisten 6-8
     local microHeight = HolderHeight("micro", 40)
+    -- Mikromenü unter der Minimap angedockt: die Taschen sitzen allein unten rechts in der Ecke
+    if bars.micro.dockMinimap and C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("ForeverMinimap") then
+        microHeight = 1
+    end
     local xpHeight = HolderHeight("xp", 12)
     local positions = {
         bar1 = { width / 2, BarCenter(0) }, bar2 = { width / 2, BarCenter(1) }, bar3 = { width / 2, BarCenter(2) },
@@ -1709,11 +1713,6 @@ end
 -- Knöpfe in Reihen anordnen. Wachstumsrichtung: von links nach rechts bzw. rechts nach links,
 -- von oben nach unten bzw. unten nach oben (der erste Knopf sitzt in der Ecke, von der aus es wächst).
 local function LayoutButtons(def, cfg, holder)
-    -- Taschen am Chat angeheftet: eine Spalte, die nach oben wächst (Rucksack unten); die eigenen Einstellungen
-    -- für Reihen und Richtung bleiben gespeichert und gelten wieder, sobald das Häkchen aus ist
-    if def.kind == "bags" and ns.IsAttachedToChat(cfg) then
-        cfg = setmetatable({ perRow = 1, growY = "UP", growX = "RIGHT" }, { __index = cfg })
-    end
     local buttons = GetButtons(def, cfg)
     local size = def.kind == "bags" and SMALL_SIZE or ACTION_SIZE
     local wanted = def.bagButtons and #buttons or (cfg.buttons or def.count)
@@ -1945,6 +1944,26 @@ local function HolderRect(holder)
     return left * ratio, right * ratio, top * ratio, bottom * ratio
 end
 
+-- Mikromenü unter der Minimap (nur mit ForeverMinimap): direkt unter der Karte bzw. unter ihrer Leiste, wenn die
+-- unten liegt (wie der Tracker von ForeverQuests), so breit wie die Karte samt 1-px-Rahmen. Darunter hängt
+-- ForeverQuests den Tracker. Rückgabe: { anchor, scale, x, y } (x/y = Mitte in UIParent-Koordinaten) oder nil.
+local MICRO_DOCK_GAP = 4   -- Abstand unter der Karte (bzw. ihrer Leiste)
+local MICRO_DOCK_SNAP = 30 -- so nah (Mitte zu Mitte) rastet das gezogene Mikromenü wieder unter der Karte ein
+function ns.MicroDockTarget(holder)
+    if not (C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("ForeverMinimap")) then return nil end
+    local map = _G.Minimap
+    if not (holder and map and map:IsShown() and map:GetBottom() and holder:GetWidth() > 1) then return nil end
+    local anchor = map
+    local bar = _G.ForeverMinimapBar
+    if bar and bar:IsShown() and bar:GetBottom() and bar:GetBottom() < map:GetBottom() then anchor = bar end
+    local uiScale = UIParent:GetEffectiveScale()
+    local scale = (map:GetWidth() + 2) * map:GetEffectiveScale() / (holder:GetWidth() * uiScale)
+    local ratio = anchor:GetEffectiveScale() / uiScale
+    local centerX = anchor:GetCenter() * ratio
+    local centerY = anchor:GetBottom() * ratio - MICRO_DOCK_GAP - holder:GetHeight() * scale / 2
+    return { anchor = anchor, scale = scale, x = centerX, y = centerY }
+end
+
 -- x/y = gewünschte Mitte der gezogenen Leiste; Rückgabe: ggf. eingerastete Mitte
 local function SnapPosition(key, x, y)
     if not ns.db.snap or IsShiftKeyDown() then return x, y end
@@ -2037,7 +2056,19 @@ local function UpdateMover(def, holder)
                 local holder = holders[frame.key]
                 if not holder or InCombatLockdown() then return end
                 local x, y = CursorPosition()
-                x, y = SnapPosition(frame.key, x + frame.offsetX, y + frame.offsetY)
+                x, y = x + frame.offsetX, y + frame.offsetY
+                -- Mikromenü: nahe der Stelle unter der Minimap rastet es dort wieder ein (Shift = frei schieben)
+                local dock = frame.key == "micro" and not IsShiftKeyDown() and ns.MicroDockTarget(holder)
+                if dock and math.abs(x - dock.x) < MICRO_DOCK_SNAP and math.abs(y - dock.y) < MICRO_DOCK_SNAP then
+                    frame.dock = true
+                    holder:SetScale(dock.scale)
+                    holder:ClearAllPoints()
+                    holder:SetPoint("TOP", dock.anchor, "BOTTOM", 0, -MICRO_DOCK_GAP / dock.scale)
+                    return
+                end
+                frame.dock = false
+                if frame.key == "micro" then holder:SetScale(math.max(0.3, (ns.db.bars.micro.scale or 100) / 100)) end
+                x, y = SnapPosition(frame.key, x, y)
                 frame.dropX, frame.dropY = x, y
                 local scale = holder:GetScale()
                 holder:ClearAllPoints()
@@ -2060,10 +2091,13 @@ local function UpdateMover(def, holder)
                 x, y = cursorX + self.offsetX, cursorY + self.offsetY
             end
             self.dropX, self.dropY = nil, nil
-            -- Von Hand verschoben: nicht mehr am Chatfenster angeheftet
-            if ns.db.bars[self.key].attachChat then ns.db.bars[self.key].attachChat = "OFF" end
+            if self.key == "micro" then
+                -- Unter der Minimap losgelassen: wieder angedockt; sonst frei an der neuen Stelle
+                ns.db.bars.micro.dockMinimap = self.dock and true or false
+            end
             -- x/y ist die Mitte; gespeichert wird der Ankerpunkt der Leiste
-            ns.SetBarCenter(self.key, x, y)
+            if not (self.key == "micro" and self.dock) then ns.SetBarCenter(self.key, x, y) end
+            self.dock = nil
             ns.RequestLayout()
             if ns.RefreshOptions then ns.RefreshOptions() end
         end)
@@ -2086,11 +2120,6 @@ end
 
 -- Pfeil an der Taschenleiste zum Aus- und Einklappen der Taschen (eingeklappt bleibt der Rucksack sichtbar).
 -- Er sitzt an dem Ende, in das die Taschen wachsen; im Kampf wird erst danach umgebaut.
--- Am Chatfenster angeheftet? (Häkchen bei Mikromenü und Taschen; Werte "ABOVE"/"BELOW" = ja, "OFF"/nil = nein)
-function ns.IsAttachedToChat(cfg)
-    return cfg.attachChat ~= nil and cfg.attachChat ~= "OFF" and cfg.attachChat ~= false
-end
-
 function ns.UpdateBagToggle(def, cfg, holder)
     local toggle = holder.fbBagToggle
     if not cfg.collapsible then
@@ -2127,14 +2156,6 @@ function ns.UpdateBagToggle(def, cfg, holder)
     local toLeft = cfg.growX == "LEFT"
     local expanding = cfg.bagsCollapsed
     toggle:ClearAllPoints()
-    if ns.IsAttachedToChat(cfg) then
-        -- Am Chat angeheftet: Taschen als Spalte nach oben, der Pfeil sitzt oben darüber
-        toggle:SetSize(SMALL_SIZE, 12)
-        toggle:SetPoint("BOTTOM", holder, "TOP", 0, 2)
-        toggle.arrow:SetRotation(expanding and math.pi / 2 or -math.pi / 2) -- nach oben bzw. unten
-        toggle:Show()
-        return
-    end
     toggle:SetSize(12, SMALL_SIZE)
     if toLeft then
         toggle:SetPoint("RIGHT", holder, "LEFT", -2, 0)
@@ -2252,26 +2273,15 @@ function ns.ApplyLayout()
         -- Die Leiste soll genau auf der Ecke des sichtbaren Chat-Hintergrunds sitzen (er ist etwas größer als das
         -- Textfeld). An den Hintergrund selbst darf sie nicht geheftet werden (geschützte Leisten dürfen nur an
         -- Fenster, nicht an Texturen); deshalb am Chatfenster mit dem gemessenen Überstand des Hintergrunds.
-        local chat = (def.key == "micro" or def.kind == "bags") and ns.IsAttachedToChat(cfg) and ChatFrame1
-        if chat then
-            local background = chat.Background or _G.ChatFrame1Background
-            local ratio = chat:GetEffectiveScale() / holder:GetEffectiveScale()
-            local function Overhang(edge, fallback)
-                local outer = background and background["Get" .. edge](background)
-                local inner = chat["Get" .. edge](chat)
-                if not outer or not inner then return fallback / scale end
-                return (outer - inner) * ratio
-            end
-            if def.key == "micro" then
-                -- Mikromenü über dem Chatfenster (oberhalb der Chat-Reiter), linksbündig
-                holder:SetPoint("BOTTOMLEFT", chat, "TOPLEFT", Overhang("Left", -2), Overhang("Top", 0) + 24 / scale)
-            else
-                -- Taschen über dem Chatfenster, bündig mit der rechten Ecke; sie klappen nach oben aus
-                holder:SetPoint("BOTTOMRIGHT", chat, "TOPRIGHT", Overhang("Right", 2), Overhang("Top", 0) + 24 / scale)
-            end
+        -- Mikromenü unter der Minimap angedockt (mit ForeverMinimap): so breit wie die Karte samt Rahmen
+        local dock = def.key == "micro" and cfg.dockMinimap and ns.MicroDockTarget(holder)
+        if dock then
+            holder:SetScale(dock.scale)
+            holder:SetPoint("TOP", dock.anchor, "BOTTOM", 0, -MICRO_DOCK_GAP / dock.scale)
         else
             holder:SetPoint(cfg.point or "CENTER", UIParent, "BOTTOMLEFT", x / scale, y / scale)
         end
+        if def.key == "micro" then ns.microDocked = dock and true or false end
         if def.kind == "bags" then ns.UpdateBagToggle(def, cfg, holder) end
         -- Deckkraft; beim Einblenden per Maus übernimmt das die Überblendung (siehe UpdateFading)
         if not cfg.fadeMouseover or ns.unlocked or ns.testMode then
@@ -2290,6 +2300,9 @@ function ns.ApplyLayout()
     -- Flächen zum Hineinziehen (einmalig anlegen, sobald die Halter da sind)
     CreateCatcher("food")
     CreateCatcher("prof")
+    -- ForeverQuests hängt den Tracker unter das angedockte Mikromenü (siehe dort MinimapAnchor)
+    local hubUI = _G.ForeverHub and _G.ForeverHub.UI
+    if hubUI and hubUI.Fire then hubUI.Fire("ForeverBars.Layout") end
 end
 
 -- Mehrere Änderungen kurz hintereinander werden zusammengefasst; im Kampf erst danach
@@ -2305,6 +2318,14 @@ function ns.RequestLayout()
         layoutQueued = false
         ns.ApplyLayout()
     end)
+end
+
+-- ForeverMinimap meldet Änderungen an Karte/Leiste (Größe, Leiste oben/unten): angedocktes Mikromenü neu setzen
+do
+    local hubUI = _G.ForeverHub and _G.ForeverHub.UI
+    if hubUI and hubUI.On then
+        hubUI.On("ForeverMinimap.Layout", function() if ns.db and ns.db.bars.micro.dockMinimap then ns.RequestLayout() end end)
+    end
 end
 
 ---------------------------------------------------------------------------

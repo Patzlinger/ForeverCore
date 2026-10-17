@@ -394,6 +394,12 @@ Damit alle Einstellungsfenster gleich aussehen, gelten diese Maße. Quelle: `For
   Fenster; vorheriges Profil in `ForeverHubDB.detailsPrevious`, zweiter Klick wechselt zurück. Details-Ordner nie ändern
 - **ForeverQuests ↔ ForeverMinimap**: `followMinimap` (Standard an) hängt den Tracker unter die Minimap/Leiste, gleich breit;
   ForeverMinimap meldet Änderungen per `UI.Fire("ForeverMinimap.Layout")` (Hub-Nachrichten `UI.On`/`UI.Fire`)
+- **ForeverBars ↔ ForeverMinimap ↔ ForeverQuests**: das Mikromenü (`ForeverBars_micro`) dockt standardmäßig
+  (`bars.micro.dockMinimap`) unter der Karte bzw. unter `ForeverMinimapBar`, wenn die unten liegt – per Skalierung
+  so breit wie die Karte samt Rahmen; weggezogen ist es frei, nahe der Stelle losgelassen rastet es wieder ein.
+  ForeverBars meldet jede Anordnung per `UI.Fire("ForeverBars.Layout")`; ForeverQuests setzt den Tracker dann 4 px
+  unter das Menü, hängt ihn aber weiter an Karte/Leiste (das Menü ist geschützt – daran gehängt dürfte der Tracker
+  im Kampf nicht mehr ein-/ausgeblendet werden). Anheften am Chatfenster gibt es nicht mehr
 - **ForeverBars ↔ Bartender4**: läuft Bartender4, lässt ForeverBars die Leisten in Ruhe
 - **ForeverBars ↔ Bearbeitungsmodus**: öffnet der Spieler Blizzards Bearbeitungsmodus, entsperrt ForeverBars seine
   Leisten (Blizzard kann sie nicht greifen) und sperrt sie beim Schließen wieder. Laut flowfy lösen Hooks/Callbacks

@@ -88,7 +88,14 @@ local function CreateCheckbox(parent, label, x, y, getValue, setValue)
     return AddSearch(label, checkbox, parent)
 end
 
-local function CreateSlider(parent, label, x, y, width, getMin, getMax, getValue, setValue)
+-- step (optional): Schrittweite, z. B. 0.5 für den Abstand; sonst ganze Zahlen
+local function CreateSlider(parent, label, x, y, width, getMin, getMax, getValue, setValue, step)
+    step = step or 1
+    local function Round(value) return math.floor(value / step + 0.5) * step end
+    local function Format(value)
+        value = Round(value)
+        return value == math.floor(value) and tostring(math.floor(value)) or string.format("%.1f", value)
+    end
     local holder = CreateFrame("Frame", nil, parent)
     holder:SetPoint("TOPLEFT", x, y)
     holder:SetSize(width + 70, 40)
@@ -100,20 +107,21 @@ local function CreateSlider(parent, label, x, y, width, getMin, getMax, getValue
 
     local slider = ns.Style.CreateSlider(holder, width)
     slider:SetPoint("TOPLEFT", 0, -18)
+    slider:SetValueStep(step)
 
     local box = ns.Style.CreateEditBox(holder, 50, 20)
     box:SetPoint("LEFT", slider, "RIGHT", 12, 0)
     box:SetJustifyH("CENTER")
-    box:SetNumeric(true)
+    box:SetNumeric(step == 1) -- Kommazahlen brauchen Punkt/Komma
 
     slider:SetScript("OnValueChanged", function(_, value, userInput)
-        value = math.floor(value + 0.5)
-        box:SetText(value)
-        if userInput then setValue(value) end
+        box:SetText(Format(value))
+        if userInput then setValue(Round(value)) end
     end)
     box:SetScript("OnEnterPressed", function(self)
-        local value = tonumber(self:GetText())
-        if value then setValue(math.min(getMax(), math.max(getMin(), math.floor(value)))) end
+        local text = (self:GetText() or ""):gsub(",", ".")
+        local value = tonumber(text)
+        if value then setValue(math.min(getMax(), math.max(getMin(), Round(value)))) end
         self:ClearFocus()
         ns.RefreshOptions()
     end)
@@ -124,8 +132,9 @@ local function CreateSlider(parent, label, x, y, width, getMin, getMax, getValue
 
     holder.Refresh = function()
         slider:SetMinMaxValues(getMin(), getMax())
-        slider:SetValue(getValue())
-        box:SetText(math.floor(getValue() + 0.5))
+        local value = getValue() or getMin()
+        slider:SetValue(value)
+        box:SetText(Format(value))
     end
     table.insert(controls, holder)
     return AddSearch(label, holder, parent)
@@ -320,8 +329,8 @@ local function CreateOptions()
         function(value) SelectedConfig().perRow = value; Changed() end)
     options.spacingSlider = CreateSlider(layoutPage, L("OPT_SPACING"), 14, -162, 180,
         function() return 0 end, function() return 20 end,
-        function() return SelectedConfig().spacing or 4 end,
-        function(value) SelectedConfig().spacing = value; Changed() end)
+        function() return SelectedConfig().spacing or 1.5 end,
+        function(value) SelectedConfig().spacing = value; Changed() end, 0.5)
     options.scaleSlider = CreateSlider(layoutPage, L("OPT_SCALE"), 14, -206, 180,
         function() return 50 end, function() return 200 end,
         function() return SelectedConfig().scale or 100 end,
@@ -360,12 +369,6 @@ local function CreateOptions()
     options.backpackCheck = CreateCheckbox(layoutPage, L("OPT_BAGS_COLLAPSIBLE"), RIGHT_X, -192,
         function() return SelectedConfig().collapsible end,
         function(value) SelectedConfig().collapsible = value; Changed() end)
-    -- Nur Mikromenü: am Chatfenster anheften (an der Stelle der Wachstumsrichtung, die es dort nicht gibt)
-    -- Mikromenü und Taschen: am Chatfenster anheften (links unter "Position Y"; Mikromenü oben links,
-    -- Taschen oben rechts über dem Chat und nach oben ausklappend)
-    options.chatCheck = CreateCheckbox(layoutPage, L("OPT_ATTACH_CHAT"), 14, -392,
-        function() return ns.IsAttachedToChat(SelectedConfig()) end,
-        function(value) SelectedConfig().attachChat = value and "ABOVE" or "OFF"; Changed() end)
     -- Nur Mikromenü: schwarz-weiß (goldener Rand beim Darüberfahren bleibt)
     -- Nur Mikromenü: eigene flache Text-Knöpfe statt Blizzards Knöpfe
     options.microOwnCheck = CreateCheckbox(layoutPage, L("OPT_MICRO_OWN"), RIGHT_X, -146,
@@ -443,7 +446,7 @@ local function CreateOptions()
         { x = 14, rows = {
             { options.buttonsSlider, 44 }, { options.perRowSlider, 44 }, { options.spacingSlider, 44 },
             { options.scaleSlider, 44 }, { options.alphaSlider, 44 }, { options.posXSlider, 44 },
-            { options.posYSlider, 50 }, { options.chatCheck, 24 },
+            { options.posYSlider, 50 },
         } },
         { x = RIGHT_X, rows = {
             { options.growXSelector, 48 }, { options.growYSelector, 48 }, { options.flyoutSelector, 48 },
@@ -1050,7 +1053,6 @@ function ns.RefreshOptions()
     options.perRowSlider:SetShown(hasButtons)
     options.keyringCheck:SetShown(def.kind == "bags" and ns.HasKeyring())
     options.foodResetButton:SetShown(def.kind == "food" or def.kind == "prof")
-    options.chatCheck:SetShown(def.key == "micro" or def.kind == "bags")
     options.microOwnCheck:SetShown(def.key == "micro")
     options.microGreyCheck:SetShown(def.key == "micro" and not SelectedConfig().microOwn)
     -- Spalten im Reiter "Anordnung" lückenlos von oben nach unten anordnen

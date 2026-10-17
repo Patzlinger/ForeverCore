@@ -69,7 +69,7 @@ ns.BAR_DEFS = {
 -- hide* = in bestimmten Situationen ausblenden; useCustom/custom = eigene Makro-Bedingung
 local function BarDefaults(enabled, perRow)
     -- point: Ankerpunkt, auf den sich x/y beziehen (siehe Bars.lua)
-    return { enabled = enabled, buttons = 12, perRow = perRow or 12, scale = 100, spacing = 1, point = "CENTER",
+    return { enabled = enabled, buttons = 12, perRow = perRow or 12, scale = 105, spacing = 1.5, point = "CENTER",
              profRows = true, -- nur Berufeleiste: Berufe oben, Fertigkeiten unten
              alpha = 100, visibility = "ALWAYS", growX = "RIGHT", growY = "DOWN", flyout = "UP",
              onlyBackpack = false, keyring = false,
@@ -102,7 +102,7 @@ ns.defaults = {
         xp = BarDefaults(true), rep = BarDefaults(true), queue = BarDefaults(true),
     },
     -- (Profile verwaltet seit 0.41b ForeverCore – je Charakter, siehe RegisterSettings am Ende dieser Datei)
-    layoutVersion = 15,      -- Stand der Standard-Anordnung (siehe MigrateLayout)
+    layoutVersion = 16,    -- Stand der Standard-Anordnung (siehe MigrateLayout)
     skin = "FLAT",           -- Aussehen der Knöpfe (ns.SKINS in Bars.lua)
     hoverAlpha = 15,         -- Stärke des Hover-Leuchtens über den Knöpfen (%)
     procGlow = "FOREVER",    -- Leuchten bei Procs: "FOREVER" (goldener Rahmen), "BLIZZARD", "OFF"
@@ -131,33 +131,34 @@ ns.defaults.bars.stance.buttons = 10 -- Haltungsleiste zeigt immer so viele Knö
 -- Standard-Anordnung (Positionen in Bars.lua, DefaultPosition): Begleiter- und Haltungsleiste halb so groß,
 -- links bzw. rechts bündig über den Aktionsleisten; Berufeleiste mit Rahmen links daneben;
 -- Menü und Taschen unten rechts; Erfahrung und Ruf oben mittig
-ns.defaults.bars.pet.scale = 56
+ns.defaults.bars.pet.scale = 59
 ns.defaults.bars.pet.point = "BOTTOMLEFT"
-ns.defaults.bars.stance.scale = 56
+ns.defaults.bars.stance.scale = 59
 ns.defaults.bars.stance.point = "BOTTOMRIGHT"
 ns.defaults.bars.stance.growX = "LEFT" -- erster Knopf rechts, damit die Leiste rechtsbündig wächst
 ns.defaults.bars.prof.point = "BOTTOMRIGHT"
 ns.defaults.bars.prof.frame = true
-ns.defaults.bars.prof.scale = 80
+ns.defaults.bars.prof.scale = 84
 -- Verpflegungsleiste: gespiegelt zur Berufeleiste rechts neben den Aktionsleisten, gleiche Größe, mit Rahmen
 ns.defaults.bars.food.buttons = 12 -- 12 Plätze, 4 breit und 3 hoch, frei belegbar
 ns.defaults.bars.food.perRow = 4
 ns.defaults.bars.food.point = "BOTTOMLEFT"
 ns.defaults.bars.food.frame = true
-ns.defaults.bars.food.scale = 80
+ns.defaults.bars.food.scale = 84
 ns.defaults.bars.prof.growX = "LEFT"
 ns.defaults.bars.micro.point = "BOTTOMRIGHT"
-ns.defaults.bars.micro.scale = 100  -- eigene flache Text-Knöpfe (18 hoch) statt Blizzards Mikromenü
+ns.defaults.bars.micro.scale = 105  -- eigene flache Knöpfe statt Blizzards Mikromenü (angedockt: so breit wie die Karte)
 ns.defaults.bars.micro.microOwn = true
+-- Mit ForeverMinimap: unter der Karte und über dem Questtracker angedockt (zieht man es weg, ist es frei;
+-- dort losgelassen rastet es wieder ein)
+ns.defaults.bars.micro.dockMinimap = true
 ns.defaults.bars.micro.microGrey = true -- nur für Blizzards Mikromenü (wenn die eigenen Knöpfe aus sind)
-ns.defaults.bars.bags.scale = 76   -- Rucksack etwas größer als die Mikromenü-Knöpfe, direkt darüber
+ns.defaults.bars.bags.scale = 80   -- Rucksack etwas größer als die Mikromenü-Knöpfe
 ns.defaults.bars.micro.spacing = 0 -- Mikromenü-Knöpfe ohne Abstand
 ns.defaults.bars.bags.point = "BOTTOMRIGHT"
 ns.defaults.bars.bags.growX = "LEFT"
 ns.defaults.bars.bags.collapsible = true   -- Pfeil zum Aus-/Einklappen der Taschen
 ns.defaults.bars.bags.bagsCollapsed = true -- eingeklappt: nur der Rucksack
-ns.defaults.bars.micro.attachChat = "OFF"  -- am Chatfenster angeheftet: "OFF" oder "ABOVE" (Häkchen im Menü)
-ns.defaults.bars.bags.attachChat = "OFF"
 ns.defaults.bars.prof.buttons = 12 -- 12 Plätze, 6 breit und 2 hoch, frei belegbar
 ns.defaults.bars.prof.perRow = 6
 -- Berufe und Verpflegung: belegte Plätze, automatisch eingetragene, herausgezogene; Einklapp-Pfeil
@@ -168,7 +169,7 @@ for _, key in ipairs({ "prof", "food" }) do
 end
 -- Warteschlangen-Auge: standardmäßig aus (dann nicht zu sehen), eingeschaltet halb so groß
 ns.defaults.bars.queue.enabled = false
-ns.defaults.bars.queue.scale = 50
+ns.defaults.bars.queue.scale = 53
 ns.defaults.bars.xp.point = "TOP"
 ns.defaults.bars.rep.point = "TOP"
 -- Leiste 1 macht in Fahrzeugen der Blizzard-Fahrzeugleiste Platz; die Begleiterleiste nur mit Begleiter
@@ -213,7 +214,11 @@ ns.FillDefaults = FillDefaults
 --  13 (0.41b+): Taschenleiste 20 % größer (76 %)
 --  14 (0.41b+): im Standardprofil nichts am Chat angeheftet (Anheften nur per Häkchen)
 --  15 (0.41b+): Warteschlangen-Auge aus und halb so groß (50 %)
-local LAYOUT_VERSION = 15
+--  16 (0.44b+): alles 5 % größer, Abstand 1,5, Mikromenü unter der Minimap angedockt (Anheften am Chat entfällt),
+--               Positionen der Standard-Anordnung neu berechnet
+local LAYOUT_VERSION = 16
+-- Standardgrößen vor 16 (nur Leisten, die noch darauf stehen, wachsen mit)
+local OLD_SCALES = { pet = 56, stance = 56, prof = 80, food = 80, bags = 76, queue = 50 }
 local STANDARD_LAYOUT_BARS = { "bar1", "bar2", "bar3", "bar6", "bar7", "bar8", "pet", "stance", "prof", "food",
                                "micro", "bags", "xp", "rep", "vehicle" }
 function ns.MigrateLayout(db)
@@ -287,16 +292,27 @@ function ns.MigrateLayout(db)
                     end
                 end
             end
+            if version < 16 then
+                for key, bar in pairs(target.bars) do
+                    local default = ns.defaults.bars[key]
+                    if type(bar) == "table" and default then
+                        if bar.scale == nil or bar.scale == (OLD_SCALES[key] or 100) then bar.scale = default.scale end
+                        if key ~= "micro" and (bar.spacing == nil or bar.spacing == 1) then bar.spacing = default.spacing end
+                        bar.attachChat = nil
+                    end
+                end
+                if target.bars.micro then target.bars.micro.dockMinimap = true end
+                for _, key in ipairs(STANDARD_LAYOUT_BARS) do
+                    local bar = target.bars[key]
+                    if bar then bar.x, bar.y = nil, nil end
+                end
+            end
             if version < 15 and target.bars.queue then
                 local queue = target.bars.queue
                 queue.enabled = false
                 if queue.scale == nil or queue.scale == 100 then queue.scale = ns.defaults.bars.queue.scale end
             end
-            if version < 14 then
-                for _, key in ipairs({ "micro", "bags" }) do
-                    if target.bars[key] then target.bars[key].attachChat = "OFF" end
-                end
-            end
+            -- (14: Anheften am Chat ausgeschaltet – entfällt seit 16 ganz, siehe oben)
             if version < 13 and target.bars.bags then
                 local bags = target.bars.bags
                 if bags.scale == nil or bags.scale == 63 or bags.scale == 80 or bags.scale == 100 then
