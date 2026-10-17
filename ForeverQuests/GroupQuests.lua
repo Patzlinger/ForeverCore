@@ -39,11 +39,13 @@ local function Send(message)
     end
 end
 
--- Name ohne Realm (Forever: "Vorname Nachname-Realm" -> "Vorname Nachname")
+-- Einheitlicher Name: nur der Vorname. In Forever kommen Namen verschieden an – UnitName("player") liefert
+-- "Vorname", Addon-Nachrichten "Vorname Nachname-Realm". Ohne Angleichen stand man selbst doppelt in der Liste
+-- (einmal als "Du", einmal mit vollem Namen). Der Vorname passt auch zu UnitClass(name) bei Gruppenmitgliedern.
 local function ShortName(name)
-    if not name then return nil end
-    if Ambiguate then return Ambiguate(name, "short") end
-    return (name:match("^[^-]+")) or name
+    if not name or issecret(name) then return nil end
+    if Ambiguate then name = Ambiguate(name, "short") end
+    return name:match("^[^%s%-]+") or name
 end
 
 local function MyName() return ShortName(UnitName("player")) end

@@ -1176,12 +1176,12 @@ local function RenderGroupView(y, index, alpha, contentWidth, nameX, nameWidth, 
                 questItem = { link = itemLink, icon = itemIcon, logIndex = logIndex }
             end
         end
+        -- Titelleiste: "Gemeinsam" mit Anzahl der Teilnehmer (Klick klappt ein/aus, Rechtsklick: nicht mehr gemeinsam)
         index = index + 1
-        y = AddLine(index, y + 5, nameX, nameWidth, entry.data.title, fonts.header, accent[1], accent[2], accent[3], {
+        y = AddLine(index, y + 5, nameX, nameWidth, ns.L("GQ_TAG"), fonts.header, accent[1], accent[2], accent[3], {
             groupKey = groupKey,
             arrow = not collapsed,
-            questItem = questItem,
-            suffix = "|cff8a8a8a" .. ns.L("GQ_TAG") .. " · " .. #entry.members .. "|r",
+            suffix = "|cff8a8a8a" .. #entry.members .. "|r",
         })
         lines[index].groupQuestID = questID
         y = y + 4
@@ -1191,6 +1191,39 @@ local function RenderGroupView(y, index, alpha, contentWidth, nameX, nameWidth, 
         box.accent:Show()
         y = y + 3
         if not collapsed then
+            -- Questzeile wie in der normalen Liste: Name in Schwierigkeitsfarbe mit Stufe, Questtyp, "(Fertig)",
+            -- Truhe, Questgegenstand und Quest-ID; Maus darüber = Quest-Tooltip, Klick = Questlog, Rechtsklick = Menü
+            local info = logIndex and C_QuestLog.GetInfo(logIndex)
+            local isComplete = logIndex and C_QuestLog.IsComplete(questID)
+            local r, g, b = 1, 1, 1
+            if info and info.level and LevelColor() then
+                local color = LevelColor()(info.level)
+                r, g, b = color.r, color.g, color.b
+            end
+            local name = (info and info.title) or entry.data.title
+            if info and info.level and info.level > 0 then name = name .. " (" .. info.level .. ")" end
+            if logIndex and ns.db.showQuestType then
+                local typeText = GetQuestTypeText(questID, nil)
+                if typeText ~= "" then name = name .. " |cff88ccff" .. typeText .. "|r" end
+            end
+            if isComplete then name = name .. " |cff00ff00" .. ns.L("COMPLETE_TAG") .. "|r" end
+            local rewardQuality
+            if logIndex and ns.db.rewardHighlight > 0 then
+                local quality = GetBestRewardQuality(questID)
+                if quality >= ns.db.rewardHighlight then rewardQuality = quality end
+            end
+            name = name .. "  |cff6a6a6a#" .. questID .. "|r" -- Quest-ID (zum Nachschlagen/Abgleichen)
+            index = index + 1
+            y = AddLine(index, y + 2, nameX, nameWidth, name, fonts.quest, r, g, b, {
+                questID = logIndex and questID or nil,
+                reward = rewardQuality,
+                questItem = questItem,
+            })
+            if logIndex then CheckProgress(questID, C_QuestLog.GetQuestObjectives(questID) or {}, isComplete) end
+            if isComplete then
+                index = index + 1
+                y = AddLine(index, y, objectiveX, objectiveWidth, "- " .. ns.L("READY_TO_TURN_IN"), fonts.objective, 0, 1, 0)
+            end
             -- Stand je Teilnehmer in Einzelteile zerlegen ("3/8,1/1" -> { "3/8", "1/1" })
             for _, member in ipairs(entry.members) do
                 member.parts = {}

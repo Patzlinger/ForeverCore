@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Improved
+- ForeverQuests, quest together: the "Together" box now shows the quest just like the rest of the tracker (level color, quest type, ready to turn in, reward chest, quest item, tooltip on hover) plus its quest ID.
+
+### Fixed
+- ForeverQuests, quest together: you no longer show up twice (as "You" and with your full name), so the member count is right.
+
 ## 0.44b – October 18, 2026
 
 ### Four new addons
