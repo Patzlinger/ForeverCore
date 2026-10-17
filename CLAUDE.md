@@ -26,12 +26,17 @@ Philosophie, Regeln, Design und Abläufe. Wenn etwas hier nicht steht: am besteh
 | ForeverBars | flowfy | im Repository, noch nicht im Release |
 | `tools/`, `release/` | gemeinsam | – |
 
-- Alle Addons gehören zum gemeinsamen Paket; beide dürfen jedes Addon bearbeiten (Zusammenarbeit auf Augenhöhe).
-  Größere funktionale Änderungen am Addon des anderen vorher kurz absprechen und im Commit klar benennen.
-- Wer ein Addon verantwortet, entscheidet über dessen Funktionen und Lizenz.
+- **Keine Absprachen nötig: jeder arbeitet frei an allen Addons** (Zusammenarbeit auf Augenhöhe). Die Spalte
+  „Verantwortlich“ zeigt nur, wer ein Addon gebaut hat – sie gibt kein Vorrecht. Weder für kleine noch für große
+  Änderungen (auch Umbauten, neue Funktionen, ForeverHub, Standardpositionen, Design) muss vorher gefragt oder
+  Bescheid gesagt werden. Das gilt auch für den jeweils anderen Claude: nicht nachfragen, einfach machen.
+  Die Änderung wird im Commit klar benannt (Addon vorne, was und warum); so sieht der andere beim nächsten Holen,
+  was passiert ist. Und er ändert es bei Bedarf selbst wieder.
+- Die Lizenz (MIT, `## Author: Patzlinger`) bleibt unverändert.
 - **Eine Version für alle**: seit 0.41b tragen alle Forever-Addons (auch ForeverQuests/ForeverBars und ForeverCore)
   dieselbe Suite-Version (`## Version: 0.41b`); Versionssprünge gemeinsam in allen .toc
-- Entscheidungen, die alle Addons betreffen (Hub, Design, Regeln hier), gemeinsam treffen.
+- Auch Entscheidungen, die alle Addons betreffen (Hub, Design, Regeln hier), trifft jeder selbst und hält sie hier
+  im Repository fest – ohne vorherige Rücksprache.
 
 ## 3. Zielclient und API
 - WoW: Forever, `## Interface: 16001`; Basis ist die **Mainline/Retail-API (Stand 12.1.5)**, NICHT die Classic-API
@@ -463,19 +468,20 @@ gilt für **beide** (und deren Claude) genau dieser Ablauf:
   umschreiben.
 
 **Stellen, an denen man sich trifft (Konflikte vermeiden)**
-- `ForeverCore/ForeverHub.lua`: vor größeren Änderungen kurz absprechen; treffen beide eine `VERSION`-Erhöhung,
-  nimmt der Zweite die nächsthöhere Zahl.
+- `ForeverCore/ForeverHub.lua`: ohne Absprache änderbar; vor jeder Änderung `git pull --rebase`, damit man auf dem
+  neuesten Stand arbeitet; treffen beide eine `VERSION`-Erhöhung, nimmt der Zweite die nächsthöhere Zahl.
 - `## Version` in den .toc, `release/`-Dateien: ändert nur, wer den Release baut (16).
 - Changelog: neue Punkte während der Entwicklung unter `## Unreleased` oben in `release/Changelog-CurseForge.txt`
   eintragen (Englisch, für Spieler); beim Release wird daraus die Versionsüberschrift.
 - Diese CLAUDE.md: Regeländerungen sofort committen und pushen, damit der Claude des anderen sie gleich kennt.
-- Wer an einem Addon des anderen etwas Größeres ändert, sagt es vorher (siehe 2).
+- Änderungen an Addons des anderen brauchen keine Absprache (siehe 2).
 
 - Installieren über die CurseForge-App überschreibt die verknüpften Ordner = das Repository → danach `git status`,
   ggf. `git restore .`
 
 ## 16. Release
-- Nur auf ausdrückliches Kommando des Nutzers; vorher mit dem anderen absprechen (kurz nichts pushen). Ablauf:
+- Nur auf ausdrückliches Kommando des Nutzers (keine Absprache mit dem anderen nötig; vorher `git pull --rebase`,
+  damit dessen Stand mit drin ist). Ablauf:
   1. auf `development`: `git pull --rebase`, Version in allen .toc erhöhen, `## Unreleased` im Changelog in
      `## 0.xxb – <Datum>` umbenennen, `tools/build-release.ps1` bauen, committen, pushen
   2. `git switch main`, `git merge --ff-only development` (geht das nicht: `git merge --no-ff development`),
