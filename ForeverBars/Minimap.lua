@@ -16,7 +16,7 @@ function ns.CreateMinimapButton()
     if button or not Minimap then return end
     button = ForeverHub.UI.MinimapButton({
         name = "ForeverBarsMinimapButton",
-        -- Eigenes Symbol: Tastatur-Taste mit goldenem W (Media\KeyIcon.tga, 64 x 64)
+        -- Eigenes Symbol: Tastatur-Taste mit goldenem "FB" (Media\KeyIcon.tga, 64 x 64)
         icon = "Interface\\AddOns\\ForeverBars\\Media\\KeyIcon",
         texCoord = { 0, 1, 0, 1 },
         title = ns.L("ADDON_NAME"),
