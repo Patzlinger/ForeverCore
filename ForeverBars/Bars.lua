@@ -356,7 +356,12 @@ local function UpdateButtonLook(button)
         hotkey:SetSize(width - 4, db.fontSize + 4)
         hotkey:SetWordWrap(false)
         local text = hotkey:GetText()
-        if text and text ~= "" and text ~= RANGE_INDICATOR then
+        if text == RANGE_INDICATOR then
+            -- Knopf ohne Tastenbelegung: Blizzard zeigt hier den Reichweiten-Punkt "●" (rot = außer Reichweite).
+            -- Viele Schriften haben das Zeichen nicht (es erschien ein leeres Kästchen) – dafür Arial Narrow
+            local _, fontSize, flags = hotkey:GetFont()
+            hotkey:SetFont("Fonts\\ARIALN.TTF", fontSize or db.fontSize, flags or "OUTLINE")
+        elseif text and text ~= "" then
             local short = ns.ShortKey(text)
             if short ~= text then hotkey:SetText(short) end
         end
