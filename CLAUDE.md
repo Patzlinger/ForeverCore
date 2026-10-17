@@ -20,6 +20,7 @@ Philosophie, Regeln, Design und Abläufe. Wenn etwas hier nicht steht: am besteh
 | ForeverFrames, ForeverUnits, ForeverCast, ForeverLoot, ForeverXP, ForeverBuffs, ForeverVendor | Patzlinger | im Release |
 | ForeverSpellbook | Patzlinger | im Release (seit 0.32b) |
 | ForeverChat | Patzlinger | im Release (seit 0.32b) |
+| ForeverMinimap | Patzlinger | Prototyp (seit 2026-10-17) |
 | ForeverCore (Hauptaddon: `ForeverHub.lua` = Hub und Stil-Bibliothek; Abhängigkeit aller Addons) | gemeinsam | im Release (seit 0.41b) |
 | ForeverQuests | flowfy | im Repository, noch nicht im Release |
 | ForeverBars | flowfy | im Repository, noch nicht im Release |
@@ -332,6 +333,7 @@ Damit alle Einstellungsfenster gleich aussehen, gelten diese Maße. Quelle: `For
   | /fvendor, /forevervendor | ForeverVendor |
   | /fsb, /fspellbook, /foreverspellbook | ForeverSpellbook |
   | /fchat, /foreverchat | ForeverChat |
+  | /fmm, /foreverminimap | ForeverMinimap |
 - Tastenkürzel über `Bindings.xml` + `BINDING_HEADER_…`/`BINDING_NAME_…` (Bereich "AddOns")
 
 ## 12. Code-Stil
@@ -377,6 +379,15 @@ Damit alle Einstellungsfenster gleich aussehen, gelten diese Maße. Quelle: `For
   (`LEARNED_SPELL_IN_TAB`/`…_IN_SKILL_LINE`, 0,5 s später) auf den Aktionsknöpfen den niedrigeren Rang genau dieses
   Zaubers – gleiche Rang-Erkennung wie ForeverSpellbook. Dessen Hinweis "neuer Rang, Leiste hat noch den alten"
   (1 s nach dem Lernen) findet danach nichts mehr; "Ersetzen" im Zauberbuch bleibt für alle übrigen Zauber
+- **ForeverMinimap ↔ Minimap-Knöpfe**: ForeverMinimap legt die globale `GetMinimapShape()` an ("SQUARE"/"ROUND",
+  wie es LibDBIcon erwartet); `UI.MinimapButton` setzt Forever-Knöpfe bei eckiger Karte an die Kante,
+  `UI.RefreshMinimapButtons()` setzt alle neu, wenn sich die Form ändert. Knöpfe anderer Addons am Rand blendet
+  ForeverMinimap nur per Alpha ein/aus (Platz bleibt). Blizzards Kopfzeile, Verfolgung, Kalender, Uhr, Post,
+  Addon-Menü und Zoom-Knöpfe: Alpha 0 + nicht anklickbar (`UI.HideBlizzard`); eigene Knöpfe rufen deren Funktionen
+  auf (`Tracking.Button:OpenMenu()`, `ToggleCalendar`, `TimeManager_Toggle`, `AddonCompartmentFrame:OpenMenu()`).
+  Blizzard setzt die Form bei "Minimap drehen" neu (`MinimapCluster:UpdateMinimapConfig`) – ForeverMinimap hängt sich
+  dort an. Position und Größe verwaltet Blizzards Bearbeitungsmodus. Das Warteschlangen-Auge (`QueueStatusButton`)
+  gehört ForeverBars – ForeverMinimap fasst es nicht an
 - **ForeverBars ↔ Bartender4**: läuft Bartender4, lässt ForeverBars die Leisten in Ruhe
 - **ForeverBars ↔ Bearbeitungsmodus**: öffnet der Spieler Blizzards Bearbeitungsmodus, entsperrt ForeverBars seine
   Leisten (Blizzard kann sie nicht greifen) und sperrt sie beim Schließen wieder. Laut flowfy lösen Hooks/Callbacks

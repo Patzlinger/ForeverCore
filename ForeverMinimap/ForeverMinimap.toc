@@ -1,0 +1,17 @@
+## Interface: 16001
+## Title: ForeverMinimap |cff8a8a8a(Beta)|r
+## IconTexture: Interface\AddOns\ForeverMinimap\Media\ForeverCore
+## Category: Forever Core
+## Notes: Simple minimap in the Forever Core look: round or square, slim bar with zone, clock and coordinates, buttons only when you need them
+## Notes-deDE: Schlichte Minimap im Forever-Core-Stil: rund oder eckig, schmale Leiste mit Zone, Uhr und Koordinaten, Knöpfe nur bei Bedarf
+## Version: 0.41b
+## Author: Patzlinger
+## X-License: MIT
+## X-Curse-Project-ID: 1743753
+## Dependencies: ForeverCore
+## Group: ForeverCore
+## SavedVariables: ForeverMinimapDB, ForeverHubDB
+
+Core.lua
+Map.lua
+Options.lua

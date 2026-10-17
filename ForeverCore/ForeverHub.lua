@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 28
+local VERSION = 29
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -1280,6 +1280,13 @@ function UI.MenuSidebar(parent, x, y, items, onSelect, width)
     return list
 end
 
+-- Form der Minimap hat sich geaendert (ForeverMinimap): alle Forever-Knoepfe am Rand neu setzen
+function UI.RefreshMinimapButtons()
+    for _, b in ipairs(SHARED.minimapButtons or {}) do
+        if b.UpdatePosition then b.UpdatePosition() end
+    end
+end
+
 -- Minimap-Knopf im gleichen Look fuer alle Forever-Addons
 -- o = { name, icon, title, angle = function() -> Grad, setAngle = function(Grad),
 --       onClick = function(button, mouseButton), lines = function() -> { "Linksklick: …", … },
@@ -1306,12 +1313,22 @@ function UI.MinimapButton(o)
     border:SetSize(53, 53)
     border:SetPoint("TOPLEFT")
 
+    -- rund: auf dem Kreis um die Minimap; eckig (GetMinimapShape() == "SQUARE", z. B. ForeverMinimap):
+    -- an der Kante des Quadrats entlang
     function b.UpdatePosition()
         local angle = math.rad(o.angle() or 200)
         local radius = (Minimap:GetWidth() / 2) + 5
+        local x, y = math.cos(angle), math.sin(angle)
+        local shape = _G.GetMinimapShape and _G.GetMinimapShape()
+        if shape == "SQUARE" then
+            local m = math.max(math.abs(x), math.abs(y))
+            x, y = x / m, y / m
+        end
         b:ClearAllPoints()
-        b:SetPoint("CENTER", Minimap, "CENTER", math.cos(angle) * radius, math.sin(angle) * radius)
+        b:SetPoint("CENTER", Minimap, "CENTER", x * radius, y * radius)
     end
+    SHARED.minimapButtons = SHARED.minimapButtons or {}
+    tinsert(SHARED.minimapButtons, b)
 
     local function OnDrag()
         local mx, my = Minimap:GetCenter()
@@ -1645,6 +1662,7 @@ local KNOWN = {
     { name = "ForeverBars",   button = "ForeverBarsMinimapButton", cmd = "/fb" },
     { name = "ForeverQuests", button = "ForeverQuestsMinimapButton", cmd = "/fq" },
     { name = "ForeverChat",   button = "ForeverChatMinimapButton", cmd = "/fchat" },
+    { name = "ForeverMinimap", button = "ForeverMinimapMinimapButton", cmd = "/fmm" },
     { name = "ForeverLoot",   button = "ForeverLootMinimapButton", cmd = "/floot" },
     { name = "ForeverXP",     button = "ForeverXPMinimapButton", cmd = "/fxp" },
     { name = "ForeverBuffs",  button = "ForeverBuffsMinimapButton", cmd = "/fbuffs" },
