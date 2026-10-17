@@ -94,7 +94,7 @@ end
 -- Berufeleiste, unten rechts Menü und Taschen übereinander, oben mittig Erfahrung und Ruf.
 local EDGE = 4         -- Abstand zum Bildschirmrand
 local BAR_GAP = 1      -- Abstand zwischen aneinanderliegenden Leisten
-local SIDE_GAP = 18    -- Abstand von Berufe-/Verpflegungsleiste zu den Aktionsleisten (Platz für den Einklapp-Pfeil)
+local SIDE_GAP = 24    -- Abstand von Berufe-/Verpflegungsleiste zu den Aktionsleisten (Platz für den Einklapp-Pfeil)
 local FRAME_SPACE = 4  -- Rand des Rahmens um eine Leiste (siehe UpdateBarFrame)
 
 local function DefaultPosition(key)
@@ -441,18 +441,19 @@ function ns.StyleMicroMenu()
 end
 
 ---------------------------------------------------------------------------
--- Eigenes Mikromenü: flache quadratische Knöpfe wie die Knöpfe in ForeverQuests (dunkel, Hover = goldener Rand) mit
--- eigenen schlichten Symbolen (Media\Micro\*.tga, weiß – grau gefärbt, beim Darüberfahren gold; Name im Tooltip).
--- Jeder Knopf ist ein geschützter Klick-Knopf (type "click"), der den passenden Blizzard-Menüknopf drückt – so öffnet
--- das Spiel seine Fenster selbst, ohne dass ForeverBars-Code sie aufruft (kein taint). Blizzards Mikromenü liegt dann
--- unsichtbar im Ablageort.
+-- Eigenes Mikromenü: flache quadratische Knöpfe wie die Knöpfe in ForeverQuests mit eigenen schlichten Symbolen
+-- (Media\Micro\*.tga, weiß – gold gefärbt, beim Darüberfahren weiß und goldener Rand).
+-- Unsere Knöpfe sind nur die Optik: Blizzards echte Menüknöpfe liegen unsichtbar (Deckkraft 0) genau darüber und
+-- bekommen den Klick selbst. So öffnet das Spiel seine Fenster wie gewohnt (manche, z. B. das Spielmenü, öffnen nur,
+-- wenn die Maus wirklich über dem Blizzard-Knopf ist), Blizzards Tooltips bleiben, und es entsteht kein taint.
+-- Auch ForeverSpellbook greift so von selbst (sein Knopf liegt über dem Zauberbuch-Knopf).
 ---------------------------------------------------------------------------
 
 local MICRO_HEIGHT = 19 -- quadratisch: so breit wie hoch
 local MICRO_ICON = 13
 local MICRO_MAX = 16
 local MICRO_ICON_PATH = "Interface\\AddOns\\ForeverBars\\Media\\Micro\\"
-local MICRO_ICON_COLOR = { 0.85, 0.85, 0.85 }
+local MICRO_ICON_HOVER = { 1, 1, 1 } -- beim Darüberfahren weiß (sonst Gold)
 -- Symbol je Blizzard-Knopf (Dateiname in Media\Micro; unbekannte Knöpfe: "Generic")
 local MICRO_ICONS = {
     CharacterMicroButton = "Character", ProfessionMicroButton = "Professions", PlayerSpellsMicroButton = "Spells",
@@ -462,80 +463,92 @@ local MICRO_ICONS = {
     WorldMapMicroButton = "Map", StoreMicroButton = "Shop", MainMenuMicroButton = "Menu", HelpMicroButton = "Help",
     HousingMicroButton = "Housing",
 }
--- Kurze Beschriftungen je Blizzard-Knopf (sonst dessen Tooltip-Text)
-local MICRO_LABELS = {
-    CharacterMicroButton = "MICRO_CHARACTER", ProfessionMicroButton = "MICRO_PROFESSIONS",
-    PlayerSpellsMicroButton = "MICRO_SPELLS", SpellbookMicroButton = "MICRO_SPELLS", TalentMicroButton = "MICRO_TALENTS",
-    AchievementMicroButton = "MICRO_ACHIEVEMENTS", QuestLogMicroButton = "MICRO_QUESTS",
-    GuildMicroButton = "MICRO_GUILD", SocialsMicroButton = "MICRO_SOCIAL", LFDMicroButton = "MICRO_GROUP",
-    LFGMicroButton = "MICRO_GROUP", PVPMicroButton = "MICRO_PVP", CollectionsMicroButton = "MICRO_COLLECTIONS",
-    EJMicroButton = "MICRO_JOURNAL", WorldMapMicroButton = "MICRO_MAP", StoreMicroButton = "MICRO_SHOP",
-    MainMenuMicroButton = "MICRO_MENU", HelpMicroButton = "MICRO_HELP", HousingMicroButton = "MICRO_HOUSING",
-}
 
--- Blizzards Menüknöpfe in ihrer Reihenfolge (nur die, die Blizzard gerade zeigt)
+-- Blizzards Menüknöpfe in ihrer Reihenfolge. Die Liste wird einmal gemerkt, denn nach dem Umhängen liegen die
+-- Knöpfe nicht mehr im Blizzard-Mikromenü.
+local microNames
 local function BlizzardMicroButtons()
-    local list = {}
-    for _, button in ipairs(MicroButtons()) do
-        if button:IsShown() and button:GetName() then table.insert(list, button) end
+    if not microNames then
+        local found = {}
+        for _, button in ipairs(MicroButtons()) do
+            if button:GetName() then table.insert(found, button) end
+        end
+        table.sort(found, function(a, b) return (a.layoutIndex or 0) < (b.layoutIndex or 0) end)
+        if #found > 0 then
+            microNames = {}
+            for _, button in ipairs(found) do table.insert(microNames, button:GetName()) end
+        end
     end
-    table.sort(list, function(a, b) return (a.layoutIndex or 0) < (b.layoutIndex or 0) end)
+    local list = {}
+    for _, name in ipairs(microNames or {}) do
+        local button = _G[name]
+        if button and button:IsShown() then table.insert(list, button) end
+    end
     return list
 end
 
-local function MicroLabel(blizzard)
-    local key = MICRO_LABELS[blizzard:GetName()]
-    if key then return L(key) end
-    local text = blizzard.tooltipText or blizzard:GetName():gsub("MicroButton", "")
-    return (tostring(text):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""))
-end
-
--- Wohin klickt ein Knopf? Beim Zauberbuch ForeverSpellbook, falls aktiv (sein eigener Knopf öffnet sein Fenster)
-local function MicroTarget(blizzard)
-    local name = blizzard:GetName()
-    if (name == "SpellbookMicroButton" or name == "PlayerSpellsMicroButton") and _G.ForeverSpellbookToggle then
-        local isLoaded = C_AddOns and C_AddOns.IsAddOnLoaded or IsAddOnLoaded
-        if isLoaded and isLoaded("ForeverSpellbook") then return _G.ForeverSpellbookToggle end
-    end
-    return blizzard
-end
-
+-- Sichtbarer Knopf (nur Optik, nimmt keine Maus an)
 local function GetOwnMicroButton(index, holder)
     local name = "ForeverBarsMicroButton" .. index
     local button = _G[name]
     if button then return button end
-    button = CreateFrame("Button", name, holder, "SecureActionButtonTemplate, BackdropTemplate")
+    button = CreateFrame("Frame", name, holder, "BackdropTemplate")
     button:SetSize(MICRO_HEIGHT, MICRO_HEIGHT)
-    button:RegisterForClicks("AnyUp")
-    button:SetAttribute("type", "click")
-    button:SetAttribute("useOnKeyDown", false)
+    button:EnableMouse(false)
     ns.Style.SetFlat(button, COLOR.button)
     button.icon = button:CreateTexture(nil, "ARTWORK")
     button.icon:SetSize(MICRO_ICON, MICRO_ICON)
     button.icon:SetPoint("CENTER")
-    button.icon:SetVertexColor(unpack(MICRO_ICON_COLOR))
-    button:SetScript("OnEnter", function(self)
-        self:SetBackdropColor(unpack(COLOR.buttonHover))
-        self:SetBackdropBorderColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3], 0.9)
-        self.icon:SetVertexColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3])
-        local tip = ns.Style.GetTooltip()
-        tip:SetOwner(self, "ANCHOR_TOP")
-        tip:AddLine(self.fbLabel or "", 1, 0.82, 0)
-        if self.fbTitle and self.fbTitle ~= self.fbLabel then tip:AddLine(self.fbTitle, 0.9, 0.9, 0.9) end
-        tip:Show()
-    end)
-    button:SetScript("OnLeave", function(self)
-        self:SetBackdropColor(unpack(COLOR.button))
-        self:SetBackdropBorderColor(unpack(COLOR.border))
-        self.icon:SetVertexColor(unpack(MICRO_ICON_COLOR))
-        ns.Style.GetTooltip():Hide()
-    end)
+    button.icon:SetVertexColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3])
     return button
+end
+
+local function SetMicroHover(own, hovered)
+    if hovered then
+        own:SetBackdropColor(unpack(COLOR.buttonHover))
+        own:SetBackdropBorderColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3], 0.9)
+        own.icon:SetVertexColor(unpack(MICRO_ICON_HOVER))
+    else
+        own:SetBackdropColor(unpack(COLOR.button))
+        own:SetBackdropBorderColor(unpack(COLOR.border))
+        own.icon:SetVertexColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3])
+    end
+end
+
+-- Blizzard-Knopf unsichtbar über unseren Knopf legen und dort festhalten (Blizzards Mikromenü ordnet seine Knöpfe
+-- sonst gelegentlich neu an). Nur mitgehört über hooksecurefunc/HookScript; die Menüknöpfe sind nicht geschützt.
+local function OverlayBlizzardButton(blizzard, own, holder)
+    blizzard.fbOwn = own
+    blizzard.fbOverlayHolder = holder
+    local function Place(self)
+        if self.fbPlacing or not self.fbOwn or not self.fbOverlayHolder then return end
+        if InCombatLockdown() and self:IsProtected() then return end
+        self.fbPlacing = true
+        if self:GetParent() ~= self.fbOverlayHolder then self:SetParent(self.fbOverlayHolder) end
+        self:ClearAllPoints()
+        self:SetAllPoints(self.fbOwn)
+        self:SetFrameLevel(self.fbOwn:GetFrameLevel() + 5)
+        if self:GetAlpha() ~= 0 then self:SetAlpha(0) end
+        self.fbPlacing = false
+    end
+    if not blizzard.fbOverlayHooked then
+        blizzard.fbOverlayHooked = true
+        hooksecurefunc(blizzard, "SetPoint", Place)
+        hooksecurefunc(blizzard, "SetParent", Place)
+        hooksecurefunc(blizzard, "SetAlpha", function(self, alpha)
+            if alpha ~= 0 and self.fbOwn and not self.fbPlacing then Place(self) end
+        end)
+        -- Darüberfahren: unsere Optik reagiert, Blizzards Tooltip bleibt
+        blizzard:HookScript("OnEnter", function(self) if self.fbOwn then SetMicroHover(self.fbOwn, true) end end)
+        blizzard:HookScript("OnLeave", function(self) if self.fbOwn then SetMicroHover(self.fbOwn, false) end end)
+    end
+    Place(blizzard)
 end
 
 -- Eigene Knöpfe anordnen (nur außerhalb des Kampfes); "Knöpfe pro Reihe" bricht um, "Abstand" wie bei Leisten
 local function LayoutOwnMicro(def, cfg, holder)
-    -- Blizzards Mikromenü unsichtbar ablegen (seine Knöpfe bleiben klickbar für unsere Klick-Knöpfe)
+    local buttons = BlizzardMicroButtons() -- vor dem Ablegen merken (siehe oben)
+    -- Blizzards Mikromenü unsichtbar ablegen; seine Knöpfe kommen einzeln über unsere Knöpfe
     local blizzardMenu = FindFrame(def.frames)
     if blizzardMenu then
         blizzardMenu.fbHolder = nil -- nicht mehr in den Halter zurückholen (siehe LayoutContainer)
@@ -543,39 +556,43 @@ local function LayoutOwnMicro(def, cfg, holder)
     end
     local gap = math.max(0, cfg.spacing or 1) + 1
     local perRow = math.max(1, cfg.perRow or MICRO_MAX)
-    local x, y, rowWidth, width, used = 0, 0, 0, 0, 0
-    for index, blizzard in ipairs(BlizzardMicroButtons()) do
+    local x, y, width, used = 0, 0, 0, 0
+    for index, blizzard in ipairs(buttons) do
         if index > MICRO_MAX then break end
-        local button = GetOwnMicroButton(index, holder)
-        button:SetParent(holder)
-        button:SetAttribute("clickbutton", MicroTarget(blizzard))
-        button.icon:SetTexture(MICRO_ICON_PATH .. (MICRO_ICONS[blizzard:GetName()] or "Generic"))
-        button.fbLabel = MicroLabel(blizzard)
-        button.fbTitle = blizzard.tooltipText
+        local own = GetOwnMicroButton(index, holder)
+        own:SetParent(holder)
+        own.icon:SetTexture(MICRO_ICON_PATH .. (MICRO_ICONS[blizzard:GetName()] or "Generic"))
         if (index - 1) % perRow == 0 and index > 1 then
             x, y = 0, y - MICRO_HEIGHT - gap
         end
-        button:ClearAllPoints()
-        button:SetPoint("TOPLEFT", holder, "TOPLEFT", x, y)
-        button:Show()
-        x = x + button:GetWidth() + gap
-        rowWidth = x - gap
-        width = math.max(width, rowWidth)
+        own:ClearAllPoints()
+        own:SetPoint("TOPLEFT", holder, "TOPLEFT", x, y)
+        own:Show()
+        SetMicroHover(own, false)
+        OverlayBlizzardButton(blizzard, own, holder)
+        x = x + MICRO_HEIGHT + gap
+        width = math.max(width, x - gap)
         used = index
     end
     for index = used + 1, MICRO_MAX do
-        local button = _G["ForeverBarsMicroButton" .. index]
-        if button then button:Hide() end
+        local own = _G["ForeverBarsMicroButton" .. index]
+        if own then own:Hide() end
     end
     holder:SetSize(math.max(1, width), math.max(MICRO_HEIGHT, -y + MICRO_HEIGHT))
 end
 
--- Eigene Knöpfe ausblenden (z. B. wenn man zu Blizzards Mikromenü zurückwechselt)
+-- Zu Blizzards Mikromenü zurück: eigene Knöpfe ausblenden. Blizzards Knöpfe kommen nach dem Neuladen zurück
+-- (sie liegen bis dahin unsichtbar über den ausgeblendeten Knöpfen)
 local function HideOwnMicro()
+    local wasOwn = false
     for index = 1, MICRO_MAX do
-        local button = _G["ForeverBarsMicroButton" .. index]
-        if button then button:Hide() end
+        local own = _G["ForeverBarsMicroButton" .. index]
+        if own then
+            if own:IsShown() then wasOwn = true end
+            own:Hide()
+        end
     end
+    if wasOwn then ns.Print(L("MICRO_RELOAD")) end
 end
 
 function ns.UpdateAllButtons()
@@ -1968,7 +1985,7 @@ end
 -- Einklapp-Pfeil an Berufe- und Verpflegungsleiste: sitzt auf der Innenseite (zu den Aktionsleisten hin), so hoch
 -- wie die Leiste samt Rahmen. Ausgeklappt zeigt er nach innen ("einklappen"), eingeklappt nach außen. Eingeklappt
 -- ist die Leiste ausgeblendet (über ihre Sichtbarkeits-Bedingung, im Kampf erst danach); der Pfeil bleibt stehen.
-local ARROW_WIDTH = 14
+local ARROW_WIDTH = 20
 function ns.UpdateCollapseArrow(def, cfg, holder)
     local arrow = holder.fbCollapseArrow
     if not cfg.enabled or not cfg.collapseArrow then
@@ -1980,7 +1997,7 @@ function ns.UpdateCollapseArrow(def, cfg, holder)
         arrow:SetFrameStrata("MEDIUM")
         ns.Style.SetFlat(arrow, COLOR.button)
         arrow.icon = arrow:CreateTexture(nil, "OVERLAY")
-        arrow.icon:SetSize(10, 10)
+        arrow.icon:SetSize(12, 12)
         arrow.icon:SetPoint("CENTER")
         arrow.icon:SetTexture("Interface\\ChatFrame\\ChatFrameExpandArrow")
         arrow:SetScript("OnClick", function()

@@ -102,7 +102,7 @@ ns.defaults = {
         xp = BarDefaults(true), rep = BarDefaults(true), queue = BarDefaults(true),
     },
     -- (Profile verwaltet seit 0.41b ForeverCore – je Charakter, siehe RegisterSettings am Ende dieser Datei)
-    layoutVersion = 10,        -- Stand der Standard-Anordnung (siehe MigrateLayout)
+    layoutVersion = 11,        -- Stand der Standard-Anordnung (siehe MigrateLayout)
     skin = "FLAT",           -- Aussehen der Knöpfe (ns.SKINS in Bars.lua)
     hoverAlpha = 15,         -- Stärke des Hover-Leuchtens über den Knöpfen (%)
     procGlow = "FOREVER",    -- Leuchten bei Procs: "FOREVER" (goldener Rahmen), "BLIZZARD", "OFF"
@@ -202,7 +202,8 @@ ns.FillDefaults = FillDefaults
 --               Positionen neu berechnet (mehr Abstand zu den Aktionsleisten für den Pfeil)
 --  10 (0.41b+): breitere Einklapp-Pfeile, kleineres Mikromenü mit Symbolen – Positionen von Berufe-,
 --               Verpflegungs-, Taschenleiste und Mikromenü neu berechnet
-local LAYOUT_VERSION = 10
+--  11 (0.41b+): noch breitere Einklapp-Pfeile – Positionen von Berufe- und Verpflegungsleiste neu berechnet
+local LAYOUT_VERSION = 11
 local STANDARD_LAYOUT_BARS = { "bar1", "bar2", "bar3", "bar6", "bar7", "bar8", "pet", "stance", "prof", "food",
                                "micro", "bags", "xp", "rep", "vehicle" }
 function ns.MigrateLayout(db)
@@ -276,8 +277,10 @@ function ns.MigrateLayout(db)
                     end
                 end
             end
-            if version < 10 then
-                for _, key in ipairs({ "prof", "food", "micro", "bags" }) do
+            if version < 11 then
+                -- (10 und 11) Positionen neu berechnen; Mikromenü und Taschen nur, wenn von 10 noch nicht erledigt
+                local keys = version < 10 and { "prof", "food", "micro", "bags" } or { "prof", "food" }
+                for _, key in ipairs(keys) do
                     local bar = target.bars[key]
                     if bar then bar.x, bar.y = nil, nil end
                 end
