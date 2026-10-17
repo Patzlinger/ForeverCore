@@ -484,8 +484,9 @@ end
 local function ColoredLevels(levels)
     if not levels then return "" end
     local minLevel = tonumber(levels:match("%d+"))
-    if minLevel and GetQuestDifficultyColor then
-        local color = GetQuestDifficultyColor(minLevel)
+    local LevelColor = (_G.ForeverHub and _G.ForeverHub.UI and _G.ForeverHub.UI.LevelColor) or _G.GetQuestDifficultyColor
+    if minLevel and LevelColor then
+        local color = LevelColor(minLevel)
         return string.format("|cff%02x%02x%02x%s|r", color.r * 255, color.g * 255, color.b * 255, levels)
     end
     return levels

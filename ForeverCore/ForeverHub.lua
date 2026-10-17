@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 29
+local VERSION = 30
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -100,6 +100,39 @@ local function HoverEdge(frame, withFill)
         t:SetPoint(side[2])
         if side[3] then t:SetWidth(side[3]) else t:SetHeight(side[4]) end
     end
+end
+
+-- Stufenfarbe (Gegner, Quests, Dungeons) nach den klassischen Erfahrungsregeln – Forever levelt wie Classic.
+-- Blizzards GetCreatureDifficultyColor/GetQuestDifficultyColor rechnen im Forever-Client mit der Retail-Grenze
+-- und faerben Gegner zu frueh grau (z. B. Stufe 15 fuer einen 21er, obwohl es noch Erfahrung gibt).
+--   UI.GrayLevel(spielerStufe) -> hoechste Stufe, die keine Erfahrung mehr gibt
+--   UI.LevelColor(stufe)       -> { r, g, b } rot / orange / gelb / gruen / grau
+function UI.GrayLevel(p)
+    p = p or UnitLevel("player")
+    if type(p) ~= "number" or p <= 5 then return 0 end
+    if p <= 39 then return p - math.floor(p / 10) - 5 end
+    if p <= 59 then return p - math.floor(p / 5) - 1 end
+    return p - 9
+end
+
+local LEVEL_FALLBACK = {
+    impossible = { r = 1, g = 0.10, b = 0.10 }, verydifficult = { r = 1, g = 0.50, b = 0.25 },
+    difficult = { r = 1, g = 0.82, b = 0 }, standard = { r = 0.25, g = 0.75, b = 0.25 },
+    trivial = { r = 0.50, g = 0.50, b = 0.50 },
+}
+function UI.LevelColor(level)
+    local function Pick(key)
+        local blizz = _G.QuestDifficultyColors and _G.QuestDifficultyColors[key]
+        return blizz or LEVEL_FALLBACK[key]
+    end
+    local p = UnitLevel("player")
+    if type(level) ~= "number" or type(p) ~= "number" or level <= 0 then return Pick("difficult") end
+    local diff = level - p
+    if diff >= 5 then return Pick("impossible") end
+    if diff >= 3 then return Pick("verydifficult") end
+    if diff >= -2 then return Pick("difficult") end
+    if level > UI.GrayLevel(p) then return Pick("standard") end
+    return Pick("trivial")
 end
 
 -- Chat-Ausgabe: "ForeverXY: Text" mit goldenem Namen

@@ -633,8 +633,13 @@ local function UpdateName(b)
     local cls = UnitClassification(unit)
     if not IsSecret(cls) and CLASSIFICATION[cls] then text = text .. CLASSIFICATION[cls] end
     v.level:SetText(text)
-    local c = (level and level > 0 and GetCreatureDifficultyColor) and GetCreatureDifficultyColor(level)
-    if c then v.level:SetTextColor(c.r, c.g, c.b) else v.level:SetTextColor(1, 0.1, 0.1) end
+    -- Farbe nach den klassischen Erfahrungsregeln (gemeinsam im Hub; Blizzards Funktion faerbt zu frueh grau)
+    if level and level > 0 then
+        local c = UI.LevelColor(level)
+        v.level:SetTextColor(c.r, c.g, c.b)
+    else
+        v.level:SetTextColor(1, 0.1, 0.1) -- "??" = viel hoeher als man selbst
+    end
 end
 
 local function SetHealthText(v, f, unit, cur, max)

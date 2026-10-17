@@ -42,6 +42,13 @@ local BLIZZARD_TRACKERS = { "ObjectiveTrackerFrame", "QuestWatchFrame" }
 local hookedFrames = {}
 local blizzardUpdatePending = false
 
+-- Schwierigkeitsfarbe nach den klassischen Erfahrungsregeln (gemeinsam im ForeverHub, wie bei Gegnern in
+-- ForeverUnits); Blizzards GetQuestDifficultyColor faerbt im Forever-Client zu frueh grau
+local function LevelColor()
+    local hub = _G.ForeverHub and _G.ForeverHub.UI
+    return (hub and hub.LevelColor) or _G.GetQuestDifficultyColor
+end
+
 -- Nach dem Kampf erneut versuchen: über die gemeinsame Warteschlange im ForeverHub
 -- (ohne Hub wie bisher über PLAYER_REGEN_ENABLED, siehe unten)
 local function RetryAfterCombat()
@@ -485,8 +492,8 @@ local function ShowQuestTooltip(owner, questID)
 
     -- Titel in Schwierigkeitsfarbe mit Level
     local r, g, b = 1, 0.82, 0
-    if info and info.level and GetQuestDifficultyColor then
-        local color = GetQuestDifficultyColor(info.level)
+    if info and info.level and LevelColor() then
+        local color = LevelColor()(info.level)
         r, g, b = color.r, color.g, color.b
     end
     local questTitle = C_QuestLog.GetTitleForQuestID(questID) or ("Quest " .. questID)
@@ -1168,8 +1175,8 @@ function ns.UpdateTracker()
 
             -- Questname, eingefärbt nach Schwierigkeit, mit Level dahinter
             local r, g, b = 1, 1, 1
-            if info.level and GetQuestDifficultyColor then
-                local color = GetQuestDifficultyColor(info.level)
+            if info.level and LevelColor() then
+                local color = LevelColor()(info.level)
                 r, g, b = color.r, color.g, color.b
             end
             local name = info.title or ("Quest " .. questID)
