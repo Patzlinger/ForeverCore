@@ -414,6 +414,7 @@ local function BuildToolbar()
     toolbar:SetPoint("RIGHT", bd, "TOPRIGHT", -4, -(TAB_ROOM / 2) - 1)
     toolbar:SetFrameStrata("MEDIUM") -- wie die Reiter
     toolbar:SetAlpha(TOOL_ALPHA)
+    toolbar.iconWidth = 0 -- der IM-Reiter fragt die Breite schon beim Anlegen ab (vor dem Anordnen)
     toolbar.buttons = {}
     for _, def in ipairs(TOOL_DEFS) do
         local b = ToolButton(toolbar, def)
@@ -435,7 +436,7 @@ end
 -- Breite der Knopfleiste (mit IM-Reiter, falls der Messenger an ist)
 local function ToolbarWidth()
     if not toolbar or not toolbar:IsShown() then return 0 end
-    local w = toolbar.iconWidth
+    local w = toolbar.iconWidth or 0
     if toolbar.imTab and toolbar.imTab:IsShown() then w = w + 6 + toolbar.imTab:GetWidth() end
     return w
 end
