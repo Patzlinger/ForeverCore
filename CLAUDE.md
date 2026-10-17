@@ -25,8 +25,8 @@ Philosophie, Regeln, Design und Abläufe. Wenn etwas hier nicht steht: am besteh
 | ForeverBars | flowfy | im Repository, noch nicht im Release |
 | `tools/`, `release/` | gemeinsam | – |
 
-- Funktionale Änderungen an einem Addon des anderen nur nach Absprache. Triviale, gefahrlose Angleichungen
-  (Schreibweise, .toc-Felder, Kommentare) sind erlaubt, im Commit kurz benennen.
+- Alle Addons gehören zum gemeinsamen Paket; beide dürfen jedes Addon bearbeiten (Zusammenarbeit auf Augenhöhe).
+  Größere funktionale Änderungen am Addon des anderen vorher kurz absprechen und im Commit klar benennen.
 - Wer ein Addon verantwortet, entscheidet über dessen Funktionen und Lizenz.
 - **Eine Version für alle**: seit 0.41b tragen alle Forever-Addons (auch ForeverQuests/ForeverBars und ForeverCore)
   dieselbe Suite-Version (`## Version: 0.41b`); Versionssprünge gemeinsam in allen .toc
@@ -258,6 +258,18 @@ Damit alle Einstellungsfenster gleich aussehen, gelten diese Maße. Quelle: `For
 - Suche in der Titelleiste rechts (Eingabefeld 200 × 22, 40 px vom rechten Rand): Trefferliste darunter
   („Bereich » Einstellung“); ein Klick springt hin und die Einstellung leuchtet 1,5 s mit goldenem Rahmen auf
 
+**Umbau bestehender Fenster auf diese Bausteine – Lehren aus dem ForeverVendor-Versuch (zurückgenommen)**
+- Der Versuch hat die Variante "Große Menüs" (Bereichsliste links) für ein kleines Menü genommen: Inhalte verschwanden
+  in Unterpunkten, man musste suchen. **Bereichsliste nur, wenn der Inhalt nicht auf eine Seite passt** (Faustregel:
+  mehr als ca. 6 Felder, z. B. ForeverBars, ForeverFrames); sonst alle Felder auf einer Seite in zwei Spalten
+- Er hat Inhalte neu sortiert und umbenannt. **Umbau = 1:1**: gleiche Abschnitte, gleiche Reihenfolge, gleiche Texte –
+  nur die Bausteine tauschen. Umsortieren ist eine eigene, abgesprochene Änderung
+- Das neue Fenster war kleiner als das alte (322er-Spalten), alles wirkte gedrängt. **Nie kleiner als vorher**: die
+  322 px stammen aus ForeverQuests und sind kein Muss – Spaltenbreite nach dem längsten deutschen Text wählen,
+  Fensterbreite = Spalten + Ränder; Standard-Skalierung 100 %
+- Vorgehen: ein Addon nach dem anderen, Vorher-/Nachher-Bild im Spiel vergleichen (Nutzer), erst dann das nächste
+- Beispiel für ein Fenster nach diesen Regeln: "Profile" im Hub (`/forever profile`): ein breites Feld oben, zwei
+  Felder darunter, Fußleiste – alles auf einen Blick, keine Unterpunkte
 ## 8. Sprache
 - Jede sichtbare Zeichenkette zweisprachig: **Deutsch und Englisch**
 - **Eine Sprachwahl für alle** (im Hub-Fenster `/forever`, gespeichert in `ForeverHubDB.language`):
@@ -268,9 +280,26 @@ Damit alle Einstellungsfenster gleich aussehen, gelten diese Maße. Quelle: `For
   - Eigene Sprachauswahl in einem Addon-Menü (wie bei ForeverQuests) muss in `ForeverHubDB.language` schreiben
 - Zwei erlaubte Wege für Texte: `T("Deutsch", "English")` aus dem Hub (Patzlingers Addons) oder `Locales.lua` mit
   Schlüsseln und `ns.L("KEY")` (flowfys Addons), das die Sprache über `UI.GetLanguage()` bestimmt. Innerhalb eines
-  Addons nur einen Weg nutzen- Kommentare im Code auf Deutsch, kurz, erklären das *Warum*; Umlaute in Kommentaren sind erlaubt
+  Addons nur einen Weg nutzen
+- Kommentare im Code auf Deutsch, kurz, erklären das *Warum*; Umlaute in Kommentaren sind erlaubt
 
 ## 9. Einstellungen
+- **Gemeinsame Verwaltung (ab Hub v28, 0.41b)**: jedes Addon meldet seine SavedVariable einmal an –
+  `UI.RegisterSettings({ addon, sv, defaults, version, migrate, global, keepOnReset, reset, legacy })` (am Ende der
+  Datei mit den Standardwerten). Der Hub übernimmt damit für alle gleich:
+  - **Profile je Charakter**: jeder Charakter nutzt das gemeinsame Profil ("Standard") oder ein eigenes;
+    Fenster `/forever profile` (auch im Hub-Fenster). Wechseln, Zurücksetzen und Importieren gelten nach dem
+    Neuladen – beim Laden (`ADDON_LOADED`, vor dem Addon) schreibt der Hub das richtige Profil **in dieselbe Tabelle**.
+    Das Addon liest seine Einstellungen also wie bisher aus `Forever<Name>DB` und braucht keinen Umschalt-Code
+  - **Versionen**: `version` erhöhen, wenn sich der Aufbau ändert; `migrate(data, alteVersion)` rechnet ältere Profile um
+  - **Export/Import**: ein Text für die ganze Oberfläche (`/forever export` bzw. `import`, "FC1:" + CBOR, komprimiert,
+    Base64 über `C_EncodingUtil`); nur Daten, kein Code; Typen werden gegen `defaults` geprüft; Import = neues Profil
+  - Regeln dafür: Schlüssel, die mit `_` beginnen, sind reserviert (`_fc` = Profile, nie ins Profil);
+    `global = { … }` für Werte, die für alle Profile gelten (Minimap-Winkel immer); die Tabelle **nie ersetzen oder
+    komplett leeren** (`wipe(db)`, `Forever<Name>DB = {}`) – sonst sind alle Profile weg; beim eigenen Zurücksetzen
+    `_`-Schlüssel stehen lassen. Charakter-Daten (Lehrerlisten, XP-Verlauf …) gehören in `…CharDB`, nicht ins Profil
+  - ForeverBars nutzt die Verwaltung seit 0.41b (frühere eigene Profile wurden übernommen; das bisher aktive
+    wurde das gemeinsame Profil); sein Menü ruft dieselben Funktionen auf (`Profiles.lua`)
 - Eine SavedVariable pro Addon (`Forever<Name>DB`), bei Bedarf zusätzlich pro Charakter (`…CharDB`)
 - Defaults in einer Tabelle; beim Laden (`ADDON_LOADED`) fehlende Werte ergänzen (auch verschachtelt), Tabellen
   kopieren (`CopyTable`) – so bekommen auch Spieler mit älteren gespeicherten Einstellungen neue Optionen
@@ -291,7 +320,7 @@ Damit alle Einstellungsfenster gleich aussehen, gelten diese Maße. Quelle: `For
 - Belegt (keine Doppelungen!):
   | Befehl | Addon |
   |---|---|
-  | /forever, /fhub, /fmove | ForeverHub |
+  | /forever, /fhub, /fmove; /forever profile, export, import, options, reset | ForeverHub |
   | /ff, /foreverframes | ForeverFrames |
   | /fu, /foreverunits | ForeverUnits |
   | /fcast, /forevercast | ForeverCast |

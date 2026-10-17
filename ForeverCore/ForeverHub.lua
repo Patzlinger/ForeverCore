@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 27
+local VERSION = 28
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -1967,7 +1967,7 @@ local function BuildHubWindow()
     end
 
     -- Fussbereich: Sprache (nur deutscher Client), Ein-/Ausschalten, Verschieben/Minimap, Hinweis
-    local bottomH = UI.GERMAN_CLIENT and 156 or 124
+    local bottomH = UI.GERMAN_CLIENT and 190 or 158
     local f = UI.Window("ForeverHubWindow", UI.NAME, 460,
         26 + HUB_INTRO_H + 8 + math.max(#list, 1) * HUB_ROW_H + bottomH)
     -- eine Ebene unter den Addon-Fenstern (DIALOG): "Öffnen" laesst den Hub offen, das Addon-Fenster liegt darueber
@@ -2094,7 +2094,7 @@ local function BuildHubWindow()
             return key
         end
         local langLabel = UI.Text(f, "label", T("Sprache", "Language"))
-        langLabel:SetPoint("BOTTOMLEFT", 16, 118)
+        langLabel:SetPoint("BOTTOMLEFT", 16, 152)
         lang = UI.AddArrow(UI.Button(f, "", 170))
         lang:SetPoint("LEFT", langLabel, "RIGHT", 10, 0)
         lang:SetScript("OnClick", function(self)
@@ -2120,7 +2120,7 @@ local function BuildHubWindow()
         end
     end
     local allOn = UI.Button(f, T("Alle an", "All on"), 80, function() SetAll(true) end)
-    allOn:SetPoint("BOTTOMLEFT", 14, 82)
+    allOn:SetPoint("BOTTOMLEFT", 14, 116)
     local allOff = UI.Button(f, T("Alle aus", "All off"), 80, function() SetAll(false) end)
     allOff:SetPoint("LEFT", allOn, "RIGHT", 6, 0)
     local perChar = UI.Check(f, nil, nil, T("nur dieser Charakter", "this character only"), function(checked)
@@ -2128,9 +2128,15 @@ local function BuildHubWindow()
     end)
     perChar:SetPoint("LEFT", allOff, "RIGHT", 14, 0)
     reload = UI.Button(f, T("Neu laden", "Reload"), 100, function() ReloadUI() end)
-    reload:SetPoint("BOTTOMRIGHT", -14, 82)
+    reload:SetPoint("BOTTOMRIGHT", -14, 116)
     reload:GetFontString():SetTextColor(C.accent[1], C.accent[2], C.accent[3])
     reload:Hide()
+
+    -- Profile (je Charakter) und Austausch (Export/Import der ganzen Oberflaeche)
+    local profilesBtn = UI.Button(f, T("Profile und Austausch …", "Profiles and transfer …"), 200, function()
+        if UI.ShowProfiles then UI.ShowProfiles() end
+    end)
+    profilesBtn:SetPoint("BOTTOMLEFT", 14, 82)
 
     local move = UI.Button(f, "", 150, function()
         f:Hide()
@@ -2379,9 +2385,739 @@ SlashCmdList["FOREVERHUB"] = function(msg)
             or T("Minimap-Knöpfe wieder eingeblendet.", "Minimap buttons shown again."))
     elseif msg == "options" or msg == "optionen" then
         hub.OpenSettings()
+    elseif msg == "profile" or msg == "profiles" then
+        UI.ShowProfiles()
+    elseif msg == "export" then
+        UI.ShowTransfer("export")
+    elseif msg == "import" then
+        UI.ShowTransfer("import")
     else
         hub.ToggleWindow()
     end
+end
+
+---------------------------------------------------------------------------
+-- 8. Einstellungen fuer alle Forever-Addons: Profile, Versionen, Zuruecksetzen, Export/Import
+---------------------------------------------------------------------------
+-- Jedes Addon meldet seine SavedVariable beim Laden der Datei an (Grundlage: Profile aus ForeverBars):
+--   UI.RegisterSettings({
+--       addon = "ForeverXP", sv = "ForeverXPDB",   -- Addon-Name und Name der SavedVariable
+--       defaults = DEFAULTS,                        -- optional: Standardwerte (prueft Importe auf passende Typen)
+--       version = 1,                                -- Aufbau-Version der Einstellungen (bei Umbauten erhoehen)
+--       migrate = function(data, fromVersion) end,  -- optional: aeltere Profile umrechnen
+--       global = { "showMinimapButton" },           -- gelten fuer alle Profile (minimapAngle immer)
+--       keepOnReset = { "clicks" },                 -- optional: bleiben beim Zuruecksetzen erhalten
+--       reset = function() end,                     -- optional: eigenes Zuruecksetzen ohne Neuladen
+--   })
+-- Arbeitsweise (kein Addon braucht eigenen Umschalt-Code):
+--   * Die Tabelle des Addons enthaelt immer die Einstellungen des gerade aktiven Profils. Profile liegen
+--     in tabelle._fc (Schluessel mit "_" gehoeren nie ins Profil).
+--   * Jeder Charakter nutzt das gemeinsame Profil ("Standard") oder auf Wunsch ein eigenes.
+--   * Wechseln, Zuruecksetzen und Importieren gelten nach dem Neuladen: beim Laden (ADDON_LOADED, bevor das
+--     Addon seine Einstellungen liest) wird das richtige Profil in die Tabelle geschrieben – in dieselbe Tabelle.
+--   * Export: ein Text fuer mehrere Addons ("FC1:" + CBOR, komprimiert, Base64 ueber C_EncodingUtil).
+--     Importe sind reine Daten (kein Programmcode); nur einfache Werte mit passenden Typen werden uebernommen.
+SHARED.settings = SHARED.settings or {}
+SHARED.settingsOrder = SHARED.settingsOrder or {}
+local SETTINGS, SETTINGS_ORDER = SHARED.settings, SHARED.settingsOrder
+local DEFAULT_PROFILE = "Default"
+UI.DEFAULT_PROFILE = DEFAULT_PROFILE
+
+local function CharKey()
+    local name = UnitName("player")
+    if type(name) ~= "string" or name == "" then return nil end
+    return name .. "-" .. (GetRealmName and GetRealmName() or "")
+end
+
+local function CharName()
+    local name = UnitName("player")
+    return type(name) == "string" and name or "?"
+end
+
+function UI.ProfileLabel(name)
+    if name == DEFAULT_PROFILE then return T("Standard", "Default") end
+    return tostring(name)
+end
+
+local function IsGlobal(o, key)
+    if type(key) ~= "string" then return false end
+    return key:sub(1, 1) == "_" or o.globalSet[key] == true
+end
+
+-- nur einfache Werte (Text, Zahl, ja/nein) und Tabellen daraus; Tiefe begrenzt
+local function CleanCopy(v, depth)
+    local t = type(v)
+    if t == "string" or t == "number" or t == "boolean" then return v end
+    if t ~= "table" or depth > 20 then return nil end
+    local out = {}
+    for k, val in pairs(v) do
+        local kt = type(k)
+        if kt == "string" or kt == "number" then
+            local c = CleanCopy(val, depth + 1)
+            if c ~= nil then out[k] = c end
+        end
+    end
+    return out
+end
+
+-- Profil-Kopie der aktuellen Einstellungen (ohne globale und "_"-Schluessel)
+local function Snapshot(o, live, version)
+    local copy = {}
+    for k, v in pairs(live) do
+        if not IsGlobal(o, k) then copy[k] = CleanCopy(v, 1) end
+    end
+    copy._v = version or o.version
+    return copy
+end
+
+local function Fc(live)
+    local fc = live._fc
+    if type(fc) ~= "table" then fc = {} live._fc = fc end
+    if type(fc.profiles) ~= "table" then fc.profiles = {} end
+    if type(fc.chars) ~= "table" then fc.chars = {} end
+    if type(fc.shared) ~= "string" then fc.shared = DEFAULT_PROFILE end
+    return fc
+end
+
+-- Profil in die Tabelle des Addons schreiben (gleiche Tabelle; globale Schluessel bleiben, aeltere Profile
+-- werden umgerechnet)
+local function LoadInto(o, live, data)
+    for k in pairs(live) do
+        if not IsGlobal(o, k) then live[k] = nil end
+    end
+    local copy = CleanCopy(data or {}, 1) or {}
+    local from = tonumber(copy._v) or 0
+    copy._v = nil
+    if o.migrate and from < o.version then
+        local ok, err = pcall(o.migrate, copy, from)
+        if not ok then UI.ReportError(o.addon, "Settings", err) end
+    end
+    for k, v in pairs(copy) do
+        if not IsGlobal(o, k) then live[k] = v end
+    end
+end
+
+-- welches Profil dieser Charakter laden soll (eigenes, sonst das gemeinsame)
+local function WantedProfile(fc, key)
+    local own = key and fc.chars[key]
+    if own and fc.profiles[own] then return own end
+    if key then fc.chars[key] = nil end
+    if not fc.profiles[fc.shared] then fc.shared = DEFAULT_PROFILE end
+    return fc.shared
+end
+
+-- Importe: nur einfache Werte; wo ein Standardwert existiert, muss der Typ passen
+local function Filter(o, data, version)
+    local out = {}
+    if type(data) == "table" then
+        for k, v in pairs(data) do
+            if type(k) == "string" and not IsGlobal(o, k) then
+                local d = o.defaults and o.defaults[k]
+                if d == nil or type(d) == type(v) then
+                    local c = CleanCopy(v, 1)
+                    if c ~= nil then out[k] = c end
+                end
+            end
+        end
+    end
+    out._v = tonumber(version) or 0
+    return out
+end
+
+-- beim Laden des Addons: richtiges Profil in seine Tabelle schreiben
+local function Activate(o)
+    if o.ready then return end
+    local live = _G[o.sv]
+    if type(live) ~= "table" then live = {} _G[o.sv] = live end
+    local fresh = type(live._fc) ~= "table"
+    local fc = Fc(live)
+    if fresh and o.legacy then -- z. B. ForeverBars: bisherige eigene Profile uebernehmen
+        local ok, err = pcall(o.legacy, live, fc)
+        if not ok then UI.ReportError(o.addon, "Settings", err) end
+    end
+    -- Die Tabelle enthaelt den Stand des zuletzt aktiven Profils: zuerst dort sichern
+    -- (beim ersten Start mit dem Baustein werden die bisherigen Einstellungen das gemeinsame Profil)
+    if fc.discardActive then
+        fc.discardActive = nil
+    else
+        fc.profiles[fc.active or fc.shared] = Snapshot(o, live, fc.v or 0)
+    end
+    if not fc.profiles[DEFAULT_PROFILE] then fc.profiles[DEFAULT_PROFILE] = { _v = o.version } end
+    local key = CharKey()
+    local pend = fc.pending
+    fc.pending = nil
+    if type(pend) == "table" then
+        if type(pend.reset) == "string" and fc.profiles[pend.reset] then
+            local old, new = fc.profiles[pend.reset], { _v = o.version }
+            for _, k in ipairs(o.keepOnReset or {}) do new[k] = old[k] end
+            fc.profiles[pend.reset] = new
+        end
+        if type(pend.import) == "table" and type(pend.importName) == "string" then
+            fc.profiles[pend.importName] = pend.import
+            if pend.forChar and pend.forChar == key then fc.chars[key] = pend.importName end
+        end
+    end
+    local wanted = WantedProfile(fc, key)
+    LoadInto(o, live, fc.profiles[wanted])
+    fc.active = wanted
+    fc.v = o.version
+    o.ready = true
+end
+
+local settingsEvents = CreateFrame("Frame")
+settingsEvents:RegisterEvent("ADDON_LOADED")
+settingsEvents:SetScript("OnEvent", function(_, _, name)
+    local o = SETTINGS[name]
+    if not o or o.ready then return end
+    local ok, err = pcall(Activate, o)
+    if not ok then UI.ReportError(name, "Settings", err) end
+end)
+
+function UI.RegisterSettings(o)
+    if type(o) ~= "table" or type(o.addon) ~= "string" or type(o.sv) ~= "string" then return end
+    o.version = o.version or 1
+    o.globalSet = { minimapAngle = true }
+    for _, k in ipairs(o.global or {}) do o.globalSet[k] = true end
+    if not SETTINGS[o.addon] then tinsert(SETTINGS_ORDER, o.addon) end
+    SETTINGS[o.addon] = o
+end
+
+-- angemeldet und geladen: Beschreibung, Tabelle, Profil-Verwaltung
+local function Ready(addon)
+    local o = SETTINGS[addon]
+    if not (o and o.ready and type(_G[o.sv]) == "table") then return end
+    local live = _G[o.sv]
+    return o, live, Fc(live)
+end
+
+function UI.SettingsAddons()
+    local list = {}
+    for _, addon in ipairs(SETTINGS_ORDER) do
+        if Ready(addon) then list[#list + 1] = addon end
+    end
+    return list
+end
+
+-- Profilnamen eines Addons (Standard zuerst, dann alphabetisch)
+function UI.ProfileNames(addon)
+    local _, _, fc = Ready(addon)
+    local names = {}
+    if not fc then return names end
+    for name in pairs(fc.profiles) do
+        if name ~= DEFAULT_PROFILE then names[#names + 1] = name end
+    end
+    table.sort(names)
+    tinsert(names, 1, DEFAULT_PROFILE)
+    return names
+end
+
+-- aktives Profil dieses Charakters; own = true, wenn er ein eigenes hat
+function UI.CurrentProfile(addon)
+    local _, _, fc = Ready(addon)
+    if not fc then return nil end
+    local key = CharKey()
+    return fc.active, key and fc.chars[key] ~= nil, fc.shared
+end
+
+-- gilt nach dem Neuladen? (Wahl weicht vom geladenen Profil ab)
+function UI.ProfilePending(addon)
+    local _, _, fc = Ready(addon)
+    if not fc then return false end
+    if fc.pending or fc.discardActive then return true end
+    local key = CharKey()
+    local own = key and fc.chars[key]
+    local wanted = (own and fc.profiles[own]) and own or fc.shared
+    return wanted ~= fc.active
+end
+
+-- Profil fuer diesen Charakter waehlen (nil = gemeinsames Profil); gilt nach dem Neuladen
+function UI.UseProfile(addon, name)
+    local _, _, fc = Ready(addon)
+    local key = CharKey()
+    if not (fc and key) then return end
+    if name and fc.profiles[name] then fc.chars[key] = name else fc.chars[key] = nil end
+end
+
+-- Neues Profil aus den aktuellen Einstellungen; gilt sofort fuer diesen Charakter (kein Neuladen noetig)
+function UI.NewProfile(addon, name)
+    local o, live, fc = Ready(addon)
+    local key = CharKey()
+    name = strtrim(tostring(name or ""))
+    if not (o and key) or name == "" then return false end
+    if fc.active and not fc.discardActive then fc.profiles[fc.active] = Snapshot(o, live) end
+    fc.profiles[name] = Snapshot(o, live)
+    fc.chars[key] = name
+    if not fc.discardActive and not fc.pending then fc.active = name end
+    return true
+end
+
+-- Profil loeschen (Standard bleibt); Charaktere damit nutzen danach das gemeinsame Profil
+function UI.DeleteProfile(addon, name)
+    local _, _, fc = Ready(addon)
+    if not fc or name == DEFAULT_PROFILE or not fc.profiles[name] then return false end
+    fc.profiles[name] = nil
+    for k, v in pairs(fc.chars) do if v == name then fc.chars[k] = nil end end
+    if fc.shared == name then fc.shared = DEFAULT_PROFILE end
+    if fc.active == name then fc.discardActive = true end -- geladene Einstellungen nicht zuruecksichern
+    return true
+end
+
+-- Profil dieses Charakters auf Standardwerte; true = gilt nach dem Neuladen
+function UI.ResetProfile(addon)
+    local o, _, fc = Ready(addon)
+    if not o then return false end
+    if o.reset then
+        local ok, err = pcall(o.reset)
+        if not ok then UI.ReportError(addon, "Reset", err) end
+        return false
+    end
+    fc.pending = fc.pending or {}
+    fc.pending.reset = fc.active
+    return true
+end
+
+-- Export: ein Text fuer die gewaehlten Addons (jeweils das Profil, das dieser Charakter gerade nutzt)
+local EXPORT_PREFIX = "FC1:"
+local function Encoder()
+    local E = C_EncodingUtil
+    if E and E.SerializeCBOR and E.DeserializeCBOR and E.CompressString and E.DecompressString
+        and E.EncodeBase64 and E.DecodeBase64 then return E end
+end
+
+function UI.ExportSettings(addons)
+    local E = Encoder()
+    if not E then return nil, T("Dieser Client kann keine Einstellungen kodieren.", "This client cannot encode settings.") end
+    local payload = { fc = 1, suite = C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata("ForeverCore", "Version"),
+        w = math.floor(UIParent:GetWidth() + 0.5), h = math.floor(UIParent:GetHeight() + 0.5),
+        char = CharName(), addons = {} }
+    local count = 0
+    for _, addon in ipairs(addons or {}) do
+        local o, live = Ready(addon)
+        if o then
+            payload.addons[addon] = { v = o.version, data = Snapshot(o, live) }
+            count = count + 1
+        end
+    end
+    if count == 0 then return nil, T("Keine Addons gewählt.", "No addons selected.") end
+    local ok, text = pcall(function() return E.EncodeBase64(E.CompressString(E.SerializeCBOR(payload))) end)
+    if not ok or type(text) ~= "string" then return nil, T("Kodieren fehlgeschlagen.", "Encoding failed.") end
+    return EXPORT_PREFIX .. text
+end
+
+-- Text lesen: Tabelle { addons = { [Addon] = { v, data } }, w, h, char, suite } oder nil, Fehlertext
+function UI.ReadSettingsText(text)
+    text = tostring(text or ""):gsub("%s+", "")
+    if text == "" then return nil end
+    if text:sub(1, #EXPORT_PREFIX) ~= EXPORT_PREFIX then
+        return nil, T("Kein Forever-Core-Text (beginnt mit „FC1:“).", "Not a Forever Core text (starts with \"FC1:\").")
+    end
+    local E = Encoder()
+    if not E then return nil, T("Dieser Client kann keine Einstellungen lesen.", "This client cannot read settings.") end
+    local ok, value = pcall(function()
+        return E.DeserializeCBOR(E.DecompressString(E.DecodeBase64(text:sub(#EXPORT_PREFIX + 1))))
+    end)
+    if not ok or type(value) ~= "table" or type(value.addons) ~= "table" then
+        return nil, T("Text ist unvollständig oder beschädigt.", "Text is incomplete or damaged.")
+    end
+    return value
+end
+
+-- Import vormerken (gilt nach dem Neuladen): Profil "name" je gewaehltem Addon, auf Wunsch fuer diesen Charakter
+function UI.ImportSettings(payload, addons, name, forChar)
+    name = strtrim(tostring(name or ""))
+    if name == "" then name = "Import" end
+    local key = CharKey()
+    local count = 0
+    for _, addon in ipairs(addons or {}) do
+        local o, _, fc = Ready(addon)
+        local entry = payload and payload.addons and payload.addons[addon]
+        if o and type(entry) == "table" and type(entry.data) == "table" then
+            fc.pending = fc.pending or {}
+            fc.pending.import = Filter(o, entry.data, entry.v)
+            fc.pending.importName = name
+            fc.pending.forChar = forChar and key or nil
+            count = count + 1
+        end
+    end
+    return count
+end
+
+---------------------------------------------------------------------------
+-- Fenster "Profile und Austausch" (Aufbau nach CLAUDE.md 7.1, ohne Bereichsliste: alles auf einen Blick)
+---------------------------------------------------------------------------
+local M = UI.MENU
+local profileWindow, transferWindow
+
+-- Knopf, der beim ersten Klick nachfragt und erst beim zweiten ausfuehrt
+local function ConfirmButton(parent, text, width, onConfirm, tooltip)
+    local b
+    b = UI.MenuButton(parent, text, width, 22, function()
+        if b.confirm then
+            b.confirm = nil
+            b:SetText(text)
+            onConfirm()
+        else
+            b.confirm = true
+            b:SetText(T("Sicher? Nochmal", "Sure? Again"))
+            C_Timer.After(4, function() if b.confirm then b.confirm = nil b:SetText(text) end end)
+        end
+    end, tooltip)
+    return b
+end
+
+local function AnyPending()
+    for _, addon in ipairs(UI.SettingsAddons()) do
+        if UI.ProfilePending(addon) then return true end
+    end
+    return false
+end
+
+local function BuildTransferWindow()
+    local W, H = 680, 480
+    local f = UI.MenuWindow("ForeverCoreTransfer", T("Austausch", "Transfer"), UI.NAME, W, H)
+    f:SetFrameStrata("FULLSCREEN_DIALOG")
+    transferWindow = f
+
+    -- links: welche Addons
+    local left = UI.MenuPanel(f, T("Addons", "Addons"))
+    left:SetPoint("TOPLEFT", M.pad, M.panelTop)
+    left:SetPoint("BOTTOMLEFT", M.pad, M.pad + M.footerHeight + M.pad)
+    left:SetWidth(200)
+    f.checks = {}
+
+    -- rechts: Text
+    local right = UI.MenuPanel(f, "")
+    right:SetPoint("TOPLEFT", left, "TOPRIGHT", M.pad, 0)
+    right:SetPoint("BOTTOMRIGHT", -M.pad, M.pad + M.footerHeight + M.pad)
+    f.textTitle = right.title
+    f.hint = right:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    f.hint:SetPoint("TOPLEFT", M.contentX, M.contentY)
+    f.hint:SetPoint("RIGHT", -M.contentX, 0)
+    f.hint:SetJustifyH("LEFT")
+    f.hint:SetWordWrap(true)
+
+    local boxBg = CreateFrame("Frame", nil, right, "BackdropTemplate")
+    UI.SetFlat(boxBg, C.input)
+    boxBg:SetPoint("TOPLEFT", M.contentX, M.contentY - 36)
+    boxBg:SetPoint("BOTTOMRIGHT", -M.contentX, 78)
+    local scroll = CreateFrame("ScrollFrame", nil, boxBg)
+    scroll:SetPoint("TOPLEFT", 6, -6)
+    scroll:SetPoint("BOTTOMRIGHT", -6, 6)
+    local box = CreateFrame("EditBox", nil, scroll)
+    box:SetMultiLine(true)
+    box:SetAutoFocus(false)
+    box:SetFontObject("GameFontHighlightSmall")
+    box:SetWidth(W - 200 - 4 * M.pad - 2 * M.contentX - 12)
+    box:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+    scroll:SetScrollChild(box)
+    scroll:EnableMouseWheel(true)
+    scroll:SetScript("OnMouseWheel", function(self, delta)
+        local maxScroll = math.max(0, box:GetHeight() - self:GetHeight())
+        self:SetVerticalScroll(math.min(maxScroll, math.max(0, self:GetVerticalScroll() - delta * 30)))
+    end)
+    boxBg:EnableMouse(true)
+    boxBg:SetScript("OnMouseDown", function() box:SetFocus() end)
+    f.box = box
+
+    -- nur beim Importieren: Profilname und "fuer diesen Charakter"
+    local nameLabel = right:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    nameLabel:SetPoint("BOTTOMLEFT", M.contentX, 48)
+    nameLabel:SetText(T("Als Profil", "As profile"))
+    local nameBox = UI.EditBox(right, 158, 22)
+    nameBox:SetPoint("LEFT", nameLabel, "LEFT", M.dropdownX, 0)
+    nameBox:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
+    nameBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+    f.forChar = UI.MenuCheck(right, M.contentX, -1000, "", nil, nil)
+    f.forChar:ClearAllPoints()
+    f.forChar:SetPoint("BOTTOMLEFT", M.contentX, 20)
+    f.importParts = { nameLabel, nameBox, f.forChar }
+    f.info = right:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    f.info:SetPoint("BOTTOMLEFT", M.contentX, 20)
+    f.info:SetPoint("RIGHT", -M.contentX, 0)
+    f.info:SetJustifyH("LEFT")
+
+    -- Fussleiste
+    f.action = UI.MenuButton(f, "", M.footerWidth, M.footerHeight)
+    f.action:SetPoint("BOTTOMLEFT", M.pad, M.pad)
+    local close = UI.MenuButton(f, T("Schließen", "Close"), M.footerWidth, M.footerHeight, function() f:Hide() end)
+    close:SetPoint("BOTTOMRIGHT", -M.pad - 16, M.pad)
+
+    local function Selected()
+        local list = {}
+        for _, cb in ipairs(f.checks) do
+            if cb:IsShown() and cb:IsEnabled() and cb:GetChecked() then list[#list + 1] = cb.addon end
+        end
+        return list
+    end
+
+    local function Checks(addons, enabledFn)
+        for _, cb in ipairs(f.checks) do cb:Hide() end
+        for i, addon in ipairs(addons) do
+            local cb = f.checks[i]
+            if not cb then
+                cb = UI.MenuCheck(left, M.contentX, M.contentY - (i - 1) * M.checkStep, "", nil, function() f.OnChecks() end)
+                f.checks[i] = cb
+            end
+            cb.addon = addon
+            cb.label:SetText(addon)
+            cb:SetHitRectInsets(0, -(cb.label:GetStringWidth() + 10), -3, -3)
+            local on = enabledFn(addon)
+            cb:SetEnabled(on)
+            cb:SetChecked(on)
+            cb.label:SetTextColor(on and 1 or 0.5, on and 1 or 0.5, on and 1 or 0.5)
+            cb:Show()
+        end
+    end
+
+    function f.ShowExport()
+        f.mode = "export"
+        f.TitleText:SetText(T("Exportieren", "Export"))
+        f.textTitle:SetText(T("Text zum Sichern oder Weitergeben", "Text to back up or share"))
+        f.hint:SetText(T("Mit Strg+C kopieren. Enthält von jedem gewählten Addon das Profil, das dieser Charakter gerade nutzt.",
+            "Copy with Ctrl+C. Contains, for each selected addon, the profile this character is using right now."))
+        for _, p in ipairs(f.importParts) do p:Hide() end
+        f.info:Show()
+        Checks(UI.SettingsAddons(), function() return true end)
+        f.action:SetText(T("Alles markieren", "Select all"))
+        f.action:SetScript("OnClick", function() box:SetFocus() box:HighlightText() end)
+        f.OnChecks = function()
+            local text, err = UI.ExportSettings(Selected())
+            box:SetText(text or "")
+            f.info:SetText(err or string.format(T("%d Zeichen · erstellt bei %d × %d (UI-Einheiten)", "%d characters · made at %d × %d (UI units)"),
+                #(text or ""), UIParent:GetWidth(), UIParent:GetHeight()))
+            box:SetFocus()
+            box:HighlightText()
+        end
+        f:Show()
+        f.OnChecks()
+    end
+
+    function f.ShowImport()
+        f.mode = "import"
+        f.TitleText:SetText(T("Importieren", "Import"))
+        f.textTitle:SetText(T("Text einfügen (Strg+V)", "Paste text (Ctrl+V)"))
+        f.hint:SetText(T("Wird als neues Profil gespeichert – deine bisherigen Profile bleiben erhalten. Gilt nach dem Neuladen.",
+            "Saved as a new profile – your existing profiles are kept. Applies after reloading."))
+        for _, p in ipairs(f.importParts) do p:Show() end
+        nameBox:SetText("Import")
+        f.forChar.label:SetText(string.format(T("ab jetzt für %s verwenden", "use for %s from now on"), CharName()))
+        f.forChar:SetHitRectInsets(0, -(f.forChar.label:GetStringWidth() + 10), -3, -3)
+        f.forChar:SetChecked(true)
+        f.info:Hide()
+        box:SetText("")
+        Checks({}, function() return false end)
+        f.action:SetText(T("Übernehmen & neu laden", "Apply & reload"))
+        f.OnChecks = function() end
+        f.action:SetScript("OnClick", function()
+            local payload, err = UI.ReadSettingsText(box:GetText())
+            if not payload then
+                UI.Chat("Forever", err or T("Bitte zuerst einen Text einfügen.", "Please paste a text first."))
+                return
+            end
+            local n = UI.ImportSettings(payload, Selected(), nameBox:GetText(), f.forChar:GetChecked())
+            if n > 0 then ReloadUI() else UI.Chat("Forever", T("Keine passenden Addons gewählt.", "No matching addons selected.")) end
+        end)
+        box:SetScript("OnTextChanged", function(self, user)
+            if f.mode ~= "import" or not user then return end
+            local payload, err = UI.ReadSettingsText(self:GetText())
+            if not payload then
+                Checks({}, function() return false end)
+                f.hint:SetText(err or "")
+                return
+            end
+            local names = {}
+            for addon in pairs(payload.addons) do if type(addon) == "string" then names[#names + 1] = addon end end
+            table.sort(names)
+            Checks(names, function(addon) return Ready(addon) ~= nil end)
+            local w, h = tonumber(payload.w), tonumber(payload.h)
+            local note = string.format(T("Von %s, %d Addons.", "From %s, %d addons."), tostring(payload.char or "?"), #names)
+            if w and h and (math.abs(w - UIParent:GetWidth()) > 40 or math.abs(h - UIParent:GetHeight()) > 40) then
+                note = note .. " |cffffd100" .. string.format(T("Erstellt bei %d × %d, hier %d × %d: Positionen können abweichen (danach mit /fmove anpassen).",
+                    "Made at %d × %d, here %d × %d: positions may differ (adjust with /fmove afterwards)."),
+                    w, h, UIParent:GetWidth(), UIParent:GetHeight()) .. "|r"
+            end
+            f.hint:SetText(note .. " " .. T("Ausgegraute Addons sind hier nicht aktiv.", "Greyed-out addons are not active here."))
+        end)
+        f:Show()
+        box:SetFocus()
+    end
+end
+
+function UI.ShowTransfer(mode)
+    if not transferWindow then BuildTransferWindow() end
+    if mode == "import" then transferWindow.ShowImport() else transferWindow.ShowExport() end
+end
+
+local function BuildProfileWindow()
+    local addons = UI.SettingsAddons()
+    local ROW = 28
+    local topH = 44 + math.max(#addons, 1) * ROW + 8
+    local bottomH = 44 + 4 * 30 + 8
+    local W = 680
+    local H = M.headerHeight + M.pad + topH + M.pad + bottomH + M.pad + M.footerHeight + M.pad + 2
+    local f = UI.MenuWindow("ForeverCoreProfiles", T("Profile", "Profiles"), UI.NAME, W, H)
+    profileWindow = f
+
+    -- oben: je Addon das Profil dieses Charakters
+    local top = UI.MenuPanel(f, "")
+    top:SetPoint("TOPLEFT", M.pad, M.panelTop)
+    top:SetPoint("TOPRIGHT", -M.pad, M.panelTop)
+    top:SetHeight(topH)
+    f.topTitle = top.title
+
+    local rows = {}
+    for i, addon in ipairs(addons) do
+        local y = M.contentY - (i - 1) * ROW
+        local list = {}
+        local dd = UI.MenuDropdown(top, M.contentX, y, addon, list,
+            function()
+                local active, own = UI.CurrentProfile(addon)
+                local key = CharKey()
+                local _, _, fc = Ready(addon)
+                local chosen = fc and key and fc.chars[key]
+                return chosen or ""
+            end,
+            function(key)
+                UI.UseProfile(addon, key ~= "" and key or nil)
+                f:RefreshAll()
+            end, 200)
+        dd.list = list
+        dd.addon = addon
+        local status = top:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+        status:SetPoint("LEFT", dd, "RIGHT", 10, 0)
+        local reset = ConfirmButton(top, T("Zurücksetzen", "Reset"), 110, function()
+            if UI.ResetProfile(addon) then f:RefreshAll() end
+        end, T("Setzt das Profil, das dieser Charakter in diesem Addon nutzt, auf Standardwerte (gilt nach dem Neuladen).",
+            "Resets the profile this character uses in this addon to defaults (applies after reloading)."))
+        reset:SetPoint("TOPRIGHT", -M.contentX, y)
+        rows[i] = { dd = dd, status = status, addon = addon }
+    end
+    if #addons == 0 then
+        local none = top:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+        none:SetPoint("TOPLEFT", M.contentX, M.contentY)
+        none:SetText(T("Noch kein Addon nutzt die gemeinsame Profil-Verwaltung.", "No addon uses the shared profile management yet."))
+    end
+
+    -- unten links: fuer alle Addons auf einmal
+    local half = (W - 3 * M.pad) / 2
+    local all = UI.MenuPanel(f, T("Für alle Addons", "For all addons"))
+    all:SetPoint("TOPLEFT", top, "BOTTOMLEFT", 0, -M.pad)
+    all:SetSize(half, bottomH)
+    local ownBtn = UI.MenuButton(all, "", half - 2 * M.contentX, 22, function()
+        for _, addon in ipairs(UI.SettingsAddons()) do UI.NewProfile(addon, CharName()) end
+        f:RefreshAll()
+    end, T("Speichert die aktuellen Einstellungen aller Addons als Profil mit dem Namen dieses Charakters und nutzt es ab sofort hier.",
+        "Saves the current settings of all addons as a profile named after this character and uses it here from now on."))
+    ownBtn:SetPoint("TOPLEFT", M.contentX, M.contentY)
+    f.ownBtn = ownBtn
+    local sharedBtn = UI.MenuButton(all, T("Alle auf das gemeinsame Profil", "All on the shared profile"), half - 2 * M.contentX, 22, function()
+        for _, addon in ipairs(UI.SettingsAddons()) do UI.UseProfile(addon, nil) end
+        f:RefreshAll()
+    end, T("Dieser Charakter nutzt wieder in allen Addons das gemeinsame Profil (gilt nach dem Neuladen).",
+        "This character uses the shared profile in all addons again (applies after reloading)."))
+    sharedBtn:SetPoint("TOPLEFT", M.contentX, M.contentY - 30)
+    local nameBox = UI.EditBox(all, 150, 22)
+    nameBox:SetPoint("TOPLEFT", M.contentX, M.contentY - 60)
+    local function SaveNamed()
+        local name = strtrim(nameBox:GetText() or "")
+        if name == "" then return end
+        for _, addon in ipairs(UI.SettingsAddons()) do UI.NewProfile(addon, name) end
+        nameBox:SetText("")
+        nameBox:ClearFocus()
+        f:RefreshAll()
+    end
+    nameBox:SetScript("OnEnterPressed", SaveNamed)
+    nameBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+    local saveBtn = UI.MenuButton(all, T("Als Profil speichern", "Save as profile"), half - 2 * M.contentX - 156, 22, SaveNamed,
+        T("Speichert die aktuellen Einstellungen aller Addons unter diesem Namen und nutzt das Profil ab sofort hier.",
+        "Saves the current settings of all addons under this name and uses the profile here from now on."))
+    saveBtn:SetPoint("LEFT", nameBox, "RIGHT", 6, 0)
+    -- Profil loeschen (in allen Addons, die es haben)
+    local delList = {}
+    local delChoice
+    local delDD = UI.MenuDropdown(all, M.contentX, M.contentY - 90, T("Löschen", "Delete"), delList,
+        function() return delChoice end, function(key) delChoice = key end, 100)
+    delDD:ClearAllPoints()
+    delDD:SetPoint("TOPLEFT", M.contentX + 56, M.contentY - 90)
+    delDD.label:ClearAllPoints()
+    delDD.label:SetPoint("TOPLEFT", all, "TOPLEFT", M.contentX, M.contentY - 94)
+    local delBtn = ConfirmButton(all, T("Löschen", "Delete"), half - 2 * M.contentX - 56 - 106, function()
+        if not delChoice then return end
+        for _, addon in ipairs(UI.SettingsAddons()) do UI.DeleteProfile(addon, delChoice) end
+        delChoice = nil
+        f:RefreshAll()
+    end)
+    delBtn:SetPoint("LEFT", delDD, "RIGHT", 6, 0)
+
+    -- unten rechts: Austausch
+    local tr = UI.MenuPanel(f, T("Austausch", "Transfer"))
+    tr:SetPoint("TOPRIGHT", top, "BOTTOMRIGHT", 0, -M.pad)
+    tr:SetSize(half, bottomH)
+    local trHint = tr:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    trHint:SetPoint("TOPLEFT", M.contentX, M.contentY)
+    trHint:SetPoint("RIGHT", -M.contentX, 0)
+    trHint:SetJustifyH("LEFT")
+    trHint:SetWordWrap(true)
+    trHint:SetText(T("Ein Text für deine komplette Forever-Oberfläche – zum Sichern oder Weitergeben. Häkchen je Addon.",
+        "One text for your complete Forever interface – to back up or share. One checkbox per addon."))
+    local exp = UI.MenuButton(tr, T("Exportieren …", "Export …"), (half - 2 * M.contentX - 6) / 2, 22, function() UI.ShowTransfer("export") end)
+    exp:SetPoint("TOPLEFT", M.contentX, M.contentY - 46)
+    local imp = UI.MenuButton(tr, T("Importieren …", "Import …"), (half - 2 * M.contentX - 6) / 2, 22, function() UI.ShowTransfer("import") end)
+    imp:SetPoint("LEFT", exp, "RIGHT", 6, 0)
+    local trNote = tr:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    trNote:SetPoint("TOPLEFT", M.contentX, M.contentY - 78)
+    trNote:SetPoint("RIGHT", -M.contentX, 0)
+    trNote:SetJustifyH("LEFT")
+    trNote:SetWordWrap(true)
+    trNote:SetText(T("Importe werden als neues Profil gespeichert; nichts Bestehendes geht verloren.",
+        "Imports are saved as a new profile; nothing existing is lost."))
+
+    -- Fussleiste
+    local reload = UI.MenuButton(f, T("Neu laden", "Reload"), M.footerWidth, M.footerHeight, function() ReloadUI() end,
+        T("Profilwechsel, Zurücksetzen und Importe gelten nach dem Neuladen.", "Profile changes, resets and imports apply after reloading."))
+    reload:SetPoint("BOTTOMLEFT", M.pad, M.pad)
+    reload:GetFontString():SetTextColor(C.accent[1], C.accent[2], C.accent[3])
+    local close = UI.MenuButton(f, T("Schließen", "Close"), M.footerWidth, M.footerHeight, function() f:Hide() end)
+    close:SetPoint("BOTTOMRIGHT", -M.pad - 16, M.pad)
+
+    -- Listen und Texte vor dem Auffrischen der Bedienelemente neu fuellen
+    local baseRefresh = f.RefreshAll
+    function f:RefreshAll()
+        f.topTitle:SetText(string.format(T("Profile von %s", "Profiles of %s"), CharName()))
+        ownBtn:SetText(string.format(T("Eigenes Profil für %s", "Own profile for %s"), CharName()))
+        for _, r in ipairs(rows) do
+            wipe(r.dd.list)
+            local _, _, shared = UI.CurrentProfile(r.addon)
+            r.dd.list[1] = { key = "", label = string.format(T("Gemeinsam (%s)", "Shared (%s)"), UI.ProfileLabel(shared or DEFAULT_PROFILE)) }
+            for _, name in ipairs(UI.ProfileNames(r.addon)) do
+                r.dd.list[#r.dd.list + 1] = { key = name, label = UI.ProfileLabel(name) }
+            end
+            local active = UI.CurrentProfile(r.addon)
+            if UI.ProfilePending(r.addon) then
+                r.status:SetText("|cffffd100" .. T("gilt nach dem Neuladen", "applies after reload") .. "|r")
+            else
+                r.status:SetText(string.format(T("geladen: %s", "loaded: %s"), UI.ProfileLabel(active or DEFAULT_PROFILE)))
+            end
+        end
+        wipe(delList)
+        local seen = {}
+        for _, addon in ipairs(UI.SettingsAddons()) do
+            for _, name in ipairs(UI.ProfileNames(addon)) do
+                if name ~= DEFAULT_PROFILE and not seen[name] then
+                    seen[name] = true
+                    delList[#delList + 1] = { key = name, label = name }
+                end
+            end
+        end
+        if delChoice and not seen[delChoice] then delChoice = nil end
+        reload:SetShown(AnyPending())
+        baseRefresh(self)
+    end
+end
+
+function UI.ShowProfiles()
+    if not profileWindow then BuildProfileWindow() end
+    if profileWindow:IsShown() then profileWindow:RefreshAll() else profileWindow:Show() end
 end
 
 ---------------------------------------------------------------------------

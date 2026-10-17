@@ -373,3 +373,9 @@ ns.On("ADDON_LOADED", "Laden", function(name)
     ns.savedVarsLoaded = type(_G.ForeverFramesDB) == "table" and not _G.ForeverFramesDB.__fresh
     ns.GetDB().__fresh = nil
 end)
+
+---------------------------------------------------------------------------
+-- Gemeinsame Einstellungs-Verwaltung (ForeverCore): Profile je Charakter, Zuruecksetzen, Export/Import
+---------------------------------------------------------------------------
+ns.UI.RegisterSettings({ addon = "ForeverFrames", sv = "ForeverFramesDB", defaults = ns.DEFAULTS, version = 1,
+    keepOnReset = { "clicks", "buffCustom" } })

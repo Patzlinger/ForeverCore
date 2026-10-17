@@ -91,6 +91,8 @@ Every addon needs the small base addon **ForeverCore**. It's included in the pac
 - **Move everything at once:** type **/fmove** to unlock all frames together, then place them with a grid and snapping (hold Shift to move freely). Type /fmove again to lock them.
 - **Exact positions:** X/Y fields for pixel-perfect placement.
 - **Resizable windows:** drag the corner of any settings window, and the window you opened last always stays on top.
+- **Profiles per character:** one shared profile for everyone, or an own profile for any character – for all addons at once (**/forever profile**).
+- **Share your interface:** export all your Forever Core settings as one text and import them on another PC or for a friend (**/forever export**).
 
 ---
 

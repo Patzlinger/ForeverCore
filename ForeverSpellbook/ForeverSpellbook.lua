@@ -1063,3 +1063,8 @@ events:SetScript("OnEvent", function(_, event)
         Soon(Refresh)
     end
 end)
+
+---------------------------------------------------------------------------
+-- Gemeinsame Einstellungs-Verwaltung (ForeverCore): Profile je Charakter, Zuruecksetzen, Export/Import
+---------------------------------------------------------------------------
+UI.RegisterSettings({ addon = "ForeverSpellbook", sv = "ForeverSpellbookDB", defaults = DEFAULTS, version = 1 })

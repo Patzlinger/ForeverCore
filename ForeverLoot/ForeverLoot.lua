@@ -944,3 +944,8 @@ SlashCmdList["FOREVERLOOT"] = Safe("Befehl", function(msg)
         Chat(T("  /floot status – Selbsttest", "  /floot status – self-test"))
     end
 end)
+
+---------------------------------------------------------------------------
+-- Gemeinsame Einstellungs-Verwaltung (ForeverCore): Profile je Charakter, Zuruecksetzen, Export/Import
+---------------------------------------------------------------------------
+UI.RegisterSettings({ addon = "ForeverLoot", sv = "ForeverLootDB", defaults = DEFAULTS, version = 1 })

@@ -56,6 +56,10 @@ Minimap-Knopf ausblenden und die Sprache für alle Forever-Addons auf Englisch u
 Außerdem steht "Forever Core" im Blizzard-Optionsmenü (Esc » Optionen » AddOns) – mit
 einer Unterseite pro Addon, die dessen Einstellungen öffnet. /forever options springt direkt dorthin. /forever reset holt die Knöpfe zurück und setzt die Position zurück.
 
+Profile: /forever profile – jeder Charakter nutzt das gemeinsame Profil oder ein eigenes (für alle
+Addons auf einmal oder einzeln). Austausch: /forever export bzw. /forever import – ein Text für die
+ganze Oberfläche (Häkchen je Addon); ein Import wird als neues Profil gespeichert.
+
 Alles verschieben: /fmove (oder Rechtsklick auf den Sammelknopf) entsperrt alle aktiven
 Forever-Addons auf einmal – mit Raster und Einrasten (Umschalt = frei). Nochmal /fmove sperrt alle.
 
@@ -114,6 +118,10 @@ character only), and click "Open" to go straight to that addon's settings. The m
 there as well (German clients can also switch all Forever addons to English there).
 "Forever Core" also appears in the Blizzard options (Esc » Options » AddOns) with one page
 per addon that opens its settings. /forever options jumps straight there. /forever reset brings the buttons back and resets their position.
+
+Profiles: /forever profile – every character uses the shared profile or its own (for all addons at
+once or one by one). Transfer: /forever export or /forever import – one text for your whole interface
+(one checkbox per addon); an import is saved as a new profile.
 
 Move everything: /fmove (or right-click the collector button) unlocks all active Forever
 addons at once – with grid and snapping (Shift = free). /fmove again locks them all.

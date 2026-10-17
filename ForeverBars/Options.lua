@@ -583,7 +583,7 @@ local function CreateOptions()
         for _, name in ipairs(ns.GetProfileNames()) do
             table.insert(profileChoices, { value = name, text = ns.ProfileLabel(name) })
         end
-        if options.selectedProfile and not (ns.db.profiles or {})[options.selectedProfile] then options.selectedProfile = nil end
+        if options.selectedProfile and not ns.HasProfile(options.selectedProfile) then options.selectedProfile = nil end
         if not options.selectedProfile then options.selectedProfile = ns.GetActiveProfile() end
         profileSelector.button:SetText(options.selectedProfile and ns.ProfileLabel(options.selectedProfile) or L("PROFILE_NONE"))
     end

@@ -133,7 +133,11 @@ local GetDB = ns.GetDB
 function ns.FrameDB(key) return GetDB().frames[key] end
 
 function ns.ResetAll()
-    wipe(GetDB())
+    -- nur die Einstellungen des aktiven Profils; Profil-Verwaltung (_fc) und Minimap-Position bleiben
+    local d = GetDB()
+    for key in pairs(d) do
+        if not (type(key) == "string" and key:sub(1, 1) == "_") and key ~= "minimapAngle" then d[key] = nil end
+    end
     db = nil
     GetDB()
 end
@@ -280,3 +284,7 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
     end
 end)
 
+---------------------------------------------------------------------------
+-- Gemeinsame Einstellungs-Verwaltung (ForeverCore): Profile je Charakter, Zuruecksetzen, Export/Import
+---------------------------------------------------------------------------
+UI.RegisterSettings({ addon = "ForeverUnits", sv = "ForeverUnitsDB", defaults = ns.DEFAULTS, version = 1 })

@@ -232,3 +232,9 @@ SlashCmdList["FOREVERCHAT"] = function(msg)
         if ns.ToggleOptions then ns.ToggleOptions() end
     end
 end
+
+---------------------------------------------------------------------------
+-- Gemeinsame Einstellungs-Verwaltung (ForeverCore): Profile je Charakter, Zuruecksetzen, Export/Import
+---------------------------------------------------------------------------
+UI.RegisterSettings({ addon = "ForeverChat", sv = "ForeverChatDB", defaults = ns.DEFAULTS, version = 1,
+    global = { "savedColors" } }) -- gesicherte Blizzard-Chatfarben gelten fuer alle Profile

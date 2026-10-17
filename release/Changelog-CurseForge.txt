@@ -6,6 +6,8 @@
 - **ForeverCore – one base for all addons.** The shared parts of Forever Core (look, hub, minimap button, settings entry) now live in their own small addon, **ForeverCore**. Every Forever Core addon needs it. It is already included in the full package and in every single-addon download, so you don't have to do anything extra.
 - **Choose what you want:** turn every addon on or off right in the hub (/forever). Use "All on" / "All off" if you like, or limit your choice to one character. Changes apply after you click "Reload".
 - **A short welcome:** on your very first login the hub opens once and shows you how it works. After that it stays closed – you'll find it via /forever, the addon menu at the minimap or Esc » Options » AddOns.
+- **Profiles for every addon – per character:** all your characters share one profile by default. Want different frames or bars on your healer? Give that character its own profile with one click ("Own profile for …"), for all addons at once or just for single ones. Open it with **/forever profile** or the button in the hub.
+- **Share your whole interface:** export the settings of all your Forever Core addons as one short text (tick the addons you want), back it up or send it to a friend, and import it again with **/forever import**. Imports are saved as a new profile, so nothing you have gets lost.
 
 ### Improved
 - All Forever Core addons now share one version number (0.41b), so it's easy to see that everything is up to date.
@@ -15,7 +17,9 @@
 - ForeverSpellbook: visiting another trainer (e.g. the portal trainer, a pet trainer or a weapon master) no longer replaces your class trainer's list. Mages get their own "Portals and teleports" section, and every other trainer gets its own section with its name.
 
 ### Good to know
-- Updating from an older version: install the new package (with ForeverCore). Your settings are kept.
+- Updating from an older version: install the new package (with ForeverCore). Your settings are kept and become the shared profile.
+- Switching profiles, resetting and importing apply after a quick reload (the profile window has a button for it).
+- An imported layout made on a different screen size may need a little adjusting – use /fmove.
 
 ## 0.32b – October 17, 2026
 

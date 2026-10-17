@@ -112,3 +112,10 @@ SlashCmdList.FOREVERQUESTS = function(msg)
         ns.ToggleOptions()
     end
 end
+
+---------------------------------------------------------------------------
+-- Gemeinsame Einstellungs-Verwaltung (ForeverCore): Profile je Charakter, Zuruecksetzen, Export/Import
+---------------------------------------------------------------------------
+-- Pins (angeheftete Quests) und Sprache gelten fuer alle Profile
+ForeverHub.UI.RegisterSettings({ addon = "ForeverQuests", sv = "ForeverQuestsDB", defaults = ns.defaults, version = 1,
+    global = { "version", "pinned", "language", "showMinimapButton" } })

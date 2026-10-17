@@ -1395,3 +1395,8 @@ SlashCmdList["FOREVERXP"] = function(msg)
         ToggleOptions()
     end
 end
+
+---------------------------------------------------------------------------
+-- Gemeinsame Einstellungs-Verwaltung (ForeverCore): Profile je Charakter, Zuruecksetzen, Export/Import
+---------------------------------------------------------------------------
+UI.RegisterSettings({ addon = "ForeverXP", sv = "ForeverXPDB", defaults = DEFAULTS, version = 1 })

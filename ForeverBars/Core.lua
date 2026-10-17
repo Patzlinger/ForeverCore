@@ -101,8 +101,7 @@ ns.defaults = {
         micro = BarDefaults(true), bags = BarDefaults(true), vehicle = BarDefaults(true),
         xp = BarDefaults(true), rep = BarDefaults(true), queue = BarDefaults(true),
     },
-    profiles = {},           -- gespeicherte Profile: [Name] = Kopie der Einstellungen (siehe Profiles.lua)
-    activeProfile = "Default", -- aktives Profil; "Default" gibt es immer
+    -- (Profile verwaltet seit 0.41b ForeverCore – je Charakter, siehe RegisterSettings am Ende dieser Datei)
     layoutVersion = 7,         -- Stand der Standard-Anordnung (siehe MigrateLayout)
     skin = "FLAT",           -- Aussehen der Knöpfe (ns.SKINS in Bars.lua)
     hoverAlpha = 15,         -- Stärke des Hover-Leuchtens über den Knöpfen (%)
@@ -202,9 +201,12 @@ function ns.MigrateLayout(db)
     db.layoutVersion = LAYOUT_VERSION
     if not db.bars then return end -- erster Start: es gelten ohnehin die Standardwerte
     -- Betroffen: das gespeicherte Standardprofil und, falls es aktiv ist, die aktuellen Einstellungen
+    -- (Profile liegen seit 0.41b in db._fc, verwaltet von ForeverCore)
     local targets = {}
-    if db.profiles and db.profiles.Default and db.profiles.Default.bars then table.insert(targets, db.profiles.Default) end
-    if (db.activeProfile or "Default") == "Default" then table.insert(targets, db) end
+    local fc = type(db._fc) == "table" and db._fc or {}
+    local stored = type(fc.profiles) == "table" and fc.profiles.Default
+    if stored and stored.bars then table.insert(targets, stored) end
+    if (fc.active or "Default") == "Default" then table.insert(targets, db) end
     for _, target in ipairs(targets) do
         if version < 2 then
             target.bars = CopyTable(ns.defaults.bars)
@@ -370,3 +372,30 @@ for i = 1, 18 do
 end
 function ForeverBars_ToggleOptions() if ns.ToggleOptions then ns.ToggleOptions() end end
 function ForeverBars_ToggleUnlock() if ns.SetUnlocked then ns.SetUnlocked(not ns.unlocked) end end
+
+---------------------------------------------------------------------------
+-- Gemeinsame Einstellungs-Verwaltung (ForeverCore): Profile je Charakter, Zuruecksetzen, Export/Import
+---------------------------------------------------------------------------
+ForeverHub.UI.RegisterSettings({
+    addon = addonName, sv = "ForeverBarsDB", defaults = ns.defaults, version = 1,
+    -- Minimap-Symbol und Stand der Standard-Anordnung gelten fuer alle Profile
+    global = { "showMinimapButton", "layoutVersion", "version" },
+    -- Profile aelterer Stande: Leisten-Einstellungen umrechnen (wie frueher beim Laden eines Profils)
+    migrate = function(data) if ns.MigrateBars then ns.MigrateBars(data.bars) end end,
+    -- eigenes Zuruecksetzen (sofort, ohne Neuladen; Positionen neu berechnet)
+    reset = function() if ns.ResetAllSettings then ns.ResetAllSettings() end end,
+    -- bis 0.32b hatte ForeverBars eigene Profile (profiles/activeProfile, aktiv fuer alle Charaktere):
+    -- uebernehmen; das bisher aktive Profil wird das gemeinsame Profil aller Charaktere
+    legacy = function(live, fc)
+        if type(live.profiles) == "table" then
+            for name, data in pairs(live.profiles) do
+                if type(name) == "string" and type(data) == "table" then fc.profiles[name] = data end
+            end
+        end
+        if type(live.activeProfile) == "string" then
+            fc.shared = live.activeProfile
+            fc.active = live.activeProfile
+        end
+        live.profiles, live.activeProfile = nil, nil
+    end,
+})

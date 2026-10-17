@@ -2061,3 +2061,8 @@ SlashCmdList["FOREVERCAST"] = Safe("Befehl", function(msg)
         ToggleOptions()
     end
 end)
+
+---------------------------------------------------------------------------
+-- Gemeinsame Einstellungs-Verwaltung (ForeverCore): Profile je Charakter, Zuruecksetzen, Export/Import
+---------------------------------------------------------------------------
+UI.RegisterSettings({ addon = "ForeverCast", sv = "ForeverCastDB", defaults = DEFAULTS, version = 1 })

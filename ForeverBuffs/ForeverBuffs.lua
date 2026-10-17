@@ -813,3 +813,8 @@ SlashCmdList["FOREVERBUFFS"] = function(msg)
         ToggleOptions()
     end
 end
+
+---------------------------------------------------------------------------
+-- Gemeinsame Einstellungs-Verwaltung (ForeverCore): Profile je Charakter, Zuruecksetzen, Export/Import
+---------------------------------------------------------------------------
+UI.RegisterSettings({ addon = "ForeverBuffs", sv = "ForeverBuffsDB", defaults = DEFAULTS, version = 1 })

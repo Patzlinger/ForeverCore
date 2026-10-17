@@ -1261,3 +1261,8 @@ events:SetScript("OnEvent", function(_, event, unit)
         SoonUpdateIcon()
     end
 end)
+
+---------------------------------------------------------------------------
+-- Gemeinsame Einstellungs-Verwaltung (ForeverCore): Profile je Charakter, Zuruecksetzen, Export/Import
+---------------------------------------------------------------------------
+UI.RegisterSettings({ addon = "ForeverVendor", sv = "ForeverVendorDB", defaults = DEFAULTS, version = 1 })
