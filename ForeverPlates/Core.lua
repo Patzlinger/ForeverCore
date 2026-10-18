@@ -391,21 +391,17 @@ local function BuildCast(fp)
     cb.text:SetPoint("LEFT", cb, "LEFT", 3, 0)
     cb.text:SetPoint("RIGHT", cb, "RIGHT", -3, 0)
     -- Ziel-Plakette rechts neben der Leiste: 30 % der Plakettenbreite, längere Namen werden abgeschnitten
+    -- Zeile unter der Zauberleiste, ganz klein: "Ziel Name" (beim Unterbrechen "von Name")
     local tag = CreateFrame("Frame", nil, fp.overlay)
     tag:Hide()
-    tag.bg = tag:CreateTexture(nil, "BACKGROUND")
-    tag.bg:SetAllPoints()
-    tag.bg:SetColorTexture(C.header[1], C.header[2], C.header[3], 0.95)
-    tag.edges = Edges(tag, "BORDER", tag, C.border[1], C.border[2], C.border[3], 1, 1)
-    tag.arrow = NewText(tag)
-    Font(tag.arrow, 8)
-    tag.arrow:SetPoint("LEFT", 2, 0)
-    tag.arrow:SetText("»")
-    tag.arrow:SetTextColor(C.accent[1], C.accent[2], C.accent[3])
+    tag.label = NewText(tag)
+    Font(tag.label, 7)
+    tag.label:SetPoint("LEFT", 0, 0)
+    tag.label:SetTextColor(0.62, 0.62, 0.66)
     tag.text = NewText(tag)
-    Font(tag.text, 8)
-    tag.text:SetPoint("LEFT", tag.arrow, "RIGHT", 2, 0)
-    tag.text:SetPoint("RIGHT", -2, 0)
+    Font(tag.text, 7)
+    tag.text:SetPoint("LEFT", tag.label, "RIGHT", 3, 0)
+    tag.text:SetPoint("RIGHT", 0, 0)
     tag.text:SetJustifyH("LEFT")
     tag.text:SetWordWrap(false)
     cb.tag = tag
@@ -413,23 +409,17 @@ local function BuildCast(fp)
     fp.cast = cb
 end
 
--- Zauberleiste direkt unter der Lebensleiste; mit Ziel-Plakette 70 %, sonst volle Breite
+-- Zauberleiste direkt unter der Lebensleiste, genauso breit; die Ziel-Zeile darunter
 local function LayoutCastRow(fp)
     local cb, tag = fp.cast, fp.cast.tag
-    local h = db.castHeight
-    local w = fp.overlay:GetWidth() or 0
-    if IsSecret(w) then w = 0 end
-    tag:ClearAllPoints()
-    tag:SetPoint("TOPRIGHT", fp.overlay, "BOTTOMRIGHT", 0, -2)
-    tag:SetSize(math.max(36, math.floor(w * 0.3 + 0.5)), h)
     cb:ClearAllPoints()
     cb:SetPoint("TOPLEFT", fp.overlay, "BOTTOMLEFT", 0, -2)
-    if tag:IsShown() then
-        cb:SetPoint("BOTTOMRIGHT", tag, "BOTTOMLEFT", -4, 0)
-    else
-        cb:SetPoint("TOPRIGHT", fp.overlay, "BOTTOMRIGHT", 0, -2)
-        cb:SetHeight(h)
-    end
+    cb:SetPoint("TOPRIGHT", fp.overlay, "BOTTOMRIGHT", 0, -2)
+    cb:SetHeight(db.castHeight)
+    tag:ClearAllPoints()
+    tag:SetPoint("TOPLEFT", cb, "BOTTOMLEFT", 1, -2)
+    tag:SetPoint("TOPRIGHT", cb, "BOTTOMRIGHT", -1, -2)
+    tag:SetHeight(9)
 end
 
 local function BuildCombo(fp)
@@ -984,13 +974,10 @@ local function UpdateCastTarget(fp)
     tag.text:SetText(name)
     local col = Yes(class) and C_ClassColor and C_ClassColor.GetClassColor(class)
     if col then tag.text:SetTextColor(col.r, col.g, col.b) else tag.text:SetTextColor(1, 1, 1) end
-    -- auf mich: Plakette rot hinterlegt
+    -- auf mich: "Ziel" rot
     local me = not IsSecret(name) and name == UnitName("player")
-    if me then
-        tag.bg:SetColorTexture(0.5, 0.1, 0.1, 0.95)
-    else
-        tag.bg:SetColorTexture(C.header[1], C.header[2], C.header[3], 0.95)
-    end
+    tag.label:SetText(T("Ziel", "Target"))
+    if me then tag.label:SetTextColor(1, 0.3, 0.3) else tag.label:SetTextColor(0.62, 0.62, 0.66) end
     tag:Show()
     LayoutCastRow(fp)
 end
@@ -1066,7 +1053,8 @@ local function EndCast(fp, interrupted, by)
                 tag.text:SetText(name)
                 local col = Yes(class) and C_ClassColor and C_ClassColor.GetClassColor(class)
                 if col then tag.text:SetTextColor(col.r, col.g, col.b) else tag.text:SetTextColor(1, 1, 1) end
-                tag.bg:SetColorTexture(C.header[1], C.header[2], C.header[3], 0.95)
+                tag.label:SetText(T("von", "by"))
+                tag.label:SetTextColor(0.62, 0.62, 0.66)
                 tag:Show()
                 LayoutCastRow(fp)
             end

@@ -124,7 +124,7 @@ do
     Gap()
     Header(T("Zauberleiste", "Cast bar"))
     Check(T("Eigene schmale Zauberleiste", "Own slim cast bar"), "castbar")
-    Check(T("Ziel-Plakette am Ende (rot = auf dich)", "Target tag at the end (red = on you)"), "castTarget", true)
+    Check(T("Ziel klein darunter („Ziel“ rot = auf dich)", "Target small below (\"Target\" red = on you)"), "castTarget", true)
     Check(T("Grün, wenn meine Unterbrechung bereit ist", "Green when my interrupt is ready"), "interruptHint", true)
     Slider(T("Höhe", "Height"), "castHeight", 6, 16, 1, " px", true)
     Gap()
