@@ -125,6 +125,29 @@ local function IsMaximized(map)
     return map.IsMaximized and map:IsMaximized() or false
 end
 
+-- Breite des Questlogs rechts neben der Karte (0, wenn er zugeklappt ist)
+local function SidePanelWidth(map)
+    local log = map.QuestLog or _G.QuestMapFrame
+    if log and log:IsShown() then return map.questLogWidth or log:GetWidth() or 0 end
+    return 0
+end
+
+-- Fenstergröße der Karte frei setzen: Blizzard merkt sich die Kartengröße im Fenstermodus in minimizedWidth/-Height
+-- (ohne Questlog) und setzt sie beim Öffnen/Auf-/Zuklappen des Questlogs daraus neu – darum dort mit ändern.
+-- width = Breite der Karte ohne Questlog, height = Höhe
+local lastCanvasUpdate = 0
+local function SetMapSize(map, width, height, force)
+    if not map.fqOrigSize then map.fqOrigSize = { map.minimizedWidth, map.minimizedHeight } end
+    map.minimizedWidth, map.minimizedHeight = width, height
+    map:SetSize(width + SidePanelWidth(map), height)
+    -- Karte im Fenster neu einpassen (beim Ziehen höchstens 20-mal je Sekunde)
+    local now = GetTime()
+    if map.OnFrameSizeChanged and (force or now - lastCanvasUpdate > 0.05) then
+        lastCanvasUpdate = now
+        pcall(map.OnFrameSizeChanged, map)
+    end
+end
+
 local function ApplyMapPlacement()
     local map = _G.WorldMapFrame
     if not map or not ns.db then return end
@@ -133,6 +156,8 @@ local function ApplyMapPlacement()
     if maximized then return end
     local scale = ns.db.mapScale or 1
     if math.abs(map:GetScale() - scale) > 0.001 then map:SetScale(scale) end
+    local size = ns.db.mapSize
+    if size and size.w and size.h then SetMapSize(map, size.w, size.h, true) end
     local pos = ns.db.mapPos
     if pos then
         map:ClearAllPoints()
@@ -147,13 +172,15 @@ local function SaveMapPlacement()
     local scale = map:GetScale()
     ns.db.mapPos = { x = left * scale, y = top * scale }
     ns.db.mapScale = scale
+    if map.fqOrigSize then ns.db.mapSize = { w = map.minimizedWidth, h = map.minimizedHeight } end
 end
 
 local function ResetMapPlacement()
     local map = _G.WorldMapFrame
-    ns.db.mapPos, ns.db.mapScale = nil, nil
+    ns.db.mapPos, ns.db.mapScale, ns.db.mapSize = nil, nil, nil
     if IsMaximized(map) then return end
     map:SetScale(1)
+    if map.fqOrigSize and map.fqOrigSize[1] then SetMapSize(map, map.fqOrigSize[1], map.fqOrigSize[2], true) end
     -- Blizzard setzt die Karte an ihren Standardplatz
     if type(_G.UpdateUIPanelPositions) == "function" then pcall(_G.UpdateUIPanelPositions, map) end
 end
@@ -182,7 +209,9 @@ local function SetupMapMoving(map, top)
     end)
     top:SetScript("OnLeave", function() Style.GetTooltip():Hide() end)
 
-    -- Griff unten rechts: ziehen = größer/kleiner (Ecke oben links bleibt stehen)
+    -- Griff unten rechts (Ecke oben links bleibt stehen):
+    --   ziehen       = Breite und Höhe frei ändern
+    --   Shift+ziehen = alles im gleichen Verhältnis größer/kleiner (Skalierung)
     grip = CreateFrame("Button", "ForeverQuestsMapGrip", map)
     grip:SetSize(16, 16)
     grip:SetPoint("BOTTOMRIGHT", map, "BOTTOMRIGHT", -2, 2)
@@ -191,22 +220,37 @@ local function SetupMapMoving(map, top)
     grip:SetHighlightTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Highlight")
     grip:SetPushedTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Down")
     grip:SetScript("OnMouseDown", function(self)
-        local cursorX = GetCursorPosition() / UIParent:GetEffectiveScale()
+        local uiScale = UIParent:GetEffectiveScale()
+        local cursorX, cursorY = GetCursorPosition()
         local scale = map:GetScale()
-        self.start = { x = cursorX, scale = scale, left = map:GetLeft() * scale, top = map:GetTop() * scale,
-            width = map:GetWidth() * scale }
+        self.start = { x = cursorX / uiScale, y = cursorY / uiScale, scale = scale, left = map:GetLeft() * scale,
+            top = map:GetTop() * scale, width = map:GetWidth() * scale,
+            mapWidth = map.minimizedWidth or (map:GetWidth() - SidePanelWidth(map)), mapHeight = map:GetHeight() }
+        local scaling = IsShiftKeyDown()
         self:SetScript("OnUpdate", function()
             local s = self.start
-            local x = GetCursorPosition() / UIParent:GetEffectiveScale()
-            local newScale = s.scale * (s.width + (x - s.x)) / s.width
-            newScale = math.max(MIN_SCALE, math.min(MAX_SCALE, newScale))
-            map:SetScale(newScale)
+            local x, y = GetCursorPosition()
+            x, y = x / uiScale, y / uiScale
+            if scaling then
+                local newScale = s.scale * (s.width + (x - s.x)) / s.width
+                newScale = math.max(MIN_SCALE, math.min(MAX_SCALE, newScale))
+                map:SetScale(newScale)
+            else
+                -- Mausweg in Kartenpunkte umrechnen (die Karte ist evtl. skaliert); nach unten ziehen = höher
+                local maxWidth = UIParent:GetWidth() / s.scale - SidePanelWidth(map)
+                local maxHeight = UIParent:GetHeight() / s.scale
+                local width = math.max(400, math.min(maxWidth, s.mapWidth + (x - s.x) / s.scale))
+                local height = math.max(300, math.min(maxHeight, s.mapHeight + (s.y - y) / s.scale))
+                SetMapSize(map, math.floor(width + 0.5), math.floor(height + 0.5))
+            end
+            local current = map:GetScale()
             map:ClearAllPoints()
-            map:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", s.left / newScale, s.top / newScale)
+            map:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", s.left / current, s.top / current)
         end)
     end)
     grip:SetScript("OnMouseUp", function(self)
         self:SetScript("OnUpdate", nil)
+        if map.fqOrigSize then pcall(map.OnFrameSizeChanged or function() end, map) end
         SaveMapPlacement()
     end)
     grip:SetScript("OnEnter", function(self)
@@ -227,6 +271,13 @@ local function SetupMapMoving(map, top)
     for _, method in ipairs({ "Maximize", "Minimize" }) do
         if type(map[method]) == "function" then
             hooksecurefunc(map, method, function() C_Timer.After(0, ApplyMapPlacement) end)
+        end
+    end
+    -- Questlog auf-/zugeklappt: Blizzard setzt die Breite neu – unsere Kartengröße wieder anwenden
+    local questLog = map.QuestLog or _G.QuestMapFrame
+    if questLog then
+        for _, script in ipairs({ "OnShow", "OnHide" }) do
+            questLog:HookScript(script, function() C_Timer.After(0, ApplyMapPlacement) end)
         end
     end
     ApplyMapPlacement()
