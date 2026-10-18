@@ -59,6 +59,7 @@ ns.DEFAULTS = {
     buffMax = 4,
     execute = true,           -- Finishing-Bereich
     executeAt = 20,
+    executeColor = { 1, 0.2, 0.85 }, -- auffallend: leuchtendes Pink-Magenta (frei wählbar)
     combo = true,             -- Combopunkte auf dem Ziel
     friendlySimple = true,    -- Verbündete: nur Name in Klassenfarbe
     quest = true,             -- Questgegner-Symbol
@@ -72,7 +73,15 @@ local function GetDB()
     if type(_G.ForeverPlatesDB) ~= "table" then _G.ForeverPlatesDB = db or {} end
     db = _G.ForeverPlatesDB
     for k, v in pairs(ns.DEFAULTS) do
-        if db[k] == nil then db[k] = v end
+        if db[k] == nil then
+            if type(v) == "table" then
+                local copy = {}
+                for i, x in pairs(v) do copy[i] = x end
+                db[k] = copy
+            else
+                db[k] = v
+            end
+        end
     end
     -- einmalig: eigene Plaketten mit Forever-Look als neuer Standard (vorher Blizzards Plakette mit Zusätzen)
     if not db.ownPlatesV2 then
@@ -127,7 +136,6 @@ local COL = {
     castReady = { 0.36, 0.7, 0.44 },  -- unterbrechbar und meine Unterbrechung ist bereit
     castLocked = { 0.42, 0.42, 0.47 },-- nicht unterbrechbar
     interrupted = { 0.66, 0.24, 0.24 },
-    execute = { 0.72, 0.28, 0.46 },
     comboOn = { 1, 0.82, 0 },         -- Goldton der Forever-Fenster
     comboOff = { 0.12, 0.12, 0.14 },
     los = { 1, 0.45, 0.35 },
@@ -295,18 +303,23 @@ local function Look()
 end
 
 local texts = setmetatable({}, { __mode = "k" }) -- alle Texte: Grundgröße und feste Umriss-Wahl
+-- Gesperrte Texte (z. B. auf Symbolen, die Blizzards Auren-Anzeige verwaltet) nie anfassen
 local function SetLookFont(fs, size, flags)
+    if fs.IsForbidden and fs:IsForbidden() then return end
     local _, path, outline = Look()
     local fl = flags or outline
     if fl == "NONE" then fl = "" end
     size = size + ((db and db.fontSizeAdd) or 0)
-    if not pcall(fs.SetFont, fs, path, size, fl) then fs:SetFont(FONT, size, fl) end
-    fs:SetShadowColor(0, 0, 0, 1)
-    if fl == "" then fs:SetShadowOffset(1, -1) else fs:SetShadowOffset(0, 0) end
+    if not pcall(fs.SetFont, fs, path, size, fl) then
+        if not pcall(fs.SetFont, fs, FONT, size, fl) then return end
+    end
+    pcall(fs.SetShadowColor, fs, 0, 0, 0, 1)
+    pcall(fs.SetShadowOffset, fs, fl == "" and 1 or 0, fl == "" and -1 or 0)
 end
 
-local function Font(fs, size, flags)
-    texts[fs] = { size, flags }
+-- keep = false: nur einmal setzen, nicht in die Liste für spätere Schriftwechsel (Auren-Symbole)
+local function Font(fs, size, flags, keep)
+    if keep ~= false then texts[fs] = { size, flags } end
     SetLookFont(fs, size, flags)
 end
 
@@ -479,7 +492,7 @@ local function Setup(plate, frame)
     -- Finishing-Farbe über der Füllung (Deckkraft per Kurve: nur unter der Schwelle sichtbar)
     fp.exec = o:CreateTexture(nil, "ARTWORK", nil, 1)
     fp.exec:SetAllPoints(o:GetStatusBarTexture())
-    fp.exec:SetColorTexture(COL.execute[1], COL.execute[2], COL.execute[3], 1)
+    fp.exec:SetColorTexture(1, 1, 1, 1) -- Farbe aus den Einstellungen (ApplyLook)
     fp.exec:SetAlpha(0)
 
     fp.hpValue = NewText(o)
@@ -621,7 +634,7 @@ local function MakeInit(w, h, kind)
         layer:SetAllPoints()
         layer:SetFrameLevel(cd:GetFrameLevel() + 2)
         local timer = NewText(layer)
-        Font(timer, kind == "cc" and 11 or 9, "OUTLINE")
+        Font(timer, kind == "cc" and 11 or 9, "OUTLINE", false)
         if kind == "cc" then
             timer:SetPoint("CENTER", button, "CENTER", 0, 0)
         else
@@ -632,7 +645,7 @@ local function MakeInit(w, h, kind)
             if not pcall(button.SetDurationText, button, timer, opts) then pcall(button.SetDurationText, button, timer) end
         end
         local stacks = NewText(layer)
-        Font(stacks, 8, "OUTLINE")
+        Font(stacks, 8, "OUTLINE", false)
         stacks:SetPoint("TOPRIGHT", button, "TOPRIGHT", 0, 0)
         if button.SetApplicationCount then pcall(button.SetApplicationCount, button, stacks) end
     end
@@ -1267,6 +1280,8 @@ local function ApplyLook(fp)
     fp.root:SetAlpha(dim and 0.7 or 1)
     -- Status-Textur kann neu sein: Finishing-Farbe und Glanz wieder daran
     tex = fp.bar:GetStatusBarTexture()
+    local ec = type(db.executeColor) == "table" and db.executeColor or ns.DEFAULTS.executeColor
+    fp.exec:SetColorTexture(ec[1] or 1, ec[2] or 0.2, ec[3] or 0.85, 1)
     fp.exec:ClearAllPoints()
     fp.exec:SetAllPoints(tex)
     fp.gloss:ClearAllPoints()

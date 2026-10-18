@@ -41,6 +41,40 @@ do
         return s
     end
     local function Gap() col.y = col.y - 12 end
+    -- Farbfeld rechts neben dem letzten Haken: Klick öffnet Blizzards Farbwahl
+    local function ColorSwatch(key, y)
+        local b = CreateFrame("Button", nil, options, "BackdropTemplate")
+        b:SetSize(18, 18)
+        b:SetPoint("TOPLEFT", col.x + 230, y)
+        b:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8", edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 })
+        b:SetBackdropBorderColor(0.8, 0.8, 0.8, 1)
+        local function Load()
+            local c = ns.GetDB()[key]
+            b:SetBackdropColor(c[1], c[2], c[3], 1)
+        end
+        local function Store(r, g, bl)
+            local c = ns.GetDB()[key]
+            c[1], c[2], c[3] = r, g, bl
+            Load()
+            ns.ApplyAll()
+        end
+        b:SetScript("OnClick", Safe(T("Farbwahl", "Color picker"), function()
+            local c = ns.GetDB()[key]
+            ColorPickerFrame:SetupColorPickerAndShow({
+                r = c[1], g = c[2], b = c[3], hasOpacity = false,
+                swatchFunc = function() Store(ColorPickerFrame:GetColorRGB()) end,
+                cancelFunc = function(prev) if prev then Store(prev.r, prev.g, prev.b) end end,
+            })
+        end))
+        b:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:AddLine(T("Farbe wählen", "Choose color"))
+            GameTooltip:Show()
+        end)
+        b:SetScript("OnLeave", GameTooltip_Hide)
+        controls[#controls + 1] = { refresh = Load }
+        return b
+    end
     -- Auswahl: Beschriftung links, Knopf mit Pfeil rechts, Liste wie im Hub
     local function Choice(label, key, listFn)
         local fs = UI.Text(options, "label", label)
@@ -71,6 +105,7 @@ do
     Check(T("in Prozent (rechts)", "in percent (right)"), "healthPercent", true)
     Check(T("nur wenn nicht voll", "only when not full"), "healthOnlyDamaged", true)
 
+    ColorSwatch("executeColor", col.y)
     Check(T("Finishing-Bereich färben", "Color the execute range"), "execute")
     Slider(T("Finishing unter", "Execute below"), "executeAt", 5, 50, 5, " %", true)
     Gap()
