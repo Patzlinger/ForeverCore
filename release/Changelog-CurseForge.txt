@@ -9,7 +9,7 @@
 - ForeverQuests, quest together: the "Together" box now shows the quest just like the rest of the tracker (level color, quest type, ready to turn in, reward chest, quest item, tooltip on hover) plus its quest ID. All shared quests now sit together in one "Together" window, separated by a fine line; right-click a quest there to stop doing it together.
 
 ### Fixed
-- ForeverQuests with Questie: Blizzards own quest markers no longer show up on the map next to Questies (they are turned off while "Hide Blizzard quest tracker" is on, just like Questies own icon theme does).
+- ForeverQuests with Questie: Blizzard's own quest markers no longer show up on the map next to Questie's (they are turned off while "Hide Blizzard quest tracker" is on, just like Questie's own icon theme does).
 - ForeverQuests, quest together: you no longer show up twice (as "You" and with your full name), so the member count is right.
 
 ## 0.44b – October 18, 2026
