@@ -167,6 +167,9 @@ Philosophie, Regeln, Design und Abläufe. Wenn etwas hier nicht steht: am besteh
 ## 7. Design (verbindlich für alle Fenster)
 Vorbild ist der flache Stil aus ForeverQuests; `ForeverHub.UI` und `Style.lua` (ForeverQuests/ForeverBars) setzen
 ihn identisch um. Neue Oberflächen nutzen eine dieser beiden – keine dritten Stile.
+- **Eine Quelle für Farben:** Style.COLOR in ForeverBars/ForeverQuests IST die Tabelle UI.COLOR aus ForeverCore
+  (seit 2026-10-18; das Dungeonfenster ergänzt nur eigene Kartenfarben per Metatabelle). Farbtöne nur im Hub ändern,
+  die Tabelle nie aus einem Addon heraus verändern. Fenster, Positionen und Menüs der Addons bleiben eigenständig.
 - Farben (`UI.COLOR` = `ns.Style.COLOR`):
   | Name | RGBA | Verwendung |
   |---|---|---|
@@ -386,6 +389,15 @@ Damit alle Einstellungsfenster gleich aussehen, gelten diese Maße. Quelle: `For
 - Nach jeder Änderung kurz notieren, was der Mitarbeiter im Spiel prüfen soll
 
 ## 14. Bekannte Wechselwirkungen
+- **Andere Addons für dieselbe Aufgabe** (Hub v41, Abschnitt 3b "ConflictDefs" in ForeverHub.lua): je Paar (z. B.
+  ForeverBars ↔ Bartender4) wählt der Spieler, welches läuft; das andere wird über C_AddOns ausgeschaltet. Fenster
+  ForeverHubConflicts erscheint beim ersten Start neben der Begrüßung und bei neuen Paaren einmal (ForeverHubDB:
+  conflictAsked, conflictChoice), sonst über "Andere Addons …" im Hub. Neue Konkurrenz-Addons dort eintragen
+  (Ordnername!). Pakete wie ElvUI absichtlich nicht (würden ganz abgeschaltet).
+- **Masque** (optional, ## OptionalDeps: Masque): ForeverBars (Masque.lua, Gruppe "Forever Core › ForeverBars")
+  und ForeverBags (Gruppe "› ForeverBags"). Gestaltet Masque, lassen wir Rand/Fläche/Symbol/Leuchten weg
+  (
+s.MasqueActive()), Texte bleiben bei uns; Gruppe in Masque aus = eigener Stil.
 - **Erfahrungs- und Rufleiste sind Leisten von ForeverBars** (seit 0.44b; das Addon ForeverXP ist darin aufgegangen,
   Stand davor: Git-Markierung `snapshot-vor-xp-rep-umbau` bzw. `..\_Forever-Beiseite\ForeverXP-vor-Integration`).
   `Status.lua` baut den Inhalt (`kind = "status"`: Füllung, Zehntel-Striche, drei Textzonen mit Ruhe-/Maus-drüber-Fassung,
