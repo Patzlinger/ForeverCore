@@ -7,7 +7,7 @@ Autoren: Patzlinger, flowfy · CurseForge-Projekt 1743753
 
 | Addon | Von | Status |
 |---|---|---|
-| ForeverFrames, ForeverUnits, ForeverCast, ForeverLoot, ForeverBuffs, ForeverVendor | Patzlinger | im Release (MIT) |
+| ForeverFrames, ForeverUnits, ForeverCast, ForeverHelpers (Loot, Buffs, Vendor) | Patzlinger | im Release (MIT) |
 | ForeverSpellbook, ForeverChat | Patzlinger | im Release (seit 0.32b) |
 | ForeverMinimap | Patzlinger | Prototyp (nicht im Release) |
 | ForeverQuests, ForeverBars | flowfy | im Repository, noch nicht im Release |

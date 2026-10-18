@@ -1,7 +1,12 @@
 -- ForeverBuffs: unaufdringliche Erinnerung an fehlende Buffs, niedrige Raenge und Verbrauchsgueter.
 -- Geprueft wird nur ausserhalb des Kampfs (dort sind alle Daten lesbar). Eine kleine Symbol-Leiste
 -- erscheint nur, wenn etwas fehlt; Klick auf ein Buff-Symbol wirkt den Buff (hoechster Rang).
-local ADDON_NAME, ns = ...
+-- (Modul von ForeverHelpers; Kennung, Einstellungen und Befehle bleiben "ForeverBuffs")
+local _, root = ...
+if root.skip and root.skip.ForeverBuffs then return end -- alter Ordner ForeverBuffs noch aktiv: der läuft diesmal
+local ADDON_NAME = "ForeverBuffs"
+root.buffs = root.buffs or {}
+local ns = root.buffs
 local UI = ForeverHub.UI -- gemeinsamer Stil aller Forever-Addons (ForeverHub.lua)
 local T = UI.T
 
@@ -688,7 +693,8 @@ end)
 ---------------------------------------------------------------------------
 -- Einstellungen
 ---------------------------------------------------------------------------
-local options = UI.Window("ForeverBuffsOptions", T("ForeverBuffs – Einstellungen", "ForeverBuffs – Settings"), 620, 500)
+local options = UI.SettingsPanel("ForeverBuffsOptions", T("ForeverBuffs – Buff-Erinnerung", "ForeverBuffs – Buff reminder"), 620, 500,
+    { key = "ForeverHelpers.buffs", group = T("Helfer", "Helpers"), label = T("Buff-Erinnerung", "Buff reminder") })
 local controls = {}
 local function Refresh() dirty = true end
 
@@ -767,7 +773,7 @@ options:SetScript("OnHide", function()
     if testMode then testMode = false Refresh() end
 end)
 
-local function ToggleOptions() options:SetShown(not options:IsShown()) end
+local function ToggleOptions() UI.ToggleSettings(options) end
 
 -- Sperren/Entsperren (Optionen, Minimap-Rechtsklick, Rechtsklick auf den Anker, /fbuffs lock)
 function ToggleLock()
@@ -794,7 +800,7 @@ end
 ---------------------------------------------------------------------------
 -- Minimap-Knopf und Befehle
 ---------------------------------------------------------------------------
-local mm = UI.MinimapButton({
+local mm = root.ModuleButton({ -- (gemeinsamer Knopf von ForeverHelpers, siehe Core.lua)
     name = "ForeverBuffsMinimapButton",
     icon = "Interface\\Icons\\Spell_Holy_WordFortitude",
     title = "ForeverBuffs",
@@ -829,4 +835,4 @@ end
 ---------------------------------------------------------------------------
 -- Gemeinsame Einstellungs-Verwaltung (ForeverCore): Profile je Charakter, Zuruecksetzen, Export/Import
 ---------------------------------------------------------------------------
-UI.RegisterSettings({ addon = "ForeverBuffs", sv = "ForeverBuffsDB", defaults = DEFAULTS, version = 1 })
+UI.RegisterSettings({ addon = "ForeverBuffs", loadAddon = "ForeverHelpers", sv = "ForeverBuffsDB", defaults = DEFAULTS, version = 1 })

@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 42
+local VERSION = 43
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -1731,9 +1731,8 @@ local KNOWN = {
     { name = "ForeverQuests", button = "ForeverQuestsMinimapButton", cmd = "/fq" },
     { name = "ForeverChat",   button = "ForeverChatMinimapButton", cmd = "/fchat" },
     { name = "ForeverMinimap", button = "ForeverMinimapMinimapButton", cmd = "/fmm" },
-    { name = "ForeverLoot",   button = "ForeverLootMinimapButton", cmd = "/floot" },
-    { name = "ForeverBuffs",  button = "ForeverBuffsMinimapButton", cmd = "/fbuffs" },
-    { name = "ForeverVendor", button = "ForeverVendorMinimapButton", cmd = "/fvendor" },
+    -- ForeverLoot, ForeverBuffs und ForeverVendor sind seit 0.44b+ Module von ForeverHelpers
+    { name = "ForeverHelpers", button = "ForeverHelpersMinimapButton", cmd = "/fhelp" },
     { name = "ForeverSpellbook", button = "ForeverSpellbookMinimapButton", cmd = "/fsb" },
     { name = "ForeverBags",   button = "ForeverBagsMinimapButton", cmd = "/fbags" },
     { name = "ForeverTooltip", button = "ForeverTooltipMinimapButton", cmd = "/ftip" },
@@ -2327,6 +2326,167 @@ function hub.ShowWelcome()
     hubWindow:Hide()
     hubWindow.welcome = true
     hubWindow:Show()
+end
+
+---------------------------------------------------------------------------
+-- 3c. Gemeinsames Einstellungsfenster: links eine Liste (nach Bereichen gruppiert), rechts immer nur eine Seite.
+-- Ein Addon baut seine Seite mit UI.SettingsPanel(...) statt UI.Window(...): Inhalt, Anordnung und Abstände bleiben
+-- genau wie im bisherigen eigenen Fenster (die Seite ist so groß wie das Fenster war, oben ist Platz für den Titel).
+-- Das Fenster passt seine Größe der gewählten Seite an (oben links bleibt stehen). Seiten öffnen:
+-- UI.OpenSettings(seite) / UI.ToggleSettings(seite).
+---------------------------------------------------------------------------
+local NAV_W = 176
+local settingsWin
+local settingsPages = {}      -- { frame, key, group, label, width, height }
+local settingsCurrent
+local GROUP_ORDER = {}        -- Reihenfolge der Bereiche (in der Reihenfolge der Anmeldung)
+
+local function SettingsWindow()
+    if settingsWin then return settingsWin end
+    local f = UI.Window("ForeverSettingsWindow", T("Forever Core – Einstellungen", "Forever Core – Settings"), 560, 420)
+    settingsWin = f
+    -- linke Liste
+    local nav = CreateFrame("Frame", nil, f, "BackdropTemplate")
+    nav:SetPoint("TOPLEFT", 1, -27)
+    nav:SetPoint("BOTTOMLEFT", 1, 1)
+    nav:SetWidth(NAV_W)
+    UI.SetFlat(nav, { C.panel[1], C.panel[2], C.panel[3], 0.6 })
+    nav:SetBackdropBorderColor(0, 0, 0, 0)
+    local navLine = nav:CreateTexture(nil, "ARTWORK")
+    navLine:SetPoint("TOPRIGHT")
+    navLine:SetPoint("BOTTOMRIGHT")
+    navLine:SetWidth(1)
+    navLine:SetColorTexture(C.border[1], C.border[2], C.border[3], 1)
+    f.nav = nav
+    f.navButtons, f.navHeaders = {}, {}
+    -- rechte Seite: hier liegen die Seiten der Addons
+    local content = CreateFrame("Frame", nil, f)
+    content:SetPoint("TOPLEFT", NAV_W + 1, 0)
+    content:SetPoint("BOTTOMRIGHT", 0, 0)
+    f.content = content
+    f:HookScript("OnHide", function()
+        -- Seite verstecken, damit sie beim nächsten Öffnen ihre Werte neu lädt (OnShow)
+        if settingsCurrent then settingsCurrent.frame:Hide() end
+    end)
+    f:HookScript("OnShow", function()
+        if settingsCurrent then settingsCurrent.frame:Show() end
+    end)
+    return f
+end
+
+local function LayoutNav()
+    local f = SettingsWindow()
+    for _, b in ipairs(f.navButtons) do b:Hide() end
+    for _, h in ipairs(f.navHeaders) do h:Hide() end
+    local y, bi, hi = -10, 0, 0
+    for _, group in ipairs(GROUP_ORDER) do
+        hi = hi + 1
+        local h = f.navHeaders[hi]
+        if not h then
+            h = f.nav:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+            f.navHeaders[hi] = h
+        end
+        h:ClearAllPoints()
+        h:SetPoint("TOPLEFT", 12, y)
+        h:SetText(string.upper(group))
+        h:Show()
+        y = y - 16
+        for _, page in ipairs(settingsPages) do
+            if page.group == group then
+                bi = bi + 1
+                local b = f.navButtons[bi]
+                if not b then
+                    b = CreateFrame("Button", nil, f.nav)
+                    b:SetHeight(20)
+                    b.hl = b:CreateTexture(nil, "BACKGROUND")
+                    b.hl:SetAllPoints()
+                    b.hl:SetColorTexture(1, 1, 1, 0.06)
+                    b.hl:Hide()
+                    b.sel = b:CreateTexture(nil, "BACKGROUND")
+                    b.sel:SetAllPoints()
+                    b.sel:SetColorTexture(C.header[1], C.header[2], C.header[3], 1)
+                    b.mark = b:CreateTexture(nil, "ARTWORK")
+                    b.mark:SetPoint("TOPLEFT")
+                    b.mark:SetPoint("BOTTOMLEFT")
+                    b.mark:SetWidth(2)
+                    b.mark:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 0.9)
+                    b.text = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+                    b.text:SetPoint("LEFT", 14, 0)
+                    b:SetScript("OnEnter", function(self) self.hl:Show() end)
+                    b:SetScript("OnLeave", function(self) self.hl:Hide() end)
+                    f.navButtons[bi] = b
+                end
+                b:ClearAllPoints()
+                b:SetPoint("TOPLEFT", 4, y)
+                b:SetPoint("TOPRIGHT", -5, y)
+                b.text:SetText(page.label)
+                local selected = page == settingsCurrent
+                b.sel:SetShown(selected)
+                b.mark:SetShown(selected)
+                b.text:SetTextColor(selected and C.accent[1] or 0.9, selected and C.accent[2] or 0.9, selected and C.accent[3] or 0.9)
+                b:SetScript("OnClick", function() UI.OpenSettings(page.frame) end)
+                b:Show()
+                y = y - 21
+            end
+        end
+        y = y - 8
+    end
+    f.navHeight = -y + 10
+end
+
+local function FindPage(which)
+    for _, page in ipairs(settingsPages) do
+        if page.frame == which or page.key == which then return page end
+    end
+end
+
+function UI.OpenSettings(which)
+    local f = SettingsWindow()
+    local page = FindPage(which) or settingsCurrent or settingsPages[1]
+    if not page then return end
+    if settingsCurrent and settingsCurrent ~= page then settingsCurrent.frame:Hide() end
+    settingsCurrent = page
+    LayoutNav()
+    -- Größe nach der Seite; oben links bleibt stehen (Liste springt nicht)
+    local left, top = f:GetLeft(), f:GetTop()
+    f:SetSize(NAV_W + 2 + page.width, math.max(page.height, (f.navHeight or 0) + 27))
+    if left and top and f:IsShown() then
+        f:ClearAllPoints()
+        f:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", left, top)
+    end
+    page.frame:ClearAllPoints()
+    page.frame:SetPoint("TOPLEFT", f.content, "TOPLEFT", 0, 0)
+    if f:IsShown() then page.frame:Show() else f:Show() end
+    if f.TitleText then f.TitleText:SetText(T("Forever Core – Einstellungen", "Forever Core – Settings") .. "  |cff8a8a8a›  " .. page.label .. "|r") end
+end
+
+-- gleiche Seite nochmal = schließen (wie bisher der Minimap-Knopf / Befehl)
+function UI.ToggleSettings(which)
+    local f = SettingsWindow()
+    local page = FindPage(which)
+    if f:IsShown() and page and page == settingsCurrent then f:Hide() return end
+    UI.OpenSettings(which)
+end
+
+-- Seite anlegen (statt eines eigenen Fensters). info = { key, group, label }
+function UI.SettingsPanel(name, title, width, height, info)
+    info = info or {}
+    local f = SettingsWindow()
+    local p = CreateFrame("Frame", name, f.content)
+    p:SetSize(width, height)
+    p:SetPoint("TOPLEFT")
+    p:Hide()
+    -- Titel der Seite oben (dort, wo im eigenen Fenster die Titelleiste war)
+    p.TitleText = p:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    p.TitleText:SetPoint("TOPLEFT", 14, -7)
+    p.TitleText:SetText(title)
+    local group = info.group or T("Weitere", "More")
+    local known = false
+    for _, g in ipairs(GROUP_ORDER) do if g == group then known = true end end
+    if not known then GROUP_ORDER[#GROUP_ORDER + 1] = group end
+    settingsPages[#settingsPages + 1] = { frame = p, key = info.key or name, group = group, label = info.label or title,
+        width = width, height = height }
+    return p
 end
 
 ---------------------------------------------------------------------------
@@ -2967,10 +3127,14 @@ end
 local settingsEvents = CreateFrame("Frame")
 settingsEvents:RegisterEvent("ADDON_LOADED")
 settingsEvents:SetScript("OnEvent", function(_, _, name)
-    local o = SETTINGS[name]
-    if not o or o.ready then return end
-    local ok, err = pcall(Activate, o)
-    if not ok then UI.ReportError(name, "Settings", err) end
+    -- o.loadAddon: Modul in einem gemeinsamen Addon (z. B. ForeverLoot in ForeverHelpers) – Name der Einstellungen bleibt
+    for _, addon in ipairs(SETTINGS_ORDER) do
+        local o = SETTINGS[addon]
+        if o and not o.ready and (o.loadAddon or o.addon) == name then
+            local ok, err = pcall(Activate, o)
+            if not ok then UI.ReportError(addon, "Settings", err) end
+        end
+    end
 end)
 
 function UI.RegisterSettings(o)

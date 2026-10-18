@@ -4,13 +4,12 @@ ForeverCore
 ForeverFrames
 ForeverUnits
 ForeverCast
-ForeverLoot
+# ForeverLoot, ForeverBuffs und ForeverVendor sind seit 0.44b+ Module von ForeverHelpers
+ForeverHelpers
 # ForeverXP ist seit 0.44b in ForeverBars aufgegangen
 ForeverBars
 ForeverQuests
 ForeverMinimap
 ForeverBags
-ForeverBuffs
-ForeverVendor
 ForeverSpellbook
 ForeverChat

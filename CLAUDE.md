@@ -17,7 +17,7 @@ Philosophie, Regeln, Design und Abläufe. Wenn etwas hier nicht steht: am besteh
 ## 2. Team und Zuständigkeiten
 | Addon | Verantwortlich | Status |
 |---|---|---|
-| ForeverFrames, ForeverUnits, ForeverCast, ForeverLoot, ForeverBuffs, ForeverVendor | Patzlinger | im Release |
+| ForeverFrames, ForeverUnits, ForeverCast, ForeverHelpers (Module Loot, Buffs, Vendor) | Patzlinger | im Release |
 | ForeverSpellbook | Patzlinger | im Release (seit 0.32b) |
 | ForeverChat | Patzlinger | im Release (seit 0.32b) |
 | ForeverMinimap | Patzlinger | Prototyp (seit 2026-10-17) |
@@ -355,6 +355,7 @@ Damit alle Einstellungsfenster gleich aussehen, gelten diese Maße. Quelle: `For
   | /fxp, /foreverxp | ForeverBars (Erfahrungsleiste; früher ForeverXP) |
   | /fbuffs, /foreverbuffs | ForeverBuffs |
   | /fvendor, /forevervendor | ForeverVendor |
+  | /fhelp, /foreverhelpers | ForeverHelpers (Einstellungen der Helfer) |
   | /fsb, /fspellbook, /foreverspellbook | ForeverSpellbook |
   | /fchat, /foreverchat | ForeverChat |
   | /fmm, /foreverminimap | ForeverMinimap |

@@ -3,7 +3,12 @@
 -- die ebenfalls zaehlen (z. B. "Gebet der Seelenstaerke"), supersede = Reihe X wird durch Reihe Y
 -- ersetzt (Frostruestung -> Eisruestung), self = man soll es selbst tragen, group = auch fuer
 -- die Gruppe, optional = nur wenn in den Optionen eingeschaltet.
-local ADDON_NAME, ns = ...
+-- (Modul von ForeverHelpers; Kennung, Einstellungen und Befehle bleiben "ForeverBuffs")
+local _, root = ...
+if root.skip and root.skip.ForeverBuffs then return end -- alter Ordner ForeverBuffs noch aktiv: der läuft diesmal
+local ADDON_NAME = "ForeverBuffs"
+root.buffs = root.buffs or {}
+local ns = root.buffs
 
 ns.BUFFS = {
     -- Priester

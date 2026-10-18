@@ -26,7 +26,13 @@ Die Addons (jedes funktioniert auch einzeln, zusammen mit ForeverCore):
                  auf Wunsch die Optik von ForeverFrames. Entsperrt: Raster, Einrasten, X/Y. /fu
   ForeverCast    Zauberleiste mit Ping, Lag-Bereich, Spell-Queue-Fenster und GCD.
                  Position per X/Y, Raster und Einrasten. /fcast
-  ForeverLoot    Zeigt bei Würfel-Drops, wer Bedarf/Gier/Passen gewählt hat. /floot
+  ForeverHelpers Drei kleine Helfer in einem Addon (Einstellungen: /fhelp):
+  · Würfel     Zeigt bei Würfel-Drops, wer Bedarf/Gier/Passen gewählt hat. /floot
+  · Buffs      Erinnert unaufdringlich an fehlende Buffs, niedrige Ränge, Essen/Trinken
+                 und eigene Verbrauchsgüter – Klick aufs Symbol wirkt den Buff. /fbuffs (verschieben: /fbuffs lock)
+  · Händler    Händler-Helfer: verkauft Graues, repariert auf Wunsch und kauft Reagenzien,
+                 Essen/Trinken, Munition und eine eigene Liste nach – mit Fenster am Händler
+                 (Einkaufsliste + Kaufen-Knopf). Automatik erst einschalten, dann läuft alles. /fvendor
   ForeverBars    Aktionsleisten im Forever-Stil (ersetzt Blizzards Leisten): Begleiter-, Haltungs- und
                  Totemleiste, Berufe-, Taschen- und Markierungsleiste (Ziel-/Bodenmarkierungen,
                  Bereitschaftscheck, Rollenabfrage, Countdown), Mikromenü unter der Minimap.
@@ -39,11 +45,6 @@ Die Addons (jedes funktioniert auch einzeln, zusammen mit ForeverCore):
                  Knöpfe nur bei Bedarf, Post-Kachel und Dungeonfinder-Auge. /fmm
   ForeverBags    Alle Taschen in einem Fenster: Suche, Sortieren, freie Plätze, Gold, eigenes Bank-
                  und Gildenbankfenster, Taschen/Bank/Gold aller Charaktere, Währungen. /fbags
-  ForeverBuffs   Erinnert unaufdringlich an fehlende Buffs, niedrige Ränge, Essen/Trinken
-                 und eigene Verbrauchsgüter – Klick aufs Symbol wirkt den Buff. /fbuffs (verschieben: /fbuffs lock)
-  ForeverVendor  Händler-Helfer: verkauft Graues, repariert auf Wunsch und kauft Reagenzien,
-                 Essen/Trinken, Munition und eine eigene Liste nach – mit Fenster am Händler
-                 (Einkaufsliste + Kaufen-Knopf). Automatik erst einschalten, dann läuft alles. /fvendor
   ForeverChat    Blizzards Chat im Forever-Stil: durchsichtiges Fenster, flache Reiter, Knopfleiste
                  in der Reiterzeile, Klassenfarben und Stufen bei Namen, kurze Kanalnamen, klickbare
                  Links, Erwähnungen hervorgehoben, IM-Reiter mit einem Unterreiter je Person,
@@ -100,7 +101,13 @@ The addons (each one also works on its own, together with ForeverCore):
                  Unlocked: grid, snapping, X/Y position. /fu
   ForeverCast    Cast bar with ping, lag zone, spell queue window and GCD.
                  Position via X/Y, grid and snapping. /fcast
-  ForeverLoot    Shows who chose need/greed/pass on loot rolls. /floot
+  ForeverHelpers Three small helpers in one addon (settings: /fhelp):
+  · Loot       Shows who chose need/greed/pass on loot rolls. /floot
+  · Buffs      Unobtrusive reminder for missing buffs, lower ranks, food/drink and
+                 your own consumables – click an icon to cast the buff. /fbuffs (move: /fbuffs lock)
+  · Vendor     Merchant helper: sells junk, repairs on request and restocks reagents,
+                 food/drink, ammo and your own list – with a window at the merchant
+                 (shopping list + buy button). Turn the automation on and it does the rest. /fvendor
   ForeverBars    Action bars in the Forever look (replaces Blizzard's bars): pet, stance and totem
                  bars, profession, bag and marker bars (target/world markers, ready check, role
                  poll, countdown), micro menu below the minimap. Plus experience and reputation
@@ -113,11 +120,6 @@ The addons (each one also works on its own, together with ForeverCore):
                  buttons only when needed, mail tile and dungeon finder eye. /fmm
   ForeverBags    All bags in one window: search, sort, free slots, gold, own bank and guild bank
                  windows, bags/bank/gold of all characters, currencies. /fbags
-  ForeverBuffs   Unobtrusive reminder for missing buffs, lower ranks, food/drink and
-                 your own consumables – click an icon to cast the buff. /fbuffs (move: /fbuffs lock)
-  ForeverVendor  Merchant helper: sells junk, repairs on request and restocks reagents,
-                 food/drink, ammo and your own list – with a window at the merchant
-                 (shopping list + buy button). Turn the automation on and it does the rest. /fvendor
   ForeverChat    Blizzard's chat in the Forever look: transparent window, flat tabs, button bar
                  in the tab row, class colors and levels for names, short channel names, clickable
                  links, highlighted mentions, IM tab with one sub-tab per person, input line only

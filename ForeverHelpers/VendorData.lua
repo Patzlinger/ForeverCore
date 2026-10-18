@@ -3,7 +3,12 @@
 -- group: aus einer Gruppe wird nur der hoechste Eintrag gekauft, den die Stufe schon erlaubt
 -- (z. B. Samen fuer "Wiedergeburt": immer nur die Sorte fuer den aktuellen Rang).
 -- IDs aus der Classic-Aera; fehlt ein Gegenstand beim Haendler, passiert einfach nichts.
-local ADDON_NAME, ns = ...
+-- (Modul von ForeverHelpers; Kennung, Einstellungen und Befehle bleiben "ForeverVendor")
+local _, root = ...
+if root.skip and root.skip.ForeverVendor then return end -- alter Ordner ForeverVendor noch aktiv: der läuft diesmal
+local ADDON_NAME = "ForeverVendor"
+root.vendor = root.vendor or {}
+local ns = root.vendor
 
 ns.CLASS_REAGENTS = {
     SHAMAN = {

@@ -1,6 +1,9 @@
 -- ForeverLoot: kleines Fenster bei Wuerfel-Drops – wer hat Bedarf, Gier oder Passen gewaehlt,
 -- welche Zahl wurde gewuerfelt, wer hat gewonnen. Ist nichts los, bleibt das Fenster unsichtbar.
-local ADDON_NAME = ...
+-- (Modul von ForeverHelpers; Kennung, Einstellungen und Befehle bleiben "ForeverLoot")
+local _, root = ...
+if root.skip and root.skip.ForeverLoot then return end -- alter Ordner ForeverLoot noch aktiv: der läuft diesmal
+local ADDON_NAME = "ForeverLoot"
 local UI = ForeverHub.UI -- gemeinsamer Stil aller Forever-Addons (ForeverHub.lua)
 -- Sprache: deutscher Client auf Deutsch, alle anderen auf Englisch
 local T = UI.T
@@ -737,7 +740,7 @@ local events = CreateFrame("Frame")
 local H = {}
 
 H.ADDON_LOADED = function(name)
-    if name ~= ADDON_NAME then return end
+    if name ~= "ForeverHelpers" then return end
     RestorePosition()
 end
 
@@ -790,7 +793,8 @@ end
 ---------------------------------------------------------------------------
 local ToggleOptions
 do
-    local options = UI.Window("ForeverLootOptions", T("ForeverLoot – Einstellungen", "ForeverLoot – Settings"), 340, 400)
+    local options = UI.SettingsPanel("ForeverLootOptions", T("ForeverLoot – Würfel-Drops", "ForeverLoot – Loot rolls"), 340, 400,
+        { key = "ForeverHelpers.loot", group = T("Helfer", "Helpers"), label = T("Würfel-Drops", "Loot rolls") })
     local W = 308 -- Breite der Ueberschriften
 
     local function Button(text, width, onClick)
@@ -858,7 +862,7 @@ do
     end)
 
     function ToggleOptions()
-        options:SetShown(not options:IsShown())
+        UI.ToggleSettings(options)
     end
 end
 
@@ -871,7 +875,7 @@ if UI.RegisterMovable then
 end
 
 do
-    local mm = UI.MinimapButton({
+    local mm = root.ModuleButton({ -- (gemeinsamer Knopf von ForeverHelpers, siehe Core.lua)
         name = "ForeverLootMinimapButton",
         icon = "Interface\\Icons\\INV_Misc_Coin_02",
         title = "ForeverLoot",
@@ -958,4 +962,4 @@ end)
 ---------------------------------------------------------------------------
 -- Gemeinsame Einstellungs-Verwaltung (ForeverCore): Profile je Charakter, Zuruecksetzen, Export/Import
 ---------------------------------------------------------------------------
-UI.RegisterSettings({ addon = "ForeverLoot", sv = "ForeverLootDB", defaults = DEFAULTS, version = 1 })
+UI.RegisterSettings({ addon = "ForeverLoot", loadAddon = "ForeverHelpers", sv = "ForeverLootDB", defaults = DEFAULTS, version = 1 })

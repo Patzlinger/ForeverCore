@@ -3,7 +3,12 @@
 --  3. nachkaufen: Nachkauf-Liste (Klassen-Reagenzien + eigene Eintraege), bestes Essen/Trinken
 --     fuer die Stufe, Munition (Jaeger). Mit Obergrenze pro Besuch und Gold-Ruecklage.
 -- Im Alltag nur ein kleines Symbol: Klick klappt die Uebersicht auf, Rechtsklick oeffnet die Einstellungen.
-local ADDON_NAME, ns = ...
+-- (Modul von ForeverHelpers; Kennung, Einstellungen und Befehle bleiben "ForeverVendor")
+local _, root = ...
+if root.skip and root.skip.ForeverVendor then return end -- alter Ordner ForeverVendor noch aktiv: der läuft diesmal
+local ADDON_NAME = "ForeverVendor"
+root.vendor = root.vendor or {}
+local ns = root.vendor
 local UI = ForeverHub.UI -- gemeinsamer Stil aller Forever-Addons (ForeverHub.lua)
 local T = UI.T
 
@@ -847,7 +852,8 @@ end)
 local RefreshList
 do
 -- 720 breit: die deutschen Beschriftungen links sind laenger und brauchen ~370 px bis zur rechten Spalte
-local options = UI.Window("ForeverVendorOptions", T("ForeverVendor – Einstellungen", "ForeverVendor – Settings"), 720, 690)
+local options = UI.SettingsPanel("ForeverVendorOptions", T("ForeverVendor – Händler", "ForeverVendor – Vendor"), 720, 690,
+    { key = "ForeverHelpers.vendor", group = T("Helfer", "Helpers"), label = T("Händler", "Vendor") })
 local controls = {}
 local function Changed() UpdateIcon() end
 
@@ -1146,7 +1152,7 @@ ev:SetScript("OnEvent", function()
     end)
 end)
 
-function ToggleOptions() options:SetShown(not options:IsShown()) end
+function ToggleOptions() UI.ToggleSettings(options) end
 
 function ToggleLock(silent)
     if InCombatLockdown() then Chat(T("Im Kampf nicht möglich.", "Not possible in combat.")) return end
@@ -1180,7 +1186,7 @@ end -- Ende Block "Einstellungsfenster"
 ---------------------------------------------------------------------------
 -- Minimap-Knopf und Befehle
 ---------------------------------------------------------------------------
-local mm = UI.MinimapButton({
+local mm = root.ModuleButton({ -- (gemeinsamer Knopf von ForeverHelpers, siehe Core.lua)
     name = "ForeverVendorMinimapButton",
     icon = "Interface\\Icons\\INV_Misc_Bag_08",
     title = "ForeverVendor",
@@ -1265,4 +1271,4 @@ end)
 ---------------------------------------------------------------------------
 -- Gemeinsame Einstellungs-Verwaltung (ForeverCore): Profile je Charakter, Zuruecksetzen, Export/Import
 ---------------------------------------------------------------------------
-UI.RegisterSettings({ addon = "ForeverVendor", sv = "ForeverVendorDB", defaults = DEFAULTS, version = 1 })
+UI.RegisterSettings({ addon = "ForeverVendor", loadAddon = "ForeverHelpers", sv = "ForeverVendorDB", defaults = DEFAULTS, version = 1 })

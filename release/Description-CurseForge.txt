@@ -40,10 +40,27 @@ Every addon needs the small base addon **ForeverCore**. It's included in the pac
 - Shows the global cooldown
 - Settings: /fcast
 
-**ForeverLoot – loot rolls**
+**ForeverHelpers – three small helpers in one addon** *(new: formerly ForeverLoot, ForeverBuffs and ForeverVendor – your settings are kept)*
+
+*Loot rolls*
 - See who picked Need, Greed or Pass, what everyone rolled and who won
 - Disappears on its own a few seconds after the result
 - Settings: /floot
+
+*Buffs and consumables*
+- Shows a small icon only when something is missing
+- Your own buffs, and whether the highest rank is active. Click an icon to cast it.
+- Group buffs: who is missing your buffs, and which buffs your group could give you
+- Food and drink in your bags, and whether there is something better for your level
+- Your own list, e.g. "Healing Potion:3", plus ammo, soul shards, poisons/oils and weapon imbues
+- Settings: /fbuffs
+
+*Merchant helper*
+- Sells your grey items and repairs if you want (guild bank first, if you like)
+- Restocks class reagents, the best food and drink for your level, fitting ammo and your own list
+- A small window at the merchant shows your shopping list with prices. One click on "Buy" and you're done.
+- A spending limit per visit and a gold reserve keep your wallet safe
+- Settings: /fvendor
 
 **ForeverBars – action bars, experience and reputation** *(new)*
 - Clean, flat action bars, plus pet, stance and totem bars, each with its own size, layout, fading and key bindings
@@ -75,21 +92,6 @@ Every addon needs the small base addon **ForeverCore**. It's included in the pac
 - Look into the bags, bank and gold of all your characters. Item tooltips show how many of an item all your characters own.
 - Currencies in the footer, quest items marked in yellow
 - Settings: /fbags
-
-**ForeverBuffs – buffs and consumables**
-- Shows a small icon only when something is missing
-- Your own buffs, and whether the highest rank is active. Click an icon to cast it.
-- Group buffs: who is missing your buffs, and which buffs your group could give you
-- Food and drink in your bags, and whether there is something better for your level
-- Your own list, e.g. "Healing Potion:3", plus ammo, soul shards, poisons/oils and weapon imbues
-- Settings: /fbuffs
-
-**ForeverVendor – merchant helper**
-- Sells your grey items and repairs if you want (guild bank first, if you like)
-- Restocks class reagents, the best food and drink for your level, fitting ammo and your own list
-- A small window at the merchant shows your shopping list with prices. One click on "Buy" and you're done.
-- A spending limit per visit and a gold reserve keep your wallet safe
-- Settings: /fvendor
 
 **ForeverChat – your chat, just cleaner**
 - Keeps Blizzard's chat (whispers, channels, links and communities work as usual), with a transparent window and flat tabs
