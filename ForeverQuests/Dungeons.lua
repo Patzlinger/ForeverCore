@@ -1541,6 +1541,7 @@ function ns.DebugGroupFinder()
     end
     -- Treffer für den im Dungeonfenster gewählten Dungeon
     local dungeon = selectedDungeon or ns.DUNGEON_DATA[1]
+    if not dungeon then return end -- (noch) keine Dungeons geladen
     local activities, categoryID = FindGroupFinderActivities(dungeon)
     local names = {}
     for _, activityID in ipairs(activities) do

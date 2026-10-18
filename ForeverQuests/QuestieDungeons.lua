@@ -1,26 +1,27 @@
 local addonName, ns = ...
 
 ---------------------------------------------------------------------------
--- Dungeonquests aus Questies Datenbank (Variante A)
---
--- Mit Questie: Die Quests jedes Dungeons kommen aus Questie – vollständig und aktuell. Ohne Questie gilt der
--- eingefrorene Stand in Data\Dungeons.lua (früher aus der Excel-Datei erzeugt, wird nicht mehr gepflegt).
+-- Dungeonfenster nur aus Spiel- und Questie-Daten (TEST: keine selbst gepflegten Daten)
 --
 -- Woher was kommt:
---   Dungeon-Grunddaten (Name, Stufen, Eingang, Classic/Neu, Fraktion)  -> Data\Dungeons.lua (bleibt, von Hand pflegen)
---   Zuordnung Quest -> Dungeon         -> Questie: Gebiet der Quest ("zoneOrSort") = Gebiet des Dungeons
---   Gebiet des Dungeons                -> aus den Quest-IDs, die schon in Data\Dungeons.lua stehen (häufigstes
---                                         Questie-Gebiet), sonst über den Namen des Gebiets (C_Map.GetAreaInfo)
---   Mindeststufe, Queststufe           -> Questie ("requiredLevel", "questLevel")
---   Fraktion                           -> Questie ("requiredRaces": Völker der Allianz/Horde)
---   Klasse                             -> Questie ("requiredClasses")
---   Questgeber, Ort, Koordinaten       -> Questie ("startedBy" -> NPC/Objekt mit "spawns"); Startgegenstand ("startedBy" Gegenstand)
---   Startet im Dungeon                 -> Questgeber steht im Dungeon oder Quest startet über einen Gegenstand
---   Vorquest                           -> Questie ("preQuestSingle" bzw. "preQuestGroup")
---   Questname                          -> wie bisher aus dem Spiel; nur als Rückfall Questies Name
---   Belohnungen (Gegenstände)          -> Questie kennt sie nicht: aus Data\Dungeons.lua, falls dort eingetragen;
---                                         sonst zeigt das Spiel sie, sobald die Quest im Log ist
--- Quests aus Data\Dungeons.lua, die Questie dem Dungeon nicht zuordnet, bleiben in der Liste.
+--   Welche Dungeons es gibt        -> Questie: Dungeon-Tabelle (ZoneDB:GetDungeons); gezeigt werden nur Dungeons,
+--                                     zu denen Questie Quests kennt und die keine Schlachtfelder sind
+--                                     (Schlachtfeld = überwiegend PvP-Quests, Questie: QuestieDB.IsPvPQuest)
+--   Name                           -> Spiel (Gebietsname in der Client-Sprache, C_Map.GetAreaInfo); Rückfall Questie
+--   Englischer Name                -> Questie (Dungeon-Tabelle)
+--   Eingang (Gebiet, Koordinaten)  -> Questie (Dungeon-Tabelle), Gebietsname aus dem Spiel
+--   Stufenbereich                  -> Spiel: Gruppensuche (C_LFGList), sonst aus den Quests: niedrigste
+--                                     Mindeststufe bis höchste Queststufe (Questie)
+--   Classic / Neu in Forever       -> aus der Gebiets-ID: ab 15000 = neu (Forever-/Season-Gebiete), sonst Classic
+--   Fraktion                       -> aus den Quests: alle Allianz = Allianz, alle Horde = Horde, sonst beide
+--   Quests des Dungeons            -> Questie: Gebiet der Quest ("zoneOrSort") = Gebiet des Dungeons
+--   Mindest-/Queststufe            -> Questie ("requiredLevel", "questLevel")
+--   Fraktion/Klasse der Quest      -> Questie ("requiredRaces", "requiredClasses")
+--   Questgeber, Ort, Koordinaten   -> Questie ("startedBy" -> NPC/Objekt mit "spawns"); Startgegenstand ebenso
+--   Startet im Dungeon             -> Questgeber steht im Dungeon oder Quest startet über einen Gegenstand
+--   Vorquest                       -> Questie ("preQuestSingle"/"preQuestGroup")
+--   Questname, Beschreibung        -> Spiel (wie bisher), Questies Name nur als Rückfall
+--   Belohnungen                    -> Spiel (sobald die Quest im Log ist / vom Server nachgeladen)
 -- Questie-Dateien werden nicht verändert; wir lesen nur, während das Spiel läuft (nichts wird kopiert/gespeichert).
 ---------------------------------------------------------------------------
 
@@ -29,6 +30,7 @@ local band = bit and bit.band
 -- Völker als Bitmaske (wie in Questie/WoW): Allianz bzw. Horde
 local ALLIANCE_RACES = 1 + 4 + 8 + 64 + 1024           -- Mensch, Zwerg, Nachtelf, Gnom, Draenei
 local HORDE_RACES = 2 + 16 + 32 + 128 + 256 + 512      -- Orc, Untoter, Tauren, Troll, Goblin, Blutelf
+local NEW_AREA_FROM = 15000                            -- Gebiets-IDs ab hier: neu in Forever (bzw. Season-Inhalte)
 
 ns.questieDungeonReport = nil -- Ergebnis für /fq dungeonquellen
 
@@ -48,7 +50,7 @@ local function ClassFromMask(mask)
     local found
     for classID = 1, 13 do
         if band(mask, 2 ^ (classID - 1)) ~= 0 then
-            if found then return nil end -- mehrere Klassen: keine Klassenquest im engeren Sinn
+            if found then return nil end
             found = classID
         end
     end
@@ -62,13 +64,13 @@ local function AreaName(areaID)
 end
 
 -- erster Ort einer Spawn-Liste { [Gebiet] = { {x, y}, … } } – bevorzugt außerhalb des Dungeons
-local function FirstSpawn(spawns, dungeonAreas)
+local function FirstSpawn(spawns, insideAreas)
     if type(spawns) ~= "table" then return nil end
     local insideZone, insideSpot
     for zone, spots in pairs(spawns) do
         local spot = type(spots) == "table" and spots[1]
         if spot and spot[1] and spot[2] then
-            if dungeonAreas[zone] then
+            if insideAreas[zone] then
                 insideZone, insideSpot = zone, spot
             else
                 return zone, spot, false
@@ -79,7 +81,7 @@ local function FirstSpawn(spawns, dungeonAreas)
 end
 
 -- Questgeber aus "startedBy" { NPCs, Objekte, Gegenstände }
-local function Giver(db, startedBy, dungeonAreas)
+local function Giver(db, startedBy, insideAreas)
     if type(startedBy) ~= "table" then return nil end
     for index, kind in ipairs({ "npc", "object" }) do
         local ids = startedBy[index]
@@ -88,7 +90,7 @@ local function Giver(db, startedBy, dungeonAreas)
                 local query = kind == "npc" and db.QueryNPCSingle or db.QueryObjectSingle
                 local name = query(id, "name")
                 if name then
-                    local zone, spot, inside = FirstSpawn(query(id, "spawns"), dungeonAreas)
+                    local zone, spot, inside = FirstSpawn(query(id, "spawns"), insideAreas)
                     return { giver = name, zoneID = zone, x = spot and math.floor(spot[1] + 0.5),
                         y = spot and math.floor(spot[2] + 0.5), inside = inside }
                 end
@@ -101,55 +103,26 @@ local function Giver(db, startedBy, dungeonAreas)
     end
 end
 
--- Questie-Gebiet einer Quest (Untergebiete zum Hauptgebiet zusammengefasst)
-local function QuestArea(db, zoneDB, questID)
-    local zone = db.QueryQuestSingle(questID, "zoneOrSort")
-    if type(zone) ~= "number" or zone <= 0 then return nil end
-    return (zoneDB.GetParentZoneId and zoneDB:GetParentZoneId(zone)) or zone
-end
-
--- Gebiet eines Dungeons: häufigstes Questie-Gebiet seiner bekannten Quests
-local function DungeonAreaFromQuests(db, zoneDB, dungeon)
-    local counts, best, bestCount = {}, nil, 0
-    for _, quest in ipairs(dungeon.quests or {}) do
-        local area = quest.id and QuestArea(db, zoneDB, quest.id)
-        if area then
-            counts[area] = (counts[area] or 0) + 1
-            local isDungeon = zoneDB.IsDungeonZone and zoneDB.IsDungeonZone(area)
-            local score = counts[area] + (isDungeon and 100 or 0)
-            if score > bestCount then best, bestCount = area, score end
-        end
-    end
-    return best
-end
-
--- Neuen Questeintrag aus Questies Daten bauen (alte Angaben, z. B. Belohnungen, bleiben, wo Questie nichts hat)
-local function BuildQuest(db, questID, old, dungeonAreas)
-    local quest = {}
-    if old then for key, value in pairs(old) do quest[key] = value end end
-    quest.id = questID
-    quest.source = "questie"
+-- Questeintrag aus Questies Daten
+local function BuildQuest(db, questID, insideAreas)
+    local quest = { id = questID, source = "questie" }
     local requiredLevel = db.QueryQuestSingle(questID, "requiredLevel")
     if type(requiredLevel) == "number" and requiredLevel > 0 then quest.minLevel = requiredLevel end
     local questLevel = db.QueryQuestSingle(questID, "questLevel")
     if type(questLevel) == "number" and questLevel > 0 then quest.level = tostring(questLevel) end
     quest.faction = FactionFromRaces(db.QueryQuestSingle(questID, "requiredRaces"))
-    quest.classID = ClassFromMask(db.QueryQuestSingle(questID, "requiredClasses")) or quest.classID
+    quest.classID = ClassFromMask(db.QueryQuestSingle(questID, "requiredClasses"))
     local name = db.QueryQuestSingle(questID, "name")
-    if name then
-        quest.name = quest.name or name
-        quest.nameEN = quest.nameEN or name
-    end
-    local giver = Giver(db, db.QueryQuestSingle(questID, "startedBy"), dungeonAreas)
+    if name then quest.name, quest.nameEN = name, name end
+    local giver = Giver(db, db.QueryQuestSingle(questID, "startedBy"), insideAreas)
     if giver then
         if giver.itemID then
             quest.giverItemID = giver.itemID
         else
             quest.giver, quest.giverEN = giver.giver, giver.giver
-            quest.giverItemID = nil
             local zoneName = AreaName(giver.zoneID)
             if zoneName then quest.zone, quest.zoneEN = zoneName, zoneName end
-            if giver.x and giver.y then quest.x, quest.y = giver.x, giver.y end
+            quest.x, quest.y = giver.x, giver.y
         end
         quest.startsInside = giver.inside or nil
     end
@@ -157,54 +130,77 @@ local function BuildQuest(db, questID, old, dungeonAreas)
         local list = db.QueryQuestSingle(questID, key)
         if type(list) == "table" and list[1] then
             quest.prequestID = list[1]
-            quest.prequest = nil
             break
         end
     end
     return quest
 end
 
--- Hauptlauf: in einem Faden über mehrere Bilder (die Questliste ist groß), danach Fenster neu aufbauen
+-- Stufenbereich aus der Gruppensuche des Spiels (Eintrag, dessen Name den Dungeonnamen enthält)
+local function Simple(name)
+    if not name then return nil end
+    name = name:lower():gsub("%b()", "")
+    for _, article in ipairs({ "die ", "der ", "das ", "the " }) do
+        if name:sub(1, #article) == article then name = name:sub(#article + 1) end
+    end
+    return (name:gsub("[%s%p]", ""))
+end
+
+local lfgActivities
+local function LFGLevels(names)
+    if lfgActivities == nil then
+        lfgActivities = {}
+        if C_LFGList and C_LFGList.GetAvailableCategories and C_LFGList.GetAvailableActivities
+            and C_LFGList.GetActivityInfoTable then
+            for _, categoryID in ipairs(C_LFGList.GetAvailableCategories() or {}) do
+                for _, activityID in ipairs(C_LFGList.GetAvailableActivities(categoryID) or {}) do
+                    local info = C_LFGList.GetActivityInfoTable(activityID)
+                    if info then lfgActivities[#lfgActivities + 1] = info end
+                end
+            end
+        end
+    end
+    for _, info in ipairs(lfgActivities) do
+        local full = Simple(info.fullName or info.shortName)
+        for _, name in ipairs(names) do
+            local simple = Simple(name)
+            if full and simple and simple ~= "" and full:find(simple, 1, true) then
+                local minLevel = info.minLevelSuggestion or info.minLevel
+                local maxLevel = info.maxLevelSuggestion or info.maxLevel
+                if minLevel and minLevel > 0 and maxLevel and maxLevel >= minLevel then
+                    return minLevel .. "-" .. maxLevel
+                end
+            end
+        end
+    end
+end
+
+-- Hauptlauf (in einem Faden über mehrere Bilder): Dungeons und Quests sammeln, Fenster neu aufbauen
 local function Run()
     local db, zoneDB = Module("QuestieDB"), Module("ZoneDB")
     local corrections = Module("QuestieCorrections")
     local pointers = db and db.QuestPointers
-    if not (db and db.QueryQuestSingle and zoneDB and type(pointers) == "table") then return end
+    local questieDungeons = zoneDB and zoneDB.GetDungeons and zoneDB:GetDungeons()
+    if not (db and db.QueryQuestSingle and type(pointers) == "table" and type(questieDungeons) == "table") then return end
     local hidden = corrections and corrections.hiddenQuests or {}
-    local dungeons = ns.ALL_DUNGEON_DATA or ns.DUNGEON_DATA
-    if not dungeons then return end
 
-    -- 1. Gebiet je Dungeon. Teilen sich mehrere Dungeons ein Gebiet (z. B. die Flügel des Scharlachroten Klosters),
-    --    lässt sich nicht sagen, welche Quest zu welchem Flügel gehört: dort bleibt der alte Stand.
-    local byArea, areaOf, report, shared = {}, {}, {}, {}
-    for _, dungeon in ipairs(dungeons) do
-        local area = DungeonAreaFromQuests(db, zoneDB, dungeon)
-        if area then
-            if byArea[area] then shared[area] = true end
-            byArea[area] = dungeon
-            areaOf[dungeon] = area
-            report[dungeon] = { area = area, how = "ids" }
-        end
-    end
-    for area in pairs(shared) do
-        byArea[area] = nil
-        for dungeon, a in pairs(areaOf) do
-            if a == area then report[dungeon].how = "shared" end
-        end
+    -- Gebiet -> Dungeon-Gebiet (Hauptgebiet und seine Nebengebiete, z. B. Flügel)
+    local mainOf = {}
+    for areaID, entry in pairs(questieDungeons) do
+        mainOf[areaID] = areaID
+        for _, alt in ipairs(entry[2] or {}) do mainOf[alt] = areaID end
     end
 
-    -- 2. alle Quests durchgehen: Quests der Dungeon-Gebiete sammeln; Dungeon-Gebiete ohne Treffer merken (Namensvergleich)
-    local found, dungeonAreasSeen, count = {}, {}, 0
+    -- 1. Quests den Dungeons zuordnen
+    local questsOf, count = {}, 0
     for questID in pairs(pointers) do
         if not hidden[questID] then
-            local area = QuestArea(db, zoneDB, questID)
-            if area then
-                if byArea[area] then
-                    found[area] = found[area] or {}
-                    found[area][#found[area] + 1] = questID
-                elseif zoneDB.IsDungeonZone and zoneDB.IsDungeonZone(area) then
-                    dungeonAreasSeen[area] = dungeonAreasSeen[area] or {}
-                    table.insert(dungeonAreasSeen[area], questID)
+            local zone = db.QueryQuestSingle(questID, "zoneOrSort")
+            if type(zone) == "number" and zone > 0 then
+                local main = mainOf[zone] or mainOf[(zoneDB.GetParentZoneId and zoneDB:GetParentZoneId(zone)) or -1]
+                if main then
+                    questsOf[main] = questsOf[main] or {}
+                    table.insert(questsOf[main], questID)
                 end
             end
         end
@@ -212,66 +208,68 @@ local function Run()
         if count % 250 == 0 then coroutine.yield() end
     end
 
-    -- 3. Dungeons ohne bekannte Quest-IDs (z. B. neu in Forever): über den Gebietsnamen zuordnen.
-    --    Tolerant verglichen: ohne Artikel ("Die", "The" …), Groß-/Kleinschreibung und Satzzeichen
-    local function Simple(name)
-        if not name then return nil end
-        name = name:lower():gsub("%b()", "")
-        for _, article in ipairs({ "die ", "der ", "das ", "the " }) do
-            if name:sub(1, #article) == article then name = name:sub(#article + 1) end
+    -- 2. Dungeons bauen
+    local result, report = {}, {}
+    for areaID, ids in pairs(questsOf) do
+        local entry = questieDungeons[areaID]
+        local pvp = 0
+        if db.IsPvPQuest then
+            for _, questID in ipairs(ids) do if db.IsPvPQuest(questID) then pvp = pvp + 1 end end
         end
-        return (name:gsub("[%s%p]", ""))
-    end
-    for area, ids in pairs(dungeonAreasSeen) do
-        local areaName = Simple(AreaName(area))
-        if areaName and areaName ~= "" then
-            for _, dungeon in ipairs(dungeons) do
-                if not areaOf[dungeon] and (Simple(dungeon.name) == areaName or Simple(dungeon.nameEN) == areaName) then
-                    areaOf[dungeon], byArea[area], found[area] = area, dungeon, ids
-                    report[dungeon] = { area = area, how = "name" }
-                end
+        if pvp * 2 < #ids then -- überwiegend PvP-Quests = Schlachtfeld: weglassen
+            local insideAreas = { [areaID] = true }
+            for _, alt in ipairs(entry[2] or {}) do insideAreas[alt] = true end
+            local quests, minLevel, maxLevel, horde, alliance = {}, nil, nil, false, false
+            for n, questID in ipairs(ids) do
+                local quest = BuildQuest(db, questID, insideAreas)
+                quests[#quests + 1] = quest
+                if quest.minLevel then minLevel = math.min(minLevel or 999, quest.minLevel) end
+                local level = tonumber(quest.level)
+                if level then maxLevel = math.max(maxLevel or 0, level) end
+                if quest.faction == "Horde" then horde = true
+                elseif quest.faction == "Alliance" then alliance = true
+                else horde, alliance = true, true end
+                if n % 20 == 0 then coroutine.yield() end
             end
+            table.sort(quests, function(a, b)
+                local la, lb = a.minLevel or 99, b.minLevel or 99
+                if la ~= lb then return la < lb end
+                return a.id < b.id
+            end)
+            local nameEN = entry[1]
+            local name = (zoneDB.GetLocalizedDungeonName and zoneDB:GetLocalizedDungeonName(areaID)) or AreaName(areaID) or nameEN
+            local location = type(entry[4]) == "table" and entry[4][1]
+            local levels = LFGLevels({ name, nameEN })
+            local levelSource = "lfg"
+            if not levels and minLevel then
+                levels = minLevel .. "-" .. math.max(maxLevel or minLevel, minLevel)
+                levelSource = "quests"
+            end
+            local dungeon = {
+                name = name, nameEN = nameEN, levels = levels,
+                zone = location and AreaName(location[1]), zoneEN = location and AreaName(location[1]),
+                entranceX = location and location[2], entranceY = location and location[3],
+                type = areaID >= NEW_AREA_FROM and "Neu in Forever" or "Classic",
+                faction = (horde and not alliance) and "Horde" or (alliance and not horde) and "Alliance" or "Both",
+                quests = quests, areaID = areaID,
+            }
+            result[#result + 1] = dungeon
+            report[dungeon] = { area = areaID, quests = #quests, levelSource = levels and levelSource or "none" }
         end
     end
+    table.sort(result, function(a, b)
+        local la = tonumber((a.levels or ""):match("%d+")) or 99
+        local lb = tonumber((b.levels or ""):match("%d+")) or 99
+        if la ~= lb then return la < lb end
+        return (a.name or "") < (b.name or "")
+    end)
 
-    -- 4. Questlisten zusammenführen: Questie-Quests (mit alten Zusatzangaben) + alte Quests, die Questie nicht kennt
-    local dungeonAreas = {}
-    for area in pairs(byArea) do dungeonAreas[area] = true end
-    for area, dungeon in pairs(byArea) do
-        local old, merged, seen = {}, {}, {}
-        for _, quest in ipairs(dungeon.quests or {}) do
-            if quest.id then old[quest.id] = quest end
-        end
-        local fromQuestie, added = 0, 0
-        for _, questID in ipairs(found[area] or {}) do
-            if not seen[questID] then
-                seen[questID] = true
-                if not old[questID] then added = added + 1 end
-                merged[#merged + 1] = BuildQuest(db, questID, old[questID], dungeonAreas)
-                fromQuestie = fromQuestie + 1
-            end
-            if fromQuestie % 20 == 0 then coroutine.yield() end
-        end
-        local kept = 0
-        for _, quest in ipairs(dungeon.quests or {}) do
-            if not quest.id or not seen[quest.id] then
-                merged[#merged + 1] = quest
-                kept = kept + 1
-            end
-        end
-        -- nach Mindeststufe ordnen (Quests ohne Angabe ans Ende)
-        table.sort(merged, function(a, b)
-            local la, lb = a.minLevel or 99, b.minLevel or 99
-            if la ~= lb then return la < lb end
-            return (a.id or 0) < (b.id or 0)
-        end)
-        dungeon.quests = merged
-        local r = report[dungeon]
-        r.questie, r.added, r.kept = fromQuestie, added, kept
-    end
-    ns.questieDungeonReport = { dungeons = dungeons, report = report }
+    -- 3. Liste des Dungeonfensters ersetzen (dieselbe Tabelle, die Dungeons.lua als Gesamtliste hält)
+    local all = ns.ALL_DUNGEON_DATA or ns.DUNGEON_DATA
+    wipe(all)
+    for _, dungeon in ipairs(result) do all[#all + 1] = dungeon end
+    ns.questieDungeonReport = { dungeons = all, report = report }
 
-    -- 5. Anzeige neu aufbauen
     if ns.ApplyBetaFilter then ns.ApplyBetaFilter() end
     if ns.InvalidateDungeonCaches then ns.InvalidateDungeonCaches() end
     if ns.ResetDungeonWindow then ns.ResetDungeonWindow() end
@@ -290,7 +288,7 @@ local function Start()
     Step()
 end
 
--- Start, sobald Questie fertig geladen ist (ohne Questie bleibt alles beim eingefrorenen Stand)
+-- Start, sobald Questie fertig geladen ist (ohne Questie bleibt die Liste leer)
 local starter = CreateFrame("Frame")
 starter:RegisterEvent("PLAYER_LOGIN")
 starter:SetScript("OnEvent", function(self)
@@ -304,7 +302,7 @@ starter:SetScript("OnEvent", function(self)
     end
 end)
 
--- /fq dungeonquellen: je Dungeon, woher die Quests kommen
+-- /fq dungeonquellen: je Dungeon, was gefunden wurde
 function ns.DebugDungeonSources()
     local prefix = ns.ChatPrefix() .. ": "
     local data = ns.questieDungeonReport
@@ -312,16 +310,10 @@ function ns.DebugDungeonSources()
         print(prefix .. ns.L("DNGSRC_NONE"))
         return
     end
+    print(prefix .. ns.L("DNGSRC_COUNT", #data.dungeons))
     for _, dungeon in ipairs(data.dungeons) do
-        local r = data.report[dungeon]
-        local name = dungeon.name or "?"
-        if r and r.questie then
-            print(prefix .. ns.L("DNGSRC_LINE", name, r.questie, r.added, r.kept, r.area,
-                ns.L(r.how == "name" and "DNGSRC_BY_NAME" or "DNGSRC_BY_IDS")))
-        elseif r and r.how == "shared" then
-            print(prefix .. ns.L("DNGSRC_SHARED", name, #(dungeon.quests or {})))
-        else
-            print(prefix .. ns.L("DNGSRC_OLD", name, #(dungeon.quests or {})))
-        end
+        local r = data.report[dungeon] or {}
+        print(prefix .. ns.L("DNGSRC_LINE", dungeon.name or "?", r.quests or 0, dungeon.levels or "?",
+            ns.L("DNGSRC_LVL_" .. (r.levelSource or "none"):upper()), dungeon.type or "?", r.area or 0))
     end
 end
