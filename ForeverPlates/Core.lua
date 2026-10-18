@@ -1266,6 +1266,10 @@ local function QueueQuest()
     end)
 end
 
+local function ClearLos()
+    for _, fp in pairs(plates) do fp.los:Hide() end
+end
+
 local H = {}
 H.NAME_PLATE_UNIT_ADDED = function(unit) Attach(unit) end
 H.NAME_PLATE_UNIT_REMOVED = function(unit) Detach(unit) end
@@ -1319,9 +1323,6 @@ H.SPELL_UPDATE_COOLDOWN = function()
     for _, fp in pairs(plates) do if fp.casting then CastColor(fp) end end
 end
 H.SPELLS_CHANGED = function() FindKick() end
-local function ClearLos()
-    for _, fp in pairs(plates) do fp.los:Hide() end
-end
 H.UI_ERROR_MESSAGE = function(_, msg)
     if not db.los or IsSecret(msg) or msg ~= SPELL_FAILED_LINE_OF_SIGHT then return end
     for _, fp in pairs(plates) do

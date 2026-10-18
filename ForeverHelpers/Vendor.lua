@@ -352,21 +352,24 @@ local function ListText(list)
     for _, b in ipairs(list) do parts[#parts + 1] = string.format("%d× %s", b.units, b.item.name) end
     return table.concat(parts, ", ")
 end
-local function SellJunk(result)
-    local total, n = 0, 0
-    local queue = {}
+-- Graues im Gepäck (ohne "wertlos" markierte). Der Preis zählt nur für die Summe: beim ersten Händlerbesuch hat
+-- das Spiel die Gegenstandsdaten oft noch nicht geladen (Preis 0) – verkauft wird trotzdem.
+local function JunkItems()
+    local queue, total = {}, 0
     for _, it in ipairs(BagItems()) do
         if it.quality == 0 and not it.noValue and not it.locked then
             local price = SellPrice(it.id)
-            if price > 0 then
-                total = total + price * it.count
-                n = n + 1
-                queue[#queue + 1] = it
+            if price <= 0 and C_Item and C_Item.RequestLoadItemDataByID then
+                pcall(C_Item.RequestLoadItemDataByID, it.id)
             end
+            total = total + price * it.count
+            queue[#queue + 1] = it
         end
     end
-    if n == 0 then return end
-    result.sold, result.soldValue = n, total
+    return queue, total
+end
+
+local function SellQueue(queue)
     -- Blizzards eigenes "Plunder verkaufen" (falls vorhanden), sonst einzeln mit kleiner Pause
     if C_MerchantFrame and C_MerchantFrame.SellAllJunkItems and pcall(C_MerchantFrame.SellAllJunkItems) then return end
     for i, it in ipairs(queue) do
@@ -374,6 +377,19 @@ local function SellJunk(result)
             if merchantOpen and C_Container.UseContainerItem then C_Container.UseContainerItem(it.bag, it.slot) end
         end)
     end
+end
+
+local function SellJunk(result)
+    local queue, total = JunkItems()
+    if #queue == 0 then return end
+    result.sold, result.soldValue = #queue, total
+    SellQueue(queue)
+    -- liegt danach noch Graues da (z. B. Blizzards Verkauf hat nicht gegriffen): einmal nachfassen
+    C_Timer.After(1.2, function()
+        if not merchantOpen then return end
+        local rest = JunkItems()
+        if #rest > 0 then SellQueue(rest) end
+    end)
 end
 
 local function Repair(result, then_)
