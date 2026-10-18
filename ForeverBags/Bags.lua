@@ -157,7 +157,17 @@ function ns.UpdateSlot(button, bag, slot)
     -- Neu erhaltene Gegenstände (erst nach dem Login erhaltene – siehe ClearAll beim Einloggen). Blizzards
     -- Leucht-Animationen der Vorlage sonst anhalten, sonst leuchten alle Plätze
     local isNew = ns.db.highlightNew and C_NewItems and C_NewItems.IsNewItem and C_NewItems.IsNewItem(bag, slot)
-    if button.NewItemTexture then button.NewItemTexture:SetShown(isNew and true or false) end
+    local newTex = button.NewItemTexture
+    if newTex then
+        if isNew then
+            -- eigener, sanft goldener Schimmer (Blizzard färbt ihn nach Qualität – blau sah aus wie ein blauer Gegenstand)
+            pcall(newTex.SetAtlas, newTex, "bags-glow-white") -- jedes Mal: Blizzard setzt sonst wieder seine Farbe
+            newTex:SetVertexColor(1, 0.82, 0.35, 0.9)
+            local glow = button.newitemglowAnim
+            if glow and glow.IsPlaying and not glow:IsPlaying() then glow:Play() end
+        end
+        newTex:SetShown(isNew and true or false)
+    end
     if not isNew then
         for _, anim in ipairs({ button.newitemglowAnim, button.flashAnim }) do
             if anim and anim.Stop then anim:Stop() end
