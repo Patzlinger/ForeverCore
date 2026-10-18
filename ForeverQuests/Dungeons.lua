@@ -1203,13 +1203,11 @@ local function ChainLine(index, entry, quest)
     local doneQuest = C_QuestLog.IsQuestFlaggedCompleted and C_QuestLog.IsQuestFlaggedCompleted(entry.questID)
     local inLog = C_QuestLog.GetLogIndexForQuestID(entry.questID) ~= nil
     local color, suffix = "|cff9a9a9a", ""
-    -- erledigt geht vor: auch die Quest der Karte ist dann grün mit Haken (gold nur, solange sie offen ist)
+    -- erledigt = grün mit Haken; gold nur der Teil, der gerade im Questlog bearbeitet wird; sonst grau
     if doneQuest then
         color, suffix = "|cff55cc66", " |TInterface\\RaidFrame\\ReadyCheck-Ready:12|t"
-    elseif entry.questID == quest.id then
-        color = "|cffffd100"
     elseif inLog then
-        color, suffix = "|cffffffff", " |cff88ccff" .. ns.L("DETAIL_IN_LOG") .. "|r"
+        color, suffix = "|cffffd100", " |cff88ccff" .. ns.L("DETAIL_IN_LOG") .. "|r"
     end
     return "   " .. color .. index .. ". " .. name .. level .. "|r" .. suffix .. "  |cff6a6a6a#" .. entry.questID .. "|r"
 end
@@ -1293,7 +1291,13 @@ RefreshDetail = function()
         detailTitle:SetText(ns.L(raidTabActive and "NO_RAID" or levelTabActive and "NO_DUNGEON_LEVEL" or "NO_DUNGEON"))
         detailExtra:SetText("")
         LayoutPills({})
-        detailEmpty:Hide()
+        -- Gar keine Dungeondaten: Questie fehlt, ist veraltet oder lädt noch
+        if #(ns.ALL_DUNGEON_DATA or {}) == 0 then
+            detailEmpty:SetText(ns.L("NO_DUNGEON_DATA"))
+            detailEmpty:Show()
+        else
+            detailEmpty:Hide()
+        end
         return
     end
 
@@ -2225,6 +2229,35 @@ local function CreateWindow()
     window:Hide()
 end
 
+-- Schutz gegen Fehler (z. B. Questie oder AtlasLoot fehlt oder ist veraltet): Ein Fehler im Fenster wird
+-- abgefangen und einmal im Chat gemeldet, statt als Fehlerfenster aufzugehen - das Dungeonfenster bleibt benutzbar.
+local reportedErrors = {}
+local function Guarded(fn, what)
+    return function(...)
+        local ok, err = pcall(fn, ...)
+        if not ok and not reportedErrors[what] then
+            reportedErrors[what] = true
+            print(ns.ChatPrefix() .. ": " .. ns.L("DUNGEON_ERROR", what, tostring(err)))
+        end
+    end
+end
+RefreshList = Guarded(RefreshList, "Liste")
+RefreshDetail = Guarded(RefreshDetail, "Quests")
+ShowAtlasLoot = Guarded(ShowAtlasLoot, "AtlasLoot")
+OpenAtlasLoot = Guarded(OpenAtlasLoot, "AtlasLoot")
+
+-- Fenster bauen; geht dabei etwas schief, wird das halbfertige Fenster verworfen (nächster Versuch beim Öffnen)
+local function EnsureWindow()
+    if window then return true end
+    local ok, err = pcall(CreateWindow)
+    if ok and window then return true end
+    if window then window:Hide() end
+    window = nil
+    listButtons, questEntries, pills = {}, {}, {}
+    print(ns.ChatPrefix() .. ": " .. ns.L("DUNGEON_ERROR", "Fenster", tostring(err)))
+    return false
+end
+
 -- Nach einem Sprachwechsel: Fenster mit neuen Texten neu aufbauen (beim nächsten Öffnen)
 -- Quests der Dungeons haben sich geändert (Questie-Daten nachgeladen): Zwischenspeicher leeren
 function ns.InvalidateDungeonCaches()
@@ -2247,13 +2280,13 @@ function ns.HideDungeons()
 end
 
 function ns.ToggleDungeons()
-    if not window then CreateWindow() end
+    if not EnsureWindow() then return end
     window:SetShown(not window:IsShown())
 end
 
 -- Dungeonfenster öffnen und einen bestimmten Dungeon auswählen
 function ns.ShowDungeon(dungeon)
-    if not window then CreateWindow() end
+    if not EnsureWindow() then return end
     selectedDungeon = dungeon
     -- Passenden Reiter wählen: Schlachtzüge bzw. "Alle Dungeons", wenn der Dungeon im aktuellen Reiter fehlt
     local isRaid = dungeon and dungeon.isRaid == true

@@ -33,6 +33,9 @@
 - ForeverMinimap: map icons of other addons (e.g. Questie's mailbox and flight master icons) no longer end up in the minimap button strip.
 - ForeverQuests with Questie: Blizzard's own quest markers no longer show up on the map next to Questie's (they are turned off while "Hide Blizzard quest tracker" is on, just like Questie's own icon theme does).
 - ForeverQuests, quest together: you no longer show up twice (as "You" and with your full name), so the member count is right.
+- ForeverQuests: quests you haven't picked up yet now show their item rewards in tooltips and on the dungeon cards (taken from Questie's database).
+- ForeverQuests, quest chains: finished parts are always green with a check mark; gold marks only the part you are currently working on (in your quest log).
+- ForeverQuests: the dungeon window no longer breaks with an error when Questie or AtlasLoot is missing or outdated – you get one chat message instead and the window keeps working.
 
 ## 0.44b – October 18, 2026
 

@@ -1356,13 +1356,14 @@ RenderDetailView = function(dv)
             local done = C_QuestLog.IsQuestFlaggedCompleted and C_QuestLog.IsQuestFlaggedCompleted(entry.questID)
             local inLog = C_QuestLog.GetLogIndexForQuestID(entry.questID) ~= nil
             local text, font, cr, cg, cb = i .. ". " .. label, fonts.objective, 0.6, 0.6, 0.6
-            -- erledigt geht vor: auch die gerade gezeigte Quest ist dann grün mit Haken (nicht gold)
+            -- erledigt = grün mit Haken; gold nur der Teil, der gerade im Questlog bearbeitet wird; sonst grau
             if done then
                 text, cr, cg, cb = text .. "  |TInterface\\RaidFrame\\ReadyCheck-Ready:12|t", 0.45, 0.85, 0.45
-            elseif entry.questID == questID then
-                font, cr, cg, cb = fonts.quest, accent[1], accent[2], accent[3]
             elseif inLog then
-                text, cr, cg, cb = text .. "  |cff88ccff" .. ns.L("DETAIL_IN_LOG") .. "|r", 0.9, 0.9, 0.9
+                font, cr, cg, cb = fonts.quest, accent[1], accent[2], accent[3]
+                if entry.questID ~= questID then
+                    text = text .. "  |cff88ccff" .. ns.L("DETAIL_IN_LOG") .. "|r"
+                end
             end
             text = text .. "  |cff6a6a6a#" .. entry.questID .. "|r"
             rowsUsed = rowsUsed + 1

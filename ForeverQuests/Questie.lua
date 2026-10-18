@@ -505,3 +505,29 @@ function ns.GetQuestieMapToggles()
     }
     return { available = available, objectives = objectives, turnins = turnins, lowLevel = lowLevel }
 end
+
+---------------------------------------------------------------------------
+-- Schutz: Ist Questie veraltet (andere Datenbank/Funktionen), darf ein Fehler darin nie ein Fehlerfenster
+-- auslösen. Jede Questie-Abfrage läuft geschützt; beim ersten Fehler gibt es eine Chatmeldung und die
+-- Questie-Anbindung wird für diese Sitzung abgeschaltet (alles läuft dann wie ohne Questie).
+---------------------------------------------------------------------------
+local questieBroken = false
+local hasQuestie = ns.HasQuestie
+function ns.HasQuestie()
+    return not questieBroken and hasQuestie() and true or false
+end
+
+for _, key in ipairs({ "GetQuestieActions", "AddQuestieMenuItems", "QuestieHover", "QuestieFocusDetails",
+    "GetQuestChain", "BuildQuestChain", "GetQuestieQuestDetails", "GetQuestieRewardItems",
+    "GetQuestieReputation", "GetQuestieMapToggles" }) do
+    local fn = ns[key]
+    local function Finish(ok, ...)
+        if ok then return ... end
+        if not questieBroken then
+            questieBroken = true
+            print(ns.ChatPrefix() .. ": " .. ns.L("QUESTIE_BROKEN", tostring((...))))
+        end
+        return nil
+    end
+    ns[key] = function(...) return Finish(pcall(fn, ...)) end
+end
