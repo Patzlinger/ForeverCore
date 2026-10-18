@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 50
+local VERSION = 51
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -3162,6 +3162,16 @@ do
             if _G.ForeverHub ~= hub then return end
             if not b then
                 b = UI.Button(UIParent, "Forever Hub", 150, OpenHub)
+                -- Forever-Core-Symbol links vor dem Text (Text dafür etwas nach rechts)
+                local label = b:GetFontString()
+                if label then
+                    label:ClearAllPoints()
+                    label:SetPoint("CENTER", 10, 0)
+                    local logo = b:CreateTexture(nil, "OVERLAY")
+                    logo:SetTexture(UI.LOGO)
+                    logo:SetSize(16, 16)
+                    logo:SetPoint("RIGHT", label, "LEFT", -6, 0)
+                end
                 b:SetFrameStrata(menu:GetFrameStrata())
                 b:SetFrameLevel(menu:GetFrameLevel() + 5)
             end

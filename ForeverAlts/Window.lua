@@ -172,7 +172,13 @@ local function ProfButton(row)
     b.text = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     b.text:SetPoint("LEFT")
     b.text:SetWordWrap(false)
+    -- feine Linie unter dem Namen: zeigt, dass man klicken kann
+    b.underline = b:CreateTexture(nil, "ARTWORK")
+    b.underline:SetHeight(1)
+    b.underline:SetPoint("BOTTOMLEFT", 0, -1)
+    b.underline:SetPoint("BOTTOMRIGHT", 0, -1)
     b:SetScript("OnEnter", function(self)
+        if self.count then SetCursor("INSPECT_CURSOR") end
         self.text:SetTextColor(C.accent[1], C.accent[2], C.accent[3])
         if self.count then
             ButtonTip(self, self.prof, string.format(T("Klick: %d Rezepte ansehen", "Click: show %d recipes"), self.count))
@@ -182,6 +188,7 @@ local function ProfButton(row)
         end
     end)
     b:SetScript("OnLeave", function(self)
+        ResetCursor()
         self.text:SetTextColor(self.r, self.g, self.b)
         UI.GetTooltip():Hide()
     end)
@@ -337,13 +344,20 @@ local function LayoutProfs(row, entry, x, width)
         local line = k <= 2 and 1 or 2
         if p and lineX[line] < x + width - 20 then
             b.key, b.prof, b.count = entry.key, p.name or "?", recipes[p.name]
-            b.r, b.g, b.b = b.count and 0.9 or 0.65, b.count and 0.9 or 0.65, b.count and 0.9 or 0.65
+            -- anklickbar (Rezepte bekannt): hellblau wie ein Link, unterstrichen, mit Berufssymbol; sonst grau
+            if b.count then
+                b.r, b.g, b.b = 0.45, 0.75, 1
+            else
+                b.r, b.g, b.b = 0.6, 0.6, 0.6
+            end
             b.text:SetTextColor(b.r, b.g, b.b)
-            b.text:SetText((p.name or "?") .. " |cffffffff" .. (p.rank or "") .. "|r" .. (row.profButtons[k + 1]
-                and c.profs[k + 1] and (k ~= 2) and "," or ""))
+            local icon = p.icon and ("|T" .. p.icon .. ":12:12:0:0|t ") or ""
+            b.text:SetText(icon .. (p.name or "?") .. " |cffffffff" .. (p.rank or "") .. "|r")
             local w = math.min(b.text:GetStringWidth() + 2, x + width - lineX[line])
             b:SetWidth(w)
             b.text:SetWidth(w)
+            b.underline:SetShown(b.count ~= nil)
+            b.underline:SetColorTexture(b.r, b.g, b.b, 0.6)
             b:ClearAllPoints()
             b:SetPoint("TOPLEFT", row, "TOPLEFT", lineX[line], line == 1 and -3 or -16)
             b:Show()
@@ -358,6 +372,7 @@ local function LayoutProfs(row, entry, x, width)
         b.r, b.g, b.b = 0.42, 0.42, 0.42
         b.text:SetTextColor(b.r, b.g, b.b)
         b.text:SetText("–")
+        b.underline:Hide()
         b:SetWidth(20)
         b:ClearAllPoints()
         b:SetPoint("LEFT", row, "LEFT", x, 0)

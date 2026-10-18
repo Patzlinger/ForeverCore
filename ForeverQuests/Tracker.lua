@@ -1884,9 +1884,35 @@ local function EditModeOpen()
     return _G.EditModeManagerFrame and _G.EditModeManagerFrame:IsShown() or false
 end
 
+-- Lage von Karte, Knopfleiste und Mikromenü als Kennung: ändert sie sich, ohne dass ein Ereignis kam (z. B. wenn die
+-- Knopfleiste nach dem Bearbeitungsmodus noch ein paar Sekunden nachrückt), setzt die Nachkontrolle unten den
+-- Tracker neu – sonst behielt er einen Zwischenstand und sprang in der Breite
+function ns.LayoutSignature()
+    local map = _G.Minimap
+    if not (map and map:GetLeft()) then return nil end
+    local left, right = map:GetLeft(), map:GetRight()
+    if _G.ForeverMinimap_GetSpan then left, right = _G.ForeverMinimap_GetSpan() end
+    local micro = DockedMicroMenu()
+    return string.format("%d:%d:%d:%d", math.floor((left or 0) + 0.5), math.floor((right or 0) + 0.5),
+        math.floor(map:GetBottom() + 0.5), micro and math.floor(micro:GetBottom() + 0.5) or 0)
+end
+
+do
+    local hubUI = _G.ForeverHub and _G.ForeverHub.UI
+    if hubUI and hubUI.Every then
+        hubUI.Every(1, function()
+            if EditModeOpen() then return end
+            local signature = ns.LayoutSignature()
+            if signature and signature ~= ns.layoutSignature then ns.ApplyLayout() end
+        end, { addon = "ForeverQuests", name = "TrackerLayout",
+            when = function() return tracker ~= nil and tracker:IsShown() and ns.db and ns.db.followMinimap end })
+    end
+end
+
 function ns.ApplyLayout()
     if not tracker then return end
     if EditModeOpen() then return end
+    ns.layoutSignature = ns.LayoutSignature()
     local db = ns.db
     local anchor, map = MinimapAnchor()
     if anchor then
