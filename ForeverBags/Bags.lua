@@ -944,8 +944,21 @@ end
 -- freie Plätze eines Charakters
 if UI.API then
     UI.API.ForeverBags = {
-        ShowCharacter = function(key, kind)
+        -- above (optional): Fenster, über dem die Taschen liegen sollen (z. B. die Übersicht von ForeverAlts) – bis zum
+        -- Schließen auf dessen Ebene und darüber, danach wieder auf der eigenen
+        ShowCharacter = function(key, kind, above)
             if not window then return end
+            if above and above.GetFrameStrata then
+                window.fbOwnStrata = window.fbOwnStrata or window:GetFrameStrata()
+                window:SetFrameStrata(above:GetFrameStrata())
+                window:SetFrameLevel(above:GetFrameLevel() + 20)
+                if not window.fbStrataHook then
+                    window.fbStrataHook = true
+                    window:HookScript("OnHide", function(self)
+                        if self.fbOwnStrata then self:SetFrameStrata(self.fbOwnStrata) self.fbOwnStrata = nil end
+                    end)
+                end
+            end
             local c = ns.CharacterData(key)
             if key == ns.CharKey() and kind ~= "bank" then
                 SetView(nil)

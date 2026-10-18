@@ -69,6 +69,12 @@ function ns.SetHidden(key, hidden)
     if c and key ~= ns.CharKey() then c.hidden = hidden and true or nil end
 end
 
+function ns.HiddenCount()
+    local n = 0
+    for _, c in pairs(Data().chars) do if type(c) == "table" and c.hidden then n = n + 1 end end
+    return n
+end
+
 local function Me()
     local chars, key = Data().chars, ns.CharKey()
     if type(chars[key]) ~= "table" then chars[key] = {} end
@@ -280,10 +286,19 @@ end
 local NAME_PREFIX = "FALTS"
 if C_ChatInfo and C_ChatInfo.RegisterAddonMessagePrefix then pcall(C_ChatInfo.RegisterAddonMessagePrefix, NAME_PREFIX) end
 
+-- an sich selbst geht nicht überall (Flüstern braucht evtl. schon den vollen Namen) – darum zusätzlich an Gilde
+-- bzw. Gruppe: dort kommt die eigene Nachricht mit dem eigenen vollen Namen als Absender zurück
 function ns.RequestFullName()
-    if not (C_ChatInfo and C_ChatInfo.SendAddonMessage) then return end
+    if Me().fullName or not (C_ChatInfo and C_ChatInfo.SendAddonMessage) then return end
     pcall(C_ChatInfo.SendAddonMessage, NAME_PREFIX, "N", "WHISPER", UnitName("player"))
+    if IsInGuild and IsInGuild() then pcall(C_ChatInfo.SendAddonMessage, NAME_PREFIX, "N", "GUILD") end
+    if IsInGroup() then pcall(C_ChatInfo.SendAddonMessage, NAME_PREFIX, "N", IsInRaid() and "RAID" or "PARTY") end
 end
+
+-- Weitere Quelle: eigene Chatnachrichten (Sagen, Gilde, Gruppe …) tragen den vollen Namen als Absender; erkannt an
+-- der eigenen Kennung (GUID), nicht am Namen
+local CHAT_EVENTS = { "CHAT_MSG_SAY", "CHAT_MSG_YELL", "CHAT_MSG_GUILD", "CHAT_MSG_PARTY", "CHAT_MSG_PARTY_LEADER",
+    "CHAT_MSG_RAID", "CHAT_MSG_RAID_LEADER", "CHAT_MSG_CHANNEL", "CHAT_MSG_EMOTE", "CHAT_MSG_INSTANCE_CHAT" }
 
 local function StoreFullName(sender)
     if type(sender) ~= "string" or issecret(sender) then return end
@@ -398,8 +413,17 @@ events:RegisterEvent("TIME_PLAYED_MSG")
 for event in pairs(EVENTS) do pcall(events.RegisterEvent, events, event) end
 events:RegisterEvent("CHAT_MSG_ADDON")
 events:RegisterEvent("UNIT_NAME_UPDATE")
-events:SetScript("OnEvent", ns.Safe("Ereignis", function(_, event, total, level, _, sender)
-    if event == "CHAT_MSG_ADDON" then
+for _, event in ipairs(CHAT_EVENTS) do pcall(events.RegisterEvent, events, event) end
+local isChatEvent = {}
+for _, event in ipairs(CHAT_EVENTS) do isChatEvent[event] = true end
+events:SetScript("OnEvent", ns.Safe("Ereignis", function(_, event, total, level, _, sender, ...)
+    if isChatEvent[event] then
+        -- Chat: 2. Wert = Absender, 12. Wert = GUID des Absenders
+        if Me().fullName then return end
+        local guid = select(8, ...)
+        if not issecret(guid) and not issecret(level) and guid and guid == UnitGUID("player") then StoreFullName(level) end
+        return
+    elseif event == "CHAT_MSG_ADDON" then
         if not issecret(total) and total == NAME_PREFIX then StoreFullName(sender) end
         return
     elseif event == "UNIT_NAME_UPDATE" then
@@ -408,6 +432,7 @@ events:SetScript("OnEvent", ns.Safe("Ereignis", function(_, event, total, level,
     end
     if event == "PLAYER_LOGIN" then
         C_Timer.After(5, ns.RequestFullName)
+        C_Timer.After(30, ns.RequestFullName) -- Gilde/Gruppe sind beim Login evtl. noch nicht bekannt
         -- Berufe, Quests und Dungeondaten (ForeverQuests baut sie aus Questie) sind erst nach ein paar Sekunden da
         C_Timer.After(3, function() Queue() end)
         C_Timer.After(15, function() Queue("quests") end)

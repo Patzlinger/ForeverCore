@@ -169,8 +169,8 @@ local function ProfButton(row)
         if self.count then SetCursor("INSPECT_CURSOR") end
         self.text:SetTextColor(C.accent[1], C.accent[2], C.accent[3])
         if self.count then
-            ButtonTip(self, self.prof, string.format(T("Linksklick: im Berufsfenster öffnen (%d Rezepte)\nRechtsklick: Liste mit Suche",
-                "Left-click: open in the profession window (%d recipes)\nRight-click: list with search"), self.count))
+            ButtonTip(self, self.prof, string.format(T("Klick: %d Rezepte ansehen (mit Suche)",
+                "Click: show %d recipes (with search)"), self.count))
         else
             ButtonTip(self, self.prof, T("Rezepte noch unbekannt – auf diesem Charakter das Berufsfenster einmal öffnen.",
                 "Recipes not known yet – open the profession window on this character once."))
@@ -182,11 +182,10 @@ local function ProfButton(row)
         UI.GetTooltip():Hide()
     end)
     b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-    -- Linksklick: Blizzards Berufsfenster (über den gespeicherten Berufs-Link); geht das nicht, die eigene Liste
-    b:SetScript("OnClick", function(self, button)
-        if not (self.count and self.key) then return end
-        if button == "LeftButton" and ns.OpenProfessionWindow(self.key, self.prof) then return end
-        ns.ShowRecipes(self.key, self.prof)
+    -- Klick: gespeicherte Rezepte in der eigenen Liste. (Blizzards Berufsfenster zeigt verlinkte Berufe nur mit Daten
+    -- vom Server – für ausgeloggte Charaktere öffnet es sich nicht; im Spiel getestet 2026-10-18.)
+    b:SetScript("OnClick", function(self)
+        if self.count and self.key then ns.ShowRecipes(self.key, self.prof) end
     end)
     return b
 end
@@ -218,7 +217,7 @@ local function BuildActions(row)
         ActionButton(row, "Interface\\Icons\\INV_Misc_Bag_08", function(entry)
             local bags = BagsAPI()
             if bags and bags.IsShowing and bags.IsShowing(entry.key, "bags") then bags.Close()
-            elseif bags and bags.ShowCharacter then bags.ShowCharacter(entry.key, "bags") end
+            elseif bags and bags.ShowCharacter then bags.ShowCharacter(entry.key, "bags", window) end
         end, function(self)
             ButtonTip(self, T("Taschen ansehen", "Show bags"), self.enabled and nil
                 or T("Braucht ForeverBags (und einmal eingeloggt).", "Needs ForeverBags (and one login)."))
@@ -226,7 +225,7 @@ local function BuildActions(row)
         ActionButton(row, "Interface\\Icons\\INV_Box_02", function(entry)
             local bags = BagsAPI()
             if bags and bags.IsShowing and bags.IsShowing(entry.key, "bank") then bags.Close()
-            elseif bags and bags.ShowCharacter then bags.ShowCharacter(entry.key, "bank") end
+            elseif bags and bags.ShowCharacter then bags.ShowCharacter(entry.key, "bank", window) end
         end, function(self)
             ButtonTip(self, T("Bank ansehen", "Show bank"), self.enabled and nil
                 or T("Bank noch nicht besucht (oder ForeverBags fehlt).", "Bank not visited yet (or ForeverBags missing)."))
@@ -466,7 +465,13 @@ function ns.RefreshWindow()
         end
     end
     for _, cb in ipairs(toggles) do cb:SetChecked(Visible(cb.column)) end
-    if window.hiddenCheck then window.hiddenCheck:SetChecked(db.showHidden and true or false) end
+    if window.hiddenCheck then
+        -- nur da, wenn es ausgeblendete Charaktere gibt (sonst gibt es nichts zurückzuholen)
+        local anyHidden = ns.HiddenCount() > 0
+        if not anyHidden and db.showHidden then db.showHidden = false end
+        window.hiddenCheck:SetShown(anyHidden)
+        window.hiddenCheck:SetChecked(db.showHidden and true or false)
+    end
     for _, b in ipairs(headerButtons) do
         local active = b.sort and b.sort == db.sortKey
         b.text:SetText(b.title())

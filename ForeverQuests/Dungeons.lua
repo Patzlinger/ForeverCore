@@ -997,11 +997,22 @@ local function CreateRewardButton(parent)
 
     -- Maus drüber: Gegenstands-Tooltip; mit gedrückter Shift-Taste zusätzlich der Vergleich mit der getragenen
     -- Ausrüstung (Blizzards GameTooltip, der die Vergleichs-Tooltips mitbringt); Shift-Klick: im Chat verlinken
+    -- Ohne Shift unser eigener Tooltip (kennt keinen Vergleich – Blizzards GameTooltip vergleicht bei der
+    -- Spieleinstellung "immer vergleichen" sonst ständig), mit Shift Blizzards GameTooltip samt Vergleich
     local function ShowItem(self)
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetItemByID(self.itemID)
-        GameTooltip:Show()
-        if IsShiftKeyDown() and GameTooltip_ShowCompareItem then pcall(GameTooltip_ShowCompareItem, GameTooltip) end
+        local own = ns.Style.GetTooltip()
+        if IsShiftKeyDown() then
+            own:Hide()
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetItemByID(self.itemID)
+            GameTooltip:Show()
+            if GameTooltip_ShowCompareItem then pcall(GameTooltip_ShowCompareItem, GameTooltip) end
+        else
+            if GameTooltip:GetOwner() == self then GameTooltip:Hide() end
+            own:SetOwner(self, "ANCHOR_RIGHT")
+            own:SetItemByID(self.itemID)
+            own:Show()
+        end
     end
     button:SetScript("OnEnter", function(self)
         ShowItem(self)
@@ -1011,6 +1022,7 @@ local function CreateRewardButton(parent)
     button:SetScript("OnLeave", function(self)
         self:UnregisterEvent("MODIFIER_STATE_CHANGED")
         GameTooltip:Hide()
+        ns.Style.GetTooltip():Hide()
     end)
     button:SetScript("OnClick", function(self)
         if self.link and IsModifiedClick() then
@@ -2195,6 +2207,7 @@ local function CreateWindow()
     local function UpdateTabs()
         -- Level-Regler unten nur im Reiter "Mein Level"
         if window.levelFilter then window.levelFilter:SetShown(levelTabActive) end
+        if window.linkHint then window.linkHint:SetShown(not levelTabActive) end
         for _, tab in ipairs(tabs) do
             local active = tab.key == CurrentTab()
             if active then
@@ -2399,6 +2412,9 @@ local function CreateWindow()
     local linkHint = window:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     linkHint:SetPoint("BOTTOMRIGHT", -26, 16)
     linkHint:SetText(ns.L("LINK_HINT"))
+    -- im Reiter "Mein Level" steht dort der Level-Regler: Hinweis dann ausblenden (sonst überlagern sie sich)
+    linkHint:SetShown(not levelTabActive)
+    window.linkHint = linkHint
 
 
     -- Ecke unten rechts: Größe ändern
