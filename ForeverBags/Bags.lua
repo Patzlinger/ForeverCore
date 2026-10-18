@@ -755,8 +755,7 @@ local function PlaceOnOpen()
         end
         return
     end
-    -- /fmove: an der gespeicherten Stelle zeigen (dort verschiebt man es)
-    if ns.db.openAtCursor == false or ns.fmovePlacing then
+    if ns.db.openAtCursor == false then
         RestorePosition()
         return
     end
@@ -774,8 +773,6 @@ end
 local function StartDrag()
     if InCombatLockdown() then return end
     window.fbagsMoving = true
-    -- mit /fmove an anderen Forever-Rahmen einrasten (sonst frei, wie bisher)
-    if ns.fmovePlacing and UI.BeginDrag then UI.BeginDrag(window) end
     window:StartMoving()
 end
 
@@ -783,15 +780,6 @@ local function StopDrag()
     if not window.fbagsMoving then return end
     window.fbagsMoving = nil
     window:StopMovingOrSizing()
-    if ns.fmovePlacing and UI.EndDrag then
-        local dx, dy = UI.EndDrag()
-        local left, bottom = window:GetLeft(), window:GetBottom()
-        if (dx ~= 0 or dy ~= 0) and left and bottom then
-            local s = window:GetEffectiveScale() / UIParent:GetEffectiveScale()
-            window:ClearAllPoints()
-            window:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", left + dx / s, bottom + dy / s)
-        end
-    end
     SavePosition()
 end
 
@@ -1110,23 +1098,4 @@ function ns.SetupBags()
         "QUEST_REMOVED" }) do
         pcall(events.RegisterEvent, events, event)
     end
-end
-
----------------------------------------------------------------------------
--- /fmove (alle Forever-Rahmen verschieben): Taschenfenster an seiner gespeicherten Stelle öffnen, ziehen = neue Stelle
--- (gilt, wenn "an der Maus öffnen" aus ist; beim Händler sitzt es ohnehin unter ForeverVendor). Sperren schließt es.
----------------------------------------------------------------------------
-if UI.RegisterMovable then
-    UI.RegisterMovable("ForeverBags", function() return not ns.fmovePlacing end, function(locked)
-        if locked then
-            if ns.fmovePlacing then
-                ns.fmovePlacing = false
-                ns.CloseBags()
-            end
-        else
-            ns.fmovePlacing = true
-            ns.OpenBags()
-            if window and window:IsShown() then RestorePosition() end
-        end
-    end)
 end
