@@ -25,8 +25,10 @@ local TOP_LINE = { 1, 0.82, 0, 0.55 }
 local TEXT_COLOR = { 1, 1, 0.98 }
 -- Füllfarben: gleiche Farbfamilie wie Blizzard, aber gedeckter; Unterschied über Helligkeit und Deckkraft
 -- statt über knallige Farben. Jede Füllung bekommt einen leichten Glanz (oben heller, unten dunkler).
-local XP_COLOR = { 0.50, 0.36, 0.74, 1.00 }      -- aktuelle Erfahrung: weiches Violett
-local RESTED_COLOR = { 0.36, 0.56, 0.86, 0.42 }  -- Erholung: helles Blau, durchscheinend
+local XP_COLOR = { 0.50, 0.36, 0.74, 1.00 }      -- aktuelle Erfahrung ohne Erholung: weiches Violett
+-- Erholung wie gewohnt in Blau: ist man erholt, wird die Füllung blau, der erholte Bereich dahinter hellblau
+local XP_RESTED_COLOR = { 0.22, 0.46, 0.88, 1.00 } -- aktuelle Erfahrung, solange man erholt ist
+local RESTED_COLOR = { 0.42, 0.64, 1.00, 0.62 }  -- erholter Bereich: helles Blau, gut sichtbar, leicht durchscheinend
 local QUEST_COLOR = { 0.86, 0.72, 0.34, 0.58 }   -- fertige Quests: Gold, durchscheinend
 
 -- Standardhöhen (px); die Breite ist standardmäßig die der Aktionsleiste 1
@@ -683,6 +685,8 @@ local function RenderXP(w)
     w.fill:SetValue(xp)
     w.quest:SetValue(math.min(maxXP, xp + questXP))
     w.rested:SetValue(math.min(maxXP, xp + rested))
+    local fillColor = rested > 0 and XP_RESTED_COLOR or XP_COLOR
+    SetFill(w.fill, fillColor[1], fillColor[2], fillColor[3], fillColor[4])
     PlaceMark(w, w.restedMark, rested > 0 and (xp + rested) / maxXP or nil)
     PlaceMark(w, w.questMark, questXP > 0 and (xp + questXP) / maxXP or nil)
 
