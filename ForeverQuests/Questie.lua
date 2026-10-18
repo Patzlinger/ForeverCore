@@ -337,7 +337,21 @@ end
 -- Questreihe aus Questies Datenbank: Vorquests (rückwärts) und Folgequests (vorwärts).
 -- Rückgabe: Liste { questID, name, level } in Reihenfolge, oder nil (Questie fehlt / keine Reihe)
 ---------------------------------------------------------------------------
+local chainCache = {} -- Questreihen ändern sich nicht: einmal berechnet, gemerkt (false = keine Reihe)
 function ns.GetQuestChain(questID)
+    if not ns.HasQuestie() or not questID then return nil end
+    local cached = chainCache[questID]
+    if cached ~= nil then return cached or nil end
+    local result = ns.BuildQuestChain(questID)
+    -- alle Quests der Reihe teilen sich dieselbe Liste
+    if result then
+        for _, entry in ipairs(result) do chainCache[entry.questID] = result end
+    end
+    chainCache[questID] = result or false
+    return result
+end
+
+function ns.BuildQuestChain(questID)
     if not ns.HasQuestie() then return nil end
     local ok, chain = pcall(function()
         local db = Module("QuestieDB")

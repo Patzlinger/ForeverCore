@@ -1107,6 +1107,69 @@ local function LayoutPills(list)
     end
 end
 
+-- Karten des Dungeons: Quests derselben Questreihe (aus Questie) werden zu EINER Karte zusammengefasst.
+-- Die Karte zeigt die nächste noch offene Quest der Reihe (sonst die letzte); die ganze Reihe steht darunter.
+local function BuildCards(dungeon)
+    local cards, byKey = {}, {}
+    for _, quest in ipairs(dungeon.quests or {}) do
+        if IsQuestVisible(quest) then
+            local chain = quest.id and ns.GetQuestChain and ns.GetQuestChain(quest.id)
+            local key = chain and ("chain:" .. chain[1].questID) or quest
+            local card = byKey[key]
+            if not card then
+                card = { members = {}, chain = chain }
+                byKey[key] = card
+                cards[#cards + 1] = card
+            end
+            table.insert(card.members, quest)
+        end
+    end
+    for _, card in ipairs(cards) do
+        -- Reihenfolge innerhalb der Reihe wie in der Kette
+        if card.chain then
+            local position = {}
+            for i, entry in ipairs(card.chain) do position[entry.questID] = i end
+            table.sort(card.members, function(a, b) return (position[a.id] or 99) < (position[b.id] or 99) end)
+        end
+        card.done = 0
+        for _, member in ipairs(card.members) do
+            if GetQuestStatus(member.id) == "DONE" then
+                card.done = card.done + 1
+            elseif not card.quest then
+                card.quest = member
+            end
+        end
+        card.quest = card.quest or card.members[#card.members]
+    end
+    return cards
+end
+
+-- Questreihe für die Karte: untereinander wie in der Detailansicht (nummeriert, erledigt mit Haken,
+-- diese Quest gold, im Questlog weiß, offen grau, mit Quest-ID). nil, wenn die Quest allein steht.
+local function ChainBlock(quest)
+    local chain = quest.id and ns.GetQuestChain and ns.GetQuestChain(quest.id)
+    if not chain then return nil end
+    local a = COLOR.accent
+    local lines = { string.format("|cff%02x%02x%02x%s|r |cff8a8a8a%d|r", a[1] * 255, a[2] * 255, a[3] * 255,
+        ns.L("DETAIL_CHAIN"), #chain) }
+    for i, entry in ipairs(chain) do
+        local name = GetGameQuestTitle(entry.questID) or entry.name or QuestIDFallback(entry.questID)
+        local level = (entry.level and entry.level > 0) and (" (" .. entry.level .. ")") or ""
+        local doneQuest = C_QuestLog.IsQuestFlaggedCompleted and C_QuestLog.IsQuestFlaggedCompleted(entry.questID)
+        local inLog = C_QuestLog.GetLogIndexForQuestID(entry.questID) ~= nil
+        local color, suffix = "|cff9a9a9a", ""
+        if entry.questID == quest.id then
+            color = "|cffffd100"
+        elseif doneQuest then
+            color, suffix = "|cff55cc66", " |TInterface\\RaidFrame\\ReadyCheck-Ready:12|t"
+        elseif inLog then
+            color, suffix = "|cffffffff", " |cff88ccff" .. ns.L("DETAIL_IN_LOG") .. "|r"
+        end
+        lines[#lines + 1] = "   " .. color .. i .. ". " .. name .. level .. "|r" .. suffix .. "  |cff6a6a6a#" .. entry.questID .. "|r"
+    end
+    return table.concat(lines, "\n")
+end
+
 RefreshDetail = function()
     refreshPending = false
     if not window or not window:IsShown() then return end
@@ -1160,8 +1223,9 @@ RefreshDetail = function()
     local width = math.max(1, questScroll:GetWidth() - 2)
     questContent:SetWidth(width)
     local y, shown, done, total = 0, 0, 0, #(dungeon.quests or {})
-    for _, quest in ipairs(dungeon.quests or {}) do
-        if IsQuestVisible(quest) then
+    for _, card in ipairs(BuildCards(dungeon)) do
+        local quest = card.quest
+        do
             shown = shown + 1
             local entry = GetQuestEntry(shown)
             entry.quest = quest
@@ -1169,7 +1233,12 @@ RefreshDetail = function()
             local status = GetQuestStatus(quest.id) or "OPEN"
             local style = STATUS[status]
             entry.stripe:SetColorTexture(style.stripe[1], style.stripe[2], style.stripe[3], 1)
-            if status == "DONE" then done = done + 1 end
+            done = done + card.done
+            -- Belohnungen aus dem Spiel (im Questlog vollständig, sonst soweit der Server sie nachlädt)
+            if (not quest.rewards or #quest.rewards == 0) and ns.QuestRewardItemIDs then
+                local ids = ns.QuestRewardItemIDs(quest.id)
+                if #ids > 0 then quest.rewards = ids end
+            end
 
             SetPill(entry.levelPill, ns.L("LEVEL", QuestLevel(quest) or "?"), { 0.20, 0.20, 0.25, 1 })
             if style.textKey then
@@ -1208,7 +1277,7 @@ RefreshDetail = function()
             local lines = { table.concat(parts, "   ") }
             local extraParts = {}
             -- Questkette (enthält auch die Vorquest); ohne Kette nur die Vorquest
-            local chainText = ChainText(quest)
+            local chainText = ChainBlock(quest) or ChainText(quest)
             local prequest = PrequestText(quest)
             if chainText then
                 table.insert(extraParts, chainText)

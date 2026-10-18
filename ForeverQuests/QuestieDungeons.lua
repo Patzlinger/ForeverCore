@@ -126,7 +126,10 @@ local function BuildQuest(db, questID, insideAreas)
             quest.giver, quest.giverEN = giver.giver, giver.giver
             local zoneName = AreaName(giver.zoneID)
             if zoneName then quest.zone, quest.zoneEN = zoneName, zoneName end
-            quest.x, quest.y = giver.x, giver.y
+            -- Koordinaten nur draußen und nur echte Werte (Questie trägt -1, -1 für Orte in Instanzen ein)
+            if not giver.inside and giver.x and giver.y and giver.x >= 0 and giver.y >= 0 then
+                quest.x, quest.y = giver.x, giver.y
+            end
         end
         quest.startsInside = giver.inside or nil
     end

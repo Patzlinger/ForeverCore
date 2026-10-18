@@ -902,6 +902,29 @@ local function PreloadedItemRewardList(questID)
     return list
 end
 
+-- Gegenstands-IDs der Belohnungen einer Quest (für die Karten im Dungeonfenster): im Questlog vollständig
+-- (feste Belohnungen und Auswahl), sonst die festen Belohnungen, soweit der Server sie nachgeladen hat.
+-- Fehlen sie noch, wird das Nachladen angestoßen (die Karten füllen sich danach von selbst).
+function ns.QuestRewardItemIDs(questID)
+    local ids = {}
+    if not questID then return ids end
+    local inLog = C_QuestLog.GetLogIndexForQuestID(questID)
+    for _, entry in ipairs(PreloadedItemRewardList(questID)) do
+        if entry.itemID then ids[#ids + 1] = entry.itemID end
+    end
+    if inLog and GetNumQuestLogChoices and GetQuestLogChoiceInfo then
+        local previous = C_QuestLog.GetSelectedQuest()
+        C_QuestLog.SetSelectedQuest(questID)
+        for i = 1, GetNumQuestLogChoices(questID) do
+            local itemID = select(6, GetQuestLogChoiceInfo(i))
+            if itemID then ids[#ids + 1] = itemID end
+        end
+        C_QuestLog.SetSelectedQuest(previous or 0)
+    end
+    if #ids == 0 and not inLog then RequestRewardData(questID) end
+    return ids
+end
+
 local function PreloadedItemRewards(questID)
     local lines = {}
     for _, entry in ipairs(PreloadedItemRewardList(questID)) do
