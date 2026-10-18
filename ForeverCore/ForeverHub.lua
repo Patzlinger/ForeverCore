@@ -3071,6 +3071,34 @@ function hub.OpenSettings()
     end
 end
 
+-- Knopf "Forever Hub" im Spielmenue (Escape), direkt unter "Makros". Blizzard baut die Knoepfe bei jedem Oeffnen
+-- neu auf (GameMenuFrame:AddButton): wir haengen uns hinter "Makros"; fehlt der, kommt der Knopf ans Ende.
+do
+    local menu = _G.GameMenuFrame
+    if menu and type(menu.AddButton) == "function" and type(menu.InitButtons) == "function" then
+        local added = false
+        local function OpenHub()
+            if _G.ForeverHub ~= hub then return end
+            if PlaySound and SOUNDKIT then PlaySound(SOUNDKIT.IG_MAINMENU_OPTION) end
+            HideUIPanel(menu)
+            hub.ToggleWindow()
+        end
+        local function AddHubButton(self)
+            added = true
+            self:AddButton("Forever Hub", OpenHub)
+        end
+        hooksecurefunc(menu, "AddButton", function(self, text)
+            if not added and text == _G.MACROS and _G.ForeverHub == hub then AddHubButton(self) end
+        end)
+        hooksecurefunc(menu, "InitButtons", function(self)
+            if not added and _G.ForeverHub == hub and (not self.AddSection or pcall(self.AddSection, self)) then
+                AddHubButton(self)
+            end
+            added = false -- beim naechsten Oeffnen wieder neu einhaengen
+        end)
+    end
+end
+
 -- /forever: Hub-Fenster · /forever reset: Sammelknopf zuruecksetzen und wieder an die Minimap holen
 SLASH_FOREVERHUB1 = "/forever"
 SLASH_FOREVERHUB2 = "/fhub"

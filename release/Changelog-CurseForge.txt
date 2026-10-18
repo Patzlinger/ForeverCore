@@ -13,6 +13,7 @@
 - ForeverQuests: a slim line at the bottom of the quest log shows how many quests are ready to turn in and how much XP that will give you.
 - ForeverQuests, dungeon window: the "Group" button now shows for every quest of the dungeon who in your group has it, has it ready, has already done it or is still missing it. Group members with ForeverQuests report this automatically; for others only "in their quest log or not" is known (marked with "?").
 - ForeverQuests: the filter menu (tracker and quest log) now works the other way round – "Everything" at the top, and every group below has a check you can switch off to hide those quests (e.g. untick "Dungeon" to hide all dungeon quests). By default everything is shown. "Everything" works as a switch: click it to hide everything and then tick only the groups you want, click it again to show everything. Filters you had set before are reset once.
+- The game menu (Escape) has a new "Forever Hub" button right below "Macros" that opens the Forever hub.
 
 ### Improved
 - ForeverBars: rested experience is clearly blue again – while you are rested, the bar fills blue and the rested part ahead of it glows light blue (purple when you are not rested).
