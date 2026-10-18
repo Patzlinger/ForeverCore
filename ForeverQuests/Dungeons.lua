@@ -453,27 +453,145 @@ local function GetGroupQuestStatus(questID, includeSelf)
     return have, missing
 end
 
--- Tooltip des Knopfs "Gruppe": jede Quest des Dungeons, die jemand in der Gruppe hat, und wem sie fehlt
-local function FillGroupTooltip(tooltip, dungeon)
-    tooltip:AddLine(ns.L("TIP_GROUP_TITLE"), 1, 0.82, 0)
-    local any, seen = false, {}
+---------------------------------------------------------------------------
+-- Gruppenabgleich "Wer hat was?" (Knopf "Gruppe", Tooltip)
+-- Mitspieler mit ForeverQuests melden auf Anfrage unsichtbar ihren Stand zu den Dungeonquests:
+--   L = im Questlog, F = im Questlog und fertig, C = schon erledigt, N = noch nicht (fehlt)
+-- Ohne ForeverQuests verrät das Spiel nur, ob jemand die Quest gerade im Log hat (sonst "fehlt?").
+-- Nachrichten (Kennung "FQDNG"):  Q|<id>,<id>,…  Anfrage   R|<id>:<Stand>,…  Antwort
+---------------------------------------------------------------------------
+local DNG_PREFIX = "FQDNG"
+local issecret = issecretvalue or function() return false end
+if C_ChatInfo and C_ChatInfo.RegisterAddonMessagePrefix then pcall(C_ChatInfo.RegisterAddonMessagePrefix, DNG_PREFIX) end
+local groupReplies = {}   -- [Vorname] = { [questID] = Stand }
+local lastRequest = {}    -- [Dungeon] = Zeitpunkt der letzten Anfrage
+
+local function DngChannel()
+    if LE_PARTY_CATEGORY_INSTANCE and IsInGroup(LE_PARTY_CATEGORY_INSTANCE) then return "INSTANCE_CHAT" end
+    if IsInRaid() then return "RAID" end
+    if IsInGroup() then return "PARTY" end
+end
+
+local function DngSend(message)
+    local channel = DngChannel()
+    if channel and C_ChatInfo and C_ChatInfo.SendAddonMessage then
+        pcall(C_ChatInfo.SendAddonMessage, DNG_PREFIX, message, channel)
+    end
+end
+
+-- nur der Vorname (Forever liefert Namen teils mit Nachnamen/Realm)
+local function DngShortName(name)
+    if not name or issecret(name) then return nil end
+    if Ambiguate then name = Ambiguate(name, "short") end
+    return name:match("^[^%s%-]+") or name
+end
+
+-- eigener Stand zu einer Quest
+local function MyDungeonState(questID)
+    if C_QuestLog.GetLogIndexForQuestID(questID) then
+        return C_QuestLog.IsComplete(questID) and "F" or "L"
+    end
+    if C_QuestLog.IsQuestFlaggedCompleted and C_QuestLog.IsQuestFlaggedCompleted(questID) then return "C" end
+    return "N"
+end
+
+local function DungeonQuestIDs(dungeon)
+    local ids, seen = {}, {}
     for _, quest in ipairs(dungeon and dungeon.quests or {}) do
         if quest.id and not seen[quest.id] and PassesBaseFilters(quest) then
             seen[quest.id] = true
-            local have, missing = GetGroupQuestStatus(quest.id, true)
-            if #have > 0 then
-                any = true
-                local right
-                if #missing == 0 then
-                    right = "|cff33ff99" .. ns.L("GROUP_ALL") .. "|r"
-                else
-                    right = "|cffff7070" .. ns.L("GROUP_MISSING") .. " " .. table.concat(missing, ", ") .. "|r"
-                end
-                tooltip:AddDoubleLine(QuestName(quest), right, 1, 1, 1)
-            end
+            ids[#ids + 1] = quest.id
         end
     end
-    if not any then tooltip:AddLine(ns.L("TIP_GROUP_NONE"), 0.7, 0.7, 0.7, true) end
+    return ids
+end
+
+-- Anfrage an die Gruppe (höchstens alle 5 Sekunden je Dungeon); in Stücken, damit keine Nachricht zu lang wird
+local function RequestGroupStatus(dungeon)
+    if not dungeon or not IsInGroup() then return end
+    local now = GetTime()
+    if lastRequest[dungeon] and now - lastRequest[dungeon] < 5 then return end
+    lastRequest[dungeon] = now
+    local ids, chunk = DungeonQuestIDs(dungeon), {}
+    for i, id in ipairs(ids) do
+        chunk[#chunk + 1] = id
+        if #chunk == 25 or i == #ids then
+            DngSend("Q|" .. table.concat(chunk, ","))
+            wipe(chunk)
+        end
+    end
+end
+
+-- Stand eines Mitspielers: aus seiner Antwort, sonst nur "hat sie im Log" / "unbekannt"
+local function MemberState(unit, name, questID)
+    local reply = groupReplies[name]
+    if reply and reply[questID] then return reply[questID], true end
+    if C_QuestLog.IsUnitOnQuest and C_QuestLog.IsUnitOnQuest(unit, questID) then return "L", false end
+    return "?", false
+end
+
+local STATE_COLORS = { L = "|cff33ff99", F = "|cffffd100", C = "|cff888888", N = "|cffff7070", ["?"] = "|cffcc8888" }
+
+-- Tooltip des Knopfs "Gruppe": je Quest des Dungeons jedes Gruppenmitglied in der Farbe seines Stands
+local function FillGroupTooltip(tooltip, dungeon)
+    RequestGroupStatus(dungeon)
+    tooltip:AddLine(ns.L("TIP_GROUP_TITLE"), 1, 0.82, 0)
+    local units = GetGroupUnits()
+    local anyMissing = false
+    for _, questID in ipairs(DungeonQuestIDs(dungeon)) do
+        local parts, allDone = {}, true
+        local mine = MyDungeonState(questID)
+        parts[1] = STATE_COLORS[mine] .. ns.L("YOU") .. "|r"
+        if mine == "N" then allDone = false end
+        for _, unit in ipairs(units) do
+            local name = DngShortName(UnitName(unit))
+            if name then
+                local state, known = MemberState(unit, name, questID)
+                if state == "N" or state == "?" then allDone = false end
+                parts[#parts + 1] = STATE_COLORS[state] .. name .. ((not known and state == "?") and "?" or "") .. "|r"
+            end
+        end
+        if not allDone then anyMissing = true end
+        local quest
+        for _, entry in ipairs(dungeon.quests) do if entry.id == questID then quest = entry break end end
+        tooltip:AddDoubleLine(quest and QuestName(quest) or ("Quest " .. questID), table.concat(parts, "  "), 1, 1, 1)
+    end
+    tooltip:AddLine(" ")
+    tooltip:AddLine(ns.L("TIP_GROUP_LEGEND"), 0.7, 0.7, 0.7, true)
+    if not anyMissing then tooltip:AddLine(ns.L("GROUP_ALL"), 0.2, 1, 0.6) end
+end
+
+-- Antworten empfangen bzw. auf Anfragen antworten; offenen Tooltip des Knopfs neu füllen
+do
+    local comms = CreateFrame("Frame")
+    comms:RegisterEvent("CHAT_MSG_ADDON")
+    comms:RegisterEvent("GROUP_ROSTER_UPDATE")
+    comms:SetScript("OnEvent", function(_, event, prefix, message, _, sender)
+        if event == "GROUP_ROSTER_UPDATE" then
+            if not IsInGroup() then wipe(groupReplies) end
+            return
+        end
+        if prefix ~= DNG_PREFIX or issecret(message) or issecret(sender) or type(message) ~= "string" then return end
+        local name = DngShortName(sender)
+        if not name or name == DngShortName(UnitName("player")) then return end
+        local kind, rest = strsplit("|", message, 2)
+        if kind == "Q" and rest then
+            local parts = {}
+            for id in rest:gmatch("%d+") do
+                local questID = tonumber(id)
+                parts[#parts + 1] = questID .. ":" .. MyDungeonState(questID)
+            end
+            if #parts > 0 then DngSend("R|" .. table.concat(parts, ",")) end
+        elseif kind == "R" and rest then
+            local reply = groupReplies[name] or {}
+            groupReplies[name] = reply
+            for id, state in rest:gmatch("(%d+):(%a)") do reply[tonumber(id)] = state end
+            local tip = ns.Style.GetTooltip()
+            if groupButton and tip:IsShown() and tip:GetOwner() == groupButton and groupButton:IsMouseOver() then
+                groupButton:GetScript("OnEnter")(groupButton)
+            end
+        end
+    end)
 end
 
 -- Levelbereich eingefärbt nach Schwierigkeit für den eigenen Charakter (anhand des Mindestlevels)

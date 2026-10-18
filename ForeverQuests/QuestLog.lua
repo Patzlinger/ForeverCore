@@ -356,11 +356,20 @@ local function QuestieOriginalButton()
     return type(questie) == "table" and questie.WorldMap and questie.WorldMap.Button or nil
 end
 
+-- Schrift weiß bei eingeblendeten Questie-Symbolen, grau bei ausgeblendeten; Knopf ganz rechts in der Leiste
+-- (rechts bündig mit der Karte, auf Höhe der Navigationsleiste – beides neu berechnet, falls sich die Karte ändert)
 local function UpdateQuestieMapButton()
     if not questieMapButton then return end
     local enabled = _G.Questie and _G.Questie.db and _G.Questie.db.profile.enabled ~= false
-    questieMapButton.icon:SetDesaturated(not enabled)
-    questieMapButton.icon:SetAlpha(enabled and 1 or 0.5)
+    questieMapButton:GetFontString():SetTextColor(enabled and 1 or 0.5, enabled and 1 or 0.5, enabled and 1 or 0.5)
+    local map = _G.WorldMapFrame
+    local navBar, container = map and map.NavBar, map and map.ScrollContainer
+    questieMapButton:ClearAllPoints()
+    if navBar and container and navBar:GetRight() and container:GetRight() then
+        questieMapButton:SetPoint("RIGHT", navBar, "RIGHT", container:GetRight() - navBar:GetRight(), 0)
+    elseif navBar then
+        questieMapButton:SetPoint("RIGHT", navBar, "RIGHT", -2, 0)
+    end
 end
 
 local function SetupQuestieMapButton()
@@ -368,14 +377,11 @@ local function SetupQuestieMapButton()
     local original = QuestieOriginalButton()
     if questieMapButton or not map or not original then return questieMapButton ~= nil end
     local anchor = map.NavBar or map
-    questieMapButton = Style.CreateButton(map, "", 24, 22, nil, nil)
+    questieMapButton = Style.CreateButton(map, "Questie", 64, 22, nil, nil)
     questieMapButton:SetFrameLevel(anchor:GetFrameLevel() + 10)
-    questieMapButton:SetPoint("RIGHT", anchor, "RIGHT", -6, 0)
-    questieMapButton.icon = questieMapButton:CreateTexture(nil, "ARTWORK")
-    questieMapButton.icon:SetPoint("TOPLEFT", 3, -2)
-    questieMapButton.icon:SetPoint("BOTTOMRIGHT", -3, 2)
-    questieMapButton.icon:SetTexture("Interface\\AddOns\\Questie\\Icons\\questie.png")
     questieMapButton:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    map:HookScript("OnSizeChanged", UpdateQuestieMapButton)
+    if map.ScrollContainer then map.ScrollContainer:HookScript("OnSizeChanged", UpdateQuestieMapButton) end
     questieMapButton:SetScript("OnClick", function(self, button)
         local handler = original.OnMouseDown or original:GetScript("OnMouseDown")
         if handler then pcall(handler, original, button) end
@@ -412,8 +418,10 @@ function ns.DebugMapCorner()
     local function Walk(frame, depth)
         if depth > 8 or not frame.GetRegions then return end
         for _, region in ipairs({ frame:GetRegions() }) do
+            -- sichtbar = eigene Deckkraft mal die des Rahmens (Texturen haben keine "effektive" Deckkraft)
+            local alpha = (region.GetAlpha and region:GetAlpha() or 1) * (frame.GetEffectiveAlpha and frame:GetEffectiveAlpha() or 1)
             if region.GetObjectType and region:GetObjectType() == "Texture" and region:IsVisible()
-                and region:GetEffectiveAlpha() > 0.05 and region:IsMouseOver() then
+                and alpha > 0.05 and region:IsMouseOver() then
                 found = found + 1
                 if found <= 25 then
                     print(prefix .. (region:GetDebugName() or "?") .. "  " .. tostring(region:GetAtlas() or region:GetTexture()))

@@ -16,6 +16,7 @@ local STRINGS = {
 
         -- Tracker
         TRACKER_TITLE = "Quests",
+        TRACKER_READY_XP = "Abgabe: +%s EP",
         TAG_CLASS = "[Klasse]", TAG_REPUTATION = "[Ruf]", TAG_PROFESSION = "[Beruf]",
         PINNED = "Angeheftet",
         OTHER = "Sonstige",
@@ -182,7 +183,8 @@ local STRINGS = {
         CLASS_FALLBACK = "Klasse %d",
         QUEST_CHAIN = "Questkette (%d/%d):",
         GROUP_MISSING = "Fehlt bei:", GROUP_ALL = "alle haben sie", YOU = "Du",
-        BTN_GROUP = "Gruppe", TIP_GROUP_TITLE = "Gruppenabgleich (Quests im Questlog)",
+        BTN_GROUP = "Gruppe", TIP_GROUP_TITLE = "Gruppenabgleich: wer hat was?",
+        TIP_GROUP_LEGEND = "|cff33ff99im Questlog|r  ·  |cffffd100fertig|r  ·  |cff888888schon erledigt|r  ·  |cffff7070fehlt|r  ·  |cffcc8888Name?|r = ohne ForeverQuests, nur „nicht im Log“ bekannt",
         TIP_GROUP_NONE = "Niemand in der Gruppe hat eine Quest dieses Dungeons im Questlog.",
         LINK_HINT = "Shift-Klick auf eine Quest: im Chat verlinken",
         HINT_TITLE = "Dungeon betreten", BTN_SHOW = "Ansehen",
@@ -230,6 +232,7 @@ local STRINGS = {
         FONT_STANDARD = "Default",
 
         TRACKER_TITLE = "Quests",
+        TRACKER_READY_XP = "Turn in: +%s XP",
         TAG_CLASS = "[Class]", TAG_REPUTATION = "[Rep]", TAG_PROFESSION = "[Profession]",
         PINNED = "Pinned",
         OTHER = "Other",
@@ -391,7 +394,8 @@ local STRINGS = {
         CLASS_FALLBACK = "Class %d",
         QUEST_CHAIN = "Quest chain (%d/%d):",
         GROUP_MISSING = "Missing:", GROUP_ALL = "everyone has it", YOU = "You",
-        BTN_GROUP = "Group", TIP_GROUP_TITLE = "Group check (quests in quest log)",
+        BTN_GROUP = "Group", TIP_GROUP_TITLE = "Group check: who has what?",
+        TIP_GROUP_LEGEND = "|cff33ff99in quest log|r  ·  |cffffd100ready|r  ·  |cff888888already done|r  ·  |cffff7070missing|r  ·  |cffcc8888Name?|r = without ForeverQuests, only \"not in log\" is known",
         TIP_GROUP_NONE = "Nobody in your group has a quest of this dungeon in their quest log.",
         LINK_HINT = "Shift-click a quest: link it in chat",
         HINT_TITLE = "Dungeon entered", BTN_SHOW = "Show",
