@@ -9,6 +9,7 @@
 ## Version: 0.44b
 ## X-Curse-Project-ID: 1743753
 ## Dependencies: ForeverCore
+## OptionalDeps: Masque
 ## Group: ForeverCore
 ## SavedVariables: ForeverBarsDB, ForeverHubDB
 ## SavedVariablesPerCharacter: ForeverXPCharDB
@@ -16,6 +17,7 @@
 Locales.lua
 Core.lua
 Style.lua
+Masque.lua
 Bars.lua
 Status.lua
 Profiles.lua

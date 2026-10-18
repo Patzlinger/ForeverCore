@@ -3,10 +3,12 @@
 ## Unreleased
 
 ### New
+- **Works with the addons you already use:** Forever Core now recognizes other popular addons for the same job (e.g. Bartender4, Dominos, Bagnon, Baganator, AdiBags, Cell, Grid2, VuhDo, Shadowed Unit Frames, Prat, SexyMap, Quartz, Kaliel's Tracker, TipTac). For each pair you choose which one should run – the other is turned off and you can switch back any time. You are asked once on your first start (right next to the welcome window) and whenever a new pair shows up; otherwise use "Other addons …" in the hub (/forever). - **Masque support:** with Masque installed, the buttons of ForeverBars and the slots of ForeverBags can be skinned by Masque (groups "Forever Core › ForeverBars" and "› ForeverBags"). Turn a group off in Masque to get the Forever look back. - ForeverBags: the bag window now joins /fmove – it opens at its saved spot, snaps to other Forever frames while you drag it, and closes again when you lock.
 - ForeverBags: new option "Show bags separately" – every bag starts on its own row, with a little space and a fine gold line in between.
 - ForeverQuests, **Questie support:** if you use Questie, its own tracker is switched off automatically so only the ForeverQuests tracker shows. Questie's map and minimap icons and tooltips keep working and follow the quests you track. Right-click a quest in the tracker for Questie actions: highlight it on the map (other quest icons fade), show the turn-in on the map, set a TomTom waypoint (with TomTom installed) and copy the Wowhead link.
 
 ### Improved
+- ForeverBars: rested experience is clearly blue again – while you are rested, the bar fills blue and the rested part ahead of it glows light blue (purple when you are not rested).
 - ForeverUnits: DoT bars only show on targets you can attack, so your own debuffs like "Boosted Rest" from camping no longer appear as a timer bar when you target yourself or a group member (option in the General tab).
 - ForeverBags: when the bags open at your mouse, the bottom right corner of the window now sits at the cursor instead of the window being centered on it.
 - ForeverMinimap: the mail tile is always there now – greyed out with "No new mail" on mouse-over, and in full color with a gold border as soon as you have new mail.

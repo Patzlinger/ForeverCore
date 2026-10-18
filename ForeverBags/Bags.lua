@@ -90,6 +90,7 @@ local function AddForeverLook(button, bag)
     local bg = button:CreateTexture(nil, "BACKGROUND", nil, -8)
     bg:SetAllPoints()
     bg:SetColorTexture(0.06, 0.06, 0.08, 0.85)
+    button.fbagsBg = bg
     local edge = CreateFrame("Frame", nil, button, "BackdropTemplate")
     edge:SetAllPoints()
     edge:SetFrameLevel(button:GetFrameLevel() + 2)
@@ -114,12 +115,33 @@ local function NoItemContext(button)
 end
 ns.NoItemContext = NoItemContext
 
+-- Masque (optional): Taschenplätze in der Gruppe "Forever Core › ForeverBags". Gestaltet Masque, überlässt ForeverBags ihm
+-- Rahmen, Fläche und Symbol; unser feiner Rand (Questgegenstände gelb, beim Darüberfahren gold) bleibt darüber.
+local MSQ = _G.LibStub and _G.LibStub("Masque", true)
+local masqueGroup
+if MSQ and MSQ.Group then
+    local ok, g = pcall(MSQ.Group, MSQ, "Forever Core", "ForeverBags")
+    if ok then masqueGroup = g end
+end
+local function MasqueActive()
+    return masqueGroup ~= nil and not (masqueGroup.db and masqueGroup.db.Disabled)
+end
+
 function ns.StyleSlot(button, bag)
     NoItemContext(button)
-    -- Blizzards Platz-Rahmen ausblenden, dafür dunkle Fläche + 1-px-Rand im Forever-Stil
+    local masque = MasqueActive()
+    if masqueGroup and not button.fbagsMasque then
+        button.fbagsMasque = true
+        pcall(masqueGroup.AddButton, masqueGroup, button, nil, "Item")
+    end
+    -- Blizzards Platz-Rahmen ausblenden, dafür dunkle Fläche + 1-px-Rand im Forever-Stil (mit Masque: Masques Stil)
     local normal = button.GetNormalTexture and button:GetNormalTexture()
-    if normal then normal:SetAlpha(0) end
+    if normal and not masque then normal:SetAlpha(0) end
     AddForeverLook(button, bag)
+    if masque then
+        if button.fbagsBg then button.fbagsBg:Hide() end
+        return
+    end
     local icon = button.icon or button.Icon or _G[button:GetName() .. "IconTexture"]
     if icon then
         icon:ClearAllPoints()

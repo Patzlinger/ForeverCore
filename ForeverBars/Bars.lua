@@ -392,6 +392,18 @@ local function UpdateButtonLook(button)
         button.InterruptDisplay:SetAlpha(db.castVFX and 1 or 0)
     end
 
+    -- Masque gestaltet den Knopf (Masque.lua): eigener Rand, Fläche, Zuschnitt und Leuchten aus – Texte bleiben
+    if button.fbMasque and ns.MasqueActive and ns.MasqueActive() then
+        if button.fbBorder then button.fbBorder:Hide() end
+        if button.fbBackground then button.fbBackground:SetColorTexture(0, 0, 0, 0) end
+        local cd = button.cooldown or button.Cooldown or (name and _G[name .. "Cooldown"])
+        local countdown = cd and cd.GetCountdownFontString and cd:GetCountdownFontString()
+        if countdown then SetTextFont(countdown, db.fontSize + 2) end
+        return
+    end
+    -- (Masque für diese Gruppe ausgeschaltet: Blizzards Rahmen wieder unsichtbar, eigener Stil gilt)
+    if button.fbMasque then HideRegion(button.NormalTexture or (button.GetNormalTexture and button:GetNormalTexture())) end
+
     -- Stil: Rand, Hintergrund leerer Plätze, Abstand des Symbols zum Rand
     local skin = GetSkin()
     if button.fbBorder then
@@ -441,18 +453,22 @@ end
 
 local function StyleButton(button)
     local name = button:GetName()
-    -- Blizzard-Rahmen und Hintergrund-Grafiken ausblenden
-    HideRegion(button.NormalTexture or (button.GetNormalTexture and button:GetNormalTexture()))
-    HideRegion(button.SlotArt)
-    HideRegion(button.SlotBackground)
-    HideRegion(button.FloatingBG)
-    HideRegion(button.RightDivider)
-    HideRegion(button.BottomDivider)
-    HideRegion(name and _G[name .. "FloatingBG"])
+    -- mit Masque gestaltet Masque Rahmen, Hintergrund und Symbol (siehe Masque.lua)
+    local masque = ns.MasqueActive and ns.MasqueActive()
+    if not masque then
+        -- Blizzard-Rahmen und Hintergrund-Grafiken ausblenden
+        HideRegion(button.NormalTexture or (button.GetNormalTexture and button:GetNormalTexture()))
+        HideRegion(button.SlotArt)
+        HideRegion(button.SlotBackground)
+        HideRegion(button.FloatingBG)
+        HideRegion(button.RightDivider)
+        HideRegion(button.BottomDivider)
+        HideRegion(name and _G[name .. "FloatingBG"])
 
-    -- Symbol eckig zuschneiden (Abstand zum Rand setzt der Stil in UpdateButtonLook)
-    local icon = button.icon or button.Icon or (name and _G[name .. "Icon"])
-    if icon and button.IconMask and icon.RemoveMaskTexture then pcall(icon.RemoveMaskTexture, icon, button.IconMask) end
+        -- Symbol eckig zuschneiden (Abstand zum Rand setzt der Stil in UpdateButtonLook)
+        local icon = button.icon or button.Icon or (name and _G[name .. "Icon"])
+        if icon and button.IconMask and icon.RemoveMaskTexture then pcall(icon.RemoveMaskTexture, icon, button.IconMask) end
+    end
 
     if not button.fbBorder then
         -- Hintergrund für leere Plätze und dünner Rand (Farben je nach Stil)
@@ -469,6 +485,7 @@ local function StyleButton(button)
         -- Blizzard setzt seine Grafiken bei manchen Aktualisierungen neu: danach wieder ausblenden bzw. anpassen
         if button.UpdateButtonArt then
             hooksecurefunc(button, "UpdateButtonArt", function(self)
+                if self.fbMasque and ns.MasqueActive and ns.MasqueActive() then return end
                 HideRegion(self.NormalTexture)
                 HideRegion(self.SlotArt)
                 HideRegion(self.SlotBackground)
@@ -492,6 +509,7 @@ local function StyleButton(button)
         button:HookScript("OnLeave", function(self)
             if self.fbBorder then self.fbBorder:SetBackdropBorderColor(unpack(GetSkin().border)) end
         end)
+        if ns.MasqueAdd then ns.MasqueAdd(button) end -- nur mit installiertem Masque
     end
     UpdateButtonLook(button)
 

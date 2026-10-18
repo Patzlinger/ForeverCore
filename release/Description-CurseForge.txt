@@ -117,6 +117,7 @@ Every addon needs the small base addon **ForeverCore**. It's included in the pac
 - **A ready-made layout:** on a fresh install, everything starts in a tidy, tested arrangement.
 - **Move everything at once:** type **/fmove** to unlock all frames together, then place them with a grid. Frames snap to each other, to the minimap and to the chat (hold Shift to move freely). Type /fmove again to lock them.
 - **Details! skin:** one click in the hub gives Details! the Forever look, on a copy of your profile.
+- **Plays nice with other addons:** pick per task whether Forever Core or your existing addon (Bartender4, Bagnon, Cell, Prat …) should run, and skin ForeverBars and ForeverBags with Masque.
 - **Exact positions:** X/Y fields for pixel-perfect placement.
 - **Resizable windows:** drag the corner of any settings window, and the window you opened last always stays on top.
 - **Profiles per character:** one shared profile for everyone, or an own profile for any character – for all addons at once (**/forever profile**).
