@@ -1688,9 +1688,16 @@ local function CreateWindow()
     titleSub:SetPoint("LEFT", titleText, "RIGHT", 10, -1)
     titleSub:SetText(ns.L("ADDON_NAME") .. "  ·  " .. ns.L("DUNGEONS_COUNT", #ns.DUNGEON_DATA))
 
-    local close = CreateFrame("Button", nil, header, "UIPanelCloseButton")
-    close:SetPoint("RIGHT", -6, 0)
-    close:SetScript("OnClick", function() window:Hide() end)
+    local hubUI = _G.ForeverHub and _G.ForeverHub.UI
+    local close
+    if hubUI and hubUI.CloseButton then
+        close = hubUI.CloseButton(header, function() window:Hide() end)
+        close:SetPoint("RIGHT", -8, 0)
+    else
+        close = CreateFrame("Button", nil, header, "UIPanelCloseButton")
+        close:SetPoint("RIGHT", -6, 0)
+        close:SetScript("OnClick", function() window:Hide() end)
+    end
 
     -- Linkes Feld: Suche und Dungeon-Liste
     local listPanel = CreateFrame("Frame", nil, window, "BackdropTemplate")

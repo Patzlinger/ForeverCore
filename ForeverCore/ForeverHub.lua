@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 43
+local VERSION = 44
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -300,6 +300,30 @@ end
 
 -- Hauptfenster / Einstellungsfenster: flach und dunkel, Titelleiste mit Goldlinie,
 -- verschiebbar, mit Escape schliessbar
+-- Schließen-Kreuz im Forever-Stil: zwei feine, gedrehte Linien (keine Blizzard-Grafik – Blizzards UIPanelCloseButton
+-- wurde in diesem Client zeitweise nicht mehr gezeichnet). Grau, beim Darüberfahren gold.
+function UI.CloseButton(parent, onClick)
+    local b = CreateFrame("Button", nil, parent)
+    b:SetSize(20, 20)
+    b.lines = {}
+    for i, angle in ipairs({ 45, -45 }) do
+        local line = b:CreateTexture(nil, "ARTWORK")
+        line:SetSize(12, 2)
+        line:SetPoint("CENTER")
+        line:SetColorTexture(1, 1, 1, 1)
+        line:SetRotation(math.rad(angle))
+        line:SetVertexColor(0.75, 0.75, 0.78, 1)
+        b.lines[i] = line
+    end
+    local function Color(r, g, bl) for _, l in ipairs(b.lines) do l:SetVertexColor(r, g, bl, 1) end end
+    b:SetScript("OnEnter", function() Color(C.accent[1], C.accent[2], C.accent[3]) end)
+    b:SetScript("OnLeave", function() Color(0.75, 0.75, 0.78) end)
+    b:SetScript("OnMouseDown", function() for _, l in ipairs(b.lines) do l:SetPoint("CENTER", 1, -1) end end)
+    b:SetScript("OnMouseUp", function() for _, l in ipairs(b.lines) do l:SetPoint("CENTER", 0, 0) end end)
+    b:SetScript("OnClick", onClick)
+    return b
+end
+
 function UI.Window(name, title, width, height)
     local f = CreateFrame("Frame", name, UIParent, "BackdropTemplate")
     f:SetSize(width, height)
@@ -341,10 +365,8 @@ function UI.Window(name, title, width, height)
     f.TitleText:SetPoint("LEFT", logo, "RIGHT", 6, 0)
     f.TitleText:SetText(title)
 
-    local close = CreateFrame("Button", nil, header, "UIPanelCloseButton")
-    close:SetSize(24, 24)
-    close:SetPoint("RIGHT", -2, 0)
-    close:SetScript("OnClick", function() f:Hide() end)
+    local close = UI.CloseButton(header, function() f:Hide() end)
+    close:SetPoint("RIGHT", -4, 0)
     f.CloseButton = close
     -- jedes benannte Forever-Fenster ist mit der Maus skalierbar (Griff unten rechts)
     if name then UI.MakeResizable(f) end
@@ -1104,9 +1126,8 @@ function UI.MenuWindow(name, title, subtitle, width, height)
     f.SubText = header:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     f.SubText:SetPoint("LEFT", f.TitleText, "RIGHT", 10, -1)
     f.SubText:SetText(subtitle or "")
-    local close = CreateFrame("Button", nil, header, "UIPanelCloseButton")
-    close:SetPoint("RIGHT", -6, 0)
-    close:SetScript("OnClick", function() f:Hide() end)
+    local close = UI.CloseButton(header, function() f:Hide() end)
+    close:SetPoint("RIGHT", -8, 0)
     f.CloseButton = close
 
     f.menuWindow = f

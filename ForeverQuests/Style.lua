@@ -129,9 +129,16 @@ function Style.CreateWindow(name, width, height, titleText)
     window.subText = header:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     window.subText:SetPoint("LEFT", window.titleText, "RIGHT", 10, -1)
 
-    local close = CreateFrame("Button", nil, header, "UIPanelCloseButton")
-    close:SetPoint("RIGHT", -6, 0)
-    close:SetScript("OnClick", function() window:Hide() end)
+    local hubUI = _G.ForeverHub and _G.ForeverHub.UI
+    local close
+    if hubUI and hubUI.CloseButton then
+        close = hubUI.CloseButton(header, function() window:Hide() end)
+        close:SetPoint("RIGHT", -8, 0)
+    else
+        close = CreateFrame("Button", nil, header, "UIPanelCloseButton")
+        close:SetPoint("RIGHT", -6, 0)
+        close:SetScript("OnClick", function() window:Hide() end)
+    end
 
     window.header = header
     -- beim Forever-Hub anmelden: das zuletzt geoeffnete/angeklickte Forever-Fenster liegt oben (kein Ineinander-Clippen)
