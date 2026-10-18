@@ -348,7 +348,7 @@ end
 local ToggleOptions
 do
     local options = UI.Window("ForeverTooltipOptions", T("ForeverTooltip – Einstellungen (Prototyp)",
-        "ForeverTooltip – Settings (prototype)"), 360, 470)
+        "ForeverTooltip – Settings (prototype)"), 360, 510)
     local W = 326
     local checks = {}
     local function Check(y, label, key)
@@ -377,22 +377,28 @@ do
         GetDB().scale = v / 100
         ApplyScale()
     end), { width = 200, unit = " %" })
+    local alpha = UI.Slider(options, 18, -366, T("Deckkraft des Hintergrunds", "Background opacity"), 20, 100, 5,
+        Safe(T("Einstellungen", "Settings"), function(v)
+            GetDB().bgAlpha = v
+            for tip in pairs(skinned) do ApplyLook(tip) end
+        end), { width = 200, unit = " %" })
     local move = UI.Button(options, T("Verschieben", "Move"), 110, Safe("Move", function() SetLocked(false) end))
-    move:SetPoint("TOPLEFT", 16, -370)
+    move:SetPoint("TOPLEFT", 16, -410)
     local done = UI.Button(options, T("Fertig – sperren", "Done – lock"), 130, Safe("Lock", function() SetLocked(true) end))
     done:SetPoint("LEFT", move, "RIGHT", 6, 0)
     local reset = UI.Button(options, T("Position zurücksetzen", "Reset position"), 160, Safe("Reset", function()
         GetDB().pos = nil
         PlaceAnchor()
     end))
-    reset:SetPoint("TOPLEFT", 16, -396)
-    UI.Hint(options, 18, -426, W, T("Alle Forever-Rahmen auf einmal verschieben: /fmove. Prototyp – noch nicht im Release.",
+    reset:SetPoint("TOPLEFT", 16, -436)
+    UI.Hint(options, 18, -466, W, T("Alle Forever-Rahmen auf einmal verschieben: /fmove. Prototyp – noch nicht im Release.",
         "Move all Forever frames at once: /fmove. Prototype – not in the release yet."))
 
     options:SetScript("OnShow", function()
         local d = GetDB()
         for _, c in ipairs(checks) do c.cb:SetChecked(d[c.key] and true or false) end
         scale:Load(math.floor((d.scale or 1) * 100 + 0.5))
+        alpha:Load(d.bgAlpha or 75)
     end)
 
     function ToggleOptions() options:SetShown(not options:IsShown()) end
