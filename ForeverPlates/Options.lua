@@ -58,6 +58,7 @@ do
     Check(T("Prozent neben der Leiste", "Percent next to the bar"), "threatText", true)
     Check(T("Leiste in Bedrohungsfarbe (nach Rolle)", "Bar in threat color (by role)"), "threatColorBar", true)
     Check(T("Immer als Tank werten", "Always count me as tank"), "threatTank", true)
+    Check(T("Nur in Gruppen (solo aus)", "Only in groups (off when solo)"), "threatGroupOnly", true)
     UI.Hint(options, col.x + 18, col.y - 2, W - 24, T(
         "Schaden/Heilung: grün = sicher, gelb = knapp, orange = Aggro wackelt, rot = du hast Aggro. "
         .. "Tank: umgekehrt (grün = sichere Aggro). Rolle aus der Gruppe oder per Haken.",
@@ -74,6 +75,7 @@ do
     Header(T("Sonstiges", "Other"))
     Check(T("Combopunkte auf dem Ziel", "Combo points on your target"), "combo")
     Check(T("Questgegner markieren (!)", "Mark quest mobs (!)"), "quest")
+    Check(T("„keine Sicht“, wenn ein Zauber am Ziel scheitert", "\"no sight\" when a spell fails on the target"), "los")
     Check(T("Große Raidmarker über der Plakette", "Large raid markers above the plate"), "raidMarker")
     Slider(T("Größe", "Size"), "raidMarkerSize", 16, 40, 2, " px", true)
     Check(T("Verbündete: nur Name in Klassenfarbe", "Allies: name only, in class color"), "friendlySimple", false,
@@ -85,6 +87,8 @@ do
     Check(T("Forever-Look (flach, dunkel) – aus: Klassisch", "Forever look (flat, dark) – off: classic"), "skin")
     Check(T("Stufe neben dem Namen", "Level next to the name"), "showLevel")
     Check(T("Andere dämpfen, solange ein Ziel gewählt ist", "Dim the others while you have a target"), "dimOthers")
+    Check(T("Plaketten stapeln statt überlappen", "Stack plates instead of overlapping"), "stack", false,
+        function() ns.ApplyFriendly() end)
     Slider(T("Breite", "Width"), "width", 0, 250, 5, " px", true,
         function(v) if v <= 0 then return T("wie Blizzard", "like Blizzard") end end)
     Slider(T("Höhe der Leiste", "Bar height"), "barHeight", 6, 24, 1, " px", true)

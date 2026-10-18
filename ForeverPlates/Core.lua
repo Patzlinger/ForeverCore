@@ -13,7 +13,6 @@ local UI = ForeverHub.UI
 local T = UI.T
 local C = UI.COLOR
 local WHITE = "Interface\\Buttons\\WHITE8x8"
-local SHIELD = "Interface\\AddOns\\ForeverPlates\\Media\\Shield"
 local FONT = STANDARD_TEXT_FONT
 
 ---------------------------------------------------------------------------
@@ -34,6 +33,9 @@ ns.DEFAULTS = {
     threatText = true,        --   Prozent neben der Leiste
     threatColorBar = true,    --   Leiste in Bedrohungsfarbe
     threatTank = false,       --   immer als Tank werten (sonst: Gruppenrolle)
+    threatGroupOnly = false,  --   nur in Gruppen (solo aus)
+    stack = true,             -- Plaketten stapeln statt überlappen (Blizzard-Schalter)
+    los = true,               -- "keine Sicht" am Ziel, wenn ein Zauber daran scheitert
     castbar = true,           -- eigene schmale Zauberleiste
     castHeight = 9,
     castTarget = true,        --   Plakette mit dem Ziel am Ende
@@ -113,18 +115,28 @@ end
 ---------------------------------------------------------------------------
 -- Farben
 ---------------------------------------------------------------------------
+-- gedämpft wie die Forever-Fenster (keine knalligen Grundfarben)
 local COL = {
-    cast = { 1, 0.72, 0.2 },          -- unterbrechbar
-    castReady = { 0.35, 0.9, 0.45 },  -- unterbrechbar und meine Unterbrechung ist bereit
-    castLocked = { 0.5, 0.5, 0.55 },  -- nicht unterbrechbar
-    interrupted = { 0.9, 0.25, 0.25 },
-    execute = { 0.95, 0.3, 0.55 },
-    comboOn = { 1, 0.82, 0.15 },
+    cast = { 0.82, 0.62, 0.28 },      -- unterbrechbar
+    castReady = { 0.36, 0.7, 0.44 },  -- unterbrechbar und meine Unterbrechung ist bereit
+    castLocked = { 0.42, 0.42, 0.47 },-- nicht unterbrechbar
+    interrupted = { 0.66, 0.24, 0.24 },
+    execute = { 0.72, 0.28, 0.46 },
+    comboOn = { 1, 0.82, 0 },         -- Goldton der Forever-Fenster
     comboOff = { 0.12, 0.12, 0.14 },
+    los = { 1, 0.45, 0.35 },
 }
 -- Bedrohung: Status 0 = wenig, 1 = mehr als der Tank (noch nicht übernommen), 2 = Aggro wackelt, 3 = sichere Aggro
-local THREAT_DPS = { [0] = { 0.55, 0.85, 0.55 }, [1] = { 1, 0.85, 0.2 }, [2] = { 1, 0.5, 0.1 }, [3] = { 1, 0.22, 0.22 } }
-local THREAT_TANK = { [0] = { 1, 0.22, 0.22 }, [1] = { 1, 0.5, 0.1 }, [2] = { 1, 0.85, 0.2 }, [3] = { 0.3, 0.85, 0.45 } }
+local THREAT_DPS = { [0] = { 0.45, 0.68, 0.45 }, [1] = { 0.85, 0.72, 0.3 }, [2] = { 0.86, 0.48, 0.2 }, [3] = { 0.78, 0.26, 0.26 } }
+local THREAT_TANK = { [0] = { 0.78, 0.26, 0.26 }, [1] = { 0.86, 0.48, 0.2 }, [2] = { 0.85, 0.72, 0.3 }, [3] = { 0.4, 0.7, 0.45 } }
+
+-- Blizzards Leistenfarben (Reaktion, Klasse) etwas entsättigen und abdunkeln, damit sie zum Stil passen
+local function Soften(r, g, b)
+    if IsSecret(r, g, b) or not r then return r, g, b end
+    local l = r * 0.3 + g * 0.59 + b * 0.11
+    local k = 0.82
+    return (r * 0.72 + l * 0.28) * k, (g * 0.72 + l * 0.28) * k, (b * 0.72 + l * 0.28) * k
+end
 
 local colorObj = {}
 local function ColorObj(c)
@@ -220,9 +232,23 @@ local function HealthBar(frame)
     return frame.healthBar or (frame.HealthBarsContainer and frame.HealthBarsContainer.healthBar)
 end
 
+local function PlateFont()
+    local fo = _G.SystemFont_NamePlate
+    local path = fo and fo.GetFont and fo:GetFont()
+    return path or FONT
+end
+
 local function Font(fs, size, flags)
-    fs:SetFont(FONT, size, flags or "OUTLINE")
-    fs:SetShadowOffset(0, 0)
+    fs:SetFont(PlateFont(), size, flags or "")
+    fs:SetShadowColor(0, 0, 0, 1)
+    fs:SetShadowOffset(1, -1)
+end
+
+-- Texte über eine Vorlage mit weicher Skalierung (Blizzard skaliert Plaketten mit der Entfernung)
+local function NewText(parent, layer)
+    local ok, fs = pcall(parent.CreateFontString, parent, nil, layer or "OVERLAY", "ForeverPlatesText")
+    if not ok or not fs then fs = parent:CreateFontString(nil, layer or "OVERLAY") end
+    return fs
 end
 
 local function Edges(parent, layer, target, r, g, b, a, out)
@@ -271,20 +297,20 @@ local function BuildCast(fp)
     cb.shield:SetSize(10, 12)
     cb.shield:SetPoint("RIGHT", cb, "LEFT", -1, 0)
     cb.shield:SetAlpha(0)
-    cb.text = cb:CreateFontString(nil, "OVERLAY")
+    cb.text = NewText(cb)
     Font(cb.text, 8)
     cb.text:SetJustifyH("LEFT")
     cb.text:SetWordWrap(false)
     cb.text:SetPoint("LEFT", cb, "LEFT", 3, 0)
     cb.text:SetPoint("RIGHT", cb, "RIGHT", -3, 0)
-    -- Ziel-Plakette rechts neben der Leiste: höchstens 20 % der Plakettenbreite, längere Namen werden abgeschnitten
+    -- Ziel-Plakette rechts neben der Leiste: 30 % der Plakettenbreite, längere Namen werden abgeschnitten
     local tag = CreateFrame("Frame", nil, fp.overlay)
     tag:Hide()
     tag.bg = tag:CreateTexture(nil, "BACKGROUND")
     tag.bg:SetPoint("TOPLEFT", -1, 1)
     tag.bg:SetPoint("BOTTOMRIGHT", 1, -1)
     tag.bg:SetColorTexture(0, 0, 0, 0.75)
-    tag.text = tag:CreateFontString(nil, "OVERLAY")
+    tag.text = NewText(tag)
     Font(tag.text, 8)
     tag.text:SetPoint("LEFT", 2, 0)
     tag.text:SetPoint("RIGHT", -2, 0)
@@ -295,7 +321,7 @@ local function BuildCast(fp)
     fp.cast = cb
 end
 
--- Zauberleiste direkt unter der Lebensleiste; mit Ziel-Plakette 80 %, sonst volle Breite
+-- Zauberleiste direkt unter der Lebensleiste; mit Ziel-Plakette 70 %, sonst volle Breite
 local function LayoutCastRow(fp)
     local cb, tag = fp.cast, fp.cast.tag
     local h = db.castHeight
@@ -303,7 +329,7 @@ local function LayoutCastRow(fp)
     if IsSecret(w) then w = 0 end
     tag:ClearAllPoints()
     tag:SetPoint("TOPRIGHT", fp.overlay, "BOTTOMRIGHT", 0, -2)
-    tag:SetSize(math.max(20, math.floor(w * 0.2 + 0.5)), h)
+    tag:SetSize(math.max(36, math.floor(w * 0.3 + 0.5)), h)
     cb:ClearAllPoints()
     cb:SetPoint("TOPLEFT", fp.overlay, "BOTTOMLEFT", 0, -2)
     if tag:IsShown() then
@@ -360,11 +386,11 @@ local function Setup(plate, frame)
     fp.edges = Edges(o, "OVERLAY", o, 0, 0, 0, 1, 1)
 
     -- Name links über der Leiste, Stufe rechts daneben
-    fp.name = o:CreateFontString(nil, "OVERLAY")
+    fp.name = NewText(o)
     Font(fp.name, 9)
     fp.name:SetJustifyH("LEFT")
     fp.name:SetWordWrap(false)
-    fp.level = o:CreateFontString(nil, "OVERLAY")
+    fp.level = NewText(o)
     Font(fp.level, 9)
     fp.level:SetJustifyH("RIGHT")
 
@@ -374,35 +400,33 @@ local function Setup(plate, frame)
     fp.exec:SetColorTexture(COL.execute[1], COL.execute[2], COL.execute[3], 1)
     fp.exec:SetAlpha(0)
 
-    fp.hpValue = o:CreateFontString(nil, "OVERLAY")
+    fp.hpValue = NewText(o)
     Font(fp.hpValue, 9)
     fp.hpValue:SetPoint("LEFT", o, "LEFT", 3, 0)
-    fp.hpPct = o:CreateFontString(nil, "OVERLAY")
+    fp.hpPct = NewText(o)
     Font(fp.hpPct, 9)
     fp.hpPct:SetPoint("RIGHT", o, "RIGHT", -3, 0)
 
-    -- Bedrohung: kleines Schild in Bedrohungsfarbe mit der Prozentzahl darin
+    -- Bedrohung: klein "Aggro", darunter die Prozentzahl in Bedrohungsfarbe
     local badge = CreateFrame("Frame", nil, o)
-    badge:SetSize(20, 22)
+    badge:SetSize(34, 22)
     badge:Hide()
-    badge.edge = badge:CreateTexture(nil, "BACKGROUND")
-    badge.edge:SetTexture(SHIELD)
-    badge.edge:SetPoint("TOPLEFT", -1, 1)
-    badge.edge:SetPoint("BOTTOMRIGHT", 1, -2)
-    badge.edge:SetVertexColor(0, 0, 0, 0.95)
-    badge.fill = badge:CreateTexture(nil, "ARTWORK")
-    badge.fill:SetTexture(SHIELD)
-    badge.fill:SetAllPoints()
-    badge.gloss = badge:CreateTexture(nil, "ARTWORK", nil, 1)
-    badge.gloss:SetTexture(SHIELD)
-    badge.gloss:SetPoint("TOPLEFT", 3, -2)
-    badge.gloss:SetPoint("BOTTOMRIGHT", -3, 8)
-    badge.gloss:SetVertexColor(1, 1, 1, 0.18)
+    badge.label = NewText(badge)
+    Font(badge.label, 7)
+    badge.label:SetText("Aggro")
+    badge.label:SetTextColor(0.62, 0.62, 0.66)
+    badge.label:SetPoint("TOP", badge, "TOP", 0, 0)
     fp.threatBadge = badge
-    fp.threatText = badge:CreateFontString(nil, "OVERLAY")
-    Font(fp.threatText, 8)
-    fp.threatText:SetPoint("CENTER", badge, "CENTER", 0, 2)
-    fp.threatText:SetTextColor(1, 1, 1)
+    fp.threatText = NewText(badge)
+    Font(fp.threatText, 10)
+    fp.threatText:SetPoint("TOP", badge.label, "BOTTOM", 0, -1)
+
+    -- keine Sicht: nach "nicht im Sichtfeld" beim Zaubern auf dieses Ziel
+    fp.los = NewText(o)
+    Font(fp.los, 8)
+    fp.los:SetTextColor(COL.los[1], COL.los[2], COL.los[3])
+    fp.los:SetText(T("keine Sicht", "no sight"))
+    fp.los:Hide()
 
     fp.quest = o:CreateTexture(nil, "OVERLAY")
     fp.quest:SetTexture("Interface\\GossipFrame\\AvailableQuestIcon")
@@ -514,8 +538,8 @@ local function MakeInit(w, h, kind)
         local layer = CreateFrame("Frame", nil, button)
         layer:SetAllPoints()
         layer:SetFrameLevel(cd:GetFrameLevel() + 2)
-        local timer = layer:CreateFontString(nil, "OVERLAY")
-        Font(timer, kind == "cc" and 11 or 9)
+        local timer = NewText(layer)
+        Font(timer, kind == "cc" and 11 or 9, "OUTLINE")
         if kind == "cc" then
             timer:SetPoint("CENTER", button, "CENTER", 0, 0)
         else
@@ -525,8 +549,8 @@ local function MakeInit(w, h, kind)
             local opts = { textFormatter = TimeFormatter() }
             if not pcall(button.SetDurationText, button, timer, opts) then pcall(button.SetDurationText, button, timer) end
         end
-        local stacks = layer:CreateFontString(nil, "OVERLAY")
-        Font(stacks, 8)
+        local stacks = NewText(layer)
+        Font(stacks, 8, "OUTLINE")
         stacks:SetPoint("TOPRIGHT", button, "TOPRIGHT", 0, 0)
         if button.SetApplicationCount then pcall(button.SetApplicationCount, button, stacks) end
     end
@@ -612,6 +636,8 @@ local function PlaceTop(fp)
     end
     fp.quest:ClearAllPoints()
     fp.quest:SetPoint("RIGHT", fp.name, "LEFT", -1, 0)
+    fp.los:ClearAllPoints()
+    fp.los:SetPoint("BOTTOMRIGHT", fp.level, "TOPRIGHT", 0, 1)
     fp.raid:ClearAllPoints()
     local above = top + 3 + DebuffRowHeight() + ((db.buffs and AuraSupported()) and (math.floor(db.buffSize * 0.75 + 0.5) + 2) or 0)
     fp.raid:SetPoint("BOTTOM", o, "TOP", 0, above)
@@ -675,7 +701,7 @@ local function ApplyBarColor(fp)
 end
 
 local function CopyBlizzardColor(fp)
-    local r, g, b = fp.hb:GetStatusBarColor()
+    local r, g, b = Soften(fp.hb:GetStatusBarColor())
     fp.baseCol = { r, g, b }
     ApplyBarColor(fp)
 end
@@ -736,21 +762,21 @@ end
 local function UpdateThreat(fp)
     local d = db
     local col, show = nil, false
-    if d.threat and fp.enemy and not fp.isPlayer then
+    if d.threat and fp.enemy and not fp.isPlayer and (not d.threatGroupOnly or IsInGroup()) then
         local status, pct = ThreatInfo(fp.unit)
         if IsSecret(status) then
-            -- Stufe geheim: nur die Zahl, Schild neutral grau
+            -- Stufe geheim: nur die Zahl, neutral weiß
             if d.threatText and Has(pct) then
-                fp.threatText:SetFormattedText("%.0f", pct)
-                fp.threatBadge.fill:SetVertexColor(0.45, 0.45, 0.5, 1)
+                fp.threatText:SetFormattedText("%.0f%%", pct)
+                fp.threatText:SetTextColor(0.9, 0.9, 0.9)
                 show = true
             end
         elseif status then
             local c = (IsTank() and THREAT_TANK or THREAT_DPS)[status]
             if d.threatText and c then
-                if Has(pct) then fp.threatText:SetFormattedText("%.0f", pct) else fp.threatText:SetText("") end
-                -- etwas gedämpft, damit die weiße Zahl im Schild lesbar bleibt
-                fp.threatBadge.fill:SetVertexColor(c[1] * 0.8, c[2] * 0.8, c[3] * 0.8, 1)
+                if Has(pct) then fp.threatText:SetFormattedText("%.0f%%", pct) else fp.threatText:SetText("") end
+                -- Text etwas heller als die Leistenfarbe, damit er neben der Leiste lesbar bleibt
+                fp.threatText:SetTextColor(math.min(1, c[1] + 0.15), math.min(1, c[2] + 0.15), math.min(1, c[3] + 0.15))
                 show = true
             end
             -- Schadensklassen: Leiste erst färben, wenn es eng wird; Tanks: immer (rot = Aggro verloren)
@@ -914,7 +940,7 @@ local function UpdateCast(fp)
     cb:Show()
 end
 
-local function EndCast(fp, interrupted)
+local function EndCast(fp, interrupted, by)
     local cb = fp.cast
     if not fp.unit then cb:Hide() return end
     -- gleich der nächste Zauber (z. B. Kanalisieren nach dem Wirken)?
@@ -931,11 +957,24 @@ local function EndCast(fp, interrupted)
         cb.shield:SetAlpha(0)
         HidePlaque(fp)
         cb.text:SetText(T("Unterbrochen", "Interrupted"))
+        -- wer unterbrochen hat (GUID aus dem Ereignis): in der Ziel-Plakette, in Klassenfarbe
+        if Yes(by) and GetPlayerInfoByGUID then
+            local _, class, _, _, _, name = GetPlayerInfoByGUID(by)
+            if Yes(name) then
+                local tag = cb.tag
+                tag.text:SetText(name)
+                local col = Yes(class) and C_ClassColor and C_ClassColor.GetClassColor(class)
+                if col then tag.text:SetTextColor(col.r, col.g, col.b) else tag.text:SetTextColor(1, 1, 1) end
+                tag.bg:SetColorTexture(0, 0, 0, 0.75)
+                tag:Show()
+                LayoutCastRow(fp)
+            end
+        end
         cb.fading = true
         cb:Show()
         local token = {}
         cb.fadeToken = token
-        C_Timer.After(0.6, function()
+        C_Timer.After(0.5, function()
             if cb.fadeToken == token and cb.fading then
                 cb.fading = nil
                 cb:Hide()
@@ -1182,18 +1221,21 @@ end
 ---------------------------------------------------------------------------
 -- Verbündete: Blizzards eigene Schalter "nur Name" und "Name in Klassenfarbe" (vorherige Werte werden gemerkt)
 ---------------------------------------------------------------------------
+-- Schalter -> { gewünschter Wert, Einstellung, die ihn einschaltet }
 local FRIEND_CVARS = {
-    nameplateShowOnlyNameForFriendlyPlayerUnits = "1",
-    nameplateUseClassColorForFriendlyPlayerUnitNames = "1",
+    nameplateShowOnlyNameForFriendlyPlayerUnits = { "1", "friendlySimple" },
+    nameplateUseClassColorForFriendlyPlayerUnitNames = { "1", "friendlySimple" },
+    nameplateMotion = { "1", "stack" },            -- 1 = stapeln, 0 = überlappen
 }
 function ns.ApplyFriendly()
     UI.AfterCombat("ForeverPlatesFriendly", function()
         local d = GetDB()
         d._savedCVars = d._savedCVars or {}
-        for cvar, want in pairs(FRIEND_CVARS) do
+        for cvar, info in pairs(FRIEND_CVARS) do
+            local want, key = info[1], info[2]
             local cur = C_CVar.GetCVar(cvar)
             if cur ~= nil then
-                if d.friendlySimple then
+                if d[key] then
                     if cur ~= want then
                         if d._savedCVars[cvar] == nil then d._savedCVars[cvar] = cur end
                         C_CVar.SetCVar(cvar, want)
@@ -1228,6 +1270,7 @@ local H = {}
 H.NAME_PLATE_UNIT_ADDED = function(unit) Attach(unit) end
 H.NAME_PLATE_UNIT_REMOVED = function(unit) Detach(unit) end
 H.PLAYER_TARGET_CHANGED = function()
+    ClearLos()
     ForAll(function(fp)
         UpdateTargetState(fp)
         UpdateCombo(fp)
@@ -1254,10 +1297,14 @@ H.UNIT_SPELLCAST_DELAYED = CastStart
 H.UNIT_SPELLCAST_CHANNEL_UPDATE = CastStart
 H.UNIT_SPELLCAST_EMPOWER_START = CastStart
 H.UNIT_SPELLCAST_STOP = CastStop
-H.UNIT_SPELLCAST_CHANNEL_STOP = CastStop
 H.UNIT_SPELLCAST_EMPOWER_STOP = CastStop
 H.UNIT_SPELLCAST_FAILED = CastStop
-H.UNIT_SPELLCAST_INTERRUPTED = function(unit) local fp = plates[unit] if fp then EndCast(fp, true) end end
+H.UNIT_SPELLCAST_INTERRUPTED = function(unit, _, _, by) local fp = plates[unit] if fp then EndCast(fp, true, by) end end
+-- Kanalisieren: ein Unterbrecher im Ereignis heißt "unterbrochen"
+H.UNIT_SPELLCAST_CHANNEL_STOP = function(unit, _, _, by)
+    local fp = plates[unit]
+    if fp then EndCast(fp, Has(by), by) end
+end
 H.UNIT_SPELLCAST_INTERRUPTIBLE = function(unit)
     local fp = plates[unit]
     if fp and fp.casting then fp.castNotInt = false CastColor(fp) end
@@ -1272,6 +1319,22 @@ H.SPELL_UPDATE_COOLDOWN = function()
     for _, fp in pairs(plates) do if fp.casting then CastColor(fp) end end
 end
 H.SPELLS_CHANGED = function() FindKick() end
+local function ClearLos()
+    for _, fp in pairs(plates) do fp.los:Hide() end
+end
+H.UI_ERROR_MESSAGE = function(_, msg)
+    if not db.los or IsSecret(msg) or msg ~= SPELL_FAILED_LINE_OF_SIGHT then return end
+    for _, fp in pairs(plates) do
+        if fp.isTarget and fp.enemy then
+            fp.los:Show()
+            local token = {}
+            fp.losToken = token
+            C_Timer.After(3, function() if fp.losToken == token then fp.los:Hide() end end)
+        end
+    end
+end
+-- ein Zauber hat geklappt: Sicht ist wieder da
+H.UNIT_SPELLCAST_SUCCEEDED = function(unit) if unit == "player" then ClearLos() end end
 H.UNIT_POWER_UPDATE = function(unit, powerType)
     if unit ~= "player" or IsSecret(powerType) or powerType ~= "COMBO_POINTS" then return end
     for _, fp in pairs(plates) do if fp.isTarget then UpdateCombo(fp) end end
