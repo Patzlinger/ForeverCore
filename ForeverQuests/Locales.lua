@@ -167,10 +167,9 @@ local STRINGS = {
         HIDE_COMPLETED = "Abgeschlossene ausblenden",
         REMAINING_COUNT = "%d verbleibend",
         TAB_ALL = "Alle Dungeons",
-        TAB_MY_LEVEL = "Mein Levelbereich",
-        TIP_MY_LEVEL = "Zeigt nur Dungeons, deren Levelbereich zu deinem Level passt (ab 2 Level vorher), "
-            .. "und nur Quests, deren erforderliche Stufe du erreicht hast und deren Questlevel höchstens "
-            .. "5 Level von deinem entfernt ist.",
+        TAB_MY_LEVEL = "Mein Level",
+        TIP_MY_LEVEL = "Zeigt nur Dungeons, deren Levelbereich zu deinem Level passt (ab 2 Level vorher). "
+            .. "Die Quests darin bleiben alle sichtbar.",
         NO_DUNGEON_LEVEL = "Kein Dungeon in deinem Levelbereich",
         NO_QUESTS_REMAINING = "Alle Quests dieses Dungeons hast du schon abgeschlossen.\n\n"
             .. "|cff888888Häkchen „Abgeschlossene ausblenden“ unten abwählen, um sie zu sehen.|r",
@@ -404,10 +403,9 @@ local STRINGS = {
         HIDE_COMPLETED = "Hide completed",
         REMAINING_COUNT = "%d remaining",
         TAB_ALL = "All dungeons",
-        TAB_MY_LEVEL = "My level range",
-        TIP_MY_LEVEL = "Shows only dungeons whose level range fits your level (from 2 levels before), "
-            .. "and only quests whose required level you have reached and whose quest level is at most "
-            .. "5 levels away from yours.",
+        TAB_MY_LEVEL = "My level",
+        TIP_MY_LEVEL = "Shows only dungeons whose level range fits your level (from 2 levels before). "
+            .. "All quests inside them stay visible.",
         NO_DUNGEON_LEVEL = "No dungeon in your level range",
         NO_QUESTS_REMAINING = "You have already completed all quests of this dungeon.\n\n"
             .. "|cff888888Uncheck “Hide completed” at the bottom to see them.|r",

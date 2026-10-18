@@ -14,7 +14,6 @@ local hideCompleted = false -- Häkchen "Abgeschlossene ausblenden"
 local levelTabActive = false -- Reiter "Mein Levelbereich"
 local raidTabActive = false  -- Reiter "Schlachtzüge" (die anderen Reiter zeigen nur Dungeons)
 local LEVEL_EARLY = 2        -- Dungeons schon so viele Level vor dem Mindestlevel zeigen
-local QUEST_LEVEL_RANGE = 5  -- Quests höchstens so viele Level über/unter dem eigenen Level
 local refreshPending = false
 
 -- Gesamtliste der Dungeons (füllt QuestieDungeons.lua); ns.DUNGEON_DATA ist die angezeigte Liste
@@ -306,18 +305,9 @@ local function IsDungeonInMyRange(dungeon)
     return level >= minLevel - LEVEL_EARLY and level <= maxLevel
 end
 
--- Quest passt, wenn die erforderliche Stufe erreicht ist und das Questlevel nah am eigenen Level liegt
-local function IsQuestInMyRange(quest)
-    local level = UnitLevel("player")
-    if quest.minLevel and level < quest.minLevel then return false end
-    local questLevel = QuestLevel(quest)
-    if questLevel and math.abs(questLevel - level) > QUEST_LEVEL_RANGE then return false end
-    return true
-end
-
--- Filter ohne "Abgeschlossene ausblenden" (Reiter Levelbereich und Fraktion)
+-- Filter ohne "Abgeschlossene ausblenden" (Fraktion). Der Reiter "Mein Level" filtert nur die Dungeons der Liste,
+-- nicht die Quests darin – im passenden Dungeon sind alle seine Quests zu sehen.
 local function PassesBaseFilters(quest)
-    if levelTabActive and not IsQuestInMyRange(quest) then return false end
     return not onlyOwnFaction or IsMyFaction(quest.faction)
 end
 
