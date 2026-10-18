@@ -40,6 +40,7 @@ ns.DEFAULTS = {
     threatTank = false,       --   immer als Tank werten (sonst: Gruppenrolle)
     threatGroupOnly = false,  --   nur in Gruppen (solo aus)
     stack = true,             -- Plaketten stapeln statt überlappen (Blizzard-Schalter)
+    noShrink = true,          -- nicht mit der Entfernung verkleinern (sonst wird kleine Schrift unleserlich)
     los = true,               -- "keine Sicht" am Ziel, wenn ein Zauber daran scheitert
     castbar = true,           -- eigene schmale Zauberleiste
     castHeight = 9,
@@ -313,11 +314,8 @@ local function ApplyFonts()
     for fs, t in pairs(texts) do SetLookFont(fs, t[1], t[2]) end
 end
 
--- Texte über eine Vorlage mit weicher Skalierung (Blizzard skaliert Plaketten mit der Entfernung)
 local function NewText(parent, layer)
-    local ok, fs = pcall(parent.CreateFontString, parent, nil, layer or "OVERLAY", "ForeverPlatesText")
-    if not ok or not fs then fs = parent:CreateFontString(nil, layer or "OVERLAY") end
-    return fs
+    return parent:CreateFontString(nil, layer or "OVERLAY")
 end
 
 local function Edges(parent, layer, target, r, g, b, a, out)
@@ -1384,6 +1382,10 @@ local FRIEND_CVARS = {
     nameplateShowOnlyNameForFriendlyPlayerUnits = { "1", "friendlySimple" },
     nameplateUseClassColorForFriendlyPlayerUnitNames = { "1", "friendlySimple" },
     nameplateMotion = { "1", "stack" },            -- 1 = stapeln, 0 = überlappen
+    -- das Spiel verkleinert Plaketten mit der Entfernung (eigene Skalierung, nicht abschaltbar per Addon-Rahmen):
+    -- kleinste und größte Größe gleich -> immer volle Größe, Schrift bleibt lesbar
+    nameplateMinScale = { "1", "noShrink" },
+    nameplateMaxScale = { "1", "noShrink" },
 }
 function ns.ApplyFriendly()
     UI.AfterCombat("ForeverPlatesFriendly", function()

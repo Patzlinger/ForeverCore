@@ -12,6 +12,5 @@
 ## Group: ForeverCore
 ## SavedVariables: ForeverPlatesDB, ForeverHubDB
 
-Fonts.xml
 Core.lua
 Options.lua

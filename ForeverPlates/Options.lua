@@ -117,6 +117,8 @@ do
     Check(T("Andere dämpfen, solange ein Ziel gewählt ist", "Dim the others while you have a target"), "dimOthers")
     Check(T("Plaketten stapeln statt überlappen", "Stack plates instead of overlapping"), "stack", false,
         function() ns.ApplyFriendly() end)
+    Check(T("Nicht mit der Entfernung verkleinern", "Don't shrink with distance"), "noShrink", false,
+        function() ns.ApplyFriendly() end)
     Slider(T("Breite", "Width"), "width", 0, 250, 5, " px", true,
         function(v) if v <= 0 then return T("wie Blizzard", "like Blizzard") end end)
     Slider(T("Höhe der Leiste", "Bar height"), "barHeight", 6, 24, 1, " px", true)
