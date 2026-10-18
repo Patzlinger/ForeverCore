@@ -188,9 +188,9 @@ end)
 ---------------------------------------------------------------------------
 -- Berufsfenster eines Charakters (Aufbau wie Blizzards Fenster)
 ---------------------------------------------------------------------------
-local W, H, LIST_W = 680, 500, 300
+local W, H, LIST_W = 700, 540, 300
 local ROW_H = 18
-local viewer, search, info, listContent, detail
+local viewer, search, info, listContent, detail, skillBar
 local rows, reagentRows = {}, {}
 local pendingItems = {}
 
@@ -253,46 +253,62 @@ local function RefreshDetail()
     detail.reagentTitle:SetPoint("TOPLEFT", 12, y)
     detail.reagentTitle:SetShown(#(r.reagents or {}) > 0)
     y = y - 22
+    -- wie im Berufsfenster: Symbol mit Rahmen, daneben "vorhanden/benötigt" (Bestand des angezeigten Charakters, mit
+    -- ForeverBags) und der Name; Maus darüber: Gegenstand und Bestand aller Charaktere
     for i, rg in ipairs(r.reagents or {}) do
         local row = reagentRows[i]
         if not row then
-            row = CreateFrame("Button", nil, detail, "BackdropTemplate")
-            row:SetSize(W - LIST_W - 52, 34)
-            UI.SetFlat(row, C.panel)
+            row = CreateFrame("Button", nil, detail)
+            row:SetSize(W - LIST_W - 52, 40)
+            row.border = row:CreateTexture(nil, "BACKGROUND")
+            row.border:SetSize(38, 38)
+            row.border:SetPoint("LEFT")
+            row.border:SetColorTexture(C.border[1], C.border[2], C.border[3], 1)
             row.icon = row:CreateTexture(nil, "ARTWORK")
-            row.icon:SetSize(28, 28)
-            row.icon:SetPoint("LEFT", 3, 0)
+            row.icon:SetSize(36, 36)
+            row.icon:SetPoint("CENTER", row.border, "CENTER")
             row.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-            row.count = row:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
-            row.count:SetPoint("BOTTOMRIGHT", row.icon, "BOTTOMRIGHT", 1, 0)
-            row.text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-            row.text:SetPoint("LEFT", row.icon, "RIGHT", 8, 0)
-            row.text:SetPoint("RIGHT", -90, 0)
+            row.amount = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+            row.amount:SetPoint("TOPLEFT", row.border, "TOPRIGHT", 8, -4)
+            row.text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+            row.text:SetPoint("TOPLEFT", row.amount, "BOTTOMLEFT", 0, -2)
+            row.text:SetPoint("RIGHT", -8, 0)
             row.text:SetJustifyH("LEFT")
             row.text:SetWordWrap(false)
-            row.have = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-            row.have:SetPoint("RIGHT", -8, 0)
-            row.have:SetJustifyH("RIGHT")
-            row:SetScript("OnEnter", function(self) ItemTooltip(self, self.item) end)
+            row:SetScript("OnEnter", function(self)
+                ItemTooltip(self, self.item)
+                if self.allText then
+                    GameTooltip:AddLine(" ")
+                    GameTooltip:AddLine(self.allText, C.accent[1], C.accent[2], C.accent[3])
+                    GameTooltip:Show()
+                end
+            end)
             row:SetScript("OnLeave", function() GameTooltip:Hide() end)
             row:SetScript("OnClick", function(self) LinkItem(self.item) end)
             reagentRows[i] = row
         end
         local rName, rIcon = ItemInfo(rg.item, rg.name, rg.icon)
+        local need = rg.count or 1
         row.item = rg.item
         row.icon:SetTexture(rIcon or 134400)
-        row.count:SetText((rg.count or 1) > 1 and rg.count or "")
         row.text:SetText(rName or T("Gegenstand lädt …", "Item loading …"))
-        local have = ""
+        row.allText = nil
         if bags and bags.CountItem and rg.item then
-            local mine, total = bags.CountItem(rg.item)
-            have = string.format(T("du: %d  ·  alle: %d", "you: %d  ·  all: %d"), mine or 0, total or 0)
+            local mine, total, forChar = bags.CountItem(rg.item, viewer.key)
+            local have = viewer.key == ns.CharKey() and (mine or 0) or (forChar or 0)
+            row.amount:SetText(have .. "/" .. need)
+            row.amount:SetTextColor(have >= need and 1 or 0.6, have >= need and 1 or 0.6, have >= need and 1 or 0.6)
+            row.text:SetTextColor(have >= need and 1 or 0.6, have >= need and 1 or 0.6, have >= need and 1 or 0.6)
+            row.allText = string.format(T("Du: %d  ·  Alle Charaktere: %d", "You: %d  ·  All characters: %d"), mine or 0, total or 0)
+        else
+            row.amount:SetText(need .. "x")
+            row.amount:SetTextColor(1, 1, 1)
+            row.text:SetTextColor(1, 1, 1)
         end
-        row.have:SetText(have)
         row:ClearAllPoints()
         row:SetPoint("TOPLEFT", 12, y)
         row:Show()
-        y = y - 38
+        y = y - 44
     end
     for i = #(r.reagents or {}) + 1, #reagentRows do reagentRows[i]:Hide() end
 end
@@ -322,7 +338,18 @@ local function RefreshList()
             row.hl = row:CreateTexture(nil, "HIGHLIGHT")
             row.hl:SetAllPoints()
             row.hl:SetColorTexture(1, 1, 1, 0.06)
+            -- Kategorie-Zeile: dunkles Band mit −/+ zum Ein-/Ausklappen (wie im Berufsfenster)
+            row.band = row:CreateTexture(nil, "BACKGROUND")
+            row.band:SetAllPoints()
+            row.band:SetColorTexture(C.header[1], C.header[2], C.header[3], 1)
+            row.toggle = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+            row.toggle:SetPoint("RIGHT", -6, 0)
             row:SetScript("OnClick", function(self)
+                if self.cat then
+                    viewer.collapsed[self.cat] = not viewer.collapsed[self.cat] or nil
+                    viewer.Refresh()
+                    return
+                end
                 if not self.index then return end
                 if self.item and IsModifiedClick("CHATLINK") then LinkItem(self.item) return end
                 viewer.selected = self.index
@@ -345,40 +372,56 @@ local function RefreshList()
             if r.cat ~= lastCat then
                 lastCat = r.cat
                 if r.cat then
-                    -- Kategorie-Überschrift (gold, ohne Klick)
+                    -- Kategorie-Überschrift: goldener Name auf dunklem Band, Klick klappt ein/aus
                     local head = Row()
-                    head.index, head.item = nil, nil
+                    head.index, head.item, head.cat = nil, nil, r.cat
                     head.icon:Hide()
                     head.sel:Hide()
-                    head.hl:Hide()
+                    head.hl:Show()
+                    head.band:Show()
+                    head.toggle:SetText((viewer.collapsed[r.cat] and filter == "") and "+" or "–")
                     head.text:ClearAllPoints()
-                    head.text:SetPoint("LEFT", 4, 0)
-                    head.text:SetPoint("RIGHT", -4, 0)
+                    head.text:SetPoint("LEFT", 6, 0)
+                    head.text:SetPoint("RIGHT", -20, 0)
                     head.text:SetText(r.cat)
                     head.text:SetTextColor(C.accent[1], C.accent[2], C.accent[3])
                 end
             end
-            local row = Row()
-            row.index, row.item = i, r.item
-            row.icon:Show()
-            row.icon:SetTexture(r.icon or 134400)
-            row.hl:Show()
-            row.sel:SetShown(viewer.selected == i)
-            row.text:ClearAllPoints()
-            row.text:SetPoint("LEFT", row.icon, "RIGHT", 6, 0)
-            row.text:SetPoint("RIGHT", -4, 0)
-            row.text:SetText(r.name)
-            local d = DIFF_COLOR[r.diff or ""] or { 0.9, 0.9, 0.9 }
-            row.text:SetTextColor(d[1], d[2], d[3])
-            firstVisible = firstVisible or i
+            -- eingeklappte Kategorie: Rezepte darunter auslassen (beim Suchen immer alles zeigen)
+            if not (r.cat and viewer.collapsed[r.cat] and filter == "") then
+                local row = Row()
+                row.index, row.item, row.cat = i, r.item, nil
+                row.band:Hide()
+                row.toggle:SetText("")
+                row.icon:Show()
+                row.icon:SetTexture(r.icon or 134400)
+                row.hl:Show()
+                row.sel:SetShown(viewer.selected == i)
+                row.text:ClearAllPoints()
+                row.text:SetPoint("LEFT", row.icon, "RIGHT", 6, 0)
+                row.text:SetPoint("RIGHT", -4, 0)
+                row.text:SetText(r.name)
+                local d = DIFF_COLOR[r.diff or ""] or { 0.9, 0.9, 0.9 }
+                row.text:SetTextColor(d[1], d[2], d[3])
+                firstVisible = firstVisible or i
+            end
         end
     end
     for i = shown + 1, #rows do rows[i]:Hide() end
     listContent:SetHeight(math.max(1, y))
     -- gewähltes Rezept nicht (mehr) in der Liste: das erste sichtbare wählen
     if firstVisible and (not viewer.selected or not data.list[viewer.selected]) then viewer.selected = firstVisible end
-    local rankText = data and data.rank and (" (" .. data.rank .. (data.max and ("/" .. data.max) or "") .. ")") or ""
-    viewer.TitleText:SetText((c and ns.ColoredName(c) or "?") .. "|cffffd100 – " .. viewer.prof .. rankText .. "|r")
+    viewer.TitleText:SetText((c and ns.ColoredName(c) or "?") .. "|cffffd100 – " .. viewer.prof .. "|r")
+    -- Fortschrittsleiste: aus dem Berufsfenster gespeichert, sonst aus der Fertigkeit in der Übersicht
+    local rank, max = data and data.rank, data and data.max
+    if not rank and c then
+        for _, p in ipairs(c.profs or {}) do
+            if p.name == viewer.prof then rank, max = p.rank, p.max end
+        end
+    end
+    skillBar:SetMinMaxValues(0, math.max(1, max or 1))
+    skillBar:SetValue(rank or 0)
+    skillBar.text:SetText(viewer.prof .. ((rank and max) and (" " .. rank .. "/" .. max) or ""))
     info:SetText(string.format(T("%d Rezepte  ·  Stand: %s  ·  Shift-Klick: im Chat verlinken",
         "%d recipes  ·  as of %s  ·  Shift-click: link in chat"), data and #data.list or 0,
         data and date("%d.%m.%Y %H:%M", data.updated) or "?"))
@@ -386,15 +429,26 @@ end
 
 local function Build()
     viewer = UI.Window("ForeverAltsRecipes", "", W, H)
+    viewer.collapsed = {} -- eingeklappte Kategorien
     viewer.Refresh = function()
         if not viewer:IsShown() then return end
         RefreshList()
         RefreshDetail()
     end
+    -- oben: Fortschritt im Beruf wie im Berufsfenster ("Schneiderei 20/75")
+    skillBar = CreateFrame("StatusBar", nil, viewer, "BackdropTemplate")
+    skillBar:SetPoint("TOPLEFT", 12, -36)
+    skillBar:SetPoint("TOPRIGHT", -12, -36)
+    skillBar:SetHeight(18)
+    skillBar:SetStatusBarTexture("Interface\\Buttons\\WHITE8x8")
+    skillBar:SetStatusBarColor(0.25, 0.35, 0.75, 1)
+    UI.SetFlat(skillBar, C.input)
+    skillBar.text = skillBar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    skillBar.text:SetPoint("CENTER")
     -- links: Suche und Liste
     search = UI.EditBox and UI.EditBox(viewer, LIST_W, 20) or CreateFrame("EditBox", nil, viewer, "InputBoxTemplate")
     search:SetSize(LIST_W, 20)
-    search:SetPoint("TOPLEFT", 12, -36)
+    search:SetPoint("TOPLEFT", 12, -62)
     search:SetAutoFocus(false)
     search:SetScript("OnTextChanged", function() viewer.Refresh() end)
     search:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
@@ -404,7 +458,7 @@ local function Build()
     search:HookScript("OnTextChanged", function(self) placeholder:SetShown(self:GetText() == "") end)
 
     local listBox = CreateFrame("Frame", nil, viewer, "BackdropTemplate")
-    listBox:SetPoint("TOPLEFT", 12, -62)
+    listBox:SetPoint("TOPLEFT", 12, -88)
     listBox:SetPoint("BOTTOMLEFT", 12, 30)
     listBox:SetWidth(LIST_W)
     UI.SetFlat(listBox, C.panel)
@@ -448,7 +502,7 @@ local function Build()
     detail.desc:SetJustifyH("LEFT")
     detail.desc:SetTextColor(0.8, 0.8, 0.8)
     detail.reagentTitle = detail:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    detail.reagentTitle:SetText(T("Reagenzien", "Reagents"))
+    detail.reagentTitle:SetText(T("Reagenzien:", "Reagents:"))
 
     info = viewer:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     info:SetPoint("BOTTOMLEFT", 14, 10)

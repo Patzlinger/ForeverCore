@@ -981,28 +981,32 @@ if UI.API then
             if window and window:IsShown() then window:Hide() end
         end,
         -- Anzahl eines Gegenstands in Taschen und Bank: beim eingeloggten Charakter, bei allen gespeicherten zusammen
-        CountItem = function(itemID)
-            if not itemID then return 0, 0 end
+        -- und (wenn key angegeben) bei diesem Charakter
+        CountItem = function(itemID, key)
+            if not itemID then return 0, 0, 0 end
             local pattern = "item:" .. itemID .. "[:|]"
-            local me, total = ns.CharKey(), 0
+            local me, total, forKey = ns.CharKey(), 0, 0
             local mine = C_Item and C_Item.GetItemCount and C_Item.GetItemCount(itemID, true) or 0
             for _, entry in ipairs(ns.Characters()) do
+                local count = 0
                 if entry.key == me then
-                    total = total + mine
+                    count = mine
                 else
                     for _, part in ipairs({ entry.data.bags or {}, entry.data.bank or {} }) do
                         for _, bag in pairs(part) do
                             for slot = 1, (type(bag) == "table" and bag.size or 0) do
                                 local item = bag[slot]
                                 if item and type(item[1]) == "string" and (item[1] .. ":"):find(pattern) then
-                                    total = total + (item[2] or 1)
+                                    count = count + (item[2] or 1)
                                 end
                             end
                         end
                     end
                 end
+                total = total + count
+                if entry.key == key then forKey = count end
             end
-            return mine, total
+            return mine, total, forKey
         end,
         HasBank = function(key)
             local c = ns.CharacterData(key)
