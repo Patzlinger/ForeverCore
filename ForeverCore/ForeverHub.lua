@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 49
+local VERSION = 50
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -4090,6 +4090,15 @@ do
                         pcall(instance.ChangeSkin, instance, DETAILS_NAME)
                     end
                 end
+                -- Standard (v50): Forever-Look einmal je Charakter automatisch (Details merkt sich das Profil je
+                -- Charakter). Wer einmal "vorheriges Profil" gewählt hat, bekommt es nie wieder automatisch.
+                local db = GetDB()
+                local char = (UnitName("player") or "?") .. "-" .. (GetRealmName() or "?")
+                db.detailsAuto = type(db.detailsAuto) == "table" and db.detailsAuto or {}
+                if not db.detailsOptOut and not db.detailsAuto[char] and not InCombatLockdown() then
+                    db.detailsAuto[char] = true
+                    if not UI.DetailsForeverActive() then pcall(UI.DetailsApplyForever) end
+                end
             end)
         end
     end)
@@ -4144,6 +4153,7 @@ function UI.DetailsRestore()
     local prev = GetDB().detailsPrevious
     if not (D and prev and D:GetProfile(prev, false)) then return false end
     if InCombatLockdown() then UI.Chat("Forever", T("Im Kampf nicht möglich.", "Not possible in combat.")) return false end
+    GetDB().detailsOptOut = true -- bewusst zurück: nicht mehr automatisch umstellen
     D:ApplyProfile(prev)
     UI.Chat("Forever", string.format(T("Details nutzt wieder dein Profil „%s“.", "Details uses your profile \"%s\" again."), prev))
     return true

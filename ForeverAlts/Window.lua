@@ -20,6 +20,8 @@ local COLUMNS = {
     { key = "mail",   title = function() return T("Post", "Mail") end,           width = 84,  sort = "mail" },
     { key = "honor",  title = function() return T("Ehre", "Honor") end,          width = 84,  sort = "honor" },
     { key = "last",   title = function() return T("Letzter Login", "Last login") end, width = 96, sort = "updated" },
+    -- Knöpfe Taschen / Bank / Vergessen am Zeilenende (mit Trennlinie davor), immer sichtbar
+    { key = "actions", title = function() return "" end, width = 82, fixed = true },
 }
 
 local window, scroll, content, footer, headerButtons, toggles
@@ -76,7 +78,6 @@ local function DungeonQuests(c)
 end
 
 local function BagsAPI() return UI.API and UI.API.ForeverBags end
-local function QuestsAPI() return UI.API and UI.API.ForeverQuests end
 
 ---------------------------------------------------------------------------
 -- Tooltip einer Zeile
@@ -136,7 +137,8 @@ local function RowTooltip(row)
         end
     end
     tip:AddLine(" ")
-    tip:AddLine(T("Rechtsklick: Taschen, Bank, Rezepte, Dungeon, Vergessen", "Right-click: bags, bank, recipes, dungeon, forget"), 0.5, 0.5, 0.5)
+    tip:AddLine(T("Klick auf einen Beruf: Rezepte · Knöpfe rechts: Taschen, Bank, Vergessen",
+        "Click a profession: recipes · buttons on the right: bags, bank, forget"), 0.5, 0.5, 0.5, true)
     tip:Show()
 end
 
@@ -154,48 +156,92 @@ StaticPopupDialogs["FOREVERALTS_FORGET"] = {
     timeout = 0, whileDead = true, hideOnEscape = true, preferredIndex = 3,
 }
 
-local function RowMenu(row)
-    local entry = row.entry
-    if not entry then return end
-    local items = { { title = ns.ColoredName(entry.data) } }
-    local bags = BagsAPI()
-    if bags and bags.ShowCharacter then
-        items[#items + 1] = { text = T("Taschen ansehen", "Show bags"), onClick = function() bags.ShowCharacter(entry.key, "bags") end }
-        local hasBank = bags.HasBank and bags.HasBank(entry.key)
-        items[#items + 1] = { text = hasBank and T("Bank ansehen", "Show bank") or T("Bank (noch nicht besucht)", "Bank (not visited yet)"),
-            disabled = not hasBank, onClick = function() bags.ShowCharacter(entry.key, "bank") end }
-    end
-    -- Rezepte (gespeichert, sobald der Charakter sein Berufsfenster einmal geöffnet hat)
-    local recipeProfs = ns.RecipeProfessions(entry.data)
-    if #recipeProfs > 0 then
-        items[#items + 1] = { divider = true }
-        for _, r in ipairs(recipeProfs) do
-            items[#items + 1] = { text = string.format(T("Rezepte: %s (%d)", "Recipes: %s (%d)"), r.prof, r.count),
-                onClick = function() ns.ShowRecipes(entry.key, r.prof) end }
+-- kleiner Tooltip für die Knöpfe in einer Zeile
+local function ButtonTip(self, title, line, r, g, b)
+    local tip = UI.GetTooltip()
+    tip:SetOwner(self, "ANCHOR_RIGHT")
+    tip:AddLine(title, 1, 1, 1)
+    if line then tip:AddLine(line, r or 0.7, g or 0.7, b or 0.7, true) end
+    tip:Show()
+end
+
+-- Beruf in der Zeile: Linksklick öffnet die gespeicherten Rezepte dieses Berufs
+local function ProfButton(row)
+    local b = CreateFrame("Button", nil, row)
+    b:SetHeight(14)
+    b.text = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    b.text:SetPoint("LEFT")
+    b.text:SetWordWrap(false)
+    b:SetScript("OnEnter", function(self)
+        self.text:SetTextColor(C.accent[1], C.accent[2], C.accent[3])
+        if self.count then
+            ButtonTip(self, self.prof, string.format(T("Klick: %d Rezepte ansehen", "Click: show %d recipes"), self.count))
+        else
+            ButtonTip(self, self.prof, T("Rezepte noch unbekannt – auf diesem Charakter das Berufsfenster einmal öffnen.",
+                "Recipes not known yet – open the profession window on this character once."))
         end
+    end)
+    b:SetScript("OnLeave", function(self)
+        self.text:SetTextColor(self.r, self.g, self.b)
+        UI.GetTooltip():Hide()
+    end)
+    b:SetScript("OnClick", function(self)
+        if self.count and self.key then ns.ShowRecipes(self.key, self.prof) end
+    end)
+    return b
+end
+
+-- Knopf mit Symbol am Zeilenende (Taschen, Bank, Vergessen)
+local function ActionButton(row, icon, onClick, tooltip)
+    local b = CreateFrame("Button", nil, row)
+    b:SetSize(20, 20)
+    b.icon = b:CreateTexture(nil, "ARTWORK")
+    b.icon:SetAllPoints()
+    b.icon:SetTexture(icon)
+    local hl = b:CreateTexture(nil, "HIGHLIGHT")
+    hl:SetAllPoints()
+    hl:SetColorTexture(1, 1, 1, 0.15)
+    b:SetScript("OnClick", function(self) if self.enabled then onClick(self:GetParent().entry) end end)
+    b:SetScript("OnEnter", function(self) tooltip(self, self:GetParent().entry) end)
+    b:SetScript("OnLeave", function() UI.GetTooltip():Hide() end)
+    function b:SetUsable(usable)
+        self.enabled = usable
+        self.icon:SetDesaturated(not usable)
+        self:SetAlpha(usable and 1 or 0.35)
     end
-    local quests = QuestsAPI()
-    if quests and quests.ShowDungeonOfQuest then
-        local seen, divider = {}, false
-        for _, d in ipairs(DungeonQuests(entry.data)) do
-            if not seen[d.q.dungeon] then
-                seen[d.q.dungeon] = true
-                if not divider then
-                    items[#items + 1] = { divider = true }
-                    divider = true
-                end
-                items[#items + 1] = { text = string.format(T("Dungeon: %s", "Dungeon: %s"), d.q.dungeon),
-                    onClick = function() quests.ShowDungeonOfQuest(d.id) end }
-            end
-        end
-    end
-    if not entry.me then
-        items[#items + 1] = { divider = true }
-        items[#items + 1] = { text = T("Vergessen …", "Forget …"), onClick = function()
+    return b
+end
+
+local function BuildActions(row)
+    row.actions = {
+        ActionButton(row, "Interface\\Icons\\INV_Misc_Bag_08", function(entry)
+            local bags = BagsAPI()
+            if bags and bags.ShowCharacter then bags.ShowCharacter(entry.key, "bags") end
+        end, function(self)
+            ButtonTip(self, T("Taschen ansehen", "Show bags"), self.enabled and nil
+                or T("Braucht ForeverBags (und einmal eingeloggt).", "Needs ForeverBags (and one login)."))
+        end),
+        ActionButton(row, "Interface\\Icons\\INV_Box_02", function(entry)
+            local bags = BagsAPI()
+            if bags and bags.ShowCharacter then bags.ShowCharacter(entry.key, "bank") end
+        end, function(self)
+            ButtonTip(self, T("Bank ansehen", "Show bank"), self.enabled and nil
+                or T("Bank noch nicht besucht (oder ForeverBags fehlt).", "Bank not visited yet (or ForeverBags missing)."))
+        end),
+        ActionButton(row, "Interface\\Buttons\\UI-GroupLoot-Pass-Up", function(entry)
             StaticPopup_Show("FOREVERALTS_FORGET", entry.data.name or entry.key, nil, entry.key)
-        end }
-    end
-    UI.ShowMenu(row, items, { atCursor = true })
+        end, function(self)
+            ButtonTip(self, T("Vergessen …", "Forget …"), self.enabled
+                and T("Aus der Übersicht entfernen.", "Remove from the overview.")
+                or T("Den eingeloggten Charakter kann man nicht vergessen.", "The logged-in character can't be forgotten."))
+        end),
+    }
+    -- feine senkrechte Trennlinie vor den Knöpfen
+    row.sep = row:CreateTexture(nil, "ARTWORK")
+    row.sep:SetWidth(1)
+    row.sep:SetPoint("TOP", 0, -4)
+    row.sep:SetPoint("BOTTOM", 0, 4)
+    row.sep:SetColorTexture(1, 1, 1, 0.12)
 end
 
 ---------------------------------------------------------------------------
@@ -206,7 +252,6 @@ local function GetRow(i)
     if row then return row end
     row = CreateFrame("Button", nil, content)
     row:SetHeight(ROW_H)
-    row:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     row.bg = row:CreateTexture(nil, "BACKGROUND")
     row.bg:SetAllPoints()
     row.hl = row:CreateTexture(nil, "HIGHLIGHT")
@@ -228,9 +273,11 @@ local function GetRow(i)
             list[j] = fs
         end
     end
+    row.profButtons = {}
+    for k = 1, 5 do row.profButtons[k] = ProfButton(row) end
+    BuildActions(row)
     row:SetScript("OnEnter", RowTooltip)
     row:SetScript("OnLeave", function() UI.GetTooltip():Hide() end)
-    row:SetScript("OnClick", function(self, button) if button == "RightButton" then RowMenu(self) end end)
     rows[i] = row
     return row
 end
@@ -243,12 +290,6 @@ local function CellTexts(entry)
         and string.format("|cff8a8a8a%d %% EP|r", math.floor((c.xp or 0) / c.xpMax * 100)) or ""
     local rested, estimated = ns.RestedPercent(entry)
     local restedText = rested and string.format("|cff4d99ff%s%d %%|r", estimated and "≈ " or "", rested) or "|cff6a6a6a–|r"
-    -- Berufe auf zwei Zeilen: die ersten beiden oben, der Rest (meist Nebenberufe) unten
-    local top, bottom = {}, {}
-    for i, p in ipairs(c.profs or {}) do
-        local text = (p.name or "?") .. " |cffffffff" .. (p.rank or "") .. "|r"
-        table.insert(i <= 2 and top or bottom, text)
-    end
     local subZone = (c.subZone and c.subZone ~= "" and c.subZone ~= c.zone) and c.subZone or ""
     -- gespielte Zeit: gesamt, darunter auf dieser Stufe
     local playedTotal, playedLevel = ns.PlayedNow(entry)
@@ -279,9 +320,68 @@ local function CellTexts(entry)
         rested = { restedText, "" },
         money = { Money(c.money), "" },
         zone = { "|cffbbbbbb" .. (c.zone or "?") .. "|r", "|cff8a8a8a" .. subZone .. "|r" },
-        profs = { "|cffbbbbbb" .. (#top > 0 and table.concat(top, ", ") or "–") .. "|r",
-            "|cff8a8a8a" .. table.concat(bottom, ", ") .. "|r" },
+        -- Berufe und Knöpfe zeichnen eigene Knöpfe (LayoutProfs, LayoutActions)
+        profs = { "", "" },
+        actions = { "", "" },
     }
+end
+
+-- Berufe als anklickbare Namen auf zwei Zeilen: die ersten beiden oben, der Rest (meist Nebenberufe) unten
+local function LayoutProfs(row, entry, x, width)
+    local c = entry.data
+    local recipes = {}
+    for _, r in ipairs(ns.RecipeProfessions(c)) do recipes[r.prof] = r.count end
+    local lineX = { x, x }
+    for k, b in ipairs(row.profButtons) do
+        local p = c.profs and c.profs[k]
+        local line = k <= 2 and 1 or 2
+        if p and lineX[line] < x + width - 20 then
+            b.key, b.prof, b.count = entry.key, p.name or "?", recipes[p.name]
+            b.r, b.g, b.b = b.count and 0.9 or 0.65, b.count and 0.9 or 0.65, b.count and 0.9 or 0.65
+            b.text:SetTextColor(b.r, b.g, b.b)
+            b.text:SetText((p.name or "?") .. " |cffffffff" .. (p.rank or "") .. "|r" .. (row.profButtons[k + 1]
+                and c.profs[k + 1] and (k ~= 2) and "," or ""))
+            local w = math.min(b.text:GetStringWidth() + 2, x + width - lineX[line])
+            b:SetWidth(w)
+            b.text:SetWidth(w)
+            b:ClearAllPoints()
+            b:SetPoint("TOPLEFT", row, "TOPLEFT", lineX[line], line == 1 and -3 or -16)
+            b:Show()
+            lineX[line] = lineX[line] + w + 6
+        else
+            b:Hide()
+        end
+    end
+    if not c.profs or #c.profs == 0 then
+        local b = row.profButtons[1]
+        b.key, b.prof, b.count = nil, T("Keine Berufe", "No professions"), nil
+        b.r, b.g, b.b = 0.42, 0.42, 0.42
+        b.text:SetTextColor(b.r, b.g, b.b)
+        b.text:SetText("–")
+        b:SetWidth(20)
+        b:ClearAllPoints()
+        b:SetPoint("LEFT", row, "LEFT", x, 0)
+        b:Show()
+    end
+end
+
+-- Knöpfe Taschen / Bank / Vergessen mit Trennlinie davor
+local function LayoutActions(row, entry, x)
+    local bags = BagsAPI()
+    local hasBags = bags and bags.FreeSlots and bags.FreeSlots(entry.key) ~= nil
+    local hasBank = bags and bags.HasBank and bags.HasBank(entry.key)
+    row.actions[1]:SetUsable(hasBags and true or false)
+    row.actions[2]:SetUsable(hasBank and true or false)
+    row.actions[3]:SetUsable(not entry.me)
+    row.sep:ClearAllPoints()
+    row.sep:SetPoint("TOPLEFT", row, "TOPLEFT", x - 6, -4)
+    row.sep:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", x - 6, 4)
+    row.sep:Show()
+    for k, b in ipairs(row.actions) do
+        b:ClearAllPoints()
+        b:SetPoint("LEFT", row, "LEFT", x + (k - 1) * 24, 0)
+        b:Show()
+    end
 end
 
 function ns.RefreshWindow()
@@ -320,7 +420,11 @@ function ns.RefreshWindow()
                 end
                 upper:SetText(t[1])
                 lower:SetText(t[2])
+                if col.key == "profs" then LayoutProfs(row, entry, x, col.width - 10) end
+                if col.key == "actions" then LayoutActions(row, entry, x) end
                 x = x + col.width
+            elseif col.key == "profs" then
+                for _, b in ipairs(row.profButtons) do b:Hide() end
             end
         end
         row:Show()
