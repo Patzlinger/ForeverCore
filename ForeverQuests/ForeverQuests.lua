@@ -158,6 +158,9 @@ SlashCmdList.FOREVERQUESTS = function(msg)
                     tostring(header)))
             end
         end
+    elseif msg == "ecke" or msg == "corner" then
+        -- Fehlersuche: welche Texturen liegen unter der Maus auf der Weltkarte?
+        ns.DebugMapCorner()
     elseif msg == "karte" or msg == "map" then
         -- Fehlersuche: Aufbau von Weltkarte und Questlog
         ns.DebugMap()

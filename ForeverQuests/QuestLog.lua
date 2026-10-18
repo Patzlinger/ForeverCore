@@ -347,6 +347,88 @@ local function SkinWorldMap()
 end
 
 ---------------------------------------------------------------------------
+-- Questie-Knopf in der Navigationsleiste (rechts, neben "Welt › Kalimdor › …") statt Questies eigenem Kartenknopf.
+-- Gleiche Bedienung: Linksklick Questie an/aus, Rechtsklick Questies Menü. Questies Knopf wird nur unsichtbar.
+---------------------------------------------------------------------------
+local questieMapButton
+local function QuestieOriginalButton()
+    local questie = _G.Questie
+    return type(questie) == "table" and questie.WorldMap and questie.WorldMap.Button or nil
+end
+
+local function UpdateQuestieMapButton()
+    if not questieMapButton then return end
+    local enabled = _G.Questie and _G.Questie.db and _G.Questie.db.profile.enabled ~= false
+    questieMapButton.icon:SetDesaturated(not enabled)
+    questieMapButton.icon:SetAlpha(enabled and 1 or 0.5)
+end
+
+local function SetupQuestieMapButton()
+    local map = _G.WorldMapFrame
+    local original = QuestieOriginalButton()
+    if questieMapButton or not map or not original then return questieMapButton ~= nil end
+    local anchor = map.NavBar or map
+    questieMapButton = Style.CreateButton(map, "", 24, 22, nil, nil)
+    questieMapButton:SetFrameLevel(anchor:GetFrameLevel() + 10)
+    questieMapButton:SetPoint("RIGHT", anchor, "RIGHT", -6, 0)
+    questieMapButton.icon = questieMapButton:CreateTexture(nil, "ARTWORK")
+    questieMapButton.icon:SetPoint("TOPLEFT", 3, -2)
+    questieMapButton.icon:SetPoint("BOTTOMRIGHT", -3, 2)
+    questieMapButton.icon:SetTexture("Interface\\AddOns\\Questie\\Icons\\questie.png")
+    questieMapButton:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    questieMapButton:SetScript("OnClick", function(self, button)
+        local handler = original.OnMouseDown or original:GetScript("OnMouseDown")
+        if handler then pcall(handler, original, button) end
+        UpdateQuestieMapButton()
+        if self:IsMouseOver() then self:GetScript("OnEnter")(self) end
+    end)
+    questieMapButton.tooltip = function(tip)
+        local profile = _G.Questie and _G.Questie.db and _G.Questie.db.profile
+        tip:AddLine("Questie", 1, 0.82, 0)
+        tip:AddLine(ns.L(profile and profile.enabled == false and "TIP_QUESTIE_SHOW" or "TIP_QUESTIE_HIDE"), 1, 1, 1)
+        tip:AddLine(ns.L("TIP_QUESTIE_MENU"), 1, 1, 1)
+    end
+    -- Questies eigener Knopf: unsichtbar und ohne Maus (bleibt angelegt, damit Questie nichts vermisst)
+    original:SetAlpha(0)
+    original:EnableMouse(false)
+    hooksecurefunc(original, "Show", function(self) self:SetAlpha(0) end)
+    UpdateQuestieMapButton()
+    map:HookScript("OnShow", UpdateQuestieMapButton)
+    return true
+end
+
+-- Questie legt seinen Knopf erst beim Start an: ein paar Mal nachsehen
+local function TrySetupQuestieMapButton(tries)
+    if type(_G.Questie) ~= "table" then return end
+    if SetupQuestieMapButton() then return end
+    if (tries or 0) < 20 then C_Timer.After(1, function() TrySetupQuestieMapButton((tries or 0) + 1) end) end
+end
+
+-- /fq ecke: Maus auf eine Stelle der Karte legen, Befehl abschicken -> zeigt alle sichtbaren Texturen genau dort
+-- (zum Finden von Blizzard-Verzierungen, die noch durchscheinen)
+function ns.DebugMapCorner()
+    local prefix = ns.ChatPrefix() .. ": "
+    local found = 0
+    local function Walk(frame, depth)
+        if depth > 8 or not frame.GetRegions then return end
+        for _, region in ipairs({ frame:GetRegions() }) do
+            if region.GetObjectType and region:GetObjectType() == "Texture" and region:IsVisible()
+                and region:GetEffectiveAlpha() > 0.05 and region:IsMouseOver() then
+                found = found + 1
+                if found <= 25 then
+                    print(prefix .. (region:GetDebugName() or "?") .. "  " .. tostring(region:GetAtlas() or region:GetTexture()))
+                end
+            end
+        end
+        for _, child in ipairs({ frame:GetChildren() }) do
+            if child:IsVisible() then Walk(child, depth + 1) end
+        end
+    end
+    if _G.WorldMapFrame then Walk(_G.WorldMapFrame, 0) end
+    if found == 0 then print(prefix .. "keine Textur unter der Maus") end
+end
+
+---------------------------------------------------------------------------
 -- Unsere Questliste
 ---------------------------------------------------------------------------
 
@@ -1261,6 +1343,7 @@ local function Setup()
     Style = ns.Style
     local ok, err = pcall(SkinWorldMap)
     if not ok then print(ns.ChatPrefix() .. ": Weltkarte - " .. tostring(err)) end
+    TrySetupQuestieMapButton(0)
     CreatePanel(area)
     ok, err = pcall(CreateDetails, area)
     if not ok then print(ns.ChatPrefix() .. ": Questdetails - " .. tostring(err)) end
