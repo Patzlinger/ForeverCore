@@ -26,7 +26,7 @@ local HEADER = 27         -- Titelleiste von UI.Window (26 + 1 px Rand)
 local TOOLBAR = 28        -- Zeile mit Ansicht, Suche, Taschenleiste, Sortieren
 local FOOTER = 24         -- Zeile mit freien Plätzen und Gold
 local DEFAULT_POS = { -20, 120 } -- untere rechte Ecke: 20 px vom rechten, 120 px vom unteren Rand
-local QUEST_COLOR = { 1, 0.9, 0.1, 1 } -- Questgegenstände: gelber, dickerer Rand
+local QUEST_COLOR = { 0.95, 0.80, 0.25, 0.95 } -- Questgegenstände: warmes, etwas gedämpftes Gelb
 local CURRENCY_ROW = 18   -- Zeile mit den gewählten Währungen (nur, wenn welche gewählt sind)
 ns.SLOT = SLOT
 
@@ -49,11 +49,26 @@ local function EdgeColor(bag)
     return C.border
 end
 
--- Rand neu setzen: beim Darüberfahren gold, Questgegenstand gelb und 2 px dick, sonst Farbe der Tasche
+-- Rand neu setzen: beim Darüberfahren gold, Questgegenstand gelb (1 px plus schwacher Innenrand = etwas
+-- kräftiger als normal, aber nicht mehr 2 px dick), sonst Farbe der Tasche
 local function ApplyEdge(button, hovered)
     local edge = button.fbagsEdge
     if not edge then return end
-    local size = button.fbagsQuest and 2 or 1
+    local size = 1
+    if not edge.fbagsInner then
+        local inner = CreateFrame("Frame", nil, edge, "BackdropTemplate")
+        inner:SetPoint("TOPLEFT", 1, -1)
+        inner:SetPoint("BOTTOMRIGHT", -1, 1)
+        inner:EnableMouse(false)
+        inner:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 })
+        edge.fbagsInner = inner
+    end
+    if button.fbagsQuest and not hovered then
+        edge.fbagsInner:SetBackdropBorderColor(QUEST_COLOR[1], QUEST_COLOR[2], QUEST_COLOR[3], 0.35)
+        edge.fbagsInner:Show()
+    else
+        edge.fbagsInner:Hide()
+    end
     if edge.fbagsSize ~= size then
         edge:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = size })
         edge.fbagsSize = size
