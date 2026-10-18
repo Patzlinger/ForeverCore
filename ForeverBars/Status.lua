@@ -22,7 +22,7 @@ local INSET = 2                                  -- 1 px Rand + 1 px dunkle Fuge
 -- Stil wie die Forever-Fenster: dunkle Fläche, feiner grauer Rand, goldene Linie oben
 local EDGE = { 0.22, 0.22, 0.26, 1 }
 local TOP_LINE = { 1, 0.82, 0, 0.55 }
-local TEXT_COLOR = { 0.92, 0.92, 0.90 }
+local TEXT_COLOR = { 1, 1, 0.98 }
 -- Füllfarben: gleiche Farbfamilie wie Blizzard, aber gedeckter; Unterschied über Helligkeit und Deckkraft
 -- statt über knallige Farben. Jede Füllung bekommt einen leichten Glanz (oben heller, unten dunkler).
 local XP_COLOR = { 0.50, 0.36, 0.74, 1.00 }      -- aktuelle Erfahrung: weiches Violett
@@ -403,7 +403,7 @@ end
 local function BarFont(fs)
     fs:SetFontObject("GameFontHighlightSmall")
     fs:SetShadowOffset(1, -1)
-    fs:SetShadowColor(0, 0, 0, 0.9)
+    fs:SetShadowColor(0, 0, 0, 1) -- volle Schattenstärke: hebt die Schrift von hellen Füllungen ab
     fs:SetTextColor(TEXT_COLOR[1], TEXT_COLOR[2], TEXT_COLOR[3])
     fs:SetWordWrap(false)
 end
@@ -497,12 +497,16 @@ local function Build(key, holder)
     w.shine:SetHeight(1)
     w.shine:SetColorTexture(1, 1, 1, 0.10)
     -- Striche "eingraviert": dunkle Linie mit hellem Saum daneben – klar sichtbar, ohne hart zu wirken
-    w.ticks, w.tickLights = {}, {}
+    w.ticks, w.tickLights, w.tickBottoms = {}, {}, {}
     for i = 1, 9 do
         local t = tickLayer:CreateTexture(nil, "OVERLAY")
         t:SetColorTexture(0, 0, 0, 0.55)
         t:SetWidth(1)
         w.ticks[i] = t
+        local b = tickLayer:CreateTexture(nil, "OVERLAY") -- untere Kerbe (nur, wo Text steht)
+        b:SetColorTexture(0, 0, 0, 0.55)
+        b:SetWidth(1)
+        w.tickBottoms[i] = b
         local l = tickLayer:CreateTexture(nil, "OVERLAY")
         l:SetColorTexture(1, 1, 1, 0.07)
         l:SetWidth(1)
@@ -550,23 +554,51 @@ local function Build(key, holder)
     return w
 end
 
+-- Bereiche, in denen gerade Text steht (x von–bis innerhalb der Leiste, mit etwas Luft)
+local function TextSpans(w, width)
+    local spans = {}
+    local function Add(fs, from, to)
+        if fs:IsShown() and (fs:GetText() or "") ~= "" then spans[#spans + 1] = { from - 3, to + 3 } end
+    end
+    local cw = w.center:GetStringWidth() or 0
+    Add(w.center, (width - cw) / 2, (width + cw) / 2)
+    Add(w.left, 6, 6 + (w.left:GetStringWidth() or 0))
+    Add(w.right, width - 6 - (w.right:GetStringWidth() or 0), width - 6)
+    return spans
+end
+
+-- Zehntel-Striche; wo Text steht, nur als kurze Kerben oben und unten (laufen nicht mehr durch die Schrift)
+local NOTCH = 3
 local function PlaceTicks(w)
     local cfg = Cfg(w.key)
     local width = w.inner:GetWidth()
     local show = cfg and cfg.barTicks and width and width > 0
+    local spans = show and TextSpans(w, width) or {}
     for i, t in ipairs(w.ticks) do
-        local l = w.tickLights[i]
+        local l, b = w.tickLights[i], w.tickBottoms[i]
         t:ClearAllPoints()
         l:ClearAllPoints()
+        b:ClearAllPoints()
+        local underText = false
         if show then
             local x = math.floor(width * i / 10 + 0.5)
+            for _, s in ipairs(spans) do
+                if x >= s[1] and x <= s[2] then underText = true break end
+            end
             t:SetPoint("TOPLEFT", w.tickLayer, "TOPLEFT", x, -1)
-            t:SetPoint("BOTTOMLEFT", w.tickLayer, "BOTTOMLEFT", x, 1)
-            l:SetPoint("TOPLEFT", t, "TOPRIGHT", 0, 0)
-            l:SetPoint("BOTTOMLEFT", t, "BOTTOMRIGHT", 0, 0)
+            if underText then
+                t:SetHeight(NOTCH)
+                b:SetPoint("BOTTOMLEFT", w.tickLayer, "BOTTOMLEFT", x, 1)
+                b:SetHeight(NOTCH)
+            else
+                t:SetPoint("BOTTOMLEFT", w.tickLayer, "BOTTOMLEFT", x, 1)
+                l:SetPoint("TOPLEFT", t, "TOPRIGHT", 0, 0)
+                l:SetPoint("BOTTOMLEFT", t, "BOTTOMRIGHT", 0, 0)
+            end
         end
         t:SetShown(show and true or false)
-        l:SetShown(show and true or false)
+        l:SetShown((show and not underText) and true or false)
+        b:SetShown((show and underText) and true or false)
     end
 end
 
@@ -605,6 +637,7 @@ function ns.FitStatusTexts(w)
         w.left:Hide()
         w.right:Hide()
     end
+    PlaceTicks(w) -- Striche unter dem Text zu Kerben kürzen
 end
 
 function ns.ApplyStatusLook(w)
