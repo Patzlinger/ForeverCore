@@ -300,6 +300,31 @@ local function SkinWorldMap()
         Fade(questMap.BorderFrame)
     end
 
+    -- Weitere Rahmen um die Karte (z. B. Blizzards zweiter Rahmen fürs kleine Fenster mit Stein-/Gold-Ecken):
+    -- alle Kind-Rahmen des Fensters bis zwei Ebenen tief – außer Karte, Questlog, Navigationsleiste, Knöpfen,
+    -- Kartenknöpfen (overlayFrames) und unseren eigenen Teilen
+    local keep = { [map.ScrollContainer or false] = true, [questMap or false] = true, [map.NavBar or false] = true,
+        [skin] = true, [top] = true }
+    for _, overlay in ipairs(map.overlayFrames or {}) do keep[overlay] = true end
+    local function FadeDecorations(frame, depth)
+        for _, child in ipairs({ frame:GetChildren() }) do
+            local objectType = child.GetObjectType and child:GetObjectType()
+            if not keep[child] and not child.fqOwn and objectType == "Frame" then
+                FadeTextures(child)
+                if child.NineSlice then Fade(child.NineSlice) end
+                if depth > 1 then FadeDecorations(child, depth - 1) end
+            end
+        end
+    end
+    FadeDecorations(map, 2)
+    for _, key in ipairs({ "MiniBorderFrame", "BorderFrameMini", "Inset", "InsetBorder" }) do
+        local frame = map[key]
+        if frame then
+            FadeTextures(frame)
+            if frame.NineSlice then Fade(frame.NineSlice) end
+        end
+    end
+
     -- Schließen-Knopf kleiner; Vollbild-Knopf ganz weg (Karte bleibt im Fenster, verschieb- und skalierbar)
     local close = border and border.CloseButton or map.CloseButton
     if close and close.SetScale then close:SetScale(0.75) end
@@ -655,7 +680,37 @@ local function RewardButton(index)
 end
 
 -- Zeilen der Questreihe (Pool): nicht anklickbar, Tooltip mit Name, ID, Stufen und Stand
-local FactionName, ReputationRewards -- (weiter unten)
+local FactionName, ReputationRewards, SpellRewards -- (weiter unten)
+
+-- Belohnungen einer nicht angenommenen Quest vom Server nachladen (klappt nicht bei jedem Server/jeder Quest;
+-- dann bleibt es bei Erfahrung, Geld und Ruf). Ist ein Tooltip der Questreihe offen, wird er neu gefüllt.
+local requestedRewards = {}
+local function RequestRewardData(questID)
+    if requestedRewards[questID] then return end
+    requestedRewards[questID] = true
+    if C_QuestLog.RequestLoadQuestByID then pcall(C_QuestLog.RequestLoadQuestByID, questID) end
+    if C_TaskQuest and C_TaskQuest.RequestPreloadRewardData then
+        pcall(C_TaskQuest.RequestPreloadRewardData, questID)
+    end
+end
+
+-- Gegenstands-Belohnungen einer Quest (auch ohne sie im Log zu haben), soweit das Spiel sie kennt
+local function PreloadedItemRewards(questID)
+    local lines = {}
+    if not (GetNumQuestLogRewards and GetQuestLogRewardInfo) then return lines end
+    local ok, num = pcall(GetNumQuestLogRewards, questID)
+    for i = 1, (ok and num or 0) do
+        local okInfo, name, texture, count, quality = pcall(GetQuestLogRewardInfo, i, questID)
+        if okInfo and name then
+            local color = quality and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[quality]
+            local text = (texture and ("|T" .. texture .. ":14:14:0:0|t ") or "") .. (color and color.hex or "|cffffffff")
+                .. name .. "|r"
+            if count and count > 1 then text = text .. " |cffaaaaaax" .. count .. "|r" end
+            lines[#lines + 1] = text
+        end
+    end
+    return lines
+end
 local chainRows = {}
 -- Tooltip wie im Tracker: Quest im Log = genau der Tracker-Tooltip (Ziel, Beschreibung, Fortschritt, Belohnungen);
 -- sonst derselbe Aufbau aus Questies Daten (Name in Schwierigkeitsfarbe mit Stufe, Questziel, Stand)
@@ -695,12 +750,19 @@ local function ChainTooltip(self)
             if info.starter then tip:AddLine(ns.L("TIP_CHAIN_STARTER", info.starter), 0.75, 0.75, 0.75, true) end
             if info.finisher then tip:AddLine(ns.L("TIP_CHAIN_FINISHER", info.finisher), 0.75, 0.75, 0.75, true) end
         end
-        -- Belohnungen (soweit bekannt): Geld, Erfahrung, Ruf
+        -- Belohnungen (soweit bekannt): Gegenstände und Zauber (vom Server nachgeladen), Geld, Erfahrung, Ruf
+        RequestRewardData(entry.questID)
         local reps = ReputationRewards(entry.questID)
         local money = info.money or 0
-        if (info.xp and info.xp > 0) or money > 0 or #reps > 0 then
+        local items = PreloadedItemRewards(entry.questID)
+        local spells = SpellRewards(entry.questID)
+        if (info.xp and info.xp > 0) or money > 0 or #reps > 0 or #items > 0 or #spells > 0 then
             tip:AddLine(" ")
             tip:AddLine(ns.L("TIP_REWARDS"), 1, 0.82, 0)
+            for _, line in ipairs(items) do tip:AddLine(line) end
+            for _, spell in ipairs(spells) do
+                tip:AddLine((spell.texture and ("|T" .. spell.texture .. ":14:14:0:0|t ") or "") .. spell.name, 0.9, 0.9, 0.9)
+            end
             if money > 0 then
                 tip:AddLine(GetMoneyString and GetMoneyString(money) or GetCoinTextureString(money), 1, 1, 1)
             end
@@ -745,6 +807,23 @@ local function ChainRow(index)
     return row
 end
 
+-- Nachgeladene Questdaten angekommen: offenen Tooltip der Questreihe neu füllen
+do
+    local loader = CreateFrame("Frame")
+    for _, event in ipairs({ "QUEST_DATA_LOAD_RESULT", "GET_ITEM_INFO_RECEIVED" }) do
+        pcall(loader.RegisterEvent, loader, event)
+    end
+    loader:SetScript("OnEvent", function()
+        local tip = Style and Style.GetTooltip()
+        local owner = tip and tip:IsShown() and tip:GetOwner()
+        if owner and owner.entry and not owner.inLog then
+            C_Timer.After(0, function()
+                if tip:GetOwner() == owner and owner:IsMouseOver() then ChainTooltip(owner) end
+            end)
+        end
+    end)
+end
+
 -- Name einer Fraktion (für Rufbelohnungen)
 function FactionName(factionID)
     if C_Reputation and C_Reputation.GetFactionDataByID then
@@ -782,7 +861,7 @@ function ReputationRewards(questID)
 end
 
 -- Zauber-Belohnungen (erlernte Zauber/Fähigkeiten)
-local function SpellRewards(questID)
+function SpellRewards(questID)
     local list = {}
     if C_QuestInfoSystem and C_QuestInfoSystem.GetQuestRewardSpells then
         local ok, spells = pcall(C_QuestInfoSystem.GetQuestRewardSpells, questID)
