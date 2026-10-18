@@ -5,7 +5,11 @@ local addonName, ns = ...
 local Style = {}
 ns.Style = Style
 
-Style.COLOR = {
+-- Farben zentral aus ForeverCore (UI.COLOR): dieselbe Tabelle wie bei allen Forever-Addons – ändert man dort
+-- einen Farbton, ändert er sich überall. Fenster, Positionen und Menüs dieses Addons bleiben, wie sie sind.
+-- (Rückfall nur, falls ForeverCore fehlt – ist aber Abhängigkeit.)
+local HUB_UI = _G.ForeverHub and _G.ForeverHub.UI
+Style.COLOR = (HUB_UI and HUB_UI.COLOR) or {
     background = { 0.07, 0.07, 0.09, 0.97 },
     header = { 0.11, 0.11, 0.14, 1 },
     panel = { 0.10, 0.10, 0.12, 0.95 },

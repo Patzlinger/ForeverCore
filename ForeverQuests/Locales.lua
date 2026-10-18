@@ -92,7 +92,7 @@ local STRINGS = {
         OPT_QUEST_TYPE = "Questtyp anzeigen (Klasse/Ruf)",
         OPT_MINIMAP = "Minimap-Button anzeigen",
         OPT_INSTANCE = "In Instanzen nur Instanz-Quests zeigen",
-        OPT_LANGUAGE = "Sprache", LANG_AUTO = "Automatisch (Client)",
+        OPT_LANGUAGE = "Sprache", LANG_AUTO = "Automatisch (wie Forever Hub)",
         OPT_REWARDS = "Belohnungen",
         OPT_REWARDS_HINT = "Quests mit Gegenstandsbelohnungen ab dieser Seltenheit bekommen eine kleine Beutetruhe.",
         REWARD_OFF = "Aus",
@@ -269,7 +269,7 @@ local STRINGS = {
         OPT_QUEST_TYPE = "Show quest type (class/rep)",
         OPT_MINIMAP = "Show minimap button",
         OPT_INSTANCE = "In instances, show instance quests only",
-        OPT_LANGUAGE = "Language", LANG_AUTO = "Automatic (client)",
+        OPT_LANGUAGE = "Language", LANG_AUTO = "Automatic (like Forever Hub)",
         OPT_REWARDS = "Rewards",
         OPT_REWARDS_HINT = "Quests with item rewards of at least this quality get a small loot chest.",
         REWARD_OFF = "Off",
@@ -390,7 +390,11 @@ function ns.GetLanguage()
     if language == "enUS" then
         return "enUS"
     end
-    return "deDE" -- "Automatisch" oder "Deutsch"
+    if language == "deDE" then return "deDE" end
+    -- "Automatisch": wie alle Forever-Addons (Sprache im Hub-Fenster /forever)
+    local hub = _G.ForeverHub and _G.ForeverHub.UI
+    if hub and hub.GetLanguage then return hub.GetLanguage() end
+    return "deDE"
 end
 
 -- Text zu einem Schlüssel; weitere Werte werden wie bei string.format eingesetzt

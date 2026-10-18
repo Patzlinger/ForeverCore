@@ -55,15 +55,11 @@ local HEADER_HEIGHT = 40
 local FOOTER_HEIGHT = 40
 
 -- Farben im flachen, dunklen Stil
-local COLOR = {
-    background = { 0.07, 0.07, 0.09, 0.97 },
-    header = { 0.11, 0.11, 0.14, 1 },
-    panel = { 0.10, 0.10, 0.12, 0.95 },
-    border = { 0.22, 0.22, 0.26, 1 },
+-- Grundfarben zentral aus ForeverCore (über ns.Style.COLOR), dazu die eigenen Kartenfarben des Dungeonfensters
+local COLOR = setmetatable({
     card = { 0.13, 0.13, 0.16, 1 },
     cardHover = { 0.18, 0.18, 0.22, 1 },
-    accent = { 1, 0.82, 0 },
-}
+}, { __index = ns.Style.COLOR })
 local FLAT_BACKDROP = {
     bgFile = "Interface\\Buttons\\WHITE8x8",
     edgeFile = "Interface\\Buttons\\WHITE8x8",
