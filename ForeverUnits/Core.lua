@@ -66,6 +66,7 @@ ns.DEFAULTS = {
     leaderShow = true,
     markShow = true,
     restingShow = true,            -- Ausruhen-Symbol (Gasthaus/Hauptstadt) am Spielerrahmen
+    dotOnlyHostile = true,         -- DoT-Leisten nur bei angreifbaren Zielen (z. B. nicht "Boosted Rest" beim Lagern)
     comboShow = true,              -- Kombopunkte am Ziel (Schurken, Druiden in Katzengestalt), Combo.lua
     comboPoint = "PORTRAIT",       -- "PORTRAIT" (Spalte neben dem Porträt) | "BELOW" (Balken mit Strichen) | "ABOVE" (Punkte)
     comboSize = 10,                -- Breite der Spalte bzw. Höhe der Striche / Größe der Punkte

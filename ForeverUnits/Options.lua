@@ -186,12 +186,13 @@ do
     UI.Header(p, L, -276, T("Auren", "Auras"))
     Check(p, L, -296, T("Restzeit als Scheibe", "Remaining time as swipe"), G("auraTimer"))
     Check(p, L, -320, T("Tooltip auf Auren (Klicks gehen trotzdem durch)", "Tooltip on auras (clicks still pass through)"), G("auraTooltip"))
+    Check(p, L, -344, T("DoT-Leisten nur bei angreifbaren Zielen", "DoT bars only on attackable targets"), G("dotOnlyHostile"))
 
-    UI.Header(p, L, -360, T("Ausrichten (wenn entsperrt)", "Alignment (when unlocked)"))
-    Check(p, L, -380, T("Raster anzeigen", "Show grid"), G("gridShow"))
-    Check(p, L, -404, T("Einrasten an Rahmen, Bildschirmmitte und Raster", "Snap to frames, screen center and grid"), G("snap"))
-    Slider(p, L, -434, T("Rasterabstand", "Grid spacing"), 8, 128, 4, G("gridSize"), { unit = " px" })
-    UI.Hint(p, L + 4, -474, 300, T("Beim Ziehen Umschalt halten = ohne Einrasten. Genaue Position: X/Y im Reiter Rahmen.",
+    UI.Header(p, L, -384, T("Ausrichten (wenn entsperrt)", "Alignment (when unlocked)"))
+    Check(p, L, -404, T("Raster anzeigen", "Show grid"), G("gridShow"))
+    Check(p, L, -428, T("Einrasten an Rahmen, Bildschirmmitte und Raster", "Snap to frames, screen center and grid"), G("snap"))
+    Slider(p, L, -458, T("Rasterabstand", "Grid spacing"), 8, 128, 4, G("gridSize"), { unit = " px" })
+    UI.Hint(p, L + 4, -498, 300, T("Beim Ziehen Umschalt halten = ohne Einrasten. Genaue Position: X/Y im Reiter Rahmen.",
         "Hold Shift while dragging = no snapping. Exact position: X/Y in the Frames tab."))
 
     UI.Header(p, R, -4, T("Blizzard-Rahmen ausblenden", "Hide Blizzard frames"))

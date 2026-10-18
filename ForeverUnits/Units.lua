@@ -273,6 +273,18 @@ end
 -- Dafuer kurz auf eine andere Einheit umstellen und sofort zurueck.
 local function RefreshAuraUnit(b)
     local other = b.unit == "player" and "target" or "player"
+    -- DoT-Leisten nur bei angreifbaren Zielen (Einstellung): auf einem selbst oder Gruppenmitgliedern stünden sonst
+    -- eigene Schwächungszauber wie "Boosted Rest" vom Lagern als Leiste mit Restzeit. Blizzards Anzeige kann
+    -- einzelne Zauber nicht ausschließen – deshalb die ganze Leiste nur bei Gegnern.
+    local dc = b.v.auras.dots
+    if dc and b.fuDotsWanted ~= nil then
+        local show = b.fuDotsWanted
+        if show and GetDB().dotOnlyHostile and UnitExists(b.unit) then
+            local can = UnitCanAttack("player", b.unit)
+            if not IsSecret(can) and not can then show = false end
+        end
+        pcall(dc.SetShown, dc, show and true or false)
+    end
     for _, c in pairs(b.v.auras) do
         if c:IsShown() then
             pcall(c.SetUnit, c, other)
@@ -549,8 +561,10 @@ local function LayoutAuras(b)
                 dc:SetPoint("TOPLEFT", b, "BOTTOMLEFT", dx, y + dy)
             end
             dc:Show()
+            b.fuDotsWanted = true -- RefreshAuraUnit blendet sie bei nicht angreifbaren Zielen aus
         else
             dc:Hide()
+            b.fuDotsWanted = false
         end
     end
     ns.UpdateDotAnchor(b)
