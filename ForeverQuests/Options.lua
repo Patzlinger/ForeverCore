@@ -245,6 +245,13 @@ local function CreateOptions()
     CreateSettingCheckbox(looks, L("OPT_INSTANCE_HINT"), 14, -270, "instanceHint")
     -- Questlog an der Weltkarte im Forever-Stil (Blizzards Rahmen kommt erst nach /reload zurück)
     CreateSettingCheckbox(looks, L("OPT_QUESTLOG"), 14, -294, "questLogSkin")
+    -- Dungeonfenster: Klick auf "Kartenpunkt" öffnet auch gleich die Weltkarte an dieser Stelle
+    CreateSettingCheckbox(looks, L("OPT_WAYPOINT_MAP"), 14, -318, "waypointOpensMap")
+    -- Quest-IDs (Tracker, Questlog, Dungeonfenster); danach alles neu zeichnen
+    CreateSettingCheckbox(looks, L("OPT_QUEST_IDS"), 14, -342, "showQuestIDs", function()
+        if ns.RequestUpdate then ns.RequestUpdate() end
+        if ns.RequestDungeonRefresh then ns.RequestDungeonRefresh() end
+    end)
 
     -- Unten: Position und Größe
     local function screenWidth() return math.floor(UIParent:GetWidth()) end

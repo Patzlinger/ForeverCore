@@ -1343,7 +1343,7 @@ RenderDetailView = function(dv)
         money = info.money or 0
         xp = info.xp or 0
     end
-    dv.id:SetText("#" .. questID)
+    dv.id:SetText(ns.db.showQuestIDs and ("#" .. questID) or "")
 
     -- Questreihe (aus Questies Datenbank): erledigt = Haken, diese Quest = gold, offen = grau; mit Quest-ID.
     -- Nicht anklickbar, aber Maus darüber zeigt einen Tooltip.
@@ -1366,7 +1366,7 @@ RenderDetailView = function(dv)
                     text = text .. "  |cff88ccff" .. ns.L("DETAIL_IN_LOG") .. "|r"
                 end
             end
-            text = text .. "  |cff6a6a6a#" .. entry.questID .. "|r"
+            if ns.db.showQuestIDs then text = text .. "  |cff6a6a6a#" .. entry.questID .. "|r" end
             rowsUsed = rowsUsed + 1
             local row = ChainRow(dv, rowsUsed)
             row.entry, row.done, row.inLog, row.current = entry, done, inLog, entry.questID == questID

@@ -208,6 +208,13 @@ function ns.GetQuestieActions(questID, withWowhead)
     return entries
 end
 
+-- Wowhead-Link einer Quest in Questies Fenster zum Kopieren (auch für Quests, die nicht im Questlog stehen)
+function ns.ShowQuestieWowhead(questID)
+    if not ns.HasQuestie() or not questID or InCombatLockdown() then return end
+    pcall(function() Module("TrackerData").RefreshQuest(questID) end) -- Name fürs Fenster; ohne Log egal
+    Call(function() Module("QuestiePopup").Show("QUESTIE_WOWHEAD_URL", questID) end)
+end
+
 -- Fügt die Questie-Befehle ins Rechtsklick-Menü einer Quest ein (nur wenn Questie läuft)
 function ns.AddQuestieMenuItems(items, questID, inLog)
     local entries = ns.GetQuestieActions(questID, inLog)
@@ -519,7 +526,7 @@ end
 
 for _, key in ipairs({ "GetQuestieActions", "AddQuestieMenuItems", "QuestieHover", "QuestieFocusDetails",
     "GetQuestChain", "BuildQuestChain", "GetQuestieQuestDetails", "GetQuestieRewardItems",
-    "GetQuestieReputation", "GetQuestieMapToggles" }) do
+    "GetQuestieReputation", "GetQuestieMapToggles", "ShowQuestieWowhead" }) do
     local fn = ns[key]
     local function Finish(ok, ...)
         if ok then return ... end

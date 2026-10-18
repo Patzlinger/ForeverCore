@@ -143,6 +143,20 @@ local function BuildQuest(db, questID, insideAreas)
     return quest
 end
 
+-- Einzelne Quest (z. B. Vorquest außerhalb des Dungeons) wie die Dungeonquests aus Questies Daten aufbauen.
+-- dungeon: für "startet im Dungeon"/Koordinaten (Orte darin zählen als drinnen). Ergebnis wird gemerkt.
+local builtQuests = {}
+function ns.BuildQuestieQuest(questID, dungeon)
+    if not (questID and ns.HasQuestie and ns.HasQuestie()) then return nil end
+    if builtQuests[questID] ~= nil then return builtQuests[questID] or nil end
+    local insideAreas = {}
+    if dungeon and dungeon.areaID then insideAreas[dungeon.areaID] = true end
+    for _, alt in ipairs(dungeon and dungeon.altAreas or {}) do insideAreas[alt] = true end
+    local ok, quest = pcall(BuildQuest, Module("QuestieDB"), questID, insideAreas)
+    builtQuests[questID] = ok and quest or false
+    return ok and quest or nil
+end
+
 -- Stufenbereich aus der Gruppensuche des Spiels (Eintrag, dessen Name den Dungeonnamen enthält)
 local function Simple(name)
     if not name then return nil end

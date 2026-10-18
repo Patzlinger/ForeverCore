@@ -1383,7 +1383,8 @@ local function RenderGroupQuest(entry, y, index, nameX, nameWidth, objectiveX, o
         local quality = GetBestRewardQuality(questID)
         if quality >= ns.db.rewardHighlight then rewardQuality = quality end
     end
-    name = name .. "  |cff6a6a6a#" .. questID .. "|r" -- Quest-ID (zum Nachschlagen/Abgleichen)
+    -- Quest-ID (zum Nachschlagen/Abgleichen), nur mit Einstellung "Quest-IDs anzeigen"
+    if ns.db.showQuestIDs then name = name .. "  |cff6a6a6a#" .. questID .. "|r" end
     index = index + 1
     y = AddLine(index, y, nameX, nameWidth, name, fonts.quest, r, g, b, {
         questID = logIndex and questID or nil,

@@ -70,6 +70,9 @@ local STRINGS = {
 
         -- Questlog an der Weltkarte
         OPT_QUESTLOG = "Questlog im Forever-Stil (nach /reload)",
+        OPT_WAYPOINT_MAP = "Kartenpunkt öffnet die Weltkarte",
+        OPT_QUEST_IDS = "Quest-IDs anzeigen",
+        PREQUEST_NEEDED = "Vorquest – zuerst erledigen",
         LOG_SEARCH = "Quests durchsuchen …",
         LOG_EMPTY_SEARCH = "Keine Quest passt zur Suche.",
         TIP_WATCH_ON = "Verfolgen (im Tracker anzeigen)",
@@ -299,6 +302,9 @@ local STRINGS = {
         QUESTIE_WOWHEAD = "Wowhead link",
 
         OPT_QUESTLOG = "Quest log in Forever style (after /reload)",
+        OPT_WAYPOINT_MAP = "Map pin opens the world map",
+        OPT_QUEST_IDS = "Show quest IDs",
+        PREQUEST_NEEDED = "Prerequisite – do this first",
         LOG_SEARCH = "Search quests …",
         LOG_EMPTY_SEARCH = "No quest matches your search.",
         TIP_WATCH_ON = "Track (show in the tracker)",

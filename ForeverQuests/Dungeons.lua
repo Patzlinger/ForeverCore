@@ -696,6 +696,17 @@ local function SetWaypoint(quest)
     end
     print(prefix .. ns.L("WAYPOINT_SET", GiverText(quest) or ns.L("QUEST_GIVER"),
         Localized(quest, "zone") or "?", quest.x, quest.y))
+    -- Option: Weltkarte gleich an dieser Stelle öffnen; das Dungeonfenster rückt dahinter (Klick holt es zurück)
+    if ns.db.waypointOpensMap and not InCombatLockdown() then
+        local map = _G.WorldMapFrame
+        if map then
+            if not map:IsShown() then
+                if OpenWorldMap then OpenWorldMap(mapID) elseif ToggleWorldMap then ToggleWorldMap() end
+            end
+            if map.SetMapID then map:SetMapID(mapID) end
+            if window then window:SetFrameStrata("LOW") end
+        end
+    end
 end
 
 -- Quest aus dem eigenen Questlog mit der Gruppe teilen
@@ -1032,6 +1043,18 @@ end
 -- Rechte Seite: Quests des gewählten Dungeons
 ---------------------------------------------------------------------------
 
+-- Rechtsklick-Menü einer Quest im Dungeonfenster (Karte, Vorquest, Zeile der Questreihe): Wowhead-Link wie im
+-- Tracker (Questies Fenster zum Kopieren, darum nur mit Questie)
+local function OpenQuestMenu(owner, questID)
+    if not questID then return end
+    local items = { { title = GetGameQuestTitle(questID) or QuestIDFallback(questID) } }
+    if ns.ShowQuestieWowhead and ns.HasQuestie and ns.HasQuestie() then
+        table.insert(items, { text = ns.L("QUESTIE_WOWHEAD"), disabled = InCombatLockdown(),
+            onClick = function() ns.ShowQuestieWowhead(questID) end })
+    end
+    if #items > 1 then ns.Style.ShowMenu(owner, items) end
+end
+
 local function GetQuestEntry(index)
     local entry = questEntries[index]
     if not entry then
@@ -1043,14 +1066,20 @@ local function GetQuestEntry(index)
         entry:SetScript("OnLeave", function(self)
             self:SetBackdropColor(unpack(COLOR.card))
         end)
-        -- Klick auf die Karte klappt die Belohnungen ein bzw. aus; Shift-Klick verlinkt die Quest im Chat
-        entry:SetScript("OnClick", function(self)
+        -- Klick auf die Karte klappt die Belohnungen ein bzw. aus; Shift-Klick verlinkt die Quest im Chat;
+        -- Rechtsklick öffnet das Menü der Quest (Wowhead-Link)
+        entry:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+        entry:SetScript("OnClick", function(self, button)
             local quest = self.quest
+            if quest and button == "RightButton" then
+                OpenQuestMenu(self, quest.id)
+                return
+            end
             if quest and IsModifiedClick("CHATLINK") then
                 LinkQuestInChat(quest)
                 return
             end
-            if quest and quest.rewards and #quest.rewards > 0 then
+            if quest and self.rewardToggle and self.rewardToggle:IsShown() then
                 rewardsExpanded[quest] = rewardsExpanded[quest] == false
                 RefreshDetail()
             end
@@ -1197,7 +1226,9 @@ local function BuildCards(dungeon)
     for _, quest in ipairs(dungeon.quests or {}) do
         if IsQuestVisible(quest) then
             local chain = quest.id and ns.GetQuestChain and ns.GetQuestChain(quest.id)
-            local key = chain and ("chain:" .. chain[1].questID) or quest
+            -- Kennt Questie keine Reihe (z. B. bei neuen Forever-Quests fehlen dort die Verknüpfungen), gelten
+            -- gleichnamige Quests desselben Dungeons als eine Reihe
+            local key = chain and ("chain:" .. chain[1].questID) or ("name:" .. tostring(QuestName(quest)):lower())
             local card = byKey[key]
             if not card then
                 card = { members = {}, chain = chain }
@@ -1208,9 +1239,18 @@ local function BuildCards(dungeon)
         end
     end
     for _, card in ipairs(cards) do
+        -- Gleichnamige Quests ohne Questie-Reihe: Reihenfolge nach Quest-ID (so vergibt Blizzard sie in der Regel)
+        if not card.chain and #card.members > 1 then
+            table.sort(card.members, function(a, b) return (a.id or 0) < (b.id or 0) end)
+            card.chain = {}
+            for _, member in ipairs(card.members) do
+                card.chain[#card.chain + 1] = { questID = member.id, name = QuestName(member),
+                    level = tonumber(member.level), requiredLevel = member.minLevel }
+            end
+        end
         -- Reihenfolge innerhalb der Reihe wie in der Kette
+        local position = {}
         if card.chain then
-            local position = {}
             for i, entry in ipairs(card.chain) do position[entry.questID] = i end
             table.sort(card.members, function(a, b) return (position[a.id] or 99) < (position[b.id] or 99) end)
         end
@@ -1223,6 +1263,24 @@ local function BuildCards(dungeon)
             end
         end
         card.quest = card.quest or card.members[#card.members]
+
+        -- Vorquest: Ist der nächste offene Teil der Reihe eine Quest außerhalb des Dungeons, die vor der
+        -- Dungeonquest kommt, zeigt die Karte diese Vorquest (mit Questgeber und Kartenpunkt aus Questie)
+        if card.chain and card.quest and position[card.quest.id] then
+            local isMember = {}
+            for _, member in ipairs(card.members) do isMember[member.id] = true end
+            for i, entry in ipairs(card.chain) do
+                if i >= position[card.quest.id] then break end
+                if not isMember[entry.questID] and GetQuestStatus(entry.questID) ~= "DONE" then
+                    local prequest = ns.BuildQuestieQuest and ns.BuildQuestieQuest(entry.questID, dungeon)
+                    if prequest then
+                        prequest.isPrequest = true
+                        card.quest = prequest
+                    end
+                    break
+                end
+            end
+        end
     end
     return cards
 end
@@ -1243,7 +1301,8 @@ local function ChainLine(index, entry, quest)
     elseif inLog then
         color, suffix = "|cffffd100", " |cff88ccff" .. ns.L("DETAIL_IN_LOG") .. "|r"
     end
-    return "   " .. color .. index .. ". " .. name .. level .. "|r" .. suffix .. "  |cff6a6a6a#" .. entry.questID .. "|r"
+    local id = ns.db.showQuestIDs and ("  |cff6a6a6a#" .. entry.questID .. "|r") or ""
+    return "   " .. color .. index .. ". " .. name .. level .. "|r" .. suffix .. id
 end
 
 local function LayoutCardChain(entry, chain, quest, width)
@@ -1273,6 +1332,10 @@ local function LayoutCardChain(entry, chain, quest, width)
             row:SetScript("OnLeave", function(self)
                 local tip = ns.Style.GetTooltip()
                 if tip:GetOwner() == self then tip:Hide() end
+            end)
+            -- Rechtsklick: Menü der Quest (Wowhead-Link)
+            row:SetScript("OnMouseUp", function(self, button)
+                if button == "RightButton" and self.questID then OpenQuestMenu(self, self.questID) end
             end)
             rows[i + 1] = row
         end
@@ -1400,18 +1463,20 @@ RefreshDetail = function()
                 table.insert(parts, (GiverText(quest, true) or "?") .. " |cff888888–|r " .. where)
             end
             -- Hinweis, wenn man die Quest erst im Dungeon bekommt
+            -- Vorquest (außerhalb des Dungeons): zuerst erledigen, damit es mit den Dungeonquests weitergeht
+            if quest.isPrequest then table.insert(parts, 1, "|cffff9933" .. ns.L("PREQUEST_NEEDED") .. "|r") end
             if quest.startsInside then table.insert(parts, "|cff4fc3f7" .. ns.L("STARTS_INSIDE") .. "|r") end
             if quest.minLevel then table.insert(parts, "|cff888888" .. ns.L("FROM_LEVEL") .. "|r " .. quest.minLevel) end
             -- Fraktion nur nennen, wenn sie vom Dungeon abweicht
 
             local className = ClassText(quest)
             if className then table.insert(parts, className) end
-            if quest.id then table.insert(parts, "|cff666666ID " .. quest.id .. "|r") end
+            if quest.id and ns.db.showQuestIDs then table.insert(parts, "|cff666666ID " .. quest.id .. "|r") end
             local lines = { table.concat(parts, "   ") }
             local extraParts = {}
             -- Questkette (enthält auch die Vorquest); ohne Kette nur die Vorquest
             -- Questreihe aus Questie: als eigene Zeilen mit Tooltip (LayoutCardChain); sonst kurze Kette im Text
-            local questieChain = quest.id and ns.GetQuestChain and ns.GetQuestChain(quest.id)
+            local questieChain = card.chain -- aus Questie bzw. gleichnamige Quests (siehe BuildCards)
             local chainText = (not questieChain) and ChainText(quest) or nil
             local prequest = PrequestText(quest)
             if chainText then
@@ -2069,13 +2134,14 @@ local function CreateWindow()
     allTab.key = "all"
     local levelTab = ns.Style.CreateButton(listPanel, ns.L("TAB_MY_LEVEL"), tabWidth, 24, function() SelectTab("level") end,
         function(tooltip) tooltip:AddLine(ns.L("TIP_MY_LEVEL"), 1, 1, 1, true) end)
-    levelTab:SetPoint("LEFT", allTab, "RIGHT", 6, 0)
     levelTab.key = "level"
     local raidTab = ns.Style.CreateButton(listPanel, ns.L("TAB_RAIDS"), tabWidth, 24, function() SelectTab("raid") end,
         function(tooltip) tooltip:AddLine(ns.L("TIP_RAIDS"), 1, 1, 1, true) end)
-    raidTab:SetPoint("LEFT", levelTab, "RIGHT", 6, 0)
     raidTab.key = "raid"
-    tabs = { allTab, levelTab, raidTab }
+    -- Reihenfolge: Alle Dungeons | Schlachtzüge | Mein Levelbereich
+    raidTab:SetPoint("LEFT", allTab, "RIGHT", 6, 0)
+    levelTab:SetPoint("LEFT", raidTab, "RIGHT", 6, 0)
+    tabs = { allTab, raidTab, levelTab }
     -- Nach dem Darüberfahren die Reiterfarbe wiederherstellen
     for _, tab in ipairs(tabs) do tab:HookScript("OnLeave", UpdateTabs) end
     UpdateTabs()
