@@ -6,6 +6,7 @@
 - ForeverQuests, **Questie support:** if you use Questie, its own tracker is switched off automatically so only the ForeverQuests tracker shows. Questie's map and minimap icons and tooltips keep working and follow the quests you track. Right-click a quest in the tracker for Questie actions: highlight it on the map (other quest icons fade), show the turn-in on the map, set a TomTom waypoint (with TomTom installed) and copy the Wowhead link.
 
 ### Improved
+- ForeverMinimap: the mail tile is always there now – greyed out with "No new mail" on mouse-over, and in full color with a gold border as soon as you have new mail.
 - ForeverBags: new items now shimmer in a soft gold instead of blue, so they no longer look like rare (blue) items.
 - ForeverBars: the experience and reputation bars got a new look that matches the Forever windows: a crisp thin border with a gold line on top, a calmer, slightly smaller font without outline, subtly engraved tenth marks and a soft sheen on the fill. Rested and quest XP use gentler colors and get a fine end mark, so they stay easy to tell apart.
 - ForeverBags: items that start a quest now show Blizzard's yellow exclamation mark, so you can tell them apart from normal quest items.

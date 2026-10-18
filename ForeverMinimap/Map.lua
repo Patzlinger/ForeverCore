@@ -506,10 +506,15 @@ local function PendingInvites()
 end
 
 -- Neue Post: kein Knopf in der Leiste, sondern eine Kachel in der Ecke unten neben der Knopfleiste (links bzw. rechts,
--- je nach Seite der Leiste), genau zwischen Leiste und angedocktem Mikromenue; nur sichtbar, solange Post da ist
+-- je nach Seite der Leiste), genau zwischen Leiste und angedocktem Mikromenue; immer sichtbar: ohne Post ausgegraut
+-- (Maus darueber: "Keine neue Post"), mit Post farbig mit goldenem Rand
 local MAIL_DEF = {
     key = "mail", icon = "Interface\\Icons\\INV_Letter_15",
     tip = function()
+        if not HasMail() then
+            GameTooltip:AddLine(T("Keine neue Post", "No new mail"), 0.7, 0.7, 0.7)
+            return
+        end
         GameTooltip:AddLine(T("Neue Post", "New mail"))
         if GetLatestThreeSenders then
             for _, sender in ipairs({ GetLatestThreeSenders() }) do GameTooltip:AddLine(sender, 1, 1, 1) end
@@ -905,7 +910,6 @@ local MAIL_FREE = 24
 local function PlaceMail(side, bottomRef)
     local b = mailButton
     if not b then return end
-    if not HasMail() then b:Hide() return end
     local d = DB()
     local w, h
     b:ClearAllPoints()
@@ -937,9 +941,13 @@ local function PlaceMail(side, bottomRef)
     b.icon:ClearAllPoints()
     b.icon:SetPoint("CENTER")
     b.icon:SetSize(s, s)
-    b:SetAlpha(1)
-    b.alert = true
-    StyleItem(b, IsRound(), true)
+    -- ohne Post: grau und halb durchsichtig, mit Post: farbig, goldener Rand
+    local has = HasMail() and true or false
+    b.icon:SetDesaturated(not has)
+    b.icon:SetAlpha(has and 1 or 0.55)
+    b:SetAlpha(has and 1 or 0.8)
+    b.alert = has
+    StyleItem(b, IsRound(), has)
     b:Show()
 end
 
