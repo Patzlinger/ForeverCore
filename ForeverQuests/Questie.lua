@@ -159,11 +159,12 @@ local function Call(fn)
     if not ok then print(ns.ChatPrefix() .. ": Questie - " .. tostring(err)) end
 end
 
--- Fügt die Questie-Befehle ins Rechtsklick-Menü einer Quest ein (nur wenn Questie läuft)
-function ns.AddQuestieMenuItems(items, questID)
-    if not ns.HasQuestie() then return end
-    local caps = GetCapabilities(questID)
+-- Questie-Befehle zu einer Quest als Liste { text, onClick, disabled } (leer, wenn Questie nicht läuft).
+-- Genutzt vom Rechtsklick-Menü und von den Knöpfen in der Questdetail-Ansicht.
+function ns.GetQuestieActions(questID)
     local entries = {}
+    if not ns.HasQuestie() then return entries end
+    local caps = GetCapabilities(questID)
 
     if IsFocused(questID) then
         -- Fokus aufheben: alle Quest-Symbole wieder normal
@@ -200,8 +201,119 @@ function ns.AddQuestieMenuItems(items, questID)
         Module("TrackerData").RefreshQuest(questID) -- damit der Name im Fenster steht
         Module("QuestiePopup").Show("QUESTIE_WOWHEAD_URL", questID)
     end) end })
+    return entries
+end
 
+-- Fügt die Questie-Befehle ins Rechtsklick-Menü einer Quest ein (nur wenn Questie läuft)
+function ns.AddQuestieMenuItems(items, questID)
+    local entries = ns.GetQuestieActions(questID)
+    if #entries == 0 then return end
     table.insert(items, { divider = true })
     table.insert(items, { title = "Questie" })
     for _, entry in ipairs(entries) do table.insert(items, entry) end
+end
+
+---------------------------------------------------------------------------
+-- Questie-Kartensymbole einer Quest hervorheben (Maus über einer Quest im Questlog):
+-- alle Symbole dieser Quest etwas größer, alle anderen blass; beim Verlassen alles wie vorher
+---------------------------------------------------------------------------
+local fadedIcons, grownIcons = {}, {}
+function ns.QuestieHover(questID)
+    for icon, alpha in pairs(fadedIcons) do icon:SetAlpha(alpha) end
+    for icon, size in pairs(grownIcons) do icon:SetSize(size[1], size[2]) end
+    wipe(fadedIcons)
+    wipe(grownIcons)
+    if not questID or not ns.HasQuestie() then return end
+    pcall(function()
+        local frames = Module("QuestieMap").questIdFrames or {}
+        if not frames[questID] then return end -- Questie kennt die Quest nicht: nichts abblenden
+        for id, list in pairs(frames) do
+            for _, name in pairs(list) do
+                local icon = _G[name]
+                if icon and not icon.miniMapIcon and icon:IsShown() then
+                    if id == questID then
+                        local w, h = icon:GetSize()
+                        grownIcons[icon] = { w, h }
+                        icon:SetSize(w * 1.35, h * 1.35)
+                    else
+                        fadedIcons[icon] = icon:GetAlpha()
+                        icon:SetAlpha(0.15)
+                    end
+                end
+            end
+        end
+    end)
+end
+
+---------------------------------------------------------------------------
+-- Questreihe aus Questies Datenbank: Vorquests (rückwärts) und Folgequests (vorwärts).
+-- Rückgabe: Liste { questID, name, level } in Reihenfolge, oder nil (Questie fehlt / keine Reihe)
+---------------------------------------------------------------------------
+function ns.GetQuestChain(questID)
+    if not ns.HasQuestie() then return nil end
+    local ok, chain = pcall(function()
+        local db = Module("QuestieDB")
+        local function Entry(id)
+            return { questID = id, name = db.QueryQuestSingle(id, "name"), level = db.QueryQuestSingle(id, "questLevel") }
+        end
+        local function Previous(id)
+            for _, key in ipairs({ "preQuestSingle", "preQuestGroup" }) do
+                local list = db.QueryQuestSingle(id, key)
+                if type(list) == "table" and list[1] then return list[1] end
+            end
+        end
+        local list, seen = { Entry(questID) }, { [questID] = true }
+        local id = Previous(questID)
+        while id and not seen[id] and #list < 15 do
+            seen[id] = true
+            table.insert(list, 1, Entry(id))
+            id = Previous(id)
+        end
+        id = db.QueryQuestSingle(questID, "nextQuestInChain")
+        while id and id ~= 0 and not seen[id] and #list < 25 do
+            seen[id] = true
+            table.insert(list, Entry(id))
+            id = db.QueryQuestSingle(id, "nextQuestInChain")
+        end
+        return list
+    end)
+    if ok and chain and #chain > 1 then return chain end
+end
+
+-- Rufbelohnungen aus Questies Datenbank: Liste { factionID, amount }
+function ns.GetQuestieReputation(questID)
+    if not ns.HasQuestie() then return nil end
+    local ok, list = pcall(function() return Module("QuestieDB").QueryQuestSingle(questID, "reputationReward") end)
+    return ok and type(list) == "table" and list or nil
+end
+
+---------------------------------------------------------------------------
+-- Questie-Kartenschalter fürs Rädchen im Questlog (ersetzen Blizzards Kartenmenü, das mit Questie nichts bewirkt)
+---------------------------------------------------------------------------
+function ns.GetQuestieMapToggles()
+    if not ns.HasQuestie() or not (_G.Questie.db and _G.Questie.db.profile) then return nil end
+    local profile = _G.Questie.db.profile
+    local function Toggle(key, apply)
+        return {
+            checked = function() return profile[key] and true or false end,
+            onClick = function() profile[key] = not profile[key]; Call(function() apply(profile[key]) end) end,
+        }
+    end
+    local available = Toggle("enableAvailable", function(v) Module("QuestieQuest").ToggleAvailableQuests(v) end)
+    local objectives = Toggle("enableObjectives", function(v) Module("QuestieQuest"):ToggleNotes(v) end)
+    local turnins = Toggle("enableTurnins", function(v) Module("QuestieQuest").ToggleAvailableQuests(v) end)
+    -- Niedrigstufige Quests: Questies Einstellung "alle zeigen" (2) bzw. "keine" (1)
+    local lowLevel = {
+        checked = function() return profile.lowLevelStyle == (_G.Questie.LOWLEVEL_ALL or 2) end,
+        onClick = function()
+            local all = _G.Questie.LOWLEVEL_ALL or 2
+            profile.lowLevelStyle = (profile.lowLevelStyle == all) and (_G.Questie.LOWLEVEL_NONE or 1) or all
+            Call(function()
+                local availableQuests = Module("AvailableQuests")
+                availableQuests.ResetLevelRequirementCache()
+                availableQuests.CalculateAndDrawAll()
+            end)
+        end,
+    }
+    return { available = available, objectives = objectives, turnins = turnins, lowLevel = lowLevel }
 end

@@ -81,6 +81,13 @@ local STRINGS = {
         LOG_MENU_MARKERS = "Blizzard-Questmarker auf der Karte",
         LOG_MENU_TRACK_ALL = "Alle Quests verfolgen",
         LOG_MENU_TRACK_NONE = "Keine Quest verfolgen",
+        LOG_MENU_Q_AVAILABLE = "Questgeber (Questie)",
+        LOG_MENU_Q_OBJECTIVES = "Questziele (Questie)",
+        LOG_MENU_Q_TURNINS = "Abgabe-Orte (Questie)",
+        LOG_MENU_Q_LOWLEVEL = "Niedrigstufige Quests (Questie)",
+        DETAIL_CHAIN = "Questreihe", DETAIL_IN_LOG = "im Questlog",
+        DETAIL_SPELLS = "Du erlernst:",
+        DETAIL_REPUTATION = "%s Ruf bei %s", DETAIL_HONOR = "%d Ehre", DETAIL_TITLE = "Titel: %s",
         TIP_DETAIL_MENU = "Weitere Befehle (wie Rechtsklick im Tracker)",
 
         -- Filter
@@ -280,6 +287,13 @@ local STRINGS = {
         LOG_MENU_MARKERS = "Blizzard quest markers on the map",
         LOG_MENU_TRACK_ALL = "Track all quests",
         LOG_MENU_TRACK_NONE = "Track no quests",
+        LOG_MENU_Q_AVAILABLE = "Quest givers (Questie)",
+        LOG_MENU_Q_OBJECTIVES = "Quest objectives (Questie)",
+        LOG_MENU_Q_TURNINS = "Turn-in spots (Questie)",
+        LOG_MENU_Q_LOWLEVEL = "Low-level quests (Questie)",
+        DETAIL_CHAIN = "Quest chain", DETAIL_IN_LOG = "in your log",
+        DETAIL_SPELLS = "You will learn:",
+        DETAIL_REPUTATION = "%s reputation with %s", DETAIL_HONOR = "%d honor", DETAIL_TITLE = "Title: %s",
         TIP_DETAIL_MENU = "More commands (like right-click in the tracker)",
 
         FILTER_TITLE = "Filter quests (several possible)",

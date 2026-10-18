@@ -276,6 +276,39 @@ local function SkinWorldMap()
     Fade(map.NineSlice)
     Fade(map.Bg)
     Fade(map.PortraitContainer)
+    top.fqOwn = true
+
+    -- Alle übrigen Blizzard-Flächen von Fenster und Rahmen (Eck-Verzierungen, Kanten): nur Texturen, kein Text,
+    -- keine Knöpfe, nicht die Karte selbst (ScrollContainer) und nicht unsere eigenen Teile
+    local function FadeTextures(frame)
+        for _, region in ipairs({ frame:GetRegions() }) do
+            if region.GetObjectType and region:GetObjectType() == "Texture" then Fade(region) end
+        end
+    end
+    FadeTextures(map)
+    if border then
+        FadeTextures(border)
+        for _, child in ipairs({ border:GetChildren() }) do
+            local objectType = child.GetObjectType and child:GetObjectType()
+            if not child.fqOwn and objectType ~= "Button" and objectType ~= "CheckButton" then FadeTextures(child) end
+        end
+    end
+    local questMap = _G.QuestMapFrame
+    if questMap then
+        FadeTextures(questMap)
+        Fade(questMap.Background)
+        Fade(questMap.BorderFrame)
+    end
+
+    -- Schließen-Knopf kleiner; Vollbild-Knopf ganz weg (Karte bleibt im Fenster, verschieb- und skalierbar)
+    local close = border and border.CloseButton or map.CloseButton
+    if close and close.SetScale then close:SetScale(0.75) end
+    local maximize = (border and border.MaximizeMinimizeFrame) or map.MaximizeMinimizeFrame
+    if maximize then
+        maximize:Hide()
+        maximize:HookScript("OnShow", maximize.Hide)
+    end
+    if IsMaximized(map) and map.Minimize then pcall(map.Minimize, map) end
 
     -- Navigationsleiste; neue Knöpfe (beim Hineinzoomen) gleich mitgestalten
     SkinNavBar(map.NavBar)
@@ -349,8 +382,10 @@ local function RequestLogUpdate()
     C_Timer.After(0.05, ns.UpdateQuestLog)
 end
 
--- Maus über einer Quest: ihr Gebiet auf der Karte hervorheben (wie bei Blizzards Liste)
+-- Maus über einer Quest: alle ihre Marker auf der Karte hervorheben (Questie-Symbole größer, andere blass;
+-- dazu Blizzards eigene Hervorhebung des Questgebiets)
 local function HighlightOnMap(questID)
+    if ns.QuestieHover then ns.QuestieHover(questID) end
     local map = _G.WorldMapFrame
     if not map then return end
     if questID and map.SetHighlightedQuestID then
@@ -391,20 +426,47 @@ local function WatchAll(watch)
 end
 
 function OpenLogMenu(owner)
-    ns.Style.ShowMenu(owner, {
-        { title = ns.L("LOG_MENU_TITLE") },
-        {
-            checkbox = true,
-            text = ns.L("LOG_MENU_MARKERS"),
-            checked = function() return ns.BlizzardQuestMarkersShown and ns.BlizzardQuestMarkersShown() or false end,
-            onClick = function()
-                if ns.SetBlizzardQuestMarkers then ns.SetBlizzardQuestMarkers(not ns.BlizzardQuestMarkersShown()) end
-            end,
-        },
-        { divider = true },
-        { text = ns.L("LOG_MENU_TRACK_ALL"), onClick = function() WatchAll(true) end },
-        { text = ns.L("LOG_MENU_TRACK_NONE"), onClick = function() WatchAll(false) end },
+    local items = { { title = ns.L("LOG_MENU_TITLE") } }
+    -- mit Questie: dessen Kartensymbole (statt Blizzards Kartenmenü, das mit Questie nichts bewirkt)
+    local toggles = ns.GetQuestieMapToggles and ns.GetQuestieMapToggles()
+    if toggles then
+        for _, entry in ipairs({
+            { "LOG_MENU_Q_AVAILABLE", toggles.available }, { "LOG_MENU_Q_OBJECTIVES", toggles.objectives },
+            { "LOG_MENU_Q_TURNINS", toggles.turnins }, { "LOG_MENU_Q_LOWLEVEL", toggles.lowLevel },
+        }) do
+            table.insert(items, { checkbox = true, text = ns.L(entry[1]), checked = entry[2].checked,
+                onClick = entry[2].onClick })
+        end
+    end
+    table.insert(items, {
+        checkbox = true,
+        text = ns.L("LOG_MENU_MARKERS"),
+        checked = function() return ns.BlizzardQuestMarkersShown and ns.BlizzardQuestMarkersShown() or false end,
+        onClick = function()
+            if ns.SetBlizzardQuestMarkers then ns.SetBlizzardQuestMarkers(not ns.BlizzardQuestMarkersShown()) end
+        end,
     })
+    table.insert(items, { divider = true })
+    table.insert(items, { text = ns.L("LOG_MENU_TRACK_ALL"), onClick = function() WatchAll(true) end })
+    table.insert(items, { text = ns.L("LOG_MENU_TRACK_NONE"), onClick = function() WatchAll(false) end })
+    ns.Style.ShowMenu(owner, items)
+end
+
+-- Blizzards Kartenmenü (gelber Pfeil oben rechts: Questziele, Queststufen, niedrigstufige Quests …) steuert nur
+-- Blizzards Marker – mit Questie sind die aus, das Menü bewirkt dann nichts. Darum mit Questie ausblenden; die
+-- Questie-Schalter stehen in unserem Rädchen. Erkennung: Aufklappknopf der Karte oben rechts.
+local function FadeMapTrackingMenu()
+    local map = _G.WorldMapFrame
+    if not map or type(_G.Questie) ~= "table" then return end
+    for _, frame in ipairs(map.overlayFrames or {}) do
+        local point = frame.GetPoint and frame:GetPoint(1)
+        local name = frame.GetDebugName and frame:GetDebugName() or ""
+        local isFloor = name:find("Floor") ~= nil
+        if not isFloor and (name:find("Tracking") or (frame.SetupMenu and point == "TOPRIGHT")) then
+            Fade(frame)
+            if frame.EnableMouse then frame:EnableMouse(false) end
+        end
+    end
 end
 
 -- Blizzards Rädchen (Questlog-Einstellungen) unsichtbar und ohne Maus – ersetzt durch unseres
@@ -421,6 +483,7 @@ end
 local function CreatePanel(area)
     local color = Style.COLOR
     FadeBlizzardSettings(area)
+    pcall(FadeMapTrackingMenu)
     panel = CreateFrame("Frame", "ForeverQuestsLog", area, "BackdropTemplate")
     panel:SetAllPoints(area)
     -- über allen Teilen von Blizzards Liste; fängt deren Maus ab (Blizzards Liste darunter bleibt unberührt)
@@ -537,6 +600,10 @@ local function RewardTooltip(self)
         if self.currencyID and tip.SetCurrencyByID then
             shown = pcall(tip.SetCurrencyByID, tip, self.currencyID) and tip:NumLines() > 0
         end
+    elseif self.kind == "spell" then
+        if self.spellID and tip.SetSpellByID then
+            shown = pcall(tip.SetSpellByID, tip, self.spellID) and tip:NumLines() > 0
+        end
     else
         C_QuestLog.SetSelectedQuest(detailQuestID)
         if tip.SetQuestLogItem then
@@ -578,13 +645,85 @@ local function RewardButton(index)
         Style.GetTooltip():Hide()
     end)
     button:SetScript("OnClick", function(self)
-        if self.kind == "currency" or not IsModifiedClick() then return end
+        if self.kind == "currency" or self.kind == "spell" or not IsModifiedClick() then return end
         C_QuestLog.SetSelectedQuest(detailQuestID)
         local link = GetQuestLogItemLink and GetQuestLogItemLink(self.kind, self.index)
         if link then HandleModifiedItemClick(link) end
     end)
     rewardButtons[index] = button
     return button
+end
+
+-- Knöpfe für die Questie-Befehle in der Detailansicht (Pool)
+local questieButtons = {}
+local function QuestieButton(index)
+    local button = questieButtons[index]
+    if button then return button end
+    button = Style.CreateButton(detailContent, "", 10, 20, function(self)
+        if self.action and not self.action.disabled and self.action.onClick then self.action.onClick() end
+    end)
+    questieButtons[index] = button
+    return button
+end
+
+-- Name einer Fraktion (für Rufbelohnungen)
+local function FactionName(factionID)
+    if C_Reputation and C_Reputation.GetFactionDataByID then
+        local data = C_Reputation.GetFactionDataByID(factionID)
+        if data and data.name then return data.name end
+    end
+    if GetFactionInfoByID then
+        local name = GetFactionInfoByID(factionID)
+        if name then return name end
+    end
+    return "#" .. tostring(factionID)
+end
+
+-- Ruf-Belohnungen: aus Questies Datenbank (genaue Werte), sonst vom Spiel
+local function ReputationRewards(questID)
+    local list = {}
+    local fromQuestie = ns.GetQuestieReputation and ns.GetQuestieReputation(questID)
+    if fromQuestie then
+        for _, pair in ipairs(fromQuestie) do
+            if pair[1] and pair[2] and pair[2] ~= 0 then list[#list + 1] = { factionID = pair[1], amount = pair[2] } end
+        end
+    end
+    if #list == 0 and GetNumQuestLogRewardFactions and GetQuestLogRewardFactionInfo then
+        local ok, num = pcall(GetNumQuestLogRewardFactions, questID)
+        for i = 1, (ok and num or 0) do
+            local factionID, amount = GetQuestLogRewardFactionInfo(i)
+            if factionID and amount and amount ~= 0 then
+                -- ältere Spielversionen liefern den Wert mal 100
+                if math.abs(amount) >= 5000 then amount = math.floor(amount / 100 + 0.5) end
+                list[#list + 1] = { factionID = factionID, amount = amount }
+            end
+        end
+    end
+    return list
+end
+
+-- Zauber-Belohnungen (erlernte Zauber/Fähigkeiten)
+local function SpellRewards(questID)
+    local list = {}
+    if C_QuestInfoSystem and C_QuestInfoSystem.GetQuestRewardSpells then
+        local ok, spells = pcall(C_QuestInfoSystem.GetQuestRewardSpells, questID)
+        for _, spellID in ipairs(ok and spells or {}) do
+            local info = C_QuestInfoSystem.GetQuestRewardSpellInfo and C_QuestInfoSystem.GetQuestRewardSpellInfo(questID, spellID)
+            local name, texture = info and info.name, info and info.texture
+            if not name and C_Spell and C_Spell.GetSpellInfo then
+                local spellInfo = C_Spell.GetSpellInfo(spellID)
+                name, texture = spellInfo and spellInfo.name, spellInfo and spellInfo.iconID
+            end
+            if name then list[#list + 1] = { kind = "spell", spellID = spellID, name = name, texture = texture } end
+        end
+    elseif GetNumQuestLogRewardSpells and GetQuestLogRewardSpell then
+        local ok, num = pcall(GetNumQuestLogRewardSpells, questID)
+        for i = 1, (ok and num or 0) do
+            local texture, name, _, _, _, _, _, _, spellID = GetQuestLogRewardSpell(i, questID)
+            if name then list[#list + 1] = { kind = "spell", spellID = spellID, name = name, texture = texture } end
+        end
+    end
+    return list
 end
 
 local function QualityColor(quality)
@@ -703,10 +842,55 @@ RenderDetails = function()
     end
     y = y + 4
 
+    -- Questie-Befehle als Knöpfe (zwei je Reihe): hervorheben, Abgabe zeigen, TomTom, Wowhead
+    local actions = ns.GetQuestieActions and ns.GetQuestieActions(questID) or {}
+    if #actions > 0 then
+        Section("Questie")
+        local columnWidth = math.floor((width - 4 - 4) / 2)
+        for i, action in ipairs(actions) do
+            local button = QuestieButton(i)
+            button.action = action
+            button:SetText(action.text)
+            button:SetEnabled(not action.disabled)
+            button:SetAlpha(action.disabled and 0.45 or 1)
+            button:SetWidth(columnWidth)
+            button:ClearAllPoints()
+            local column = (i - 1) % 2
+            button:SetPoint("TOPLEFT", detailContent, "TOPLEFT", 2 + column * (columnWidth + 4), -y)
+            button:Show()
+            if column == 1 or i == #actions then y = y + 24 end
+        end
+        y = y + 4
+    end
+    for i = #actions + 1, #questieButtons do questieButtons[i]:Hide() end
+
     -- Beschreibung
     if description and description ~= "" then
         Section(ns.L("DETAIL_DESCRIPTION"))
         Paragraph(description, fonts.objective, 0.75, 0.75, 0.75)
+        y = y + 4
+    end
+
+    -- Questreihe (aus Questies Datenbank): erledigt = Haken, diese Quest = gold, offen = grau
+    local chain = ns.GetQuestChain and ns.GetQuestChain(questID)
+    if chain then
+        Section(ns.L("DETAIL_CHAIN") .. "  |cff8a8a8a" .. #chain .. "|r")
+        for i, entry in ipairs(chain) do
+            local label = (entry.name or ("Quest #" .. entry.questID))
+                .. ((entry.level and entry.level > 0) and (" (" .. entry.level .. ")") or "")
+            local done = C_QuestLog.IsQuestFlaggedCompleted and C_QuestLog.IsQuestFlaggedCompleted(entry.questID)
+            if entry.questID == questID then
+                Paragraph(i .. ". " .. label, fonts.quest, accent[1], accent[2], accent[3], 4)
+            elseif done then
+                Paragraph(i .. ". " .. label .. "  |TInterface\\RaidFrame\\ReadyCheck-Ready:12|t", fonts.objective,
+                    0.45, 0.85, 0.45, 4)
+            elseif C_QuestLog.GetLogIndexForQuestID(entry.questID) then
+                Paragraph(i .. ". " .. label .. "  |cff88ccff" .. ns.L("DETAIL_IN_LOG") .. "|r", fonts.objective,
+                    0.9, 0.9, 0.9, 4)
+            else
+                Paragraph(i .. ". " .. label, fonts.objective, 0.6, 0.6, 0.6, 4)
+            end
+        end
         y = y + 4
     end
 
@@ -732,6 +916,10 @@ RenderDetails = function()
     end
     local money = GetQuestLogRewardMoney and GetQuestLogRewardMoney(questID) or 0
     local xp = GetQuestLogRewardXP and GetQuestLogRewardXP(questID) or 0
+    local spells = SpellRewards(questID)
+    local reputations = ReputationRewards(questID)
+    local title = GetQuestLogRewardTitle and GetQuestLogRewardTitle() or nil
+    local honor = GetQuestLogRewardHonor and GetQuestLogRewardHonor(questID) or 0
 
     local used = 0
     local function Grid(list)
@@ -741,6 +929,7 @@ RenderDetails = function()
             local button = RewardButton(used)
             button.kind, button.index, button.itemID, button.currencyID = entry.kind, entry.index, entry.itemID,
                 entry.currencyID
+            button.spellID = entry.spellID
             button.icon:SetTexture(entry.texture or 134400)
             button.count:SetText((entry.count and entry.count > 1) and entry.count or "")
             button.name:SetText(entry.name)
@@ -753,7 +942,9 @@ RenderDetails = function()
             if column == 1 or i == #list then y = y + 36 end
         end
     end
-    if #rewards + #choices + #currencies > 0 or money > 0 or xp > 0 then
+    local hasTitle = title and title ~= ""
+    if #rewards + #choices + #currencies + #spells + #reputations > 0 or money > 0 or xp > 0 or hasTitle
+        or honor > 0 then
         Section(ns.L("TIP_REWARDS"))
         Grid(rewards)
         Grid(currencies)
@@ -761,12 +952,23 @@ RenderDetails = function()
             Paragraph(ns.L("TIP_CHOICES"), fonts.objective, 0.75, 0.75, 0.75)
             Grid(choices)
         end
+        if #spells > 0 then
+            Paragraph(ns.L("DETAIL_SPELLS"), fonts.objective, 0.75, 0.75, 0.75)
+            Grid(spells)
+        end
         if money > 0 then
             Paragraph(GetMoneyString and GetMoneyString(money) or GetCoinTextureString(money), fonts.quest, 1, 1, 1)
         end
         if xp > 0 then
             Paragraph(ns.L("TIP_XP", BreakUpLargeNumbers and BreakUpLargeNumbers(xp) or xp), fonts.quest, 0.6, 0.6, 1)
         end
+        for _, rep in ipairs(reputations) do
+            local sign = rep.amount > 0 and "+" or ""
+            Paragraph(ns.L("DETAIL_REPUTATION", sign .. rep.amount, FactionName(rep.factionID)), fonts.quest,
+                0.25, 0.55, 1)
+        end
+        if honor > 0 then Paragraph(ns.L("DETAIL_HONOR", honor), fonts.quest, 0.9, 0.35, 0.25) end
+        if hasTitle then Paragraph(ns.L("DETAIL_TITLE", title), fonts.quest, 1, 0.82, 0) end
     end
 
     for i = n + 1, #detailTexts do
