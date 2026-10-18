@@ -212,12 +212,21 @@ local function Run()
         if count % 250 == 0 then coroutine.yield() end
     end
 
-    -- 3. Dungeons ohne bekannte Quest-IDs (z. B. neu in Forever): über den Gebietsnamen zuordnen
+    -- 3. Dungeons ohne bekannte Quest-IDs (z. B. neu in Forever): über den Gebietsnamen zuordnen.
+    --    Tolerant verglichen: ohne Artikel ("Die", "The" …), Groß-/Kleinschreibung und Satzzeichen
+    local function Simple(name)
+        if not name then return nil end
+        name = name:lower():gsub("%b()", "")
+        for _, article in ipairs({ "die ", "der ", "das ", "the " }) do
+            if name:sub(1, #article) == article then name = name:sub(#article + 1) end
+        end
+        return (name:gsub("[%s%p]", ""))
+    end
     for area, ids in pairs(dungeonAreasSeen) do
-        local areaName = AreaName(area)
-        if areaName then
+        local areaName = Simple(AreaName(area))
+        if areaName and areaName ~= "" then
             for _, dungeon in ipairs(dungeons) do
-                if not areaOf[dungeon] and (dungeon.name == areaName or dungeon.nameEN == areaName) then
+                if not areaOf[dungeon] and (Simple(dungeon.name) == areaName or Simple(dungeon.nameEN) == areaName) then
                     areaOf[dungeon], byArea[area], found[area] = area, dungeon, ids
                     report[dungeon] = { area = area, how = "name" }
                 end
