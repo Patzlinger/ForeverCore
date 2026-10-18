@@ -1061,7 +1061,16 @@ end
 -- Im Filter-Menü steht jede Gruppe mit Häkchen: an = Quests dieser Art werden gezeigt, aus = ausgeblendet.
 -- Ganz oben "Alles": an, solange nichts ausgeblendet ist; Klick darauf zeigt wieder alles.
 ns.FILTERS = {
+    -- Aktuelles Gebiet: die Quest hat Ziele oder ihre Abgabe auf der Karte, auf der man gerade steht.
+    -- (Nicht nach der Überschrift im Questlog: dort stehen Quests oft unter dem Gebiet, in dem man sie bekommt –
+    -- eine in Orgrimmar angenommene Quest fürs Brachland stünde sonst unter "Orgrimmar".)
+    -- Nur wenn das Spiel das nicht beantworten kann: Vergleich mit der Überschrift wie bisher.
     { key = "ZONE", textKey = "FILTER_ZONE", test = function(info, header)
+        if C_QuestLog.IsOnMap then
+            local ok, onMap = pcall(C_QuestLog.IsOnMap, info.questID)
+            if ok then return onMap and true or false end
+        end
+        if info.isOnMap ~= nil then return info.isOnMap end
         return header ~= nil and (header == GetRealZoneText() or header == GetZoneText())
     end },
     { key = "DUNGEON", textKey = "FILTER_DUNGEON", test = function(info)

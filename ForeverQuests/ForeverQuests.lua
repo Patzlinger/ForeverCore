@@ -141,6 +141,23 @@ SlashCmdList.FOREVERQUESTS = function(msg)
     elseif msg == "maus" or msg == "mouse" then
         -- Fehlersuche: welches Fenster bekommt die Maus?
         ns.DebugMouse()
+    elseif msg == "gebiet" or msg == "zone" then
+        -- Fehlersuche Filter "Aktuelles Gebiet": je Quest Überschrift und ob sie auf der aktuellen Karte liegt
+        local mapID = C_Map.GetBestMapForUnit("player")
+        local mapInfo = mapID and C_Map.GetMapInfo(mapID)
+        print(ns.ChatPrefix() .. ": Karte " .. tostring(mapInfo and mapInfo.name) .. " (" .. tostring(mapID) .. "), Gebiet "
+            .. tostring(GetRealZoneText()))
+        local header
+        for i = 1, C_QuestLog.GetNumQuestLogEntries() do
+            local info = C_QuestLog.GetInfo(i)
+            if info and info.isHeader then
+                header = info.title
+            elseif info and not info.isHidden then
+                local onMap = C_QuestLog.IsOnMap and C_QuestLog.IsOnMap(info.questID)
+                print(string.format("  %s%s|r  [%s]", onMap and "|cff33ff33" or "|cff888888", tostring(info.title),
+                    tostring(header)))
+            end
+        end
     elseif msg == "karte" or msg == "map" then
         -- Fehlersuche: Aufbau von Weltkarte und Questlog
         ns.DebugMap()
