@@ -13,43 +13,19 @@ local onlyOwnFaction = true
 local hideCompleted = false -- Häkchen "Abgeschlossene ausblenden"
 local levelTabActive = false -- Reiter "Mein Levelbereich"
 local raidTabActive = false  -- Reiter "Schlachtzüge" (die anderen Reiter zeigen nur Dungeons)
-local questDetailView        -- eingebaute Detailansicht einer Quest (wie im Questlog an der Karte)
 local LEVEL_EARLY = 2        -- Dungeons schon so viele Level vor dem Mindestlevel zeigen
 local QUEST_LEVEL_RANGE = 5  -- Quests höchstens so viele Level über/unter dem eigenen Level
 local refreshPending = false
 
--- Beta-Modus: in der Beta geht es nur bis Stufe 30 – Dungeons und Quests darüber werden ausgeblendet.
--- Die Daten aus der Excel-Datei bleiben vollständig (ALL_DUNGEONS); ns.DUNGEON_DATA ist die angezeigte Auswahl.
-local BETA_MAX_LEVEL = 30
+-- Gesamtliste der Dungeons (füllt QuestieDungeons.lua); ns.DUNGEON_DATA ist die angezeigte Liste
 local ALL_DUNGEONS = ns.DUNGEON_DATA
 ns.ALL_DUNGEON_DATA = ALL_DUNGEONS -- vollständige Liste (QuestieDungeons.lua ergänzt sie mit Questies Daten)
 
-local function FirstNumber(text)
-    return tonumber(tostring(text or ""):match("%d+"))
-end
-
+-- (früher Beta-Modus "nur bis Stufe 30"; entfernt – was es in der Beta nicht gibt, meldet jetzt der Server,
+-- siehe "Not available in Beta")
 function ns.ApplyBetaFilter()
     selectedDungeon = nil -- die Auswahl zeigt sonst auf einen Dungeon der alten Liste
-    if not (ns.db and ns.db.betaDungeons) then
-        ns.DUNGEON_DATA = ALL_DUNGEONS
-        return
-    end
-    local list = {}
-    for _, dungeon in ipairs(ALL_DUNGEONS) do
-        local minLevel = FirstNumber(dungeon.levels)
-        if not minLevel or minLevel <= BETA_MAX_LEVEL then
-            -- Kopie des Dungeons mit nur den Quests bis Stufe 30 (Mindeststufe bzw. Questlevel aus der Excel-Datei)
-            local copy = {}
-            for key, value in pairs(dungeon) do copy[key] = value end
-            copy.quests = {}
-            for _, quest in ipairs(dungeon.quests or {}) do
-                local level = quest.minLevel or FirstNumber(quest.level)
-                if not level or level <= BETA_MAX_LEVEL then table.insert(copy.quests, quest) end
-            end
-            table.insert(list, copy)
-        end
-    end
-    ns.DUNGEON_DATA = list
+    ns.DUNGEON_DATA = ALL_DUNGEONS
 end
 
 local LIST_WIDTH = 290
@@ -106,21 +82,20 @@ local questTextCache = {}
 local questTitleCache = {}   -- Questname aus Zeile 1 des Quest-Tooltips
 local requestedQuests = {}   -- [questID] = Zeitpunkt der letzten Anfrage beim Server
 local requestTries = {}      -- [questID] = Anzahl der Anfragen
-local unknownQuests = {}     -- Quests, die der Server nicht kennt (oder die nach mehreren Anfragen nicht kamen)
+-- Quests, die es in der Beta nicht gibt: NUR wenn der Server das ausdrücklich meldet (QUEST_DATA_LOAD_RESULT mit
+-- "nicht erfolgreich"). Bleibt eine Antwort einfach aus, gilt die Quest NICHT als unbekannt.
+local unknownQuests = {}
 local REQUEST_RETRY_SECONDS = 5
 local REQUEST_MAX_TRIES = 3
 
--- Questdaten beim Server anfordern. Kommt keine Antwort, wird es nach ein paar Sekunden erneut versucht;
--- nach mehreren erfolglosen Versuchen gilt die Quest als unbekannt.
+-- Questdaten beim Server anfordern. Kommt keine Antwort, wird es nach ein paar Sekunden erneut versucht
+-- (höchstens ein paar Mal).
 local function RequestQuestData(questID)
     if unknownQuests[questID] or not C_QuestLog.RequestLoadQuestByID then return end
     local last = requestedQuests[questID]
     if last and GetTime() - last < REQUEST_RETRY_SECONDS then return end
     local tries = requestTries[questID] or 0
-    if tries >= REQUEST_MAX_TRIES then
-        unknownQuests[questID] = true
-        return
-    end
+    if tries >= REQUEST_MAX_TRIES then return end
     requestTries[questID] = tries + 1
     requestedQuests[questID] = GetTime()
     C_QuestLog.RequestLoadQuestByID(questID)
@@ -136,6 +111,46 @@ questLoadListener:RegisterEvent("QUEST_DATA_LOAD_RESULT")
 questLoadListener:SetScript("OnEvent", function(_, _, questID, success)
     if questID and success == false then unknownQuests[questID] = true end
 end)
+
+-- Gibt es keine einzige Quest des Dungeons in der Beta? (nur, was der Server ausdrücklich als unbekannt meldet)
+local function DungeonNotInBeta(dungeon)
+    local any = false
+    for _, quest in ipairs(dungeon.quests or {}) do
+        if quest.id then
+            if not unknownQuests[quest.id] then return false end
+            any = true
+        end
+    end
+    return any
+end
+
+-- Einmal je Sitzung alle Dungeonquests beim Server prüfen (gestaffelt, damit nichts ruckelt):
+-- Quests mit bekanntem Namen gibt es; die übrigen werden angefragt, die Antwort setzt ggf. "Not available in Beta"
+local betaCheckStarted = false
+local function CheckAllDungeonQuests()
+    if betaCheckStarted or not C_QuestLog.RequestLoadQuestByID or #(ns.DUNGEON_DATA or {}) == 0 then return end
+    betaCheckStarted = true
+    local pending = {}
+    for _, dungeon in ipairs(ns.DUNGEON_DATA) do
+        for _, quest in ipairs(dungeon.quests or {}) do
+            if quest.id and not C_QuestLog.GetTitleForQuestID(quest.id) then pending[#pending + 1] = quest.id end
+        end
+    end
+    local index = 0
+    local function Next()
+        for _ = 1, 10 do
+            index = index + 1
+            local questID = pending[index]
+            if not questID then
+                C_Timer.After(2, function() if ns.RequestDungeonRefresh then ns.RequestDungeonRefresh() end end)
+                return
+            end
+            RequestQuestData(questID)
+        end
+        C_Timer.After(0.2, Next)
+    end
+    Next()
+end
 
 local function GetQuestTooltipText(questID)
     if not questID then return nil end
@@ -811,6 +826,35 @@ local function ShowAtlasLoot(owner, dungeon)
                 found[#found + 1] = { key = key, name = page.name or key }
             end
         end
+        -- Rückfall über den Namen: AtlasLoots Seiten der neuen Forever-Dungeons haben keine Gebiets-ID, nur
+        -- einen (englischen) Namen wie "Hall of Thanes". Verglichen ohne Farbcodes, Artikel und Satzzeichen.
+        if #found == 0 then
+            local function Simple(text)
+                if type(text) ~= "string" then return nil end
+                text = text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):lower():gsub("%b()", "")
+                for _, article in ipairs({ "die ", "der ", "das ", "the " }) do
+                    if text:sub(1, #article) == article then text = text:sub(#article + 1) end
+                end
+                return (text:gsub("[%s%p]", ""))
+            end
+            local wanted = {}
+            for _, name in ipairs({ dungeon.nameEN, dungeon.name }) do
+                local simple = Simple(name)
+                if simple and simple ~= "" then wanted[#wanted + 1] = simple end
+            end
+            for key, page in pairs(type(moduleData) == "table" and moduleData or {}) do
+                local pageName = type(page) == "table" and Simple(page.name)
+                if pageName and pageName ~= "" then
+                    for _, simple in ipairs(wanted) do
+                        -- Seitenname beginnt mit dem Dungeonnamen (AtlasLoot hängt teils einen Zusatz an)
+                        if pageName:sub(1, #simple) == simple or simple:sub(1, #pageName) == pageName then
+                            found[#found + 1] = { key = key, name = page.name or key }
+                            break
+                        end
+                    end
+                end
+            end
+        end
         table.sort(found, function(a, b) return tostring(a.name) < tostring(b.name) end)
         if #found == 1 then
             OpenAtlasLoot(found[1].key)
@@ -910,7 +954,7 @@ local function LayoutRewards(entry, quest, width)
         return 0
     end
 
-    local expanded = rewardsExpanded[quest] == true
+    local expanded = rewardsExpanded[quest] ~= false -- Standard: aufgeklappt
     entry.rewardToggle.text:SetText(ns.L("REWARDS_COUNT", #rewards))
     entry.rewardToggle.arrow:SetRotation(expanded and -math.pi / 2 or 0)
     entry.rewardToggle:Show()
@@ -965,20 +1009,25 @@ local function GetQuestEntry(index)
         entry:SetScript("OnLeave", function(self)
             self:SetBackdropColor(unpack(COLOR.card))
         end)
-        -- Klick auf die Karte öffnet die eingebaute Detailansicht (Ziele, Questgeber, Questreihe, Belohnungen);
-        -- Shift-Klick verlinkt die Quest im Chat
+        -- Klick auf die Karte klappt die Belohnungen ein bzw. aus; Shift-Klick verlinkt die Quest im Chat
         entry:SetScript("OnClick", function(self)
             local quest = self.quest
             if quest and IsModifiedClick("CHATLINK") then
                 LinkQuestInChat(quest)
                 return
             end
-            if quest and quest.id and questDetailView then
-                questDetailView:Show(quest.id)
-            elseif quest and quest.rewards and #quest.rewards > 0 then
-                rewardsExpanded[quest] = not rewardsExpanded[quest]
+            if quest and quest.rewards and #quest.rewards > 0 then
+                rewardsExpanded[quest] = rewardsExpanded[quest] == false
                 RefreshDetail()
             end
+        end)
+        -- Maus über der Karte: Tooltip der Quest (wie im Tracker bzw. aus Questies Daten, mit Belohnungen)
+        entry:HookScript("OnEnter", function(self)
+            if self.quest and self.quest.id and ns.ShowQuestInfoTooltip then ns.ShowQuestInfoTooltip(self, self.quest.id) end
+        end)
+        entry:HookScript("OnLeave", function(self)
+            local tip = ns.Style.GetTooltip()
+            if tip:GetOwner() == self then tip:Hide() end
         end)
 
         -- Knopf für den Kartenpunkt zum Questgeber (nur wenn Koordinaten eingetragen sind)
@@ -1074,7 +1123,7 @@ local function GetQuestEntry(index)
         toggle:SetScript("OnClick", function(self)
             local quest = self:GetParent().quest
             if not quest then return end
-            rewardsExpanded[quest] = not rewardsExpanded[quest]
+            rewardsExpanded[quest] = rewardsExpanded[quest] == false
             RefreshDetail()
         end)
         toggle:SetWidth(160)
@@ -1144,30 +1193,75 @@ local function BuildCards(dungeon)
     return cards
 end
 
--- Questreihe für die Karte: untereinander wie in der Detailansicht (nummeriert, erledigt mit Haken,
--- diese Quest gold, im Questlog weiß, offen grau, mit Quest-ID). nil, wenn die Quest allein steht.
-local function ChainBlock(quest)
-    local chain = quest.id and ns.GetQuestChain and ns.GetQuestChain(quest.id)
-    if not chain then return nil end
-    local a = COLOR.accent
-    local lines = { string.format("|cff%02x%02x%02x%s|r |cff8a8a8a%d|r", a[1] * 255, a[2] * 255, a[3] * 255,
-        ns.L("DETAIL_CHAIN"), #chain) }
-    for i, entry in ipairs(chain) do
-        local name = GetGameQuestTitle(entry.questID) or entry.name or QuestIDFallback(entry.questID)
-        local level = (entry.level and entry.level > 0) and (" (" .. entry.level .. ")") or ""
-        local doneQuest = C_QuestLog.IsQuestFlaggedCompleted and C_QuestLog.IsQuestFlaggedCompleted(entry.questID)
-        local inLog = C_QuestLog.GetLogIndexForQuestID(entry.questID) ~= nil
-        local color, suffix = "|cff9a9a9a", ""
-        if entry.questID == quest.id then
-            color = "|cffffd100"
-        elseif doneQuest then
-            color, suffix = "|cff55cc66", " |TInterface\\RaidFrame\\ReadyCheck-Ready:12|t"
-        elseif inLog then
-            color, suffix = "|cffffffff", " |cff88ccff" .. ns.L("DETAIL_IN_LOG") .. "|r"
-        end
-        lines[#lines + 1] = "   " .. color .. i .. ". " .. name .. level .. "|r" .. suffix .. "  |cff6a6a6a#" .. entry.questID .. "|r"
+-- Questreihe auf der Karte: untereinander wie im Questlog (nummeriert, erledigt mit Haken, diese Quest gold,
+-- im Questlog weiß, offen grau, mit Quest-ID); jede Zeile zeigt beim Darüberfahren den Tooltip der Quest.
+-- Gibt die benötigte Höhe zurück (0 ohne Reihe).
+local CHAIN_ROW_HEIGHT = 14
+local function ChainLine(index, entry, quest)
+    local name = GetGameQuestTitle(entry.questID) or entry.name or QuestIDFallback(entry.questID)
+    local level = (entry.level and entry.level > 0) and (" (" .. entry.level .. ")") or ""
+    local doneQuest = C_QuestLog.IsQuestFlaggedCompleted and C_QuestLog.IsQuestFlaggedCompleted(entry.questID)
+    local inLog = C_QuestLog.GetLogIndexForQuestID(entry.questID) ~= nil
+    local color, suffix = "|cff9a9a9a", ""
+    if entry.questID == quest.id then
+        color = "|cffffd100"
+    elseif doneQuest then
+        color, suffix = "|cff55cc66", " |TInterface\\RaidFrame\\ReadyCheck-Ready:12|t"
+    elseif inLog then
+        color, suffix = "|cffffffff", " |cff88ccff" .. ns.L("DETAIL_IN_LOG") .. "|r"
     end
-    return table.concat(lines, "\n")
+    return "   " .. color .. index .. ". " .. name .. level .. "|r" .. suffix .. "  |cff6a6a6a#" .. entry.questID .. "|r"
+end
+
+local function LayoutCardChain(entry, chain, quest, width)
+    entry.chainRows = entry.chainRows or {}
+    local rows = entry.chainRows
+    if not chain then
+        for _, row in ipairs(rows) do row:Hide() end
+        return 0
+    end
+    local a = COLOR.accent
+    local y = 3
+    for i = 0, #chain do
+        local row = rows[i + 1]
+        if not row then
+            row = CreateFrame("Frame", nil, entry)
+            row:EnableMouse(true)
+            row.text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+            row.text:SetPoint("TOPLEFT")
+            row.text:SetJustifyH("LEFT")
+            row.text:SetWordWrap(false)
+            row.highlight = row:CreateTexture(nil, "HIGHLIGHT")
+            row.highlight:SetAllPoints()
+            row.highlight:SetColorTexture(1, 1, 1, 0.06)
+            row:SetScript("OnEnter", function(self)
+                if self.questID and ns.ShowQuestInfoTooltip then ns.ShowQuestInfoTooltip(self, self.questID) end
+            end)
+            row:SetScript("OnLeave", function(self)
+                local tip = ns.Style.GetTooltip()
+                if tip:GetOwner() == self then tip:Hide() end
+            end)
+            rows[i + 1] = row
+        end
+        if i == 0 then
+            -- Überschrift "Questreihe 5" (ohne Tooltip)
+            row.questID = nil
+            row.text:SetText(string.format("|cff%02x%02x%02x%s|r |cff8a8a8a%d|r", a[1] * 255, a[2] * 255, a[3] * 255,
+                ns.L("DETAIL_CHAIN"), #chain))
+        else
+            row.questID = chain[i].questID
+            row.text:SetText(ChainLine(i, chain[i], quest))
+        end
+        row.highlight:SetShown(i > 0)
+        row.text:SetWidth(width)
+        row:ClearAllPoints()
+        row:SetPoint("TOPLEFT", entry.info, "BOTTOMLEFT", 0, -y)
+        row:SetSize(width, CHAIN_ROW_HEIGHT)
+        row:Show()
+        y = y + CHAIN_ROW_HEIGHT
+    end
+    for i = #chain + 2, #rows do rows[i]:Hide() end
+    return y
 end
 
 RefreshDetail = function()
@@ -1277,7 +1371,9 @@ RefreshDetail = function()
             local lines = { table.concat(parts, "   ") }
             local extraParts = {}
             -- Questkette (enthält auch die Vorquest); ohne Kette nur die Vorquest
-            local chainText = ChainBlock(quest) or ChainText(quest)
+            -- Questreihe aus Questie: als eigene Zeilen mit Tooltip (LayoutCardChain); sonst kurze Kette im Text
+            local questieChain = quest.id and ns.GetQuestChain and ns.GetQuestChain(quest.id)
+            local chainText = (not questieChain) and ChainText(quest) or nil
             local prequest = PrequestText(quest)
             if chainText then
                 table.insert(extraParts, chainText)
@@ -1379,9 +1475,12 @@ RefreshDetail = function()
                 entry.info:SetPoint("TOPLEFT", entry.desc, "BOTTOMLEFT", 0, -3)
             end
 
+            local chainHeight = LayoutCardChain(entry, questieChain, quest, width - 24)
+            entry.rewardToggle:ClearAllPoints()
+            entry.rewardToggle:SetPoint("TOPLEFT", entry.info, "BOTTOMLEFT", -2, -3 - chainHeight)
             local rewardHeight = LayoutRewards(entry, quest, width - 24)
             local height = math.max(entry.title:GetStringHeight(), 16) + entry.desc:GetStringHeight() + entry.info:GetStringHeight() + 20
-                + rewardHeight + giverItemHeight
+                + rewardHeight + giverItemHeight + chainHeight
             entry:ClearAllPoints()
             entry:SetPoint("TOPLEFT", questContent, "TOPLEFT", 0, -y)
             entry:SetSize(width, height)
@@ -1390,8 +1489,6 @@ RefreshDetail = function()
         end
     end
     questContent:SetHeight(math.max(1, y))
-    -- offene Detailansicht mit aktualisieren (Fortschritt, Status)
-    if questDetailView then questDetailView:Refresh() end
 
     -- Zusammenfassung bzw. Hinweis, wenn nichts angezeigt wird
     if total == 0 then
@@ -1730,7 +1827,6 @@ local function GetListButton(index)
             if window.BringToFront then window.BringToFront() end
             selectedDungeon = self.dungeon
             questScroll:SetVerticalScroll(0)
-            if questDetailView then questDetailView:Hide() end -- anderer Dungeon: zurück zur Questliste
             RefreshList()
             RefreshDetail()
         end)
@@ -1740,6 +1836,7 @@ local function GetListButton(index)
 end
 
 RefreshList = function()
+    CheckAllDungeonQuests() -- einmalig: welche Quests gibt es in der Beta nicht?
     local filter = searchBox and strtrim(searchBox:GetText() or ""):lower() or ""
     local width = math.max(1, listScroll:GetWidth())
     listContent:SetWidth(width)
@@ -1774,7 +1871,9 @@ RefreshList = function()
 
             -- Dungeons der Gegenfraktion grau
             local ownFaction = IsMyFaction(dungeon.faction)
-            button.name:SetText(Localized(dungeon, "name"))
+            -- Gibt es keine seiner Quests in der Beta (vom Server gemeldet): Vermerk hinter dem Namen
+            button.name:SetText(Localized(dungeon, "name")
+                .. (DungeonNotInBeta(dungeon) and (" |cff8a8a8a" .. ns.L("NOT_IN_BETA") .. "|r") or ""))
             if ownFaction then
                 button.name:SetTextColor(0.95, 0.95, 0.95)
             else
@@ -1923,7 +2022,6 @@ local function CreateWindow()
         UpdateTabs()
         listScroll:SetVerticalScroll(0)
         questScroll:SetVerticalScroll(0)
-        if questDetailView then questDetailView:Hide() end
         RefreshList()
         RefreshDetail()
     end
@@ -2045,15 +2143,6 @@ local function CreateWindow()
     detailEmpty:SetPoint("CENTER", questScroll, "CENTER", 0, 30)
     detailEmpty:SetWidth(420)
     detailEmpty:SetJustifyH("CENTER")
-
-    -- Eingebaute Detailansicht (Klick auf eine Quest): legt sich über das rechte Feld, "<" führt zurück.
-    -- Derselbe Baustein wie im Questlog an der Karte; Quests außerhalb des Logs zeigt er mit Questies Daten.
-    if ns.CreateQuestDetailView then
-        questDetailView = ns.CreateQuestDetailView(detailPanel, { allowNotInLog = true, backTipKey = "TIP_BACK_DUNGEON" })
-        questDetailView.frame:SetAllPoints(detailPanel)
-        questDetailView.frame:SetFrameLevel(detailPanel:GetFrameLevel() + 30)
-    end
-
     -- Fußleiste: Fraktionsfilter und Hinweis
     local factionCheck = ns.Style.CreateCheckbox(window, ns.L("ONLY_MY_FACTION"))
     factionCheck:SetPoint("BOTTOMLEFT", 16, 13)
@@ -2172,7 +2261,6 @@ function ns.ShowDungeon(dungeon)
         levelTabActive = false
         if window.UpdateTabs then window.UpdateTabs() end
     end
-    if questDetailView then questDetailView:Hide() end
     if searchBox and searchBox:GetText() ~= "" then searchBox:SetText("") end
     questScroll:SetVerticalScroll(0)
     if window:IsShown() then

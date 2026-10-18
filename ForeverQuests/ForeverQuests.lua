@@ -31,7 +31,6 @@ ns.defaults = {
     showQuestType = true,
     showQuestTooltip = true, -- Tooltip beim Darüberfahren über eine Quest im Tracker
     instanceHint = true,     -- Hinweis beim Betreten eines Dungeons
-    betaDungeons = true,     -- Beta-Modus: im Dungeonfenster nur Dungeons und Quests bis Stufe 30
     showMinimapButton = true,
     minimapAngle = 220,
     trackerHidden = false,

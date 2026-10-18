@@ -1009,6 +1009,20 @@ local function ChainTooltip(self)
     tip:Show()
 end
 
+-- Tooltip einer beliebigen Quest (z. B. im Dungeonfenster): wie in der Questreihe – im Questlog der Tracker-Tooltip,
+-- sonst aus Questies Daten mit Zielen, Questgeber und Belohnungen (vom Server nachgeladen; der Tooltip füllt sich nach)
+function ns.ShowQuestInfoTooltip(owner, questID)
+    if not owner or not questID then return end
+    Style = Style or ns.Style
+    local info = ns.GetQuestieQuestDetails and ns.GetQuestieQuestDetails(questID) or {}
+    owner.view = owner.view or { anchor = "ANCHOR_RIGHT" }
+    owner.entry = { questID = questID, name = C_QuestLog.GetTitleForQuestID(questID) or info.name,
+        level = info.level, requiredLevel = info.requiredLevel, objectives = info.objectivesText }
+    owner.inLog = C_QuestLog.GetLogIndexForQuestID(questID) ~= nil
+    owner.done = C_QuestLog.IsQuestFlaggedCompleted and C_QuestLog.IsQuestFlaggedCompleted(questID) or false
+    ChainTooltip(owner)
+end
+
 -- Zeile der Questreihe (Pool je Ansicht): nicht anklickbar, Tooltip beim Darüberfahren
 local function ChainRow(dv, index)
     local row = dv.chain[index]
