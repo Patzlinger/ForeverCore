@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### New
+- ForeverBags: new option "Show bags separately" – every bag starts on its own row, with a little space and a fine gold line in between.
 - ForeverQuests, **Questie support:** if you use Questie, its own tracker is switched off automatically so only the ForeverQuests tracker shows. Questie's map and minimap icons and tooltips keep working and follow the quests you track. Right-click a quest in the tracker for Questie actions: highlight it on the map (other quest icons fade), show the turn-in on the map, set a TomTom waypoint (with TomTom installed) and copy the Wowhead link.
 
 ### Improved

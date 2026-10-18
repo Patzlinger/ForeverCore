@@ -255,20 +255,77 @@ local function MatchesSearch(link)
     return name ~= nil and name:lower():find(text, 1, true) ~= nil
 end
 
-local function ShowOffline(entry, columns, gap)
+---------------------------------------------------------------------------
+-- Platzierung der Plätze im Raster. Mit "Taschen getrennt anzeigen" beginnt jede Tasche in einer neuen Reihe,
+-- dazwischen etwas Luft und eine feine goldene Linie.
+---------------------------------------------------------------------------
+local BAG_SEP = 9 -- zusätzlicher Abstand zwischen zwei Taschen (Linie in der Mitte)
+local separators = {}
+
+local function Separator(n, y)
+    local line = separators[n]
+    if not line then
+        line = content:CreateTexture(nil, "ARTWORK")
+        line:SetHeight(1)
+        separators[n] = line
+    end
+    line:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 0.28)
+    line:ClearAllPoints()
+    line:SetPoint("TOPLEFT", content, "TOPLEFT", 2, -y)
+    line:SetPoint("TOPRIGHT", content, "TOPRIGHT", -2, -y)
+    line:Show()
+end
+
+local function NewPlacer(columns, gap)
+    local p = { col = 0, y = 0, seps = 0, started = false }
+    -- neue Tasche (nur aufrufen, wenn sie Plätze hat)
+    function p:StartBag()
+        if ns.db.separateBags and self.started then
+            if self.col > 0 then
+                self.col = 0
+                self.y = self.y + SLOT + gap
+            end
+            self.seps = self.seps + 1
+            Separator(self.seps, self.y - gap + math.floor((BAG_SEP + gap) / 2))
+            self.y = self.y + BAG_SEP
+        end
+        self.started = true
+    end
+    -- Position des nächsten Platzes
+    function p:Next()
+        local x, y = self.col * (SLOT + gap), self.y
+        self.col = self.col + 1
+        if self.col >= columns then
+            self.col = 0
+            self.y = self.y + SLOT + gap
+        end
+        return x, y
+    end
+    function p:Height()
+        if not self.started then return SLOT end
+        return self.col > 0 and (self.y + SLOT) or (self.y - gap)
+    end
+    function p:Finish()
+        for i = self.seps + 1, #separators do separators[i]:Hide() end
+    end
+    return p
+end
+
+local function ShowOffline(entry, placer)
     local containers = view.kind == "bank" and entry.bank or entry.bags
     local index, used, total = 0, 0, 0
     local ids = view.kind == "bank" and ns.BankIDs() or ns.BagIDs()
     for _, bag in ipairs(ids) do
         local c = containers and containers[bag]
+        if c and (c.size or 0) > 0 then placer:StartBag() end
         for slot = 1, (c and c.size or 0) do
             index = index + 1
             total = total + 1
             local b = OfflineButton(index)
             local item = c[slot]
-            local col, row = (index - 1) % columns, math.floor((index - 1) / columns)
+            local x, y = placer:Next()
             b:ClearAllPoints()
-            b:SetPoint("TOPLEFT", content, "TOPLEFT", col * (SLOT + gap), -row * (SLOT + gap))
+            b:SetPoint("TOPLEFT", content, "TOPLEFT", x, -y)
             b.fbagsBag = bag
             b.fbagsEdge:SetBackdropBorderColor(unpack(EdgeColor(bag)))
             b.link = item and item[1]
@@ -385,20 +442,21 @@ local function EnsureSlots()
     return true
 end
 
-local function ShowLive(columns, gap)
+local function ShowLive(placer)
     local index, used, total = 0, 0, 0
     for _, bag in ipairs(ns.BagIDs()) do
         local count = SlotCount(bag)
         for slot, button in pairs(buttons[bag] or {}) do
             if slot > count then button:Hide() end -- Tasche getauscht: kleinere Tasche
         end
+        if count > 0 then placer:StartBag() end
         for slot = 1, count do
             local button = buttons[bag] and buttons[bag][slot]
             if button then
-                local col, row = index % columns, math.floor(index / columns)
+                local x, y = placer:Next()
                 if not InCombatLockdown() then
                     button:ClearAllPoints()
-                    button:SetPoint("TOPLEFT", content, "TOPLEFT", col * (SLOT + gap), -row * (SLOT + gap))
+                    button:SetPoint("TOPLEFT", content, "TOPLEFT", x, -y)
                 end
                 UpdateSlot(button, bag, slot)
                 index = index + 1
@@ -432,19 +490,20 @@ function ns.LayoutBags()
     end
     if bagBar then bagBar:SetShown(showBar and true or false) end
 
-    local index, used, total
+    local _, used, total
+    local placer = NewPlacer(columns, gap)
     if live then
         for i = 1, #offline do offline[i]:Hide() end
-        index, used, total = ShowLive(columns, gap)
+        _, used, total = ShowLive(placer)
         UpdateBagBar()
     else
         local entry = ns.CharacterData(view.key) or {}
-        index, used, total = ShowOffline(entry, columns, gap)
+        _, used, total = ShowOffline(entry, placer)
     end
+    placer:Finish()
 
-    local rows = math.max(1, math.ceil(index / columns))
     local width = columns * SLOT + (columns - 1) * gap
-    local height = rows * SLOT + (rows - 1) * gap
+    local height = math.max(SLOT, placer:Height())
     local barSpace = showBar and (BAGSLOT + 6) or 0
     local currencySpace = ns.UpdateCurrencies() and CURRENCY_ROW or 0
     if not InCombatLockdown() then
