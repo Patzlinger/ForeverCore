@@ -315,8 +315,10 @@ end)
 
 local function HookAnchor()
     if not GameTooltip_SetDefaultAnchor then return end
+    -- gilt für jeden Tooltip, der Blizzards Standardplatz benutzt – auch die eigenen Tooltips der Forever-Addons
+    -- (z. B. Erfahrungs-/Rufleiste von ForeverBars), damit alle an derselben Stelle erscheinen
     hooksecurefunc("GameTooltip_SetDefaultAnchor", function(tip, parent)
-        if tip ~= GameTooltip then return end
+        if not (tip and tip.SetOwner and tip.ClearAllPoints) then return end
         local d = GetDB()
         if d.atCursor then
             tip:SetOwner(parent or UIParent, "ANCHOR_CURSOR_RIGHT", 16, -8)
