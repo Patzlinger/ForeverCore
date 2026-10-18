@@ -160,8 +160,8 @@ local function Call(fn)
 end
 
 -- Questie-Befehle zu einer Quest als Liste { text, onClick, disabled } (leer, wenn Questie nicht läuft).
--- Genutzt vom Rechtsklick-Menü und von den Knöpfen in der Questdetail-Ansicht.
-function ns.GetQuestieActions(questID)
+-- withWowhead: Wowhead-Link mit anbieten (nur im Questlog an der Karte)
+function ns.GetQuestieActions(questID, withWowhead)
     local entries = {}
     if not ns.HasQuestie() then return entries end
     local caps = GetCapabilities(questID)
@@ -197,16 +197,18 @@ function ns.GetQuestieActions(questID)
     end
 
     -- Wowhead-Link zum Kopieren
-    table.insert(entries, { text = ns.L("QUESTIE_WOWHEAD"), disabled = InCombatLockdown(), onClick = function() Call(function()
-        Module("TrackerData").RefreshQuest(questID) -- damit der Name im Fenster steht
-        Module("QuestiePopup").Show("QUESTIE_WOWHEAD_URL", questID)
-    end) end })
+    if withWowhead then
+        table.insert(entries, { text = ns.L("QUESTIE_WOWHEAD"), disabled = InCombatLockdown(), onClick = function() Call(function()
+            Module("TrackerData").RefreshQuest(questID) -- damit der Name im Fenster steht
+            Module("QuestiePopup").Show("QUESTIE_WOWHEAD_URL", questID)
+        end) end })
+    end
     return entries
 end
 
 -- Fügt die Questie-Befehle ins Rechtsklick-Menü einer Quest ein (nur wenn Questie läuft)
-function ns.AddQuestieMenuItems(items, questID)
-    local entries = ns.GetQuestieActions(questID)
+function ns.AddQuestieMenuItems(items, questID, inLog)
+    local entries = ns.GetQuestieActions(questID, inLog)
     if #entries == 0 then return end
     table.insert(items, { divider = true })
     table.insert(items, { title = "Questie" })
@@ -254,7 +256,8 @@ function ns.GetQuestChain(questID)
     local ok, chain = pcall(function()
         local db = Module("QuestieDB")
         local function Entry(id)
-            return { questID = id, name = db.QueryQuestSingle(id, "name"), level = db.QueryQuestSingle(id, "questLevel") }
+            return { questID = id, name = db.QueryQuestSingle(id, "name"), level = db.QueryQuestSingle(id, "questLevel"),
+                requiredLevel = db.QueryQuestSingle(id, "requiredLevel") }
         end
         local function Previous(id)
             for _, key in ipairs({ "preQuestSingle", "preQuestGroup" }) do

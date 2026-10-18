@@ -654,16 +654,60 @@ local function RewardButton(index)
     return button
 end
 
--- Knöpfe für die Questie-Befehle in der Detailansicht (Pool)
-local questieButtons = {}
-local function QuestieButton(index)
-    local button = questieButtons[index]
-    if button then return button end
-    button = Style.CreateButton(detailContent, "", 10, 20, function(self)
-        if self.action and not self.action.disabled and self.action.onClick then self.action.onClick() end
-    end)
-    questieButtons[index] = button
-    return button
+-- Zeilen der Questreihe (Pool): nicht anklickbar, Tooltip mit Name, ID, Stufen und Stand
+local chainRows = {}
+local function ChainTooltip(self)
+    local entry = self.entry
+    if not entry then return end
+    local tip = Style.GetTooltip()
+    tip:SetOwner(self, "ANCHOR_RIGHT")
+    local r, g, b = 1, 0.82, 0
+    local color = ns.QuestList.LevelColor(entry.level)
+    if color then r, g, b = color.r, color.g, color.b end
+    tip:AddLine(entry.name or ("Quest #" .. entry.questID), r, g, b)
+    tip:AddLine(ns.L("TIP_CHAIN_ID", entry.questID), 0.6, 0.6, 0.6)
+    if entry.level and entry.level > 0 then tip:AddLine(ns.L("TIP_CHAIN_LEVEL", entry.level), 1, 1, 1) end
+    if entry.requiredLevel and entry.requiredLevel > 0 then
+        tip:AddLine(ns.L("TIP_CHAIN_REQUIRED", entry.requiredLevel), 1, 1, 1)
+    end
+    tip:AddLine(" ")
+    if self.current then
+        tip:AddLine(ns.L("TIP_CHAIN_CURRENT"), Style.COLOR.accent[1], Style.COLOR.accent[2], Style.COLOR.accent[3])
+    elseif self.done then
+        tip:AddLine(ns.L("TIP_CHAIN_DONE"), 0.45, 0.85, 0.45)
+    elseif self.inLog then
+        tip:AddLine(ns.L("DETAIL_IN_LOG"), 0.53, 0.8, 1)
+    else
+        tip:AddLine(ns.L("TIP_CHAIN_OPEN"), 0.7, 0.7, 0.7)
+    end
+    -- Quest im Log: Ziele mit Fortschritt
+    if self.inLog and not self.current then
+        for _, objective in ipairs(C_QuestLog.GetQuestObjectives(entry.questID) or {}) do
+            if objective.text and objective.text ~= "" then
+                local shade = objective.finished and 0.5 or 1
+                tip:AddLine("- " .. objective.text, shade, shade, shade, true)
+            end
+        end
+    end
+    tip:Show()
+end
+
+local function ChainRow(index)
+    local row = chainRows[index]
+    if row then return row end
+    row = CreateFrame("Frame", nil, detailContent)
+    row:EnableMouse(true)
+    row.text = row:CreateFontString(nil, "OVERLAY")
+    row.text:SetPoint("TOPLEFT")
+    row.text:SetJustifyH("LEFT")
+    row.text:SetWordWrap(true)
+    local highlight = row:CreateTexture(nil, "HIGHLIGHT")
+    highlight:SetAllPoints()
+    highlight:SetColorTexture(1, 1, 1, 0.06)
+    row:SetScript("OnEnter", ChainTooltip)
+    row:SetScript("OnLeave", function() Style.GetTooltip():Hide() end)
+    chainRows[index] = row
+    return row
 end
 
 -- Name einer Fraktion (für Rufbelohnungen)
@@ -842,28 +886,6 @@ RenderDetails = function()
     end
     y = y + 4
 
-    -- Questie-Befehle als Knöpfe (zwei je Reihe): hervorheben, Abgabe zeigen, TomTom, Wowhead
-    local actions = ns.GetQuestieActions and ns.GetQuestieActions(questID) or {}
-    if #actions > 0 then
-        Section("Questie")
-        local columnWidth = math.floor((width - 4 - 4) / 2)
-        for i, action in ipairs(actions) do
-            local button = QuestieButton(i)
-            button.action = action
-            button:SetText(action.text)
-            button:SetEnabled(not action.disabled)
-            button:SetAlpha(action.disabled and 0.45 or 1)
-            button:SetWidth(columnWidth)
-            button:ClearAllPoints()
-            local column = (i - 1) % 2
-            button:SetPoint("TOPLEFT", detailContent, "TOPLEFT", 2 + column * (columnWidth + 4), -y)
-            button:Show()
-            if column == 1 or i == #actions then y = y + 24 end
-        end
-        y = y + 4
-    end
-    for i = #actions + 1, #questieButtons do questieButtons[i]:Hide() end
-
     -- Beschreibung
     if description and description ~= "" then
         Section(ns.L("DETAIL_DESCRIPTION"))
@@ -871,28 +893,42 @@ RenderDetails = function()
         y = y + 4
     end
 
-    -- Questreihe (aus Questies Datenbank): erledigt = Haken, diese Quest = gold, offen = grau
+    -- Questreihe (aus Questies Datenbank): erledigt = Haken, diese Quest = gold, offen = grau; mit Quest-ID.
+    -- Nicht anklickbar, aber Maus darüber zeigt einen Tooltip.
     local chain = ns.GetQuestChain and ns.GetQuestChain(questID)
+    local rowsUsed = 0
     if chain then
         Section(ns.L("DETAIL_CHAIN") .. "  |cff8a8a8a" .. #chain .. "|r")
         for i, entry in ipairs(chain) do
             local label = (entry.name or ("Quest #" .. entry.questID))
                 .. ((entry.level and entry.level > 0) and (" (" .. entry.level .. ")") or "")
             local done = C_QuestLog.IsQuestFlaggedCompleted and C_QuestLog.IsQuestFlaggedCompleted(entry.questID)
+            local inLog = C_QuestLog.GetLogIndexForQuestID(entry.questID) ~= nil
+            local text, font, cr, cg, cb = i .. ". " .. label, fonts.objective, 0.6, 0.6, 0.6
             if entry.questID == questID then
-                Paragraph(i .. ". " .. label, fonts.quest, accent[1], accent[2], accent[3], 4)
+                font, cr, cg, cb = fonts.quest, accent[1], accent[2], accent[3]
             elseif done then
-                Paragraph(i .. ". " .. label .. "  |TInterface\\RaidFrame\\ReadyCheck-Ready:12|t", fonts.objective,
-                    0.45, 0.85, 0.45, 4)
-            elseif C_QuestLog.GetLogIndexForQuestID(entry.questID) then
-                Paragraph(i .. ". " .. label .. "  |cff88ccff" .. ns.L("DETAIL_IN_LOG") .. "|r", fonts.objective,
-                    0.9, 0.9, 0.9, 4)
-            else
-                Paragraph(i .. ". " .. label, fonts.objective, 0.6, 0.6, 0.6, 4)
+                text, cr, cg, cb = text .. "  |TInterface\\RaidFrame\\ReadyCheck-Ready:12|t", 0.45, 0.85, 0.45
+            elseif inLog then
+                text, cr, cg, cb = text .. "  |cff88ccff" .. ns.L("DETAIL_IN_LOG") .. "|r", 0.9, 0.9, 0.9
             end
+            text = text .. "  |cff6a6a6a#" .. entry.questID .. "|r"
+            rowsUsed = rowsUsed + 1
+            local row = ChainRow(rowsUsed)
+            row.entry, row.done, row.inLog, row.current = entry, done, inLog, entry.questID == questID
+            row.text:SetFontObject(font)
+            row.text:SetTextColor(cr, cg, cb)
+            row.text:SetWidth(width - 8)
+            row.text:SetText(text)
+            row:ClearAllPoints()
+            row:SetPoint("TOPLEFT", detailContent, "TOPLEFT", 6, -y)
+            row:SetSize(width - 8, row.text:GetStringHeight() + 2)
+            row:Show()
+            y = y + row:GetHeight() + 2
         end
         y = y + 4
     end
+    for i = rowsUsed + 1, #chainRows do chainRows[i]:Hide() end
 
     -- Belohnungen: feste Gegenstände, Auswahl, Währungen, Geld, Erfahrung
     local rewards, choices, currencies = {}, {}, {}
@@ -1022,7 +1058,7 @@ local function CreateDetails(area)
 
     -- Knöpfe unten in zwei Reihen:
     --   oben:  Der Gruppe vorschlagen (bzw. Nicht mehr gemeinsam) | Teilen
-    --   unten: Anheften | Abbrechen | … (ganzes Menü)
+    --   unten: Anheften | Abbrechen
     local footer = CreateFrame("Frame", nil, details)
     footer:SetPoint("BOTTOMLEFT", 6, 6)
     footer:SetPoint("BOTTOMRIGHT", -6, 6)
@@ -1044,9 +1080,6 @@ local function CreateDetails(area)
     end))
     detailButtons.abandon = Style.CreateButton(footer, "|cffff5555" .. ns.L("BTN_ABANDON") .. "|r", 10, 20,
         Act(ns.QuestList.Abandon))
-    detailButtons.menu = Style.CreateButton(footer, "…", 22, 20, function(self)
-        if detailQuestID then ns.QuestList.OpenMenu(self, detailQuestID) end
-    end, ns.L("TIP_DETAIL_MENU"))
     local function Row(buttons, y, reserve)
         local total = footer:GetWidth()
         local w = (total - reserve - 4 * (#buttons - 1)) / #buttons
@@ -1060,9 +1093,7 @@ local function CreateDetails(area)
         local total = footer:GetWidth()
         if not total or total < 50 then return end
         Row({ detailButtons.suggest, detailButtons.share }, 0, 0)
-        Row({ detailButtons.pin, detailButtons.abandon }, -24, 22 + 4)
-        detailButtons.menu:ClearAllPoints()
-        detailButtons.menu:SetPoint("TOPRIGHT", footer, "TOPRIGHT", 0, -24)
+        Row({ detailButtons.pin, detailButtons.abandon }, -24, 0)
     end
     footer:SetScript("OnSizeChanged", Layout)
 

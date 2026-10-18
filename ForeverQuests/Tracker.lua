@@ -395,7 +395,9 @@ local function TogglePinned(questID)
 end
 
 -- Rechtsklick-Menü im eigenen flachen Stil (siehe Style.ShowMenu), an der Mausposition
-local function OpenQuestMenu(owner, questID)
+-- inLog = Menü aus dem Questlog an der Karte (nur dort gibt es den Wowhead-Link)
+local function OpenQuestMenu(owner, questID, inLog)
+    if inLog == nil then inLog = owner and owner.view and owner.view.watchToggle or false end
     local items = {
         { title = C_QuestLog.GetTitleForQuestID(questID) or "Quest" },
         {
@@ -432,7 +434,7 @@ local function OpenQuestMenu(owner, questID)
         })
     end
     -- Questie-Befehle (Fokus, Abgabe auf der Karte, Wegpunkt, Wowhead), nur wenn Questie läuft
-    if ns.AddQuestieMenuItems then ns.AddQuestieMenuItems(items, questID) end
+    if ns.AddQuestieMenuItems then ns.AddQuestieMenuItems(items, questID, inLog) end
     table.insert(items, { divider = true })
     table.insert(items, {
         text = ns.L("MENU_ABANDON"),
@@ -1699,7 +1701,7 @@ ns.QuestList = {
     OpenFilterMenu = OpenFilterMenu,
     HasFilters = function(dbKey) return #GetSelectedFilters(dbKey) > 0 end,
     -- für die Detailansicht im Questlog: dieselben Befehle wie im Rechtsklick-Menü
-    OpenMenu = OpenQuestMenu,
+    OpenMenu = function(owner, questID) OpenQuestMenu(owner, questID, true) end,
     Abandon = AbandonQuest,
     Share = ShareQuest,
     TogglePinned = TogglePinned,
