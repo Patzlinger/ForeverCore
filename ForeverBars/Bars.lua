@@ -93,8 +93,8 @@ end
 -- (bündig zum ersten Knopf) und rechts die Haltungsleiste (bündig zum letzten Knopf), links daneben die
 -- Berufeleiste, unten rechts Menü und Taschen übereinander, oben mittig Erfahrung und Ruf.
 local EDGE = 4         -- Abstand zum Bildschirmrand
-local STATUS_EDGE = 9  -- Abstand der untersten Erfahrungs-/Ruf-Leiste zum Bildschirmrand (etwas Luft unter der Leiste)
-local STATUS_TOP_GAP = 7 -- zusätzlicher Abstand zwischen der obersten dieser Leisten und den Aktionsleisten
+local STATUS_EDGE = 16 -- Abstand der untersten Erfahrungs-/Ruf-Leiste zum Bildschirmrand (etwas Luft unter der Leiste)
+local STATUS_TOP_GAP = 0 -- zusätzlicher Abstand zur Aktionsleiste 1: keiner – Ruf/Erfahrung sitzen direkt darunter (wie eingerastet)
 local BAR_GAP = 1.5    -- Abstand zwischen aneinanderliegenden Leisten (wie "Abstand" der Knöpfe)
 local SIDE_GAP = 24    -- Abstand von Berufe-/Verpflegungsleiste zu den Aktionsleisten (Platz für den Einklapp-Pfeil)
 local FRAME_SPACE = 4  -- Rand des Rahmens um eine Leiste (siehe UpdateBarFrame)

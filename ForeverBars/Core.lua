@@ -105,7 +105,7 @@ ns.defaults = {
         xp = BarDefaults(true), rep = BarDefaults(true),
     },
     -- (Profile verwaltet seit 0.41b ForeverCore – je Charakter, siehe RegisterSettings am Ende dieser Datei)
-    layoutVersion = 25,-- Stand der Standard-Anordnung (siehe MigrateLayout)
+    layoutVersion = 26,-- Stand der Standard-Anordnung (siehe MigrateLayout)
     skin = "FOREVER",        -- Aussehen der Knöpfe (ns.SKINS in Bars.lua)
     hoverAlpha = 15,         -- Stärke des Hover-Leuchtens über den Knöpfen (%)
     procGlow = "FOREVER",    -- Leuchten bei Procs: "FOREVER" (goldener Rahmen), "BLIZZARD", "OFF"
@@ -244,7 +244,8 @@ ns.FillDefaults = FillDefaults
 --  23 (0.44b+): der Abstand aus 22 kam nicht an (Bedingung traf nie zu) – behoben, Positionen nochmals neu berechnet
 --  24 (0.44b+): Leisten 6-8 direkt über Leiste 3, Begleiter/Haltung über der obersten Aktionsleiste – Positionen neu
 --  25 (0.44b+): Aktionsleisten standardmäßig 105 % (so lang wie die Erfahrungsleiste) – Positionen neu
-local LAYOUT_VERSION = 25
+--  26 (0.44b+): Erfahrung/Ruf direkt unter Aktionsleiste 1, dafür mehr Luft zum Bildschirmrand – Positionen neu
+local LAYOUT_VERSION = 26
 -- Standardgrößen vor 16 (nur Leisten, die noch darauf stehen, wachsen mit)
 local OLD_SCALES = { pet = 56, stance = 56, prof = 80, food = 80, bags = 76, queue = 50 }
 local STANDARD_LAYOUT_BARS = { "bar1", "bar2", "bar3", "bar6", "bar7", "bar8", "pet", "stance", "prof", "food",
@@ -275,6 +276,12 @@ function ns.MigrateLayout(db)
         if version < 2 then
             target.bars = CopyTable(ns.defaults.bars)
         else
+            if version < 26 and version >= 25 then
+                for _, key in ipairs(STANDARD_LAYOUT_BARS) do
+                    local bar = target.bars[key]
+                    if bar then bar.x, bar.y = nil, nil end
+                end
+            end
             if version < 25 then
                 -- Aktionsleisten, die noch auf dem alten Standard (100 %) stehen, auf 105 %; Anordnung neu
                 for i = 1, 8 do
