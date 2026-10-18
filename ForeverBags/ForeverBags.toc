@@ -5,6 +5,7 @@
 ## IconTexture: Interface\AddOns\ForeverBags\Media\ForeverCore
 ## Category: Forever Core
 ## Author: flowfy
+## X-License: MIT
 ## Version: 0.44b
 ## X-Curse-Project-ID: 1743753
 ## Dependencies: ForeverCore
