@@ -429,7 +429,7 @@ local function Setup(plate, frame)
     fp.los:Hide()
 
     fp.quest = o:CreateTexture(nil, "OVERLAY")
-    fp.quest:SetTexture("Interface\\GossipFrame\\AvailableQuestIcon")
+    fp.quest:SetTexture("Interface\\GossipFrame\\AvailableQuestIcon") -- oder Questies Symbol (UpdateQuest)
     fp.quest:SetSize(14, 14)
     fp.quest:SetPoint("BOTTOMRIGHT", o, "TOPLEFT", -1, 1)
     fp.quest:Hide()
@@ -1085,8 +1085,63 @@ local function IsQuestUnit(unit)
     return false
 end
 
+-- Questie: dessen Symbol (Schwert = töten, Hand = einsammeln …) an unserem Platz vor dem Namen. Questies eigenes
+-- Plaketten-Symbol hängt am Plaketten-Rahmen und läge sonst neben unserer Aggro-Anzeige – es wird solange
+-- abgeschaltet (wie Questies Tracker in ForeverQuests) und wieder eingeschaltet, wenn wir die Markierung abschalten.
+local QUEST_ICON = "Interface\\GossipFrame\\AvailableQuestIcon"
+local questieNameplate
+local function QuestieNameplate()
+    if questieNameplate == nil then
+        questieNameplate = false
+        local loader = _G.QuestieLoader
+        if type(loader) == "table" and type(loader.ImportModule) == "function" then
+            local ok, mod = pcall(loader.ImportModule, loader, "QuestieNameplate")
+            if ok and type(mod) == "table" and type(mod.GetIcon) == "function" then questieNameplate = mod end
+        end
+    end
+    return questieNameplate or nil
+end
+
+function ns.ApplyQuestie()
+    local q = _G.Questie
+    local profile = type(q) == "table" and q.db and q.db.profile
+    if not profile then return end
+    local d = GetDB()
+    if d.quest then
+        if profile.nameplateEnabled then
+            profile.nameplateEnabled = false
+            d._questieNameplateOff = true
+            local mod = QuestieNameplate()
+            if mod and mod.HideCurrentFrames then pcall(mod.HideCurrentFrames, mod) end
+        end
+    elseif d._questieNameplateOff then
+        profile.nameplateEnabled = true
+        d._questieNameplateOff = nil
+    end
+end
+
+local function QuestieIcon(unit)
+    local mod = QuestieNameplate()
+    if not mod then return end
+    local guid = UnitGUID(unit)
+    if not guid or IsSecret(guid) then return end
+    local ok, icon = pcall(mod.GetIcon, guid)
+    if ok and icon and not IsSecret(icon) then return icon end
+end
+
 local function UpdateQuest(fp)
-    fp.quest:SetShown(db.quest and fp.unit and fp.enemy and not fp.isPlayer and IsQuestUnit(fp.unit) and true or false)
+    local show = false
+    if db.quest and fp.unit and fp.enemy and not fp.isPlayer then
+        local icon = QuestieIcon(fp.unit)
+        if icon then
+            fp.quest:SetTexture(icon)
+            show = true
+        elseif IsQuestUnit(fp.unit) then
+            fp.quest:SetTexture(QUEST_ICON)
+            show = true
+        end
+    end
+    fp.quest:SetShown(show)
 end
 
 ---------------------------------------------------------------------------
@@ -1364,6 +1419,8 @@ function ns.Start()
     FindKick()
     for event in pairs(H) do pcall(ev.RegisterEvent, ev, event) end
     ns.ApplyFriendly()
+    ns.ApplyQuestie()
+    C_Timer.After(3, function() pcall(ns.ApplyQuestie) end) -- Questie legt seine Einstellungen evtl. erst später an
     for _, plate in pairs(C_NamePlate.GetNamePlates(issecure and issecure()) or {}) do
         local unit = plate.namePlateUnitToken or (plate.UnitFrame and plate.UnitFrame.unit)
         if unit and not IsSecret(unit) then Attach(unit) end

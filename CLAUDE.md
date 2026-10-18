@@ -424,6 +424,8 @@ Damit alle Einstellungsfenster gleich aussehen, gelten diese Maße. Quelle: `For
   Stand der Prüfung: **Questie/QuestieDB** (2026-10-18) – GPLv3 laut CurseForge, kein Verbot; Questie bietet
   `Questie.API` an, QuestieDB lädt Fremd-Addons ausdrücklich ein (`LibQuestieDB`, docs/api.md). Wir nutzen zum Teil
   Interna (`QuestieLoader:ImportModule`) – erlaubt, aber nicht stabil, darum alles mit pcall abgesichert.
+  Questie-Einstellungen, die Forever umstellt: `trackerEnabled`, `hideUntrackedQuestsMapIcons` (ForeverQuests),
+  `nameplateEnabled` (ForeverPlates zeigt Questies Plaketten-Symbol selbst vor dem Namen; aus = wieder an).
 - **Andere Addons für dieselbe Aufgabe** (Hub v41, Abschnitt 3b "ConflictDefs" in ForeverHub.lua): je Paar (z. B.
   ForeverBars ↔ Bartender4) wählt der Spieler, welches läuft; das andere wird über C_AddOns ausgeschaltet. Fenster
   ForeverHubConflicts erscheint beim ersten Start neben der Begrüßung und bei neuen Paaren einmal (ForeverHubDB:

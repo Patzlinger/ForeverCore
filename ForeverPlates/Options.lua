@@ -74,7 +74,8 @@ do
     Gap()
     Header(T("Sonstiges", "Other"))
     Check(T("Combopunkte auf dem Ziel", "Combo points on your target"), "combo")
-    Check(T("Questgegner markieren (!)", "Mark quest mobs (!)"), "quest")
+    Check(T("Questgegner markieren (! bzw. Questie-Symbol)", "Mark quest mobs (! or Questie icon)"), "quest", false,
+        function() ns.ApplyQuestie() end)
     Check(T("„keine Sicht“, wenn ein Zauber am Ziel scheitert", "\"no sight\" when a spell fails on the target"), "los")
     Check(T("Große Raidmarker über der Plakette", "Large raid markers above the plate"), "raidMarker")
     Slider(T("Größe", "Size"), "raidMarkerSize", 16, 40, 2, " px", true)
