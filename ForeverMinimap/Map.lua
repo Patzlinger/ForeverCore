@@ -1111,12 +1111,26 @@ end
 
 -- Minimap-Knoepfe am Rand einsammeln: benannte Knoepfe direkt an der Minimap, die nicht von Blizzard sind
 local BLIZZ_PREFIX = { "Minimap", "MiniMap", "GameTime", "TimeManager", "Queue", "AddonCompartment", "ExpansionLanding" }
+-- Kartensymbole anderer Addons (keine Knöpfe!): Questie (Briefkasten, Flugmeister, Questziele …), Wegpunkte, Sammelpunkte
+local PIN_PREFIX = { "Questie", "TomTom", "GatherMate", "HandyNotes", "Routes", "pfQuest", "Carbonite" }
 local OWN = { ForeverMinimapBar = true, ForeverMinimapStrip = true }
+
+-- Symbol auf der Karte über HereBeDragons (die übliche Bibliothek dafür, u. a. von Questie und TomTom)?
+local function IsMapPin(child)
+    local pins = _G.LibStub and _G.LibStub("HereBeDragons-Pins-2.0", true)
+    if pins and ((pins.minimapPins and pins.minimapPins[child]) or (pins.activeMinimapPins and pins.activeMinimapPins[child])) then
+        return true
+    end
+    return false
+end
+
 local function IsForeignButton(child)
     if not (child.GetObjectType and child:GetObjectType() == "Button") then return false end
     local name = child:GetName()
     if type(name) ~= "string" or OWN[name] then return false end
     for _, p in ipairs(BLIZZ_PREFIX) do if name:sub(1, #p) == p then return false end end
+    for _, p in ipairs(PIN_PREFIX) do if name:sub(1, #p) == p then return false end end
+    if IsMapPin(child) then return false end
     return true
 end
 
