@@ -163,6 +163,10 @@ Philosophie, Regeln, Design und Abläufe. Wenn etwas hier nicht steht: am besteh
   - für `/fmove`: `UI.RegisterMovable("ForeverName", isLocked, setLocked)` – `isLocked()` liefert true/false,
     `setLocked(locked)` sperrt bzw. entsperrt (inkl. Menü aktualisieren). Addons mit eigener Stil-Datei melden sich
     in einer kleinen `HubLink.lua` an (siehe ForeverQuests/ForeverBars)
+- **Wiederkehrende Aufgaben nur über den gemeinsamen Takt** (Hub v46): `UI.Every(sekunden, fn, { addon, name, when })`
+  statt `C_Timer.NewTicker`. `when` = Bedingung, nur dann läuft die Aufgabe (z. B. nur in der Gruppe, nur wenn sichtbar);
+  Startzeiten werden verteilt, Fehler einmal gemeldet; `UI.StopEvery(task)` beendet sie. Kurzlebige Ticker, die nur
+  während einer Aktion laufen (Testmodus, offenes Fenster, Verschieben), dürfen bleiben.
 
 ## 7. Design (verbindlich für alle Fenster)
 Vorbild ist der flache Stil aus ForeverQuests; `ForeverHub.UI` und `Style.lua` (ForeverQuests/ForeverBars) setzen

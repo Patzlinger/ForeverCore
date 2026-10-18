@@ -19,6 +19,7 @@
 - The game menu (Escape) has a new "Forever Hub" button right below "Macros" that opens the Forever hub.
 
 ### Improved
+- **Lighter in the background:** all Forever Core addons now share one timer instead of more than a dozen separate ones, and each task only runs when it is needed – e.g. range checks only in a group, bar fading only if a bar actually fades, the target-of-target frame only when there is one.
 - ForeverBars: rested experience is clearly blue again – while you are rested, the bar fills blue and the rested part ahead of it glows light blue (purple when you are not rested).
 - ForeverUnits: DoT bars only show on targets you can attack, so your own debuffs like "Boosted Rest" from camping no longer appear as a timer bar when you target yourself or a group member (option in the General tab).
 - ForeverBags: when the bags open at your mouse, the bottom right corner of the window now sits at the cursor instead of the window being centered on it.
