@@ -22,6 +22,7 @@ local DEFAULTS = {
     flatHealth = true,    -- Lebensbalken flach in Klassen-/Reaktionsfarbe
     atCursor = true,      -- am Mauszeiger statt am Ankerplatz (Standard)
     scale = 1,
+    bgAlpha = 75,         -- Deckkraft der Tooltip-Fläche in Prozent (etwas durchsichtig)
     locked = true,
     pos = nil,            -- Ankerplatz { x, y } (BOTTOMRIGHT, von unten rechts); nil = Standard
     minimapAngle = 300,
@@ -79,6 +80,8 @@ local function ApplyLook(tip)
     local s = tip.ftSkin
     if not s then return end
     local on = GetDB().skin
+    -- Deckkraft der Fläche (Regler im Menü); Text und Rand bleiben voll sichtbar
+    s.bg:SetColorTexture(C.background[1], C.background[2], C.background[3], (GetDB().bgAlpha or 75) / 100)
     s.bg:SetShown(on)
     for _, e in ipairs(s.edges) do e:SetShown(on) end
     if tip.NineSlice then tip.NineSlice:SetAlpha(on and 0 or 1) end
