@@ -394,6 +394,12 @@ Damit alle Einstellungsfenster gleich aussehen, gelten diese Maße. Quelle: `For
   ForeverHubConflicts erscheint beim ersten Start neben der Begrüßung und bei neuen Paaren einmal (ForeverHubDB:
   conflictAsked, conflictChoice), sonst über "Andere Addons …" im Hub. Neue Konkurrenz-Addons dort eintragen
   (Ordnername!). Pakete wie ElvUI absichtlich nicht (würden ganz abgeschaltet).
+- **Leatrix Plus** (Hub v42, `LeatrixDefs`): nicht ganz abschalten, sondern nur die Funktionen, die ein Forever-Addon
+  übernimmt (`MinimapModder` ↔ ForeverMinimap, `TipModEnable` ↔ ForeverTooltip, Chat-Schalter ↔ ForeverChat,
+  Tasten-/Makrotext ↔ ForeverBars). ForeverCore lädt vor Leatrix und setzt beim ADDON_LOADED von Leatrix_Plus
+  `LeaPlusDB[key] = "Off"` – unmittelbar bevor Leatrix liest. Selbst abgeschaltete Schlüssel merkt
+  `ForeverHubDB.leatrixOff` (Wahl "Leatrix" stellt sie zurück). Händler (Verkaufen/Reparieren) bewusst nicht: doppelt
+  schadet nicht. Leatrix Maps: nur Weltkarte, keine Überschneidung.
 - **Masque** (optional, ## OptionalDeps: Masque): ForeverBars (Masque.lua, Gruppe "Forever Core › ForeverBars")
   und ForeverBags (Gruppe "› ForeverBags"). Gestaltet Masque, lassen wir Rand/Fläche/Symbol/Leuchten weg
   (
