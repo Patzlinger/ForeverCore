@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 51
+local VERSION = 52
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -2724,6 +2724,7 @@ local function ConflictDefs() return {
     { forever = "ForeverCast",    topic = T("Zauberleiste", "Cast bar"),             others = { "Quartz" } },
     { forever = "ForeverQuests",  topic = T("Questtracker", "Quest tracker"),        others = { "!KalielsTracker" } },
     { forever = "ForeverTooltip", topic = "Tooltip",                                 others = { "TipTac", "TinyTooltip" } },
+    { forever = "ForeverPlates",  topic = T("Namensplaketten", "Nameplates"),        others = { "BetterBlizzPlates", "Plater", "Kui_Nameplates", "TidyPlates_ThreatPlates", "Platynator" } },
 } end
 
 -- Leatrix Plus: ein Addon mit vielen Einzelfunktionen. Statt es ganz abzuschalten, schalten wir nur die Funktionen
