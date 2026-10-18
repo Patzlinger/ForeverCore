@@ -2358,7 +2358,8 @@ end
 -- Minimap-Knöpfe, Befehle und "Einstellungen"-Knöpfe landen so automatisch auf dem richtigen Eintrag.
 -- Addons, die ihr Fenster erst beim ersten Öffnen bauen, melden vorab einen Eintrag an: UI.RegisterSettingsLink(...).
 ---------------------------------------------------------------------------
-local NAV_W = 176
+local NAV_W = 196
+local NAV_ROW = 26 -- Höhe eines Eintrags in der Liste
 local PAGE_W, PAGE_H = 720, 832
 local settingsWin
 local settingsPages = {}      -- { key, group, label, frame?, open? }
@@ -2397,12 +2398,19 @@ local function SettingsWindow()
     local content = CreateFrame("Frame", nil, f)
     content:SetPoint("TOPLEFT", NAV_W + 1, 0)
     content:SetPoint("BOTTOMRIGHT", 0, 0)
-    content:SetFrameLevel(f:GetFrameLevel() + 2)
     f.content = content
-    -- Schließen-Kreuz über allem (die Titelleiste der Seite liegt darunter)
-    if f.CloseButton then f.CloseButton:SetFrameLevel(content:GetFrameLevel() + 40) end
+    -- Ebenen immer relativ zum Fenster: "zuletzt geöffnet liegt oben" hebt das Fenster an – feste Ebenen rutschten
+    -- dabei hinter den Fensterhintergrund (Seiten wirkten abgedunkelt und ließen sich nicht anklicken)
+    local function Levels()
+        local base = f:GetFrameLevel()
+        content:SetFrameLevel(base + 2)
+        if f.CloseButton then f.CloseButton:SetFrameLevel(base + 60) end -- Schließen-Kreuz über der Titelleiste der Seite
+    end
+    hooksecurefunc(f, "SetFrameLevel", Levels)
+    Levels()
     -- passt das Fenster nicht auf den Bildschirm, beim Öffnen verkleinern (größer ziehen geht weiter mit dem Griff)
     f:HookScript("OnShow", function(self)
+        Levels()
         local h = UIParent:GetHeight()
         if h and h > 0 and PAGE_H * self:GetScale() > h - 20 then self:SetScale((h - 20) / PAGE_H) end
         if settingsCurrent and settingsCurrent.frame then settingsCurrent.frame:fcRawShow() end
@@ -2432,21 +2440,22 @@ local function LayoutNav()
             hi = hi + 1
             local h = f.navHeaders[hi]
             if not h then
-                h = f.nav:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+                h = f.nav:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall") -- Bereich: klein, gold
                 f.navHeaders[hi] = h
             end
             h:ClearAllPoints()
-            h:SetPoint("TOPLEFT", 12, y)
+            h:SetPoint("TOPLEFT", 14, y)
+            h:SetAlpha(0.85)
             h:SetText(string.upper(GROUP_LABEL[group] and GROUP_LABEL[group]() or tostring(group)))
             h:Show()
-            y = y - 16
+            y = y - 18
             for _, page in ipairs(settingsPages) do
                 if page.group == group then
                     bi = bi + 1
                     local b = f.navButtons[bi]
                     if not b then
                         b = CreateFrame("Button", nil, f.nav)
-                        b:SetHeight(20)
+                        b:SetHeight(NAV_ROW)
                         b.hl = b:CreateTexture(nil, "BACKGROUND")
                         b.hl:SetAllPoints()
                         b.hl:SetColorTexture(1, 1, 1, 0.06)
@@ -2457,10 +2466,10 @@ local function LayoutNav()
                         b.mark = b:CreateTexture(nil, "ARTWORK")
                         b.mark:SetPoint("TOPLEFT")
                         b.mark:SetPoint("BOTTOMLEFT")
-                        b.mark:SetWidth(2)
+                        b.mark:SetWidth(3)
                         b.mark:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 0.9)
-                        b.text = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-                        b.text:SetPoint("LEFT", 14, 0)
+                        b.text = b:CreateFontString(nil, "OVERLAY", "GameFontHighlight") -- Addon-Namen gut lesbar
+                        b.text:SetPoint("LEFT", 16, 0)
                         b:SetScript("OnEnter", function(self) self.hl:Show() end)
                         b:SetScript("OnLeave", function(self) self.hl:Hide() end)
                         f.navButtons[bi] = b
@@ -2475,10 +2484,10 @@ local function LayoutNav()
                     b.text:SetTextColor(selected and C.accent[1] or 0.9, selected and C.accent[2] or 0.9, selected and C.accent[3] or 0.9)
                     b:SetScript("OnClick", function() UI.OpenSettings(page.key) end)
                     b:Show()
-                    y = y - 21
+                    y = y - (NAV_ROW + 1)
                 end
             end
-            y = y - 8
+            y = y - 10
         end
     end
 end
