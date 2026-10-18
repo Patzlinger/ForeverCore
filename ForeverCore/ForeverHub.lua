@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 44
+local VERSION = 45
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -2350,23 +2350,36 @@ function hub.ShowWelcome()
 end
 
 ---------------------------------------------------------------------------
--- 3c. Gemeinsames Einstellungsfenster: links eine Liste (nach Bereichen gruppiert), rechts immer nur eine Seite.
--- Ein Addon baut seine Seite mit UI.SettingsPanel(...) statt UI.Window(...): Inhalt, Anordnung und Abstände bleiben
--- genau wie im bisherigen eigenen Fenster (die Seite ist so groß wie das Fenster war, oben ist Platz für den Titel).
--- Das Fenster passt seine Größe der gewählten Seite an (oben links bleibt stehen). Seiten öffnen:
--- UI.OpenSettings(seite) / UI.ToggleSettings(seite).
+-- 3c. Zentrales Einstellungsfenster: links eine Liste aller installierten Forever-Addons (nach Bereichen), rechts
+-- immer genau eine Seite. Feste Größe nach dem größten bisherigen Einzelfenster (ForeverBars 720 × 832).
+-- Ein Addon baut seine Seite mit UI.SettingsPanel(...) statt mit seinem bisherigen Fenster: Inhalt, Anordnung,
+-- Abstände und die eigene Titelleiste der Seite bleiben genau wie im alten Fenster (1:1). Die Seite verhält sich wie
+-- das alte Fenster: :Show()/:Hide()/:SetShown()/:IsShown() öffnen bzw. schließen das große Fenster auf dieser Seite –
+-- Minimap-Knöpfe, Befehle und "Einstellungen"-Knöpfe landen so automatisch auf dem richtigen Eintrag.
+-- Addons, die ihr Fenster erst beim ersten Öffnen bauen, melden vorab einen Eintrag an: UI.RegisterSettingsLink(...).
 ---------------------------------------------------------------------------
 local NAV_W = 176
+local PAGE_W, PAGE_H = 720, 832
 local settingsWin
-local settingsPages = {}      -- { frame, key, group, label, width, height }
+local settingsPages = {}      -- { key, group, label, frame?, open? }
 local settingsCurrent
-local GROUP_ORDER = {}        -- Reihenfolge der Bereiche (in der Reihenfolge der Anmeldung)
+-- feste Reihenfolge der Bereiche (unbekannte kommen ans Ende); Namen erst beim Anzeigen übersetzen
+-- (beim Laden von ForeverCore ist die gewählte Sprache noch nicht bekannt)
+local GROUP_ORDER = { "frames", "bars", "nav", "comfort", "helpers" }
+local GROUP_LABEL = {
+    frames = function() return T("Rahmen", "Frames") end,
+    bars = function() return T("Leisten", "Bars") end,
+    nav = function() return T("Orientierung", "Navigation") end,
+    comfort = function() return T("Komfort", "Comfort") end,
+    helpers = function() return T("Helfer", "Helpers") end,
+}
+UI.SETTINGS_GROUPS = { frames = "frames", bars = "bars", nav = "nav", comfort = "comfort", helpers = "helpers" }
 
 local function SettingsWindow()
     if settingsWin then return settingsWin end
-    local f = UI.Window("ForeverSettingsWindow", T("Forever Core – Einstellungen", "Forever Core – Settings"), 560, 420)
+    local f = UI.Window("ForeverSettingsWindow", UI.NAME, NAV_W + 2 + PAGE_W, PAGE_H)
     settingsWin = f
-    -- linke Liste
+    -- linke Liste (unter der Titelleiste)
     local nav = CreateFrame("Frame", nil, f, "BackdropTemplate")
     nav:SetPoint("TOPLEFT", 1, -27)
     nav:SetPoint("BOTTOMLEFT", 1, 1)
@@ -2380,22 +2393,31 @@ local function SettingsWindow()
     navLine:SetColorTexture(C.border[1], C.border[2], C.border[3], 1)
     f.nav = nav
     f.navButtons, f.navHeaders = {}, {}
-    -- rechte Seite: hier liegen die Seiten der Addons
+    -- rechts: Platz für die Seiten (über die volle Höhe – die Seite bringt ihre eigene Titelleiste mit)
     local content = CreateFrame("Frame", nil, f)
     content:SetPoint("TOPLEFT", NAV_W + 1, 0)
     content:SetPoint("BOTTOMRIGHT", 0, 0)
+    content:SetFrameLevel(f:GetFrameLevel() + 2)
     f.content = content
-    -- Titelleiste (mit Schließen-Kreuz) über den Seiten: die Seiten reichen bis oben, wo im alten Fenster ihre
-    -- Titelleiste war – sonst lag die Seite über dem Kreuz und man konnte das Fenster nicht mehr schließen
-    if f.header then f.header:SetFrameLevel(content:GetFrameLevel() + 20) end
-    f:HookScript("OnHide", function()
-        -- Seite verstecken, damit sie beim nächsten Öffnen ihre Werte neu lädt (OnShow)
-        if settingsCurrent then settingsCurrent.frame:Hide() end
+    -- Schließen-Kreuz über allem (die Titelleiste der Seite liegt darunter)
+    if f.CloseButton then f.CloseButton:SetFrameLevel(content:GetFrameLevel() + 40) end
+    -- passt das Fenster nicht auf den Bildschirm, beim Öffnen verkleinern (größer ziehen geht weiter mit dem Griff)
+    f:HookScript("OnShow", function(self)
+        local h = UIParent:GetHeight()
+        if h and h > 0 and PAGE_H * self:GetScale() > h - 20 then self:SetScale((h - 20) / PAGE_H) end
+        if settingsCurrent and settingsCurrent.frame then settingsCurrent.frame:fcRawShow() end
     end)
-    f:HookScript("OnShow", function()
-        if settingsCurrent then settingsCurrent.frame:Show() end
+    f:HookScript("OnHide", function()
+        -- Seite verstecken: beim nächsten Öffnen lädt sie ihre Werte neu (OnShow), ihr OnHide läuft wie beim alten Fenster
+        if settingsCurrent and settingsCurrent.frame then settingsCurrent.frame:fcRawHide() end
     end)
     return f
+end
+
+local function GroupIndex(group)
+    for i, g in ipairs(GROUP_ORDER) do if g == group then return i end end
+    GROUP_ORDER[#GROUP_ORDER + 1] = group
+    return #GROUP_ORDER
 end
 
 local function LayoutNav()
@@ -2404,84 +2426,104 @@ local function LayoutNav()
     for _, h in ipairs(f.navHeaders) do h:Hide() end
     local y, bi, hi = -10, 0, 0
     for _, group in ipairs(GROUP_ORDER) do
-        hi = hi + 1
-        local h = f.navHeaders[hi]
-        if not h then
-            h = f.nav:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-            f.navHeaders[hi] = h
-        end
-        h:ClearAllPoints()
-        h:SetPoint("TOPLEFT", 12, y)
-        h:SetText(string.upper(group))
-        h:Show()
-        y = y - 16
-        for _, page in ipairs(settingsPages) do
-            if page.group == group then
-                bi = bi + 1
-                local b = f.navButtons[bi]
-                if not b then
-                    b = CreateFrame("Button", nil, f.nav)
-                    b:SetHeight(20)
-                    b.hl = b:CreateTexture(nil, "BACKGROUND")
-                    b.hl:SetAllPoints()
-                    b.hl:SetColorTexture(1, 1, 1, 0.06)
-                    b.hl:Hide()
-                    b.sel = b:CreateTexture(nil, "BACKGROUND")
-                    b.sel:SetAllPoints()
-                    b.sel:SetColorTexture(C.header[1], C.header[2], C.header[3], 1)
-                    b.mark = b:CreateTexture(nil, "ARTWORK")
-                    b.mark:SetPoint("TOPLEFT")
-                    b.mark:SetPoint("BOTTOMLEFT")
-                    b.mark:SetWidth(2)
-                    b.mark:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 0.9)
-                    b.text = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-                    b.text:SetPoint("LEFT", 14, 0)
-                    b:SetScript("OnEnter", function(self) self.hl:Show() end)
-                    b:SetScript("OnLeave", function(self) self.hl:Hide() end)
-                    f.navButtons[bi] = b
-                end
-                b:ClearAllPoints()
-                b:SetPoint("TOPLEFT", 4, y)
-                b:SetPoint("TOPRIGHT", -5, y)
-                b.text:SetText(page.label)
-                local selected = page == settingsCurrent
-                b.sel:SetShown(selected)
-                b.mark:SetShown(selected)
-                b.text:SetTextColor(selected and C.accent[1] or 0.9, selected and C.accent[2] or 0.9, selected and C.accent[3] or 0.9)
-                b:SetScript("OnClick", function() UI.OpenSettings(page.frame) end)
-                b:Show()
-                y = y - 21
+        local any = false
+        for _, page in ipairs(settingsPages) do if page.group == group then any = true break end end
+        if any then
+            hi = hi + 1
+            local h = f.navHeaders[hi]
+            if not h then
+                h = f.nav:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+                f.navHeaders[hi] = h
             end
+            h:ClearAllPoints()
+            h:SetPoint("TOPLEFT", 12, y)
+            h:SetText(string.upper(GROUP_LABEL[group] and GROUP_LABEL[group]() or tostring(group)))
+            h:Show()
+            y = y - 16
+            for _, page in ipairs(settingsPages) do
+                if page.group == group then
+                    bi = bi + 1
+                    local b = f.navButtons[bi]
+                    if not b then
+                        b = CreateFrame("Button", nil, f.nav)
+                        b:SetHeight(20)
+                        b.hl = b:CreateTexture(nil, "BACKGROUND")
+                        b.hl:SetAllPoints()
+                        b.hl:SetColorTexture(1, 1, 1, 0.06)
+                        b.hl:Hide()
+                        b.sel = b:CreateTexture(nil, "BACKGROUND")
+                        b.sel:SetAllPoints()
+                        b.sel:SetColorTexture(C.header[1], C.header[2], C.header[3], 1)
+                        b.mark = b:CreateTexture(nil, "ARTWORK")
+                        b.mark:SetPoint("TOPLEFT")
+                        b.mark:SetPoint("BOTTOMLEFT")
+                        b.mark:SetWidth(2)
+                        b.mark:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 0.9)
+                        b.text = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+                        b.text:SetPoint("LEFT", 14, 0)
+                        b:SetScript("OnEnter", function(self) self.hl:Show() end)
+                        b:SetScript("OnLeave", function(self) self.hl:Hide() end)
+                        f.navButtons[bi] = b
+                    end
+                    b:ClearAllPoints()
+                    b:SetPoint("TOPLEFT", 4, y)
+                    b:SetPoint("TOPRIGHT", -5, y)
+                    b.text:SetText(page.label)
+                    local selected = page == settingsCurrent
+                    b.sel:SetShown(selected)
+                    b.mark:SetShown(selected)
+                    b.text:SetTextColor(selected and C.accent[1] or 0.9, selected and C.accent[2] or 0.9, selected and C.accent[3] or 0.9)
+                    b:SetScript("OnClick", function() UI.OpenSettings(page.key) end)
+                    b:Show()
+                    y = y - 21
+                end
+            end
+            y = y - 8
         end
-        y = y - 8
     end
-    f.navHeight = -y + 10
 end
 
 local function FindPage(which)
     for _, page in ipairs(settingsPages) do
-        if page.frame == which or page.key == which then return page end
+        if which ~= nil and (page.frame == which or page.key == which) then return page end
     end
+end
+
+-- Eintrag anlegen bzw. finden (Reihenfolge innerhalb eines Bereichs = Reihenfolge der Anmeldung)
+local function PageEntry(key, group, label)
+    local page = FindPage(key)
+    if not page then
+        page = { key = key }
+        settingsPages[#settingsPages + 1] = page
+    end
+    page.group = group or page.group or T("Weitere", "More")
+    page.label = label or page.label or key
+    GroupIndex(page.group)
+    return page
 end
 
 function UI.OpenSettings(which)
     local f = SettingsWindow()
     local page = FindPage(which) or settingsCurrent or settingsPages[1]
     if not page then return end
-    if settingsCurrent and settingsCurrent ~= page then settingsCurrent.frame:Hide() end
+    if not page.frame then
+        -- Seite wird erst jetzt gebaut (Addon baut sein Fenster beim ersten Öffnen): dessen Öffnen landet wieder hier
+        if page.open and not page.opening then
+            page.opening = true
+            local ok, err = pcall(page.open)
+            page.opening = nil
+            if not ok then UI.ReportError("ForeverCore", "Settings " .. tostring(page.key), err) end
+        end
+        if not page.frame then return end
+    end
+    if settingsCurrent and settingsCurrent ~= page and settingsCurrent.frame then settingsCurrent.frame:fcRawHide() end
     settingsCurrent = page
     LayoutNav()
-    -- Größe nach der Seite; oben links bleibt stehen (Liste springt nicht)
-    local left, top = f:GetLeft(), f:GetTop()
-    f:SetSize(NAV_W + 2 + page.width, math.max(page.height, (f.navHeight or 0) + 27))
-    if left and top and f:IsShown() then
-        f:ClearAllPoints()
-        f:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", left, top)
-    end
-    page.frame:ClearAllPoints()
-    page.frame:SetPoint("TOPLEFT", f.content, "TOPLEFT", 0, 0)
-    if f:IsShown() then page.frame:Show() else f:Show() end
-    if f.TitleText then f.TitleText:SetText(T("Forever Core – Einstellungen", "Forever Core – Settings") .. "  |cff8a8a8a›  " .. page.label .. "|r") end
+    if f:IsShown() then page.frame:fcRawShow() else f:Show() end
+end
+
+function UI.CloseSettings()
+    if settingsWin and settingsWin:IsShown() then settingsWin:Hide() end
 end
 
 -- gleiche Seite nochmal = schließen (wie bisher der Minimap-Knopf / Befehl)
@@ -2492,7 +2534,16 @@ function UI.ToggleSettings(which)
     UI.OpenSettings(which)
 end
 
--- Seite anlegen (statt eines eigenen Fensters). info = { key, group, label }
+-- Eintrag für ein Addon, das seine Seite erst beim ersten Öffnen baut. info = { key, group, label, open }
+function UI.RegisterSettingsLink(info)
+    local page = PageEntry(info.key, info.group, info.label)
+    page.open = info.open
+    if settingsWin and settingsWin:IsShown() then LayoutNav() end
+end
+
+-- Seite anlegen (statt eines eigenen Fensters).
+-- info = { key, group, label, kind } – kind: nil (wie UI.Window, Titelleiste 26), "menu" (wie UI.MenuWindow bzw.
+-- Style.CreateWindow aus ForeverBars/ForeverQuests, Titelleiste 40, Titel groß, Untertitel)
 function UI.SettingsPanel(name, title, width, height, info)
     info = info or {}
     local f = SettingsWindow()
@@ -2500,13 +2551,62 @@ function UI.SettingsPanel(name, title, width, height, info)
     p:SetSize(width, height)
     p:SetPoint("TOPLEFT")
     p:Hide()
-    -- (der Titel der Seite steht in der Titelleiste des Fensters: "Forever Core – Einstellungen › Seite")
-    local group = info.group or T("Weitere", "More")
-    local known = false
-    for _, g in ipairs(GROUP_ORDER) do if g == group then known = true end end
-    if not known then GROUP_ORDER[#GROUP_ORDER + 1] = group end
-    settingsPages[#settingsPages + 1] = { frame = p, key = info.key or name, group = group, label = info.label or title,
-        width = width, height = height }
+    -- echte Anzeige-Funktionen fürs große Fenster; nach außen verhält sich die Seite wie das alte Fenster
+    p.fcRawShow, p.fcRawHide, p.fcRawIsShown = p.Show, p.Hide, p.IsShown
+    function p:Show() UI.OpenSettings(self) end
+    function p:Hide()
+        if settingsCurrent and settingsCurrent.frame == self then UI.CloseSettings() end
+    end
+    function p:SetShown(shown) if shown then self:Show() else self:Hide() end end
+    function p:IsShown()
+        return settingsWin ~= nil and settingsWin:IsShown() and settingsCurrent ~= nil and settingsCurrent.frame == self
+    end
+    p.IsVisible = p.IsShown
+
+    -- Titelleiste der Seite wie im alten Fenster (über die volle Breite des Seitenbereichs)
+    local menu = info.kind == "menu"
+    local headerH = menu and UI.MENU.headerHeight or 26
+    local header = CreateFrame("Frame", nil, p, "BackdropTemplate")
+    header:SetPoint("TOPLEFT", p, "TOPLEFT", 0, -1)
+    header:SetPoint("RIGHT", f.content, "RIGHT", -1, 0)
+    header:SetHeight(headerH)
+    header:SetBackdrop({ bgFile = WHITE })
+    header:SetBackdropColor(C.header[1], C.header[2], C.header[3], 1)
+    local line = header:CreateTexture(nil, "ARTWORK")
+    line:SetPoint("BOTTOMLEFT")
+    line:SetPoint("BOTTOMRIGHT")
+    line:SetHeight(1)
+    line:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 0.6)
+    -- Titelleiste verschiebt das große Fenster (wie vorher die eigene)
+    header:EnableMouse(true)
+    header:RegisterForDrag("LeftButton")
+    header:SetScript("OnDragStart", function() f:StartMoving() end)
+    header:SetScript("OnDragStop", function() f:StopMovingOrSizing() end)
+    p.header = header
+    if menu then
+        p.TitleText = header:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+        p.TitleText:SetPoint("LEFT", 16, 0)
+        p.SubText = header:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+        p.SubText:SetPoint("LEFT", p.TitleText, "RIGHT", 10, -1)
+        p.SubText:SetText(info.subtitle or "")
+    else
+        p.TitleText = header:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        p.TitleText:SetPoint("LEFT", 10, 0)
+    end
+    p.TitleText:SetText(title or "")
+    p.titleText, p.subText = p.TitleText, p.SubText -- (Schreibweise von Style.CreateWindow)
+    p.CloseButton = f.CloseButton
+    -- Bausteine aus UI.Menu*: :Refresh() beim Öffnen, offene Auswahlliste beim Schließen zu
+    p.menuWindow = p
+    function p:RefreshAll()
+        for _, c in ipairs(self.menuControls or {}) do if c.Refresh then c:Refresh() end end
+    end
+    p:HookScript("OnShow", function(self) self:RefreshAll() end)
+    p:HookScript("OnHide", function() if UI.HideMenu then UI.HideMenu() end end)
+
+    local page = PageEntry(info.key or name, info.group, info.label or title)
+    page.frame = p
+    if settingsWin:IsShown() then LayoutNav() end
     return p
 end
 

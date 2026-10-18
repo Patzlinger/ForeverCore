@@ -694,7 +694,7 @@ end)
 -- Einstellungen
 ---------------------------------------------------------------------------
 local options = UI.SettingsPanel("ForeverBuffsOptions", T("ForeverBuffs – Buff-Erinnerung", "ForeverBuffs – Buff reminder"), 620, 500,
-    { key = "ForeverHelpers.buffs", group = T("Helfer", "Helpers"), label = T("Buff-Erinnerung", "Buff reminder") })
+    { key = "ForeverHelpers.buffs", group = UI.SETTINGS_GROUPS.helpers, label = T("Buff-Erinnerung", "Buff reminder") })
 local controls = {}
 local function Refresh() dirty = true end
 

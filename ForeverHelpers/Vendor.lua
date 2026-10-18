@@ -853,7 +853,7 @@ local RefreshList
 do
 -- 720 breit: die deutschen Beschriftungen links sind laenger und brauchen ~370 px bis zur rechten Spalte
 local options = UI.SettingsPanel("ForeverVendorOptions", T("ForeverVendor – Händler", "ForeverVendor – Vendor"), 720, 690,
-    { key = "ForeverHelpers.vendor", group = T("Helfer", "Helpers"), label = T("Händler", "Vendor") })
+    { key = "ForeverHelpers.vendor", group = UI.SETTINGS_GROUPS.helpers, label = T("Händler", "Vendor") })
 local controls = {}
 local function Changed() UpdateIcon() end
 

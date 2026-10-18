@@ -349,8 +349,9 @@ end
 ---------------------------------------------------------------------------
 local ToggleOptions
 do
-    local options = UI.Window("ForeverTooltipOptions", T("ForeverTooltip – Einstellungen (Prototyp)",
-        "ForeverTooltip – Settings (prototype)"), 360, 510)
+    local options = UI.SettingsPanel("ForeverTooltipOptions", T("ForeverTooltip – Einstellungen (Prototyp)",
+        "ForeverTooltip – Settings (prototype)"), 360, 510,
+        { key = "ForeverTooltip", group = UI.SETTINGS_GROUPS.comfort, label = "Tooltip" })
     local W = 326
     local checks = {}
     local function Check(y, label, key)

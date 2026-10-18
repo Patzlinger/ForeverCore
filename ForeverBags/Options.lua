@@ -68,7 +68,9 @@ end
 
 local function CreateOptions()
     local W, H = 680, 380
-    options = UI.Window("ForeverBagsOptions", L("OPT_TITLE"), W, H)
+    -- Seite im zentralen Einstellungsfenster von Forever Core (verhält sich wie das bisherige eigene Fenster)
+    options = UI.SettingsPanel("ForeverBagsOptions", L("OPT_TITLE"), W, H,
+        { key = "ForeverBags", group = UI.SETTINGS_GROUPS.comfort, label = UI.T("Taschen", "Bags") })
     local x, x2, colW = 16, 352, 316
 
     -- linke Spalte: Allgemein, Fenster
@@ -117,4 +119,10 @@ end
 function ns.ToggleOptions()
     if not options then CreateOptions() end
     options:SetShown(not options:IsShown())
+end
+
+-- Eintrag im zentralen Einstellungsfenster schon beim Laden (die Seite selbst entsteht erst beim ersten Öffnen)
+if UI.RegisterSettingsLink then
+    UI.RegisterSettingsLink({ key = "ForeverBags", group = UI.SETTINGS_GROUPS.comfort, label = UI.T("Taschen", "Bags"),
+        open = function() ns.ToggleOptions() end })
 end

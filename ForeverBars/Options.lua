@@ -230,7 +230,10 @@ end
 ---------------------------------------------------------------------------
 
 local function CreateOptions()
-    options = ns.Style.CreateWindow("ForeverBarsOptions", WINDOW_WIDTH, WINDOW_HEIGHT, L("OPT_TITLE"))
+    -- Seite im zentralen Einstellungsfenster von Forever Core (verhält sich wie das bisherige eigene Fenster)
+    local HUB = _G.ForeverHub.UI
+    options = HUB.SettingsPanel("ForeverBarsOptions", L("OPT_TITLE"), WINDOW_WIDTH, WINDOW_HEIGHT,
+        { key = "ForeverBars", group = HUB.SETTINGS_GROUPS.bars, label = HUB.T("Aktionsleisten", "Action bars"), kind = "menu" })
     options.subText:SetText(L("ADDON_NAME"))
     options:SetScript("OnHide", function() ns.Style.HideMenu() end)
 
@@ -1148,4 +1151,13 @@ function ns.ToggleOptions()
     if not ns.db then return end
     if not options then CreateOptions() end
     options:SetShown(not options:IsShown())
+end
+
+-- Eintrag im zentralen Einstellungsfenster schon beim Laden (die Seite selbst entsteht erst beim ersten Öffnen)
+do
+    local HUB = _G.ForeverHub and _G.ForeverHub.UI
+    if HUB and HUB.RegisterSettingsLink then
+        HUB.RegisterSettingsLink({ key = "ForeverBars", group = HUB.SETTINGS_GROUPS.bars, label = HUB.T("Aktionsleisten", "Action bars"),
+            open = function() ns.ToggleOptions() end })
+    end
 end

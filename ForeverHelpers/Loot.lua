@@ -794,7 +794,7 @@ end
 local ToggleOptions
 do
     local options = UI.SettingsPanel("ForeverLootOptions", T("ForeverLoot – Würfel-Drops", "ForeverLoot – Loot rolls"), 340, 400,
-        { key = "ForeverHelpers.loot", group = T("Helfer", "Helpers"), label = T("Würfel-Drops", "Loot rolls") })
+        { key = "ForeverHelpers.loot", group = UI.SETTINGS_GROUPS.helpers, label = T("Würfel-Drops", "Loot rolls") })
     local W = 308 -- Breite der Ueberschriften
 
     local function Button(text, width, onClick)

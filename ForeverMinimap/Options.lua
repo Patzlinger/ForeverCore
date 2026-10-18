@@ -23,7 +23,9 @@ local function Build()
     local colH = math.max(leftH, rightH)
     local qolH = 44 + 3 * CS + 8                -- Komfort (breit, zwei Spalten innen)
     local H = -M.panelTop + colH + M.pad + qolH + M.pad + M.footerHeight + M.pad
-    options = UI.MenuWindow("ForeverMinimapOptions", T("Einstellungen", "Settings"), "ForeverMinimap", W, H)
+    -- Seite im zentralen Einstellungsfenster von Forever Core (verhält sich wie das bisherige eigene Fenster)
+    options = UI.SettingsPanel("ForeverMinimapOptions", T("Einstellungen", "Settings"), W, H,
+        { key = "ForeverMinimap", group = UI.SETTINGS_GROUPS.nav, label = "Minimap", kind = "menu", subtitle = "ForeverMinimap" })
 
     -- Zeilen untereinander: jede Funktion setzt ein Element und rueckt weiter
     local function Rows(panel)
@@ -159,4 +161,10 @@ function ns.SetupOptions()
                      T("Rechtsklick: rund / eckig", "Right-click: round / square") }
         end,
     })
+end
+
+-- Eintrag im zentralen Einstellungsfenster schon beim Laden (die Seite selbst entsteht erst beim ersten Öffnen)
+if UI.RegisterSettingsLink then
+    UI.RegisterSettingsLink({ key = "ForeverMinimap", group = UI.SETTINGS_GROUPS.nav, label = "Minimap",
+        open = function() ns.ToggleOptions() end })
 end

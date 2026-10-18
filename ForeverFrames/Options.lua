@@ -252,7 +252,9 @@ end
 ---------------------------------------------------------------------------
 -- Fenster
 ---------------------------------------------------------------------------
-local options = UI.Window("ForeverFramesOptions", T("ForeverFrames – Einstellungen", "ForeverFrames – Settings"), 680, 670)
+-- Seite im zentralen Einstellungsfenster von Forever Core (verhält sich wie das bisherige eigene Fenster)
+local options = UI.SettingsPanel("ForeverFramesOptions", T("ForeverFrames – Einstellungen", "ForeverFrames – Settings"), 680, 670,
+    { key = "ForeverFrames", group = UI.SETTINGS_GROUPS.frames, label = T("Gruppe & Raid", "Party & raid") })
 
 local tabs, panels = {}, {}
 local function SelectTab(index)

@@ -134,7 +134,9 @@ end
 ---------------------------------------------------------------------------
 -- Fenster mit Reitern
 ---------------------------------------------------------------------------
-local options = UI.Window("ForeverUnitsOptions", T("ForeverUnits – Einstellungen", "ForeverUnits – Settings"), 660, 640)
+-- Seite im zentralen Einstellungsfenster von Forever Core (verhält sich wie das bisherige eigene Fenster)
+local options = UI.SettingsPanel("ForeverUnitsOptions", T("ForeverUnits – Einstellungen", "ForeverUnits – Settings"), 660, 640,
+    { key = "ForeverUnits", group = UI.SETTINGS_GROUPS.frames, label = T("Einheitenrahmen", "Unit frames") })
 
 local tabs, panels = {}, {}
 local function SelectTab(index)

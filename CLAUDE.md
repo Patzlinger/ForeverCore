@@ -167,6 +167,12 @@ Philosophie, Regeln, Design und Abläufe. Wenn etwas hier nicht steht: am besteh
 ## 7. Design (verbindlich für alle Fenster)
 Vorbild ist der flache Stil aus ForeverQuests; `ForeverHub.UI` und `Style.lua` (ForeverQuests/ForeverBars) setzen
 ihn identisch um. Neue Oberflächen nutzen eine dieser beiden – keine dritten Stile.
+- **Einstellungen = Seite im zentralen Fenster** (Hub v45, "3c" in ForeverHub.lua): UI.SettingsPanel(name, titel, w, h,
+  { key = Addonname, group = UI.SETTINGS_GROUPS.frames|bars|nav|comfort|helpers, label, kind = nil|"menu" }) statt
+  UI.Window/Style.CreateWindow/UI.MenuWindow. Feste Fenstergröße 176 + 720 × 832 (größtes Einzelfenster ForeverBars).
+  Die Seite bringt ihre alte Titelleiste mit (26 bzw. 40 hoch) und verhält sich wie das alte Fenster (:Show/:Hide/
+  :SetShown/:IsShown öffnen bzw. schließen das große Fenster auf dieser Seite). Wer sein Fenster erst beim ersten Öffnen
+  baut, meldet beim Laden UI.RegisterSettingsLink({ key, group, label, open }) an. Inhalt 1:1 (siehe 7.1, Lehren).
 - **Eine Quelle für Farben:** Style.COLOR in ForeverBars/ForeverQuests IST die Tabelle UI.COLOR aus ForeverCore
   (seit 2026-10-18; das Dungeonfenster ergänzt nur eigene Kartenfarben per Metatabelle). Farbtöne nur im Hub ändern,
   die Tabelle nie aus einem Addon heraus verändern. Fenster, Positionen und Menüs der Addons bleiben eigenständig.
