@@ -350,7 +350,7 @@ end
 local ToggleOptions
 do
     local options = UI.SettingsPanel("ForeverTooltipOptions", T("ForeverTooltip – Einstellungen (Prototyp)",
-        "ForeverTooltip – Settings (prototype)"), 360, 510,
+        "ForeverTooltip – Settings (prototype)"), 360, 530,
         { key = "ForeverTooltip", group = UI.SETTINGS_GROUPS.comfort, label = "Tooltip" })
     local W = 326
     local checks = {}
@@ -369,32 +369,32 @@ do
     Check(-102, T("Spielernamen in Klassenfarbe", "Player names in class color"), "classNames")
     Check(-126, T("Lebensbalken flach in Klassenfarbe", "Flat health bar in class color"), "flatHealth")
 
-    UI.Header(options, 18, -164, T("Mehr Infos", "More info"), W)
-    Check(-186, T("Gegenstandsstufe bei Ausrüstung", "Item level on gear"), "itemLevel")
-    Check(-210, T("Ziel der Einheit („Ziel: …“)", "Target of the unit (\"Target: …\")"), "showTarget")
-    Check(-234, T("Gegenstands- und Zauber-IDs", "Item and spell IDs"), "showIDs")
+    UI.Header(options, 18, -172, T("Mehr Infos", "More info"), W)
+    Check(-194, T("Gegenstandsstufe bei Ausrüstung", "Item level on gear"), "itemLevel")
+    Check(-218, T("Ziel der Einheit („Ziel: …“)", "Target of the unit (\"Target: …\")"), "showTarget")
+    Check(-242, T("Gegenstands- und Zauber-IDs", "Item and spell IDs"), "showIDs")
 
-    UI.Header(options, 18, -272, T("Ort", "Position"), W)
-    Check(-294, T("Am Mauszeiger statt am Ankerplatz", "At the mouse cursor instead of the anchor"), "atCursor")
-    local scale = UI.Slider(options, 18, -326, T("Größe", "Size"), 70, 150, 5, Safe(T("Einstellungen", "Settings"), function(v)
+    UI.Header(options, 18, -284, T("Ort", "Position"), W)
+    Check(-306, T("Am Mauszeiger statt am Ankerplatz", "At the mouse cursor instead of the anchor"), "atCursor")
+    local scale = UI.Slider(options, 18, -338, T("Größe", "Size"), 70, 150, 5, Safe(T("Einstellungen", "Settings"), function(v)
         GetDB().scale = v / 100
         ApplyScale()
     end), { width = 200, unit = " %" })
-    local alpha = UI.Slider(options, 18, -366, T("Deckkraft des Hintergrunds", "Background opacity"), 20, 100, 5,
+    local alpha = UI.Slider(options, 18, -378, T("Deckkraft des Hintergrunds", "Background opacity"), 20, 100, 5,
         Safe(T("Einstellungen", "Settings"), function(v)
             GetDB().bgAlpha = v
             for tip in pairs(skinned) do ApplyLook(tip) end
         end), { width = 200, unit = " %" })
     local move = UI.Button(options, T("Verschieben", "Move"), 110, Safe("Move", function() SetLocked(false) end))
-    move:SetPoint("TOPLEFT", 16, -410)
+    move:SetPoint("TOPLEFT", 16, -420)
     local done = UI.Button(options, T("Fertig – sperren", "Done – lock"), 130, Safe("Lock", function() SetLocked(true) end))
     done:SetPoint("LEFT", move, "RIGHT", 6, 0)
     local reset = UI.Button(options, T("Position zurücksetzen", "Reset position"), 160, Safe("Reset", function()
         GetDB().pos = nil
         PlaceAnchor()
     end))
-    reset:SetPoint("TOPLEFT", 16, -436)
-    UI.Hint(options, 18, -466, W, T("Alle Forever-Rahmen auf einmal verschieben: /fmove. Prototyp – noch nicht im Release.",
+    reset:SetPoint("TOPLEFT", 16, -446)
+    UI.Hint(options, 18, -476, W, T("Alle Forever-Rahmen auf einmal verschieben: /fmove. Prototyp – noch nicht im Release.",
         "Move all Forever frames at once: /fmove. Prototype – not in the release yet."))
 
     options:SetScript("OnShow", function()

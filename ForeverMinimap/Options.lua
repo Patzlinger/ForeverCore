@@ -5,7 +5,8 @@ local ADDON_NAME, ns = ...
 local UI, T = ns.UI, ns.T
 local M = UI.MENU
 
-local COL = 360 -- Spaltenbreite (laengster deutscher Text passt hinein)
+-- Spaltenbreite: die Seite muss in den Seitenbereich des Hub-Fensters passen (720 breit), sonst fehlt rechts der Rand
+local COL = 342
 local W = M.pad * 3 + COL * 2
 local options
 
@@ -59,7 +60,7 @@ local function Build()
     r.Check(T("Ruhegebiet: „zZ“ hinter dem Namen", "Resting area: \"zZ\" after the name"), "restInfo")
     r.Check(T("Schwierigkeit in Instanzen", "Difficulty in instances"), "difficulty")
     r.Check(T("Haltbarkeit unter 30 % (Amboss)", "Durability below 30 % (anvil)"), "durability")
-    r.Check(T("Warteschlangen-Auge unten rechts in der Karte", "Queue eye in the bottom right of the map"), "queueDock",
+    r.Check(T("Warteschlangen-Auge unten rechts", "Queue eye bottom right"), "queueDock",
         T("Solange ForeverBars das Auge nicht in seiner eigenen Leiste führt.", "As long as ForeverBars does not show the eye in its own bar."))
     r.Check(T("Klick auf den Zonennamen: Weltkarte", "Click on the zone name: world map"), "barClickMap")
 

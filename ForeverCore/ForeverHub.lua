@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 47
+local VERSION = 48
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -2635,6 +2635,24 @@ function UI.SettingsPanel(name, title, width, height, info)
         return settingsWin ~= nil and settingsWin:IsShown() and settingsCurrent ~= nil and settingsCurrent.frame == self
     end
     p.IsVisible = p.IsShown
+    -- Viele Seiten setzen ihr OnShow/OnHide noch mit SetScript (wie beim alten Fenster). SetScript wirft aber alle
+    -- HookScript-Haken weg – darunter die Abschnitts-Kästen von UI.Header und RefreshAll/HideMenu. Darum bleiben die
+    -- Handler der Seite fest; SetScript("OnShow"/"OnHide") legt nur die Funktion des Addons darin ab (v48).
+    local rawSetScript, rawGetScript = p.SetScript, p.GetScript
+    p.fcScripts = {}
+    for _, event in ipairs({ "OnShow", "OnHide" }) do
+        rawSetScript(p, event, function(self, ...)
+            local fn = self.fcScripts[event]
+            if fn then fn(self, ...) end
+        end)
+    end
+    function p:SetScript(event, fn)
+        if event == "OnShow" or event == "OnHide" then self.fcScripts[event] = fn else rawSetScript(self, event, fn) end
+    end
+    function p:GetScript(event)
+        if event == "OnShow" or event == "OnHide" then return self.fcScripts[event] end
+        return rawGetScript(self, event)
+    end
 
     -- Titelleiste der Seite wie im alten Fenster (über die volle Breite des Seitenbereichs)
     -- Einheitlich für alle Seiten: flache Titelleiste 26 hoch, genau auf Höhe der Titelleiste des großen Fensters.

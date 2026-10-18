@@ -2160,6 +2160,20 @@ local function CreateWindow()
     raidTab:SetPoint("LEFT", allTab, "RIGHT", 6, 0)
     levelTab:SetPoint("LEFT", raidTab, "RIGHT", 6, 0)
     tabs = { allTab, raidTab, levelTab }
+    -- Breite nach Textlänge verteilen ("Mein Levelbereich" passte nicht in ein Drittel): jeder Reiter bekommt
+    -- seinen Text + Rand, der übrige Platz wird gleichmäßig aufgeteilt
+    do
+        local total, natural, sum = LIST_WIDTH - 16 - 12, {}, 0
+        for i, tab in ipairs(tabs) do
+            local fs = tab:GetFontString()
+            natural[i] = math.ceil((fs and fs:GetStringWidth() or 0) + 16)
+            sum = sum + natural[i]
+        end
+        local extra = (total - sum) / #tabs
+        for i, tab in ipairs(tabs) do
+            tab:SetWidth(extra >= 0 and math.floor(natural[i] + extra) or math.floor(total / #tabs))
+        end
+    end
     -- Nach dem Darüberfahren die Reiterfarbe wiederherstellen
     for _, tab in ipairs(tabs) do tab:HookScript("OnLeave", UpdateTabs) end
     UpdateTabs()

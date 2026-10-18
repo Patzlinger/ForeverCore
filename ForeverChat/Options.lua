@@ -71,8 +71,8 @@ Check(L - 4, -328, T("„+“-Knopf für eigene Kanäle", "\"+\" button for cust
     if ns.UpdateChannelButton then ns.UpdateChannelButton() end
 end)
 
-UI.Header(options, L, -370, T("Position und Sperre", "Position and lock"), 300)
-local lockCheck = UI.Check(options, L - 4, -392, T("Chatfenster sperren", "Lock chat windows"), function(checked)
+UI.Header(options, L, -374, T("Position und Sperre", "Position and lock"), 300)
+local lockCheck = UI.Check(options, L - 4, -396, T("Chatfenster sperren", "Lock chat windows"), function(checked)
     ns.SetLocked(checked)
 end)
 loaders[#loaders + 1] = function() lockCheck:SetChecked(ns.IsLocked()) end
@@ -80,22 +80,22 @@ local editBtn = UI.Button(options, T("Im Bearbeitungsmodus verschieben", "Move i
     options:Hide()
     ns.OpenEditMode()
 end)
-editBtn:SetPoint("TOPLEFT", L, -420)
-UI.Hint(options, L + 2, -448, 300, T("Den Hauptchat verwaltet Blizzards Bearbeitungsmodus (Position und Größe). "
+editBtn:SetPoint("TOPLEFT", L, -424)
+UI.Hint(options, L + 2, -452, 300, T("Den Hauptchat verwaltet Blizzards Bearbeitungsmodus (Position und Größe). "
     .. "Entsperrte Zusatzfenster lassen sich am Reiter ziehen.",
     "Blizzard's Edit Mode manages the main chat (position and size). Unlocked extra windows can be dragged by their tab."))
 
-UI.Header(options, L, -506, T("Eingabe", "Input"), 300)
-Check(L - 4, -528, T("Pfeiltasten blättern im Verlauf (ohne Alt)", "Arrow keys browse history (no Alt)"), "arrowHistory")
-Check(L - 4, -552, T("Umschalt + Mausrad: ganz nach oben/unten", "Shift + mouse wheel: jump to top/bottom"), "shiftScroll")
+UI.Header(options, L, -514, T("Eingabe", "Input"), 300)
+Check(L - 4, -536, T("Pfeiltasten blättern im Verlauf (ohne Alt)", "Arrow keys browse history (no Alt)"), "arrowHistory")
+Check(L - 4, -560, T("Umschalt + Mausrad: ganz nach oben/unten", "Shift + mouse wheel: jump to top/bottom"), "shiftScroll")
 
-UI.Header(options, L, -594, T("Instant Messaging", "Instant messaging"), 300)
-Check(L - 4, -616, T("Reiter „IM“: je Person ein Unterreiter", "“IM” tab: one sub-tab per person"), "messenger", function(on)
+UI.Header(options, L, -604, T("Instant Messaging", "Instant messaging"), 300)
+Check(L - 4, -626, T("Reiter „IM“: je Person ein Unterreiter", "“IM” tab: one sub-tab per person"), "messenger", function(on)
     if not on and ns.HideIM then ns.HideIM() end
     Changed()
 end)
-Check(L + 16, -640, T("Flüstern zusätzlich im normalen Chat", "Also show whispers in the normal chat"), "whispersInMain")
-UI.Hint(options, L + 2, -666, 300, T("Im IM-Reiter schreibt die Eingabezeile (Enter) an die gewählte Person. "
+Check(L + 16, -650, T("Flüstern zusätzlich im normalen Chat", "Also show whispers in the normal chat"), "whispersInMain")
+UI.Hint(options, L + 2, -676, 300, T("Im IM-Reiter schreibt die Eingabezeile (Enter) an die gewählte Person. "
     .. "/r kennt Absender nur, wenn Flüstern auch im normalen Chat steht.",
     "In the IM tab the input line (Enter) writes to the selected person. /r only knows senders shown in the normal chat."))
 
@@ -109,15 +109,15 @@ Check(R + 16, -104, T("nicht bei Höchststufe", "not at max level"), "hideMaxLev
 UI.Hint(options, R + 2, -130, 300, T("Stufen kennt ForeverChat von Gruppe, Gilde, Freunden, /wer, Ziel und Mauszeiger.",
     "ForeverChat learns levels from group, guild, friends, /who, target and mouseover."))
 
-UI.Header(options, R, -170, T("Nachrichten", "Messages"), 300)
-Choice(R + 2, -190, T("Kanalnamen", "Channel names"), {
+UI.Header(options, R, -182, T("Nachrichten", "Messages"), 300)
+Choice(R + 2, -202, T("Kanalnamen", "Channel names"), {
     { key = "FULL", label = T("Voll: [2. Handel - Stadt]", "Full: [2. Trade - City]") },
     { key = "SHORT", label = T("Kurz: [2. Handel]", "Short: [2. Trade]") },
     { key = "NUMBER", label = T("Nur Nummer: [2]", "Number only: [2]") },
 }, function() return ns.GetDB().channelNames end, function(key) ns.GetDB().channelNames = key end, 220)
-Check(R - 4, -242, T("Webadressen anklickbar (zum Kopieren)", "Clickable web addresses (to copy)"), "urls")
-Check(R - 4, -266, T("Erwähnungen deines Namens hervorheben", "Highlight mentions of your name"), "mention")
-Check(R + 16, -290, T("mit leisem Ton", "with a soft sound"), "mentionSound")
+Check(R - 4, -254, T("Webadressen anklickbar (zum Kopieren)", "Clickable web addresses (to copy)"), "urls")
+Check(R - 4, -278, T("Erwähnungen deines Namens hervorheben", "Highlight mentions of your name"), "mention")
+Check(R + 16, -302, T("mit leisem Ton", "with a soft sound"), "mentionSound")
 
 -- Zeitstempel: Blizzards eigene Einstellung (wirkt nach /reload; ForeverChat aendert sie nur auf Wunsch)
 local STAMPS = {
@@ -126,17 +126,17 @@ local STAMPS = {
     { key = "%H:%M:%S ", label = "15:27:32" },
     { key = "%I:%M %p ", label = "03:27 PM" },
 }
-Choice(R + 2, -316, T("Zeitstempel (nach /reload)", "Timestamps (after /reload)"), STAMPS,
+Choice(R + 2, -328, T("Zeitstempel (nach /reload)", "Timestamps (after /reload)"), STAMPS,
     function() return GetCVar and GetCVar("showTimestamps") or "none" end,
     function(key) if SetCVar then SetCVar("showTimestamps", key) end end, 220)
 
-UI.Header(options, R, -380, T("Farben", "Colors"), 300)
-UI.Hint(options, R + 2, -402, 300, T("Ändert Blizzards Chatfarben (vorher gesichert, jederzeit zurücksetzbar).",
+UI.Header(options, R, -396, T("Farben", "Colors"), 300)
+UI.Hint(options, R + 2, -418, 300, T("Ändert Blizzards Chatfarben (vorher gesichert, jederzeit zurücksetzbar).",
     "Changes Blizzard's chat colors (saved first, can be restored anytime)."))
 local soft = UI.Button(options, T("Dezente Farben übernehmen", "Apply soft colors"), 200, function() ns.ApplySoftColors() end)
-soft:SetPoint("TOPLEFT", R, -432)
+soft:SetPoint("TOPLEFT", R, -448)
 local restore = UI.Button(options, T("Vorherige Farben", "Previous colors"), 150, function() ns.RestoreColors() end)
-restore:SetPoint("TOPLEFT", R, -460)
+restore:SetPoint("TOPLEFT", R, -476)
 
 local hint = UI.Hint(options, nil, nil, 620, T("/fchat öffnet dieses Fenster · /fchat copy kopiert den Chat · Prototyp",
     "/fchat opens this window · /fchat copy copies the chat · prototype"))

@@ -1646,7 +1646,7 @@ end
 local ApplySettings, ToggleOptions, ToggleLock
 do
 -- Seite im zentralen Einstellungsfenster von Forever Core (verhält sich wie das bisherige eigene Fenster)
-local options = UI.SettingsPanel("ForeverCastOptions", T("ForeverCast – Einstellungen", "ForeverCast – Settings"), 600, 536,
+local options = UI.SettingsPanel("ForeverCastOptions", T("ForeverCast – Einstellungen", "ForeverCast – Settings"), 600, 580,
     { key = "ForeverCast", group = UI.SETTINGS_GROUPS.frames, label = T("Zauberleiste", "Cast bar") })
 local L, R, COL = 16, 306, 276 -- linke / rechte Spalte, Breite der Ueberschriften
 
@@ -1680,7 +1680,7 @@ Section(L, -32, T("Leiste", "Bar"), {
     { "showIcon",     T("Zaubersymbol anzeigen", "Show spell icon") },
     { "hideBlizzard", T("Blizzard-Zauberleiste ausblenden", "Hide Blizzard cast bar") },
 })
-Section(L, -134, T("Zauber", "Spells"), {
+Section(L, -146, T("Zauber", "Spells"), {
     { "showLatency",  T("Ping und Lag-Bereich (rot) anzeigen", "Show ping and lag zone (red)") },
     { "showQueue",    T("Spell-Queue-Fenster (grün) anzeigen", "Show spell queue window (green)") },
     { "showGCD",      T("GCD-Balken unter der Leiste anzeigen", "Show GCD bar below") },
@@ -1708,9 +1708,9 @@ local heightSlider = UI.Slider(options, R + 2, -254, T("Höhe", "Height"), 12, 4
 end), { width = 170, unit = " px" })
 
 -- Spell-Queue-Fenster einstellen (Spieleinstellung "SpellQueueWindow")
-UI.Header(options, L + 2, -316, T("Spell-Queue-Fenster", "Spell queue window"), 568)
+UI.Header(options, L + 2, -334, T("Spell-Queue-Fenster", "Spell queue window"), 568)
 local queueLabel = options:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-queueLabel:SetPoint("TOPLEFT", L + 2, -342)
+queueLabel:SetPoint("TOPLEFT", L + 2, -360)
 
 local function UpdateQueueLabel()
     queueLabel:SetText(string.format(T("Spell-Queue-Fenster: %d ms", "Spell queue window: %d ms"), queueWindow * 1000 + 0.5))
@@ -1729,11 +1729,11 @@ local function ChangeQueueWindow(delta)
 end
 
 local minusBtn = MakeButton(options, "–", 20, function() ChangeQueueWindow(-50) end)
-minusBtn:SetPoint("TOPLEFT", L + 210, -338)
+minusBtn:SetPoint("TOPLEFT", L + 210, -356)
 local plusBtn = MakeButton(options, "+", 20, function() ChangeQueueWindow(50) end)
 plusBtn:SetPoint("LEFT", minusBtn, "RIGHT", 2, 0)
 
-local queueHint = UI.Hint(options, L + 2, -366, 560, T("So früh vor Zauberende darfst du den nächsten Zauber drücken. " ..
+local queueHint = UI.Hint(options, L + 2, -384, 560, T("So früh vor Zauberende darfst du den nächsten Zauber drücken. " ..
     "Faustregel: Ping + ca. 100 ms. Standard von WoW: 400 ms.",
     "How early before the cast ends you may press the next spell. " ..
     "Rule of thumb: ping + about 100 ms. WoW default: 400 ms."))
@@ -1750,7 +1750,7 @@ local function UpdatePingInfo()
 end
 
 -- Position: X/Y (Mitte der Leiste ab Bildschirmmitte), Raster und Einrasten
-UI.Header(options, L + 2, -432, T("Position (X/Y ab Bildschirmmitte)", "Position (X/Y from screen center)"), COL)
+UI.Header(options, L + 2, -456, T("Position (X/Y ab Bildschirmmitte)", "Position (X/Y from screen center)"), COL)
 local function PosGet(i)
     return function() return select(i, UI.CenterOffset(anchor)) end
 end
@@ -1761,12 +1761,12 @@ local function PosSet(i)
         SetPosition(x, y)
     end)
 end
-local posX = UI.Number(options, L + 4, -456, "X", PosGet(1), PosSet(1))
-local posY = UI.Number(options, L + 150, -456, "Y", PosGet(2), PosSet(2))
+local posX = UI.Number(options, L + 4, -480, "X", PosGet(1), PosSet(1))
+local posY = UI.Number(options, L + 150, -480, "Y", PosGet(2), PosSet(2))
 castFrame.fcOnMoved = function()
     if options:IsShown() then posX:Load() posY:Load() end
 end
-Section(R, -432, T("Ausrichten (wenn entsperrt)", "Alignment (when unlocked)"), {
+Section(R, -456, T("Ausrichten (wenn entsperrt)", "Alignment (when unlocked)"), {
     { "gridShow", T("Raster beim Ziehen und hier", "Grid while dragging and here") },
     { "snap",     T("Einrasten (Umschalt = aus)", "Snap (Shift = off)") },
 })
