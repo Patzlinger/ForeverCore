@@ -36,7 +36,7 @@ ns.DEFAULTS = {
     barClickMap = true,      -- Klick auf den Zonennamen oeffnet die Weltkarte
     -- Knoepfe (ab Version 2: senkrechte Knopfleiste neben der Karte)
     strip = "LEFT",          -- Knopfleiste "LEFT"/"RIGHT" neben der Minimap oder "OFF" (Knoepfe am Rand bleiben, wo sie sind)
-    stripMouseover = true,   -- Knopfleiste nur, solange die Maus ueber Minimap/Leisten ist (Post/Einladungen bleiben sichtbar)
+    stripMouseover = false,  -- an: Knopfleiste nur, solange die Maus ueber Minimap/Leisten ist; Standard: immer sichtbar
     stripAlpha = 50,         -- Deckkraft der Flaeche hinter den Knoepfen in % (Knoepfe selbst bleiben voll sichtbar)
     toolsInBar = true,       -- eigene Knoepfe (Post, Verfolgung, Kalender, Einstellungen) oben in der Leiste statt seitlich
     squareForeign = true,    -- Minimap-Knoepfe anderer Addons im gleichen eckigen Look wie die eigenen
@@ -106,13 +106,17 @@ end
 ---------------------------------------------------------------------------
 -- Gemeinsame Einstellungs-Verwaltung (ForeverCore): Profile je Charakter, Zuruecksetzen, Export/Import
 ---------------------------------------------------------------------------
-UI.RegisterSettings({ addon = ADDON_NAME, sv = "ForeverMinimapDB", defaults = ns.DEFAULTS, version = 2,
+UI.RegisterSettings({ addon = ADDON_NAME, sv = "ForeverMinimapDB", defaults = ns.DEFAULTS, version = 3,
     -- Version 2: statt "buttons" (Leiste/links/rechts) eine senkrechte Knopfleiste; eigene Knoepfe raus aus der Leiste
+    -- Version 3: Knopfleiste standardmaessig immer sichtbar (vorher nur bei Maus ueber der Minimap)
     migrate = function(data, from)
         if from < 2 then
             data.strip = data.buttons == "RIGHT" and "RIGHT" or "LEFT"
             data.stripMouseover = data.buttonsMouseover ~= false
             data.toolsInBar = false
             data.buttons, data.buttonsMouseover, data.edgeMouseover = nil, nil, nil
+        end
+        if from < 3 then
+            data.stripMouseover = false
         end
     end })
