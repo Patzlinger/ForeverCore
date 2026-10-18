@@ -14,8 +14,12 @@ local COLUMNS = {
     { key = "level",  title = function() return T("Stufe", "Level") end,         width = 70,  sort = "level" },
     { key = "rested", title = function() return T("Erholung", "Rested") end,     width = 80,  sort = "rested" },
     { key = "money",  title = function() return T("Gold", "Gold") end,           width = 130, sort = "money" },
-    { key = "zone",   title = function() return T("Ort", "Location") end,        width = 160, sort = "updated" },
-    { key = "profs",  title = function() return T("Berufe", "Professions") end,  width = 200 },
+    { key = "zone",   title = function() return T("Ort", "Location") end,        width = 140, sort = "zone" },
+    { key = "profs",  title = function() return T("Berufe", "Professions") end,  width = 190 },
+    { key = "played", title = function() return T("Spielzeit", "Played") end,    width = 84,  sort = "played" },
+    { key = "mail",   title = function() return T("Post", "Mail") end,           width = 84,  sort = "mail" },
+    { key = "honor",  title = function() return T("Ehre", "Honor") end,          width = 84,  sort = "honor" },
+    { key = "last",   title = function() return T("Letzter Login", "Last login") end, width = 96, sort = "updated" },
 }
 
 local window, scroll, content, footer, headerButtons, toggles
@@ -39,6 +43,14 @@ local function Short(n)
     if not n then return "?" end
     if n >= 10000 then return string.format("%.1fK", n / 1000) end
     return tostring(n)
+end
+
+-- Dauer in Sekunden: "12 T 4 Std" bzw. "5 Std 3 Min"
+local function Duration(seconds)
+    if not seconds then return nil end
+    local days, hours, mins = math.floor(seconds / 86400), math.floor(seconds % 86400 / 3600), math.floor(seconds % 3600 / 60)
+    if days > 0 then return string.format(T("%d T %d Std", "%dd %dh"), days, hours) end
+    return string.format(T("%d Std %d Min", "%dh %dm"), hours, mins)
 end
 
 -- "vor 3 Std." usw.
@@ -238,9 +250,31 @@ local function CellTexts(entry)
         table.insert(i <= 2 and top or bottom, text)
     end
     local subZone = (c.subZone and c.subZone ~= "" and c.subZone ~= c.zone) and c.subZone or ""
+    -- gespielte Zeit: gesamt, darunter auf dieser Stufe
+    local playedTotal, playedLevel = ns.PlayedNow(entry)
+    local played = { playedTotal and Duration(playedTotal) or "|cff6a6a6a–|r",
+        playedLevel and ("|cff8a8a8a" .. T("Stufe: ", "Level: ") .. Duration(playedLevel) .. "|r") or "" }
+    -- Post: neu (gold), Anzahl im Briefkasten, früheste Ablaufzeit (rot unter 3 Tagen)
+    local mail, mailLine = "|cff6a6a6a–|r", ""
+    if c.mail then
+        if c.mail.new then mail = "|cffffd100" .. T("Neue Post", "New mail") .. "|r"
+        elseif c.mail.count and c.mail.count > 0 then mail = string.format(T("%d Briefe", "%d letters"), c.mail.count) end
+        if c.mail.expires and c.mail.count and c.mail.count > 0 then
+            local days = (c.mail.expires - time()) / 86400
+            mailLine = string.format("%s" .. T("läuft ab: %d T", "expires: %dd") .. "|r", days < 3 and "|cffff5050" or "|cff8a8a8a",
+                math.max(0, math.floor(days)))
+        end
+    end
+    -- Ehre: Punkte, darunter Rang bzw. ehrenhafte Siege
+    local honor = c.honor and BreakUpLargeNumbers and BreakUpLargeNumbers(c.honor) or (c.honor and tostring(c.honor)) or "|cff6a6a6a–|r"
+    local honorLine = c.pvpRank or (c.honorKills and c.honorKills > 0 and string.format(T("%d Siege", "%d kills"), c.honorKills)) or ""
     return {
-        name = { ns.ColoredName(c), entry.me and ("|cff8a8a8a" .. T("eingeloggt", "logged in") .. "|r")
-            or ("|cff6a6a6a" .. Ago(c.updated) .. "|r") },
+        name = { ns.ColoredName(c), "|cff6a6a6a" .. (c.realm or "") .. "|r" },
+        played = played,
+        mail = { mail, mailLine },
+        honor = { "|cffe08050" .. honor .. "|r", "|cff8a8a8a" .. honorLine .. "|r" },
+        last = { entry.me and ("|cff33ff99" .. T("eingeloggt", "logged in") .. "|r") or Ago(c.updated),
+            c.updated and ("|cff8a8a8a" .. date("%d.%m. %H:%M", c.updated) .. "|r") or "" },
         level = { tostring(c.level or "?"), xpLine },
         rested = { restedText, "" },
         money = { Money(c.money), "" },
@@ -257,8 +291,9 @@ function ns.RefreshWindow()
     window:SetWidth(math.max(MIN_WIDTH, inner + PAD * 2))
     local width = inner - 16
     content:SetWidth(width)
-    local total = 0
+    local total, playedSum = 0, 0
     for i, entry in ipairs(list) do
+        playedSum = playedSum + (ns.PlayedNow(entry) or 0)
         local row = GetRow(i)
         row.entry = entry
         row:ClearAllPoints()
@@ -293,7 +328,8 @@ function ns.RefreshWindow()
     end
     for i = #list + 1, #rows do rows[i]:Hide() end
     content:SetHeight(math.max(1, #list * ROW_H))
-    footer:SetText(string.format(T("%d Charaktere  ·  Gold gesamt: %s", "%d characters  ·  total gold: %s"), #list, Money(total)))
+    footer:SetText(string.format(T("%d Charaktere  ·  Gold gesamt: %s", "%d characters  ·  total gold: %s"), #list, Money(total))
+        .. (playedSum > 0 and ("  ·  " .. T("Spielzeit gesamt: ", "total played: ") .. Duration(playedSum)) or ""))
     local db = ns.GetDB()
     local hx = PAD + 8
     for i, b in ipairs(headerButtons) do
@@ -336,7 +372,11 @@ local function Build()
         if col.sort then
             b:SetScript("OnClick", function(self)
                 local db = ns.GetDB()
-                if db.sortKey == self.sort then db.sortDesc = not db.sortDesc else db.sortKey, db.sortDesc = self.sort, self.sort ~= "name" end
+                if db.sortKey == self.sort then
+                    db.sortDesc = not db.sortDesc
+                else
+                    db.sortKey, db.sortDesc = self.sort, self.sort ~= "name" and self.sort ~= "zone"
+                end
                 ns.RefreshWindow()
             end)
         end
@@ -384,6 +424,10 @@ local function Build()
             prev = cb
         end
     end
+    -- Mindestbreite: alle Spalten-Schalter passen nebeneinander
+    local togglesWidth = 0
+    for _, cb in ipairs(toggles) do togglesWidth = togglesWidth + 16 + 8 + cb.label:GetStringWidth() + 16 end
+    MIN_WIDTH = math.max(MIN_WIDTH, math.ceil(togglesWidth) + PAD * 2 + 8)
 
     footer = window:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     footer:SetPoint("BOTTOMLEFT", PAD + 4, 16)

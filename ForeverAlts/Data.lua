@@ -97,6 +97,10 @@ function ns.Characters()
         if sortKey == "money" then return c.money or 0 end
         if sortKey == "rested" then return ns.RestedPercent(entry) or -1 end
         if sortKey == "updated" then return entry.me and math.huge or (c.updated or 0) end
+        if sortKey == "zone" then return (c.zone or ""):lower() end
+        if sortKey == "played" then return ns.PlayedNow(entry) or -1 end
+        if sortKey == "honor" then return c.honor or c.honorKills or -1 end
+        if sortKey == "mail" then return (c.mail and (c.mail.new and 1000 or 0) + (c.mail.count or 0)) or -1 end
         return (c.level or 0) + (c.xpMax and c.xpMax > 0 and (c.xp or 0) / c.xpMax or 0)
     end
     table.sort(list, function(a, b)
@@ -190,6 +194,83 @@ local function ReadQuests()
     return quests, count
 end
 
+-- Ehre: Classic (Ehrenpunkte, Rang, ehrenhafte Siege) bzw. Retail (Ehre als Währung) – was der Client hat
+local function ReadHonor(c)
+    local ok, value = pcall(function()
+        if GetHonorCurrency then return GetHonorCurrency() end
+        if C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo then
+            local id = Constants and Constants.CurrencyConsts and Constants.CurrencyConsts.HONOR_CURRENCY_ID or 1792
+            local info = C_CurrencyInfo.GetCurrencyInfo(id)
+            return info and info.quantity
+        end
+    end)
+    c.honor = ok and Plain(value) or c.honor
+    if UnitPVPRank and GetPVPRankInfo then
+        local okRank, rankName = pcall(function()
+            local rank = UnitPVPRank("player")
+            return rank and rank > 0 and GetPVPRankInfo(rank) or nil
+        end)
+        c.pvpRank = okRank and rankName or nil
+    end
+    if GetPVPLifetimeStats then
+        local okKills, kills = pcall(GetPVPLifetimeStats)
+        c.honorKills = okKills and Plain(kills) or c.honorKills
+    end
+end
+
+-- Post: beim Login/Ändern nur "neue Post ja/nein"; am Briefkasten Anzahl und früheste Ablaufzeit
+local function ReadMail(c, atMailbox)
+    c.mail = c.mail or {}
+    c.mail.new = HasNewMail and HasNewMail() and true or nil
+    if atMailbox and GetInboxNumItems then
+        local count = GetInboxNumItems() or 0
+        local soonest
+        for i = 1, count do
+            local okHeader, daysLeft = pcall(function() return select(7, GetInboxHeaderInfo(i)) end)
+            daysLeft = okHeader and tonumber(daysLeft)
+            if daysLeft and (not soonest or daysLeft < soonest) then soonest = daysLeft end
+        end
+        c.mail.count = count
+        c.mail.expires = soonest and (time() + soonest * 86400) or nil
+        c.mail.checked = time()
+    end
+end
+
+-- Gespielte Zeit: das Spiel liefert sie nur auf Anfrage (TIME_PLAYED_MSG) und schreibt sie dann in den Chat. Für unsere
+-- eigene Anfrage (einmal je Login) melden wir die Chatfenster kurz vom Ereignis ab – ein eigenes /played zeigt sie
+-- weiter ganz normal. (Keine Blizzard-Funktion wird überschrieben.)
+local playedMuted = {}
+local function MutePlayedChat(mute)
+    if mute then
+        for i = 1, (NUM_CHAT_WINDOWS or 10) do
+            local frame = _G["ChatFrame" .. i]
+            if frame and frame.IsEventRegistered and frame:IsEventRegistered("TIME_PLAYED_MSG") then
+                frame:UnregisterEvent("TIME_PLAYED_MSG")
+                playedMuted[#playedMuted + 1] = frame
+            end
+        end
+    else
+        for _, frame in ipairs(playedMuted) do frame:RegisterEvent("TIME_PLAYED_MSG") end
+        wipe(playedMuted)
+    end
+end
+
+function ns.RequestPlayed()
+    if not RequestTimePlayed or ns.playedRequested then return end
+    ns.playedRequested = true
+    MutePlayedChat(true)
+    RequestTimePlayed()
+    C_Timer.After(5, function() MutePlayedChat(false) end) -- Sicherheit, falls keine Antwort kommt
+end
+
+-- gespielte Zeit eines Charakters jetzt (beim eingeloggten: seit der Abfrage weitergezählt)
+function ns.PlayedNow(entry)
+    local c = entry.data
+    if not c.playedTotal then return nil end
+    local extra = (entry.me and c.playedAt) and math.max(0, time() - c.playedAt) or 0
+    return c.playedTotal + extra, c.playedLevel and (c.playedLevel + extra) or nil
+end
+
 -- Alles des eingeloggten Charakters neu lesen (what = nil: alles; "money"/"xp"/"quests"/"profs": nur das)
 function ns.Update(what)
     if InCombatLockdown() then
@@ -216,6 +297,8 @@ function ns.Update(what)
         c.resting = IsResting() and true or nil
     end
     if not what or what == "profs" then c.profs = ReadProfessions() end
+    if not what or what == "honor" then ReadHonor(c) end
+    if not what or what == "mail" or what == "mailbox" then ReadMail(c, what == "mailbox") end
     if not what or what == "quests" then c.quests, c.questCount = ReadQuests() end
     if not what and GetAverageItemLevel then
         local ok, _, equipped = pcall(GetAverageItemLevel)
@@ -268,16 +351,26 @@ local EVENTS = {
     PLAYER_LEVEL_UP = "xp", PLAYER_XP_UPDATE = "xp", UPDATE_EXHAUSTION = "xp", PLAYER_UPDATE_RESTING = "xp",
     PLAYER_MONEY = "money", ZONE_CHANGED_NEW_AREA = "zone", ZONE_CHANGED = "zone",
     SKILL_LINES_CHANGED = "profs", QUEST_LOG_UPDATE = "quests", QUEST_TURNED_IN = "quests",
+    PLAYER_PVP_RANK_CHANGED = "honor", HONOR_CURRENCY_UPDATE = "honor", PLAYER_PVP_KILLS_CHANGED = "honor",
+    CURRENCY_DISPLAY_UPDATE = "honor",
+    UPDATE_PENDING_MAIL = "mail", MAIL_INBOX_UPDATE = "mailbox", MAIL_SHOW = "mailbox",
 }
 local events = CreateFrame("Frame")
 events:RegisterEvent("PLAYER_LOGIN")
 events:RegisterEvent("PLAYER_LOGOUT")
+events:RegisterEvent("TIME_PLAYED_MSG")
 for event in pairs(EVENTS) do pcall(events.RegisterEvent, events, event) end
-events:SetScript("OnEvent", ns.Safe("Ereignis", function(_, event)
+events:SetScript("OnEvent", ns.Safe("Ereignis", function(_, event, total, level)
     if event == "PLAYER_LOGIN" then
         -- Berufe, Quests und Dungeondaten (ForeverQuests baut sie aus Questie) sind erst nach ein paar Sekunden da
         C_Timer.After(3, function() Queue() end)
         C_Timer.After(15, function() Queue("quests") end)
+        C_Timer.After(8, ns.RequestPlayed)
+    elseif event == "TIME_PLAYED_MSG" then
+        local c = Me()
+        c.playedTotal, c.playedLevel, c.playedAt = tonumber(total), tonumber(level), time()
+        C_Timer.After(0, function() MutePlayedChat(false) end)
+        if ns.RefreshWindow then ns.RefreshWindow() end
     elseif event == "PLAYER_LOGOUT" then
         -- nur Zeit, Ort und Erholungs-Zustand (für die Schätzung der Erholung bis zum nächsten Login)
         local c = Me()
