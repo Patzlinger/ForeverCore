@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 40
+local VERSION = 41
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -2054,7 +2054,7 @@ local function BuildHubWindow()
     end
 
     -- Fussbereich: Sprache (nur deutscher Client), Ein-/Ausschalten, Verschieben/Minimap, Hinweis
-    local bottomH = UI.GERMAN_CLIENT and 190 or 158
+    local bottomH = UI.GERMAN_CLIENT and 224 or 192 -- (+34: Zeile "Andere Addons …")
     local f = UI.Window("ForeverHubWindow", UI.NAME, 460,
         26 + HUB_INTRO_H + 8 + math.max(#list, 1) * HUB_ROW_H + bottomH)
     -- eine Ebene unter den Addon-Fenstern (DIALOG): "Öffnen" laesst den Hub offen, das Addon-Fenster liegt darueber
@@ -2225,6 +2225,20 @@ local function BuildHubWindow()
     end)
     profilesBtn:SetPoint("BOTTOMLEFT", 14, 82)
 
+    -- Andere Addons für dieselben Aufgaben (Bartender4, Bagnon, Cell …): wählen, welches laufen soll
+    local conflictsBtn = UI.Button(f, T("Andere Addons …", "Other addons …"), 200, function()
+        if UI.ShowConflicts then UI.ShowConflicts(true) end
+    end)
+    conflictsBtn:SetPoint("BOTTOMLEFT", 14, bottomH - 40)
+    conflictsBtn:HookScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:AddLine(T("Andere Addons", "Other addons"))
+        GameTooltip:AddLine(T("Hast du für Leisten, Taschen, Rahmen, Chat … schon ein anderes Addon (z. B. Bartender4, Bagnon, Cell), wählst du hier, welches laufen soll.",
+            "If you already use another addon for bars, bags, frames, chat … (e.g. Bartender4, Bagnon, Cell), choose here which one should run."), 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    conflictsBtn:HookScript("OnLeave", GameTooltip_Hide)
+
     -- Details! (falls aktiv): eigenes Profil im Forever-Look bzw. zurueck zum vorherigen
     local detailsBtn = UI.Button(f, "", 200, function(self)
         if UI.DetailsForeverActive and UI.DetailsForeverActive() then UI.DetailsRestore() else UI.DetailsApplyForever() end
@@ -2315,12 +2329,188 @@ function hub.ShowWelcome()
     hubWindow:Show()
 end
 
+---------------------------------------------------------------------------
+-- 3b. Andere bekannte Addons für dieselbe Aufgabe (z. B. Bartender4 und ForeverBars): der Spieler wählt je Paar,
+-- welches laufen soll – das andere wird über Blizzards Addon-Verwaltung ausgeschaltet (gilt nach dem Neuladen,
+-- jederzeit umkehrbar). Erscheint beim ersten Start neben der Begrüßung und später nur, wenn ein neues Paar dazukommt;
+-- sonst über "Andere Addons …" im Hub-Fenster. Addon-Pakete wie ElvUI sind bewusst nicht dabei (sie würden ganz
+-- abgeschaltet).
+---------------------------------------------------------------------------
+-- (als Funktion: die Texte erst beim Anzeigen übersetzen – beim Laden ist die Hub-Sprache noch nicht bekannt)
+local function ConflictDefs() return {
+    { forever = "ForeverBars",    topic = T("Aktionsleisten", "Action bars"),        others = { "Bartender4", "Dominos" } },
+    { forever = "ForeverBags",    topic = T("Taschen", "Bags"),                      others = { "Baganator", "Bagnon", "AdiBags", "ArkInventory", "BetterBags", "Combuctor" } },
+    { forever = "ForeverFrames",  topic = T("Gruppen- und Raidrahmen", "Party and raid frames"), others = { "Cell", "Grid2", "VuhDo" } },
+    { forever = "ForeverUnits",   topic = T("Einheitenrahmen", "Unit frames"),       others = { "ShadowedUnitFrames", "PitBull4", "XPerl" } },
+    { forever = "ForeverChat",    topic = "Chat",                                    others = { "Prat-3.0", "Chattynator" } },
+    { forever = "ForeverMinimap", topic = "Minimap",                                 others = { "SexyMap", "BasicMinimap" } },
+    { forever = "ForeverCast",    topic = T("Zauberleiste", "Cast bar"),             others = { "Quartz" } },
+    { forever = "ForeverQuests",  topic = T("Questtracker", "Quest tracker"),        others = { "!KalielsTracker" } },
+    { forever = "ForeverTooltip", topic = "Tooltip",                                 others = { "TipTac", "TinyTooltip" } },
+} end
+
+local function AddonTitle(name)
+    local ok, _, title = pcall(C_AddOns.GetAddOnInfo, name)
+    title = ok and title or name
+    return (tostring(title):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""))
+end
+
+-- Paare, bei denen beide installiert sind: { c = Eintrag, other = Name }
+local function ConflictPairs()
+    local list = {}
+    for _, c in ipairs(ConflictDefs()) do
+        if IsInstalled(c.forever) then
+            for _, other in ipairs(c.others) do
+                if IsInstalled(other) then list[#list + 1] = { c = c, other = other } end
+            end
+        end
+    end
+    return list
+end
+
+-- noch ungeklärt: beide eingeschaltet
+local function OpenConflicts()
+    local n = {}
+    for _, p in ipairs(ConflictPairs()) do
+        if IsEnabled(p.c.forever) and IsEnabled(p.other) then n[#n + 1] = p end
+    end
+    return n
+end
+UI.OpenConflicts = OpenConflicts
+
+local conflictWindow
+local CONFLICT_ROW_H = 52
+
+local function BuildConflictWindow()
+    local pairsList = ConflictPairs()
+    local f = UI.Window("ForeverHubConflicts", T("Andere Addons erkannt", "Other addons detected"), 460,
+        26 + 64 + math.max(#pairsList, 1) * CONFLICT_ROW_H + 52)
+    f:SetFrameStrata("DIALOG")
+    conflictWindow = f
+    f.rows = {}
+    local intro = UI.Hint(f, 16, -34, 428, T("Für diese Aufgaben hast du schon ein anderes Addon. Wähle je Zeile, welches laufen soll – das andere wird ausgeschaltet (gilt nach „Neu laden“, jederzeit hier umkehrbar).",
+        "You already use another addon for these tasks. Pick which one should run in each row – the other one is turned off (applies after \"Reload\", you can switch back here any time)."))
+    intro:SetWordWrap(true)
+
+    local reload = UI.Button(f, T("Neu laden", "Reload"), 110, function() ReloadUI() end)
+    reload:SetPoint("BOTTOMRIGHT", -14, 14)
+    reload:GetFontString():SetTextColor(C.accent[1], C.accent[2], C.accent[3])
+    local close = UI.Button(f, T("Später", "Later"), 90, function() f:Hide() end)
+    close:SetPoint("BOTTOMLEFT", 14, 14)
+
+    local function Refresh()
+        local pending = false
+        for _, row in ipairs(f.rows) do
+            row.Update()
+            if IsPending(row.pair.c.forever) or IsPending(row.pair.other) then pending = true end
+        end
+        reload:SetShown(pending)
+    end
+    f.Refresh = Refresh
+
+    local top = -26 - 64
+    for i, p in ipairs(pairsList) do
+        local row = CreateFrame("Frame", nil, f)
+        row.pair = p
+        row:SetHeight(CONFLICT_ROW_H)
+        row:SetPoint("TOPLEFT", 10, top - (i - 1) * CONFLICT_ROW_H)
+        row:SetPoint("TOPRIGHT", -10, top - (i - 1) * CONFLICT_ROW_H)
+        if i > 1 then
+            local sep = row:CreateTexture(nil, "ARTWORK")
+            sep:SetColorTexture(1, 1, 1, 0.06)
+            sep:SetHeight(1)
+            sep:SetPoint("TOPLEFT", 4, 0)
+            sep:SetPoint("TOPRIGHT", -4, 0)
+        end
+        row.topic = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        row.topic:SetPoint("TOPLEFT", 8, -6)
+        row.topic:SetText(p.c.topic)
+        row.status = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+        row.status:SetPoint("LEFT", row.topic, "RIGHT", 10, 0)
+        local otherTitle = AddonTitle(p.other)
+        -- Wahl: Forever-Addon nutzen (anderes aus) oder das andere (Forever-Addon aus)
+        row.useForever = UI.Button(row, p.c.forever, 200, function()
+            SetEnabled(p.c.forever, true)
+            SetEnabled(p.other, false)
+            GetDB().conflictChoice = GetDB().conflictChoice or {}
+            GetDB().conflictChoice[p.c.forever .. ">" .. p.other] = "forever"
+            Refresh()
+        end)
+        row.useForever:SetPoint("BOTTOMLEFT", 6, 6)
+        row.useOther = UI.Button(row, otherTitle, 200, function()
+            SetEnabled(p.other, true)
+            SetEnabled(p.c.forever, false)
+            GetDB().conflictChoice = GetDB().conflictChoice or {}
+            GetDB().conflictChoice[p.c.forever .. ">" .. p.other] = "other"
+            Refresh()
+        end)
+        row.useOther:SetPoint("LEFT", row.useForever, "RIGHT", 12, 0)
+        function row.Update()
+            local fe, oe = IsEnabled(p.c.forever), IsEnabled(p.other)
+            local pending = IsPending(p.c.forever) or IsPending(p.other)
+            local text
+            if fe and oe then
+                text = "|cffff8040" .. T("beide aktiv – bitte wählen", "both active – please choose") .. "|r"
+            elseif fe then
+                text = T("aktiv: ", "active: ") .. p.c.forever
+            elseif oe then
+                text = T("aktiv: ", "active: ") .. otherTitle
+            else
+                text = T("beide aus", "both off")
+            end
+            if pending then text = text .. "  |cffffd100" .. T("(nach Neuladen)", "(after reload)") .. "|r" end
+            row.status:SetText(text)
+            -- gewählte Seite in Gold
+            row.useForever:GetFontString():SetTextColor(fe and C.accent[1] or 0.85, fe and C.accent[2] or 0.85, fe and C.accent[3] or 0.85)
+            row.useOther:GetFontString():SetTextColor(oe and C.accent[1] or 0.85, oe and C.accent[2] or 0.85, oe and C.accent[3] or 0.85)
+        end
+        f.rows[i] = row
+    end
+    if #pairsList == 0 then
+        UI.Hint(f, 16, top - 6, 428, T("Keine anderen Addons für dieselben Aufgaben gefunden.", "No other addons for the same tasks found."))
+    end
+    f:SetScript("OnShow", Refresh)
+end
+
+function UI.ShowConflicts(nextToHub)
+    if not conflictWindow then BuildConflictWindow() end
+    conflictWindow:ClearAllPoints()
+    if nextToHub and hubWindow and hubWindow:IsShown() then
+        conflictWindow:SetPoint("TOPLEFT", hubWindow, "TOPRIGHT", 8, 0)
+    else
+        conflictWindow:SetPoint("CENTER", UIParent, "CENTER", 0, 60)
+    end
+    conflictWindow:Show()
+    if conflictWindow.Refresh then conflictWindow.Refresh() end
+end
+
+-- nach dem Start: ungeklärte Paare, nach denen noch nie gefragt wurde -> einmal fragen
+local function MaybeAskConflicts(withWelcome)
+    local open = OpenConflicts()
+    if #open == 0 then return end
+    local db = GetDB()
+    db.conflictAsked = db.conflictAsked or {}
+    local new = false
+    for _, p in ipairs(open) do
+        local key = p.c.forever .. ">" .. p.other
+        if not db.conflictAsked[key] then
+            db.conflictAsked[key] = true
+            new = true
+        end
+    end
+    if new or withWelcome then UI.ShowConflicts(withWelcome) end
+end
+
 local function MaybeWelcome()
     if _G.ForeverHub ~= hub or InCombatLockdown() then return end -- im Kampf: beim naechsten Laden
     local db = GetDB()
-    if db.welcomeDone then return end
+    if db.welcomeDone then
+        pcall(MaybeAskConflicts, false) -- neues Addon-Paar seit dem letzten Mal? einmal fragen
+        return
+    end
     db.welcomeDone = true -- sofort merken: erscheint auch dann nie wieder, wenn man es einfach schliesst
     hub.ShowWelcome()
+    pcall(MaybeAskConflicts, true) -- beim ersten Start: als einzige Frage gleich neben der Begrüßung
 end
 events:HookScript("OnEvent", function(_, event)
     if event == "PLAYER_ENTERING_WORLD" then C_Timer.After(4, function() pcall(MaybeWelcome) end) end
