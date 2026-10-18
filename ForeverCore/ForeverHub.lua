@@ -2364,6 +2364,9 @@ local function SettingsWindow()
     content:SetPoint("TOPLEFT", NAV_W + 1, 0)
     content:SetPoint("BOTTOMRIGHT", 0, 0)
     f.content = content
+    -- Titelleiste (mit Schließen-Kreuz) über den Seiten: die Seiten reichen bis oben, wo im alten Fenster ihre
+    -- Titelleiste war – sonst lag die Seite über dem Kreuz und man konnte das Fenster nicht mehr schließen
+    if f.header then f.header:SetFrameLevel(content:GetFrameLevel() + 20) end
     f:HookScript("OnHide", function()
         -- Seite verstecken, damit sie beim nächsten Öffnen ihre Werte neu lädt (OnShow)
         if settingsCurrent then settingsCurrent.frame:Hide() end
@@ -2476,10 +2479,7 @@ function UI.SettingsPanel(name, title, width, height, info)
     p:SetSize(width, height)
     p:SetPoint("TOPLEFT")
     p:Hide()
-    -- Titel der Seite oben (dort, wo im eigenen Fenster die Titelleiste war)
-    p.TitleText = p:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    p.TitleText:SetPoint("TOPLEFT", 14, -7)
-    p.TitleText:SetText(title)
+    -- (der Titel der Seite steht in der Titelleiste des Fensters: "Forever Core – Einstellungen › Seite")
     local group = info.group or T("Weitere", "More")
     local known = false
     for _, g in ipairs(GROUP_ORDER) do if g == group then known = true end end
