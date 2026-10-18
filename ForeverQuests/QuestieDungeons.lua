@@ -13,6 +13,10 @@ local addonName, ns = ...
 --   Stufenbereich                  -> Spiel: Gruppensuche (C_LFGList), sonst aus den Quests: niedrigste
 --                                     Mindeststufe bis höchste Queststufe (Questie)
 --   Classic / Neu in Forever       -> aus der Gebiets-ID: ab 15000 = neu (Forever-/Season-Gebiete), sonst Classic
+--   Schlachtzug (eigener Reiter)   -> Spiel: Gruppensuche (mehr als 5 Spieler), sonst überwiegend Schlachtzugquests
+--                                     (Questie: QuestieDB.IsRaidQuest)
+--   Beuteseite (Knopf AtlasLoot)   -> AtlasLoot selbst: Seite mit derselben Gebiets-ID ("MapID")
+--   Hinweis beim Betreten          -> Spiel (Instanzname) bzw. Questie (Instanz-ID -> Gebiet)
 --   Fraktion                       -> aus den Quests: alle Allianz = Allianz, alle Horde = Horde, sonst beide
 --   Quests des Dungeons            -> Questie: Gebiet der Quest ("zoneOrSort") = Gebiet des Dungeons
 --   Mindest-/Queststufe            -> Questie ("requiredLevel", "questLevel")
@@ -168,8 +172,9 @@ local function LFGLevels(names)
                 local minLevel = info.minLevelSuggestion or info.minLevel
                 local maxLevel = info.maxLevelSuggestion or info.maxLevel
                 if minLevel and minLevel > 0 and maxLevel and maxLevel >= minLevel then
-                    return minLevel .. "-" .. maxLevel
+                    return minLevel .. "-" .. maxLevel, info.maxNumPlayers
                 end
+                return nil, info.maxNumPlayers
             end
         end
     end
@@ -212,9 +217,10 @@ local function Run()
     local result, report = {}, {}
     for areaID, ids in pairs(questsOf) do
         local entry = questieDungeons[areaID]
-        local pvp = 0
-        if db.IsPvPQuest then
-            for _, questID in ipairs(ids) do if db.IsPvPQuest(questID) then pvp = pvp + 1 end end
+        local pvp, raid = 0, 0
+        for _, questID in ipairs(ids) do
+            if db.IsPvPQuest and db.IsPvPQuest(questID) then pvp = pvp + 1 end
+            if db.IsRaidQuest and db.IsRaidQuest(questID) then raid = raid + 1 end
         end
         if pvp * 2 < #ids then -- überwiegend PvP-Quests = Schlachtfeld: weglassen
             local insideAreas = { [areaID] = true }
@@ -239,7 +245,7 @@ local function Run()
             local nameEN = entry[1]
             local name = (zoneDB.GetLocalizedDungeonName and zoneDB:GetLocalizedDungeonName(areaID)) or AreaName(areaID) or nameEN
             local location = type(entry[4]) == "table" and entry[4][1]
-            local levels = LFGLevels({ name, nameEN })
+            local levels, maxPlayers = LFGLevels({ name, nameEN })
             local levelSource = "lfg"
             if not levels and minLevel then
                 levels = minLevel .. "-" .. math.max(maxLevel or minLevel, minLevel)
@@ -251,7 +257,9 @@ local function Run()
                 entranceX = location and location[2], entranceY = location and location[3],
                 type = areaID >= NEW_AREA_FROM and "Neu in Forever" or "Classic",
                 faction = (horde and not alliance) and "Horde" or (alliance and not horde) and "Alliance" or "Both",
-                quests = quests, areaID = areaID,
+                quests = quests, areaID = areaID, altAreas = entry[2],
+                -- Schlachtzug: Gruppensuche sagt "mehr als 5 Spieler" oder die meisten Quests sind Schlachtzugquests
+                isRaid = (maxPlayers and maxPlayers > 5) or (raid * 2 > #ids) or nil,
             }
             result[#result + 1] = dungeon
             report[dungeon] = { area = areaID, quests = #quests, levelSource = levels and levelSource or "none" }

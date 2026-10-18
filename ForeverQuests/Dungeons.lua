@@ -12,6 +12,8 @@ local selectedDungeon
 local onlyOwnFaction = true
 local hideCompleted = false -- Häkchen "Abgeschlossene ausblenden"
 local levelTabActive = false -- Reiter "Mein Levelbereich"
+local raidTabActive = false  -- Reiter "Schlachtzüge" (die anderen Reiter zeigen nur Dungeons)
+local questDetailView        -- eingebaute Detailansicht einer Quest (wie im Questlog an der Karte)
 local LEVEL_EARLY = 2        -- Dungeons schon so viele Level vor dem Mindestlevel zeigen
 local QUEST_LEVEL_RANGE = 5  -- Quests höchstens so viele Level über/unter dem eigenen Level
 local refreshPending = false
@@ -405,9 +407,18 @@ local function GetQuestChain(quest)
     return chain, position
 end
 
--- Zeile für die Quest-Karte, z. B. "Questkette (2/3): A › B › C" (nil, wenn die Quest allein steht).
--- Erledigte Teile grün, die aktuelle Quest weiß, offene Teile grau.
+-- Zeile für die Quest-Karte. Mit Questie: kurz "Questreihe 2/5" – die ganze Reihe steht wie im Questlog in der
+-- Detailansicht (Klick auf die Karte). Ohne Questie wie bisher: "Questkette (2/3): A › B › C".
+-- Erledigte Teile grün, die aktuelle Quest weiß, offene Teile grau. nil, wenn die Quest allein steht.
 local function ChainText(quest)
+    local questieChain = quest.id and ns.GetQuestChain and ns.GetQuestChain(quest.id)
+    if questieChain then
+        for i, entry in ipairs(questieChain) do
+            if entry.questID == quest.id then
+                return "|cff888888" .. ns.L("QUEST_CHAIN_SHORT", i, #questieChain) .. "|r"
+            end
+        end
+    end
     local chain, position = GetQuestChain(quest)
     if #chain < 2 then return nil end
     local names = {}
@@ -736,43 +747,8 @@ end
 ---------------------------------------------------------------------------
 
 local ATLASLOOT_MODULE = "AtlasLootClassic_DungeonsAndRaids"
--- Dungeon-Name (wie in der Excel-Datei) -> Seite in AtlasLoot; mehrere Seiten = Auswahl der Flügel
-local ATLASLOOT_PAGES = {
-    ["Ragefireabgrund"] = "Ragefire",
-    ["Die Halle der Thanen"] = "TheHallOfThanes",
-    ["Die Höhlen des Wehklagens"] = "WailingCaverns",
-    ["Die Ruinen von Lordaeron"] = "TheRuinsOfLordaeron",
-    ["Die Todesminen"] = "TheDeadmines",
-    ["Burg Shadowfang"] = "ShadowfangKeep",
-    ["Das Verlies"] = "TheStockade",
-    ["Blackfathom-Tiefe"] = "BlackfathomDeeps",
-    ["Ausgrabungsstätte: Sumpfland"] = "ExcavationSiteWetlands",
-    ["Das Scharlachrote Kloster"] = {
-        { "ScarletMonasteryGraveyard", "WING_GRAVEYARD" }, { "ScarletMonasteryLibrary", "WING_LIBRARY" },
-        { "ScarletMonasteryArmory", "WING_ARMORY" }, { "ScarletMonasteryCathedral", "WING_CATHEDRAL" },
-    },
-    ["Dalaran (City of Dalaran)"] = "TheCityOfDalaran",
-    ["Gnomeregan"] = "Gnomeregan",
-    ["Der Kral von Razorfen"] = "RazorfenKraul",
-    ["The Drowned City"] = "TheDrownedCity",
-    ["Die Hügel von Razorfen"] = "RazorfenDowns",
-    ["Feste Krol'dok"] = "KroldokStronghold",
-    ["Uldaman"] = "Uldaman",
-    ["Zul'Farrak"] = "Zul'Farrak",
-    ["Maraudon"] = "Maraudon",
-    ["Das Gefängnis von Alcaz"] = "AlcazPrison",
-    ["Der Tempel von Atal'Hakkar"] = "TheTempleOfAtal'Hakkar",
-    ["Blackrocktiefen"] = "BlackrockDepths",
-    ["Untere Blackrockspitze"] = "LowerBlackrockSpire",
-    ["Düsterbruch (Ost, Nord, West)"] = {
-        { "DireMaulEast", "WING_EAST" }, { "DireMaulWest", "WING_WEST" }, { "DireMaulNorth", "WING_NORTH" },
-    },
-    ["Die Schwarzschlundfeste"] = "BlackmawHold",
-    ["Obere Blackrockspitze"] = "UpperBlackrockSpire",
-    ["Die Terrasse des Formers"] = "ShapersTerrace",
-    ["Scholomance"] = "Scholomance",
-    ["Stratholme (Live und Dead)"] = "Stratholme",
-}
+-- Die Seite eines Dungeons in AtlasLoot wird über die Gebiets-ID gesucht (AtlasLoot-Seiten tragen "MapID" =
+-- Gebiets-ID, Dungeons haben sie aus Questie) – keine selbst gepflegte Zuordnung mehr.
 
 local function IsAtlasLootAvailable()
     local AL = _G.AtlasLoot
@@ -820,18 +796,34 @@ local function OpenAtlasLoot(page)
     end
 end
 
+-- AtlasLoot-Seiten eines Dungeons: alle Seiten, deren Gebiet ("MapID") das Gebiet des Dungeons oder eines
+-- seiner Flügel ist. Mehrere Treffer (z. B. Flügel) = Auswahl.
 local function ShowAtlasLoot(owner, dungeon)
-    local pages = dungeon and ATLASLOOT_PAGES[dungeon.name]
-    if type(pages) == "string" then
-        OpenAtlasLoot(pages)
-    elseif type(pages) == "table" then
-        -- Dungeon mit mehreren Flügeln: Flügel auswählen
-        local items = {}
-        for _, wing in ipairs(pages) do
-            table.insert(items, { text = ns.L(wing[2]), onClick = function() OpenAtlasLoot(wing[1]) end })
+    local AL = _G.AtlasLoot
+    if not (dungeon and dungeon.areaID and IsAtlasLootAvailable()) then return end
+    local areas = { [dungeon.areaID] = true }
+    for _, alt in ipairs(dungeon.altAreas or {}) do areas[alt] = true end
+    AL.Loader:LoadModule(ATLASLOOT_MODULE, function()
+        local moduleData = AL.ItemDB:Get(ATLASLOOT_MODULE)
+        local found = {}
+        for key, page in pairs(type(moduleData) == "table" and moduleData or {}) do
+            if type(page) == "table" and (areas[page.MapID] or areas[page.AreaID]) then
+                found[#found + 1] = { key = key, name = page.name or key }
+            end
         end
-        ns.Style.ShowMenu(owner, items)
-    end
+        table.sort(found, function(a, b) return tostring(a.name) < tostring(b.name) end)
+        if #found == 1 then
+            OpenAtlasLoot(found[1].key)
+        elseif #found > 1 then
+            local items = {}
+            for _, page in ipairs(found) do
+                table.insert(items, { text = tostring(page.name), onClick = function() OpenAtlasLoot(page.key) end })
+            end
+            ns.Style.ShowMenu(owner, items)
+        else
+            print(ns.ChatPrefix() .. ": " .. ns.L("ATLASLOOT_NOT_FOUND"))
+        end
+    end)
 end
 
 ---------------------------------------------------------------------------
@@ -973,16 +965,20 @@ local function GetQuestEntry(index)
         entry:SetScript("OnLeave", function(self)
             self:SetBackdropColor(unpack(COLOR.card))
         end)
-        -- Klick auf die Karte klappt die Belohnungen auf bzw. zu; Shift-Klick verlinkt die Quest im Chat
+        -- Klick auf die Karte öffnet die eingebaute Detailansicht (Ziele, Questgeber, Questreihe, Belohnungen);
+        -- Shift-Klick verlinkt die Quest im Chat
         entry:SetScript("OnClick", function(self)
             local quest = self.quest
             if quest and IsModifiedClick("CHATLINK") then
                 LinkQuestInChat(quest)
                 return
             end
-            if not quest or not quest.rewards or #quest.rewards == 0 then return end
-            rewardsExpanded[quest] = not rewardsExpanded[quest]
-            RefreshDetail()
+            if quest and quest.id and questDetailView then
+                questDetailView:Show(quest.id)
+            elseif quest and quest.rewards and #quest.rewards > 0 then
+                rewardsExpanded[quest] = not rewardsExpanded[quest]
+                RefreshDetail()
+            end
         end)
 
         -- Knopf für den Kartenpunkt zum Questgeber (nur wenn Koordinaten eingetragen sind)
@@ -1116,7 +1112,7 @@ RefreshDetail = function()
     if not window or not window:IsShown() then return end
 
     local dungeon = selectedDungeon
-    atlasButton:SetShown(dungeon ~= nil and ATLASLOOT_PAGES[dungeon.name] ~= nil and IsAtlasLootAvailable())
+    atlasButton:SetShown(dungeon ~= nil and dungeon.areaID ~= nil and IsAtlasLootAvailable())
     -- "Alle teilen" (ohne Gruppe blass) und "Gruppe" (nur in einer Gruppe)
     shareAllButton:SetShown(#GetQuestsInLog(dungeon) > 0)
     shareAllButton:SetAlpha(IsInGroup() and 1 or 0.45)
@@ -1136,7 +1132,7 @@ RefreshDetail = function()
     end
     for _, entry in ipairs(questEntries) do entry:Hide() end
     if not dungeon then
-        detailTitle:SetText(ns.L(levelTabActive and "NO_DUNGEON_LEVEL" or "NO_DUNGEON"))
+        detailTitle:SetText(ns.L(raidTabActive and "NO_RAID" or levelTabActive and "NO_DUNGEON_LEVEL" or "NO_DUNGEON"))
         detailExtra:SetText("")
         LayoutPills({})
         detailEmpty:Hide()
@@ -1325,6 +1321,8 @@ RefreshDetail = function()
         end
     end
     questContent:SetHeight(math.max(1, y))
+    -- offene Detailansicht mit aktualisieren (Fortschritt, Status)
+    if questDetailView then questDetailView:Refresh() end
 
     -- Zusammenfassung bzw. Hinweis, wenn nichts angezeigt wird
     if total == 0 then
@@ -1663,6 +1661,7 @@ local function GetListButton(index)
             if window.BringToFront then window.BringToFront() end
             selectedDungeon = self.dungeon
             questScroll:SetVerticalScroll(0)
+            if questDetailView then questDetailView:Hide() end -- anderer Dungeon: zurück zur Questliste
             RefreshList()
             RefreshDetail()
         end)
@@ -1683,13 +1682,14 @@ RefreshList = function()
         -- Suche findet deutsche und englische Namen
         local haystack = (dungeon.name .. " " .. (dungeon.nameEN or "") .. " " .. (dungeon.zone or "") .. " "
             .. (dungeon.zoneEN or "")):lower()
-        if (filter == "" or haystack:find(filter, 1, true)) and (not levelTabActive or IsDungeonInMyRange(dungeon)) then
+        if (filter == "" or haystack:find(filter, 1, true)) and (not levelTabActive or IsDungeonInMyRange(dungeon))
+            and raidTabActive == (dungeon.isRaid == true) then
             table.insert(visible, dungeon)
             if dungeon == selectedDungeon then selectedVisible = true end
         end
     end
-    -- Ist der gewählte Dungeon im Levelbereich nicht dabei, den ersten passenden wählen
-    if levelTabActive and not selectedVisible then
+    -- Ist der gewählte Dungeon im Reiter nicht dabei, den ersten passenden wählen
+    if not selectedVisible and (levelTabActive or raidTabActive or (selectedDungeon and selectedDungeon.isRaid)) then
         selectedDungeon = visible[1]
     end
 
@@ -1829,12 +1829,16 @@ local function CreateWindow()
     searchBox = CreateFrame("EditBox", nil, listPanel, "BackdropTemplate")
     SetFlat(searchBox, { 0.06, 0.06, 0.08, 1 })
     searchBox:SetHeight(28)
-    -- Reiter: alle Dungeons / nur der eigene Levelbereich
-    local tabWidth = math.floor((LIST_WIDTH - 22) / 2)
+    -- Reiter: alle Dungeons / nur der eigene Levelbereich / Schlachtzüge
+    local tabWidth = math.floor((LIST_WIDTH - 16 - 12) / 3)
     local tabs = {}
+    local function CurrentTab()
+        if raidTabActive then return "raid" end
+        return levelTabActive and "level" or "all"
+    end
     local function UpdateTabs()
         for _, tab in ipairs(tabs) do
-            local active = tab.levelTab == levelTabActive
+            local active = tab.key == CurrentTab()
             if active then
                 tab:SetBackdropColor(0.30, 0.25, 0.05, 1)
                 tab:GetFontString():SetTextColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3])
@@ -1844,22 +1848,28 @@ local function CreateWindow()
             end
         end
     end
-    local function SelectTab(levelTab)
-        levelTabActive = levelTab
+    local function SelectTab(key)
+        levelTabActive = key == "level"
+        raidTabActive = key == "raid"
         UpdateTabs()
         listScroll:SetVerticalScroll(0)
         questScroll:SetVerticalScroll(0)
+        if questDetailView then questDetailView:Hide() end
         RefreshList()
         RefreshDetail()
     end
-    local allTab = ns.Style.CreateButton(listPanel, ns.L("TAB_ALL"), tabWidth, 24, function() SelectTab(false) end)
+    local allTab = ns.Style.CreateButton(listPanel, ns.L("TAB_ALL"), tabWidth, 24, function() SelectTab("all") end)
     allTab:SetPoint("TOPLEFT", 8, -8)
-    allTab.levelTab = false
-    local levelTab = ns.Style.CreateButton(listPanel, ns.L("TAB_MY_LEVEL"), tabWidth, 24, function() SelectTab(true) end,
+    allTab.key = "all"
+    local levelTab = ns.Style.CreateButton(listPanel, ns.L("TAB_MY_LEVEL"), tabWidth, 24, function() SelectTab("level") end,
         function(tooltip) tooltip:AddLine(ns.L("TIP_MY_LEVEL"), 1, 1, 1, true) end)
     levelTab:SetPoint("LEFT", allTab, "RIGHT", 6, 0)
-    levelTab.levelTab = true
-    tabs = { allTab, levelTab }
+    levelTab.key = "level"
+    local raidTab = ns.Style.CreateButton(listPanel, ns.L("TAB_RAIDS"), tabWidth, 24, function() SelectTab("raid") end,
+        function(tooltip) tooltip:AddLine(ns.L("TIP_RAIDS"), 1, 1, 1, true) end)
+    raidTab:SetPoint("LEFT", levelTab, "RIGHT", 6, 0)
+    raidTab.key = "raid"
+    tabs = { allTab, levelTab, raidTab }
     -- Nach dem Darüberfahren die Reiterfarbe wiederherstellen
     for _, tab in ipairs(tabs) do tab:HookScript("OnLeave", UpdateTabs) end
     UpdateTabs()
@@ -1966,6 +1976,14 @@ local function CreateWindow()
     detailEmpty:SetPoint("CENTER", questScroll, "CENTER", 0, 30)
     detailEmpty:SetWidth(420)
     detailEmpty:SetJustifyH("CENTER")
+
+    -- Eingebaute Detailansicht (Klick auf eine Quest): legt sich über das rechte Feld, "<" führt zurück.
+    -- Derselbe Baustein wie im Questlog an der Karte; Quests außerhalb des Logs zeigt er mit Questies Daten.
+    if ns.CreateQuestDetailView then
+        questDetailView = ns.CreateQuestDetailView(detailPanel, { allowNotInLog = true, backTipKey = "TIP_BACK_DUNGEON" })
+        questDetailView.frame:SetAllPoints(detailPanel)
+        questDetailView.frame:SetFrameLevel(detailPanel:GetFrameLevel() + 30)
+    end
 
     -- Fußleiste: Fraktionsfilter und Hinweis
     local factionCheck = ns.Style.CreateCheckbox(window, ns.L("ONLY_MY_FACTION"))
@@ -2078,11 +2096,14 @@ end
 function ns.ShowDungeon(dungeon)
     if not window then CreateWindow() end
     selectedDungeon = dungeon
-    -- Im Reiter "Mein Levelbereich" wäre der Dungeon evtl. ausgeblendet: dann auf "Alle Dungeons" wechseln
-    if levelTabActive and not IsDungeonInMyRange(dungeon) then
+    -- Passenden Reiter wählen: Schlachtzüge bzw. "Alle Dungeons", wenn der Dungeon im aktuellen Reiter fehlt
+    local isRaid = dungeon and dungeon.isRaid == true
+    if raidTabActive ~= isRaid or (levelTabActive and not IsDungeonInMyRange(dungeon)) then
+        raidTabActive = isRaid
         levelTabActive = false
         if window.UpdateTabs then window.UpdateTabs() end
     end
+    if questDetailView then questDetailView:Hide() end
     if searchBox and searchBox:GetText() ~= "" then searchBox:SetText("") end
     questScroll:SetVerticalScroll(0)
     if window:IsShown() then
@@ -2098,15 +2119,6 @@ end
 ---------------------------------------------------------------------------
 
 local HINT_DURATION = 15 -- Sekunden, bis der Hinweis von selbst verschwindet
--- Instanz-ID (aus GetInstanceInfo) -> Dungeon-Name in den Daten (für die Classic-Dungeons)
-local INSTANCE_IDS = {
-    [389] = "Ragefireabgrund", [43] = "Die Höhlen des Wehklagens", [36] = "Die Todesminen",
-    [33] = "Burg Shadowfang", [48] = "Blackfathom-Tiefe", [34] = "Das Verlies", [90] = "Gnomeregan",
-    [47] = "Der Kral von Razorfen", [189] = "Das Scharlachrote Kloster", [129] = "Die Hügel von Razorfen",
-    [70] = "Uldaman", [209] = "Zul'Farrak", [349] = "Maraudon", [109] = "Der Tempel von Atal'Hakkar",
-    [230] = "Blackrocktiefen", [229] = "Untere Blackrockspitze", [429] = "Düsterbruch (Ost, Nord, West)",
-    [289] = "Scholomance", [329] = "Stratholme (Live und Dead)",
-}
 local hintFrame
 local lastHintInstance
 
@@ -2129,10 +2141,15 @@ local function FindCurrentDungeon(instanceName, instanceID)
             end
         end
     end
-    local dataName = instanceID and INSTANCE_IDS[instanceID]
-    if dataName then
+    -- über die Instanz-ID: Questie kennt zu jeder Instanz das Gebiet (instanceIdToAreaId)
+    local zoneDB = instanceID and _G.QuestieLoader and _G.QuestieLoader:ImportModule("ZoneDB")
+    local areaID = zoneDB and zoneDB.instanceIdToAreaId and zoneDB.instanceIdToAreaId[instanceID]
+    if areaID then
         for _, dungeon in ipairs(ns.DUNGEON_DATA) do
-            if dungeon.name == dataName then return dungeon end
+            if dungeon.areaID == areaID then return dungeon end
+            for _, alt in ipairs(dungeon.altAreas or {}) do
+                if alt == areaID then return dungeon end
+            end
         end
     end
 end

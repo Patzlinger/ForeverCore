@@ -381,7 +381,9 @@ function ns.GetQuestieQuestDetails(questID)
                 or db.QueryItemSingle
             return query and query(id, "name")
         end
-        local result = { objectives = {} }
+        local result = { objectives = {}, name = db.QueryQuestSingle(questID, "name"),
+            level = db.QueryQuestSingle(questID, "questLevel"), requiredLevel = db.QueryQuestSingle(questID, "requiredLevel"),
+            objectivesText = db.QueryQuestSingle(questID, "objectivesText") }
         -- Ziele: [1] Gegner, [2] Objekte, [3] Gegenstände (je { id, text, anzahl })
         local objectives = db.QueryQuestSingle(questID, "objectives")
         if type(objectives) == "table" then

@@ -778,24 +778,27 @@ local function CreatePanel(area)
 end
 
 ---------------------------------------------------------------------------
--- Detailansicht einer Quest
+-- Detailansicht einer Quest – ein Baustein, den der Questlog an der Karte und das Dungeonfenster benutzen
+-- (ns.CreateQuestDetailView). Steht die Quest im Questlog: alles aus dem Spiel (Ziele mit Fortschritt,
+-- Beschreibung, Belohnungen). Sonst (nur Dungeonfenster): Questziele, Questgeber, Abgabe, Erfahrung, Geld und Ruf
+-- aus Questies Datenbank, Gegenstände/Zauber, soweit der Server sie nachlädt. Die Questreihe kommt immer aus Questie.
 ---------------------------------------------------------------------------
 
-local detailScroll, detailContent, detailTitle, detailID, detailButtons
-local detailQuestID
-local detailTexts, rewardButtons = {}, {}
 local blizzardDetails, detailBlocker
+local logDetail -- Detailansicht im Questlog an der Karte
+local FactionName, ReputationRewards, SpellRewards -- (weiter unten)
+local RenderDetailView
 
--- Fließtext / Überschriften der Detailansicht (werden bei jedem Aufbau wiederverwendet)
-local function DetailText(index)
-    local text = detailTexts[index]
+-- Fließtext / Überschriften (werden bei jedem Aufbau wiederverwendet)
+local function DetailText(dv, index)
+    local text = dv.texts[index]
     if not text then
-        text = detailContent:CreateFontString(nil, "OVERLAY")
+        text = dv.content:CreateFontString(nil, "OVERLAY")
         text:SetJustifyH("LEFT")
         text:SetWordWrap(true)
-        text.line = detailContent:CreateTexture(nil, "ARTWORK")
+        text.line = dv.content:CreateTexture(nil, "ARTWORK")
         text.line:SetHeight(1)
-        detailTexts[index] = text
+        dv.texts[index] = text
     end
     text.line:Hide()
     return text
@@ -804,6 +807,8 @@ end
 local function RewardTooltip(self)
     local tip = Style.GetTooltip()
     tip:SetOwner(self, "ANCHOR_RIGHT")
+    local questID = self.dv and self.dv.questID
+    local inLog = questID and C_QuestLog.GetLogIndexForQuestID(questID)
     local shown = false
     if self.kind == "currency" then
         if self.currencyID and tip.SetCurrencyByID then
@@ -814,9 +819,9 @@ local function RewardTooltip(self)
             shown = pcall(tip.SetSpellByID, tip, self.spellID) and tip:NumLines() > 0
         end
     else
-        C_QuestLog.SetSelectedQuest(detailQuestID)
-        if tip.SetQuestLogItem then
-            shown = pcall(tip.SetQuestLogItem, tip, self.kind, self.index, detailQuestID) and tip:NumLines() > 0
+        if inLog and tip.SetQuestLogItem then
+            C_QuestLog.SetSelectedQuest(questID)
+            shown = pcall(tip.SetQuestLogItem, tip, self.kind, self.index, questID) and tip:NumLines() > 0
         end
         if not shown and self.itemID and tip.SetItemByID then
             shown = pcall(tip.SetItemByID, tip, self.itemID) and tip:NumLines() > 0
@@ -827,10 +832,11 @@ local function RewardTooltip(self)
 end
 
 -- Belohnungs-Feld: Symbol mit Anzahl, Name in Seltenheitsfarbe; Shift-Klick verlinkt, Strg-Klick = Anprobe
-local function RewardButton(index)
-    local button = rewardButtons[index]
+local function RewardButton(dv, index)
+    local button = dv.rewards[index]
     if button then return button end
-    button = CreateFrame("Button", nil, detailContent, "BackdropTemplate")
+    button = CreateFrame("Button", nil, dv.content, "BackdropTemplate")
+    button.dv = dv
     Style.SetFlat(button, Style.COLOR.panel)
     button:SetHeight(32)
     button.icon = button:CreateTexture(nil, "ARTWORK")
@@ -855,19 +861,22 @@ local function RewardButton(index)
     end)
     button:SetScript("OnClick", function(self)
         if self.kind == "currency" or self.kind == "spell" or not IsModifiedClick() then return end
-        C_QuestLog.SetSelectedQuest(detailQuestID)
-        local link = GetQuestLogItemLink and GetQuestLogItemLink(self.kind, self.index)
+        local questID = self.dv.questID
+        local link
+        if questID and C_QuestLog.GetLogIndexForQuestID(questID) and GetQuestLogItemLink then
+            C_QuestLog.SetSelectedQuest(questID)
+            link = GetQuestLogItemLink(self.kind, self.index)
+        elseif self.itemID and C_Item and C_Item.GetItemInfo then
+            link = select(2, C_Item.GetItemInfo(self.itemID))
+        end
         if link then HandleModifiedItemClick(link) end
     end)
-    rewardButtons[index] = button
+    dv.rewards[index] = button
     return button
 end
 
--- Zeilen der Questreihe (Pool): nicht anklickbar, Tooltip mit Name, ID, Stufen und Stand
-local FactionName, ReputationRewards, SpellRewards -- (weiter unten)
-
 -- Belohnungen einer nicht angenommenen Quest vom Server nachladen (klappt nicht bei jedem Server/jeder Quest;
--- dann bleibt es bei Erfahrung, Geld und Ruf). Ist ein Tooltip der Questreihe offen, wird er neu gefüllt.
+-- dann bleibt es bei Erfahrung, Geld und Ruf). Offene Tooltips/Detailansichten werden danach neu gefüllt.
 local requestedRewards = {}
 local function RequestRewardData(questID)
     if requestedRewards[questID] then return end
@@ -879,25 +888,34 @@ local function RequestRewardData(questID)
 end
 
 -- Gegenstands-Belohnungen einer Quest (auch ohne sie im Log zu haben), soweit das Spiel sie kennt
-local function PreloadedItemRewards(questID)
-    local lines = {}
-    if not (GetNumQuestLogRewards and GetQuestLogRewardInfo) then return lines end
+local function PreloadedItemRewardList(questID)
+    local list = {}
+    if not (GetNumQuestLogRewards and GetQuestLogRewardInfo) then return list end
     local ok, num = pcall(GetNumQuestLogRewards, questID)
     for i = 1, (ok and num or 0) do
-        local okInfo, name, texture, count, quality = pcall(GetQuestLogRewardInfo, i, questID)
+        local okInfo, name, texture, count, quality, _, itemID = pcall(GetQuestLogRewardInfo, i, questID)
         if okInfo and name then
-            local color = quality and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[quality]
-            local text = (texture and ("|T" .. texture .. ":14:14:0:0|t ") or "") .. (color and color.hex or "|cffffffff")
-                .. name .. "|r"
-            if count and count > 1 then text = text .. " |cffaaaaaax" .. count .. "|r" end
-            lines[#lines + 1] = text
+            list[#list + 1] = { kind = "reward", index = i, name = name, texture = texture, count = count,
+                quality = quality, itemID = itemID }
         end
+    end
+    return list
+end
+
+local function PreloadedItemRewards(questID)
+    local lines = {}
+    for _, entry in ipairs(PreloadedItemRewardList(questID)) do
+        local color = entry.quality and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[entry.quality]
+        local text = (entry.texture and ("|T" .. entry.texture .. ":14:14:0:0|t ") or "")
+            .. (color and color.hex or "|cffffffff") .. entry.name .. "|r"
+        if entry.count and entry.count > 1 then text = text .. " |cffaaaaaax" .. entry.count .. "|r" end
+        lines[#lines + 1] = text
     end
     return lines
 end
-local chainRows = {}
--- Tooltip wie im Tracker: Quest im Log = genau der Tracker-Tooltip (Ziel, Beschreibung, Fortschritt, Belohnungen);
--- sonst derselbe Aufbau aus Questies Daten (Name in Schwierigkeitsfarbe mit Stufe, Questziel, Stand)
+
+-- Tooltip der Questreihe wie im Tracker: Quest im Log = genau der Tracker-Tooltip; sonst derselbe Aufbau aus
+-- Questies Daten (Name in Schwierigkeitsfarbe mit Stufe, Questziel, Ziele, Questgeber, Belohnungen, Stand)
 local function ChainTooltip(self)
     local entry = self.entry
     if not entry then return end
@@ -913,13 +931,11 @@ local function ChainTooltip(self)
     local title = entry.name or ("Quest #" .. entry.questID)
     if entry.level and entry.level > 0 then title = title .. " (" .. entry.level .. ")" end
     tip:AddLine(title, r, g, b)
-    -- Kurzziel (wie oben im Tracker-Tooltip)
     for _, line in ipairs(entry.objectives or {}) do
         if type(line) == "string" and line ~= "" then tip:AddLine(line, 1, 1, 1, true) end
     end
     local info = ns.GetQuestieQuestDetails and ns.GetQuestieQuestDetails(entry.questID)
     if info then
-        -- Questziele mit Anzahl (bei erledigten Quests ohne Fortschritt)
         if #info.objectives > 0 then
             tip:AddLine(" ")
             for _, line in ipairs(info.objectives) do
@@ -928,13 +944,11 @@ local function ChainTooltip(self)
                 tip:AddLine("- " .. text, shade, shade, shade, true)
             end
         end
-        -- Questgeber und Abgabe
         if info.starter or info.finisher then
             tip:AddLine(" ")
             if info.starter then tip:AddLine(ns.L("TIP_CHAIN_STARTER", info.starter), 0.75, 0.75, 0.75, true) end
             if info.finisher then tip:AddLine(ns.L("TIP_CHAIN_FINISHER", info.finisher), 0.75, 0.75, 0.75, true) end
         end
-        -- Belohnungen (soweit bekannt): Gegenstände und Zauber (vom Server nachgeladen), Geld, Erfahrung, Ruf
         RequestRewardData(entry.questID)
         local reps = ReputationRewards(entry.questID)
         local money = info.money or 0
@@ -972,10 +986,11 @@ local function ChainTooltip(self)
     tip:Show()
 end
 
-local function ChainRow(index)
-    local row = chainRows[index]
+-- Zeile der Questreihe (Pool je Ansicht): nicht anklickbar, Tooltip beim Darüberfahren
+local function ChainRow(dv, index)
+    local row = dv.chain[index]
     if row then return row end
-    row = CreateFrame("Frame", nil, detailContent)
+    row = CreateFrame("Frame", nil, dv.content)
     row.view = { anchor = "ANCHOR_RIGHT" } -- Tooltip-Seite für den Tracker-Tooltip
     row:EnableMouse(true)
     row.text = row:CreateFontString(nil, "OVERLAY")
@@ -987,16 +1002,20 @@ local function ChainRow(index)
     highlight:SetColorTexture(1, 1, 1, 0.06)
     row:SetScript("OnEnter", ChainTooltip)
     row:SetScript("OnLeave", function() Style.GetTooltip():Hide() end)
-    chainRows[index] = row
+    dv.chain[index] = row
     return row
 end
 
--- Nachgeladene Questdaten angekommen: offenen Tooltip der Questreihe neu füllen
+-- alle angelegten Detailansichten (für das Nachladen von Questdaten)
+local detailViews = {}
+
+-- Nachgeladene Questdaten angekommen: offenen Tooltip der Questreihe und offene Ansichten neu füllen
 do
     local loader = CreateFrame("Frame")
     for _, event in ipairs({ "QUEST_DATA_LOAD_RESULT", "GET_ITEM_INFO_RECEIVED" }) do
         pcall(loader.RegisterEvent, loader, event)
     end
+    local queued = false
     loader:SetScript("OnEvent", function()
         local tip = Style and Style.GetTooltip()
         local owner = tip and tip:IsShown() and tip:GetOwner()
@@ -1005,6 +1024,16 @@ do
                 if tip:GetOwner() == owner and owner:IsMouseOver() then ChainTooltip(owner) end
             end)
         end
+        if queued then return end
+        queued = true
+        C_Timer.After(0.3, function()
+            queued = false
+            for _, dv in ipairs(detailViews) do
+                if dv.frame:IsVisible() and dv.questID and not C_QuestLog.GetLogIndexForQuestID(dv.questID) then
+                    RenderDetailView(dv)
+                end
+            end
+        end)
     end)
 end
 
@@ -1074,76 +1103,37 @@ local function QualityColor(quality)
     return 1, 1, 1
 end
 
--- Blizzards Detailansicht verlassen (unsere folgt ihr und schließt mit)
-local function BackToList()
-    if type(_G.QuestMapFrame_ReturnFromQuestDetails) == "function" then
-        _G.QuestMapFrame_ReturnFromQuestDetails()
-    elseif blizzardDetails then
-        blizzardDetails:Hide()
-    end
-    if details then details:Hide() end
-    if panel then panel:Show() end
-end
-
-local function UpdateDetailButtons()
-    local questID = detailQuestID
+-- Aufbau einer Detailansicht (dv = Ansicht aus ns.CreateQuestDetailView)
+RenderDetailView = function(dv)
+    local questID = dv.questID
     if not questID then return end
-    -- schon gemeinsam: "Nicht mehr gemeinsam machen", sonst "Der Gruppe vorschlagen" (nur in einer Gruppe)
-    local isGroupQuest = ns.IsGroupQuest and ns.IsGroupQuest(questID)
-    detailButtons.suggest:SetText(ns.L(isGroupQuest and "GQ_LEAVE" or "MENU_SUGGEST"))
-    local canSuggest = isGroupQuest or IsInGroup()
-    detailButtons.suggest:SetEnabled(canSuggest and true or false)
-    detailButtons.suggest:SetAlpha(canSuggest and 1 or 0.45)
-    detailButtons.pin:SetText(ns.L(ns.db.pinned[questID] and "BTN_UNPIN" or "BTN_PIN"))
-    local canShare = IsInGroup() and C_QuestLog.IsPushableQuest(questID)
-    detailButtons.share:SetEnabled(canShare)
-    detailButtons.share:SetAlpha(canShare and 1 or 0.45)
-end
-
-RenderDetails = function()
-    local questID = detailQuestID
-    local logIndex = questID and C_QuestLog.GetLogIndexForQuestID(questID)
-    if not logIndex then
-        -- Quest nicht (mehr) im Log (abgegeben/abgebrochen): zurück zur Liste
-        BackToList()
+    local logIndex = C_QuestLog.GetLogIndexForQuestID(questID)
+    if not logIndex and not dv.allowNotInLog then
+        -- Quest nicht (mehr) im Log (abgegeben/abgebrochen)
+        if dv.onMissing then dv.onMissing() end
         return
     end
     local fonts = ns.QuestList.Fonts()
-    local info = C_QuestLog.GetInfo(logIndex) or {}
-    local width = math.max(50, detailScroll:GetWidth() - 4)
-    detailContent:SetWidth(width)
-
-    -- Kopf: Name in Schwierigkeitsfarbe mit Stufe und Typ
-    local r, g, b = 1, 0.82, 0
-    local levelColor = ns.QuestList.LevelColor(info.level)
-    if levelColor then r, g, b = levelColor.r, levelColor.g, levelColor.b end
-    local titleText = info.title or C_QuestLog.GetTitleForQuestID(questID) or ("Quest " .. questID)
-    if info.level and info.level > 0 then titleText = titleText .. " (" .. info.level .. ")" end
-    detailTitle:SetText(titleText)
-    detailTitle:SetTextColor(r, g, b)
-    detailID:SetText("#" .. questID)
-
-    -- Text der Quest steht bei der "ausgewählten" Quest (Blizzards Detailansicht hat sie schon ausgewählt)
-    C_QuestLog.SetSelectedQuest(questID)
-    local description, objectiveText
-    if GetQuestLogQuestText then description, objectiveText = GetQuestLogQuestText(logIndex) end
-
-    local y, n = 4, 0
+    local width = math.max(50, dv.scroll:GetWidth() - 4)
+    local content = dv.content
+    content:SetWidth(width)
     local accent = Style.COLOR.accent
+    local y, n, used = 4, 0, 0
+
     local function Section(label)
         n = n + 1
-        local text = DetailText(n)
+        local text = DetailText(dv, n)
         text:SetFontObject(fonts.header)
         text:SetTextColor(accent[1], accent[2], accent[3])
         text:SetWidth(width - 4)
         text:SetText(label)
         text:ClearAllPoints()
-        text:SetPoint("TOPLEFT", detailContent, "TOPLEFT", 2, -y)
+        text:SetPoint("TOPLEFT", content, "TOPLEFT", 2, -y)
         text:Show()
         y = y + text:GetStringHeight() + 3
         text.line:SetColorTexture(accent[1], accent[2], accent[3], 0.35)
         text.line:ClearAllPoints()
-        text.line:SetPoint("TOPLEFT", detailContent, "TOPLEFT", 2, -y)
+        text.line:SetPoint("TOPLEFT", content, "TOPLEFT", 2, -y)
         text.line:SetWidth(width - 4)
         text.line:Show()
         y = y + 5
@@ -1151,45 +1141,149 @@ RenderDetails = function()
     local function Paragraph(value, font, cr, cg, cb, indent)
         if not value or value == "" then return end
         n = n + 1
-        local text = DetailText(n)
+        local text = DetailText(dv, n)
         text:SetFontObject(font)
         text:SetTextColor(cr, cg, cb)
         text:SetWidth(width - 4 - (indent or 0))
         text:SetText(value)
         text:ClearAllPoints()
-        text:SetPoint("TOPLEFT", detailContent, "TOPLEFT", 2 + (indent or 0), -y)
+        text:SetPoint("TOPLEFT", content, "TOPLEFT", 2 + (indent or 0), -y)
         text:Show()
         y = y + text:GetStringHeight() + 4
     end
-
-    -- Typ (Klasse, Ruf, Gruppe …) und "Fertig"
-    local typeText = ns.QuestList.QuestTypeText(questID, nil)
-    local isComplete = C_QuestLog.IsComplete(questID)
-    if typeText ~= "" or isComplete then
-        Paragraph(((typeText ~= "" and ("|cff88ccff" .. typeText .. "|r  ")) or "")
-            .. (isComplete and ("|cff00ff00" .. ns.L("READY_TO_TURN_IN") .. "|r") or ""), fonts.objective, 1, 1, 1)
-    end
-
-    -- Ziele: Kurztext und Fortschritt
-    Section(ns.L("DETAIL_OBJECTIVES"))
-    Paragraph(objectiveText, fonts.quest, 1, 1, 1)
-    for _, objective in ipairs(C_QuestLog.GetQuestObjectives(questID) or {}) do
-        if objective.text and objective.text ~= "" then
-            if objective.finished then
-                Paragraph("- " .. objective.text, fonts.objective, 0.45, 0.85, 0.45, 6)
-            else
-                Paragraph("- " .. objective.text, fonts.objective, 0.85, 0.85, 0.85, 6)
-            end
+    local function Grid(list)
+        local columnWidth = math.floor((width - 4 - 4) / 2)
+        for i, entry in ipairs(list) do
+            used = used + 1
+            local button = RewardButton(dv, used)
+            button.kind, button.index, button.itemID, button.currencyID = entry.kind, entry.index, entry.itemID,
+                entry.currencyID
+            button.spellID = entry.spellID
+            button.icon:SetTexture(entry.texture or 134400)
+            button.count:SetText((entry.count and entry.count > 1) and entry.count or "")
+            button.name:SetText(entry.name)
+            button.name:SetTextColor(QualityColor(entry.quality))
+            button:SetWidth(columnWidth)
+            button:ClearAllPoints()
+            local column = (i - 1) % 2
+            button:SetPoint("TOPLEFT", content, "TOPLEFT", 2 + column * (columnWidth + 4), -y)
+            button:Show()
+            if column == 1 or i == #list then y = y + 36 end
         end
     end
-    y = y + 4
 
-    -- Beschreibung
-    if description and description ~= "" then
-        Section(ns.L("DETAIL_DESCRIPTION"))
-        Paragraph(description, fonts.objective, 0.75, 0.75, 0.75)
+    local rewards, choices, currencies, spells, reputations = {}, {}, {}, {}, {}
+    local money, xp, title, honor = 0, 0, nil, 0
+    if logIndex then
+        -- Quest im Questlog: alles aus dem Spiel
+        local info = C_QuestLog.GetInfo(logIndex) or {}
+        local r, g, b = 1, 0.82, 0
+        local levelColor = ns.QuestList.LevelColor(info.level)
+        if levelColor then r, g, b = levelColor.r, levelColor.g, levelColor.b end
+        local titleText = info.title or C_QuestLog.GetTitleForQuestID(questID) or ("Quest " .. questID)
+        if info.level and info.level > 0 then titleText = titleText .. " (" .. info.level .. ")" end
+        dv.title:SetText(titleText)
+        dv.title:SetTextColor(r, g, b)
+
+        -- Text der Quest steht bei der "ausgewählten" Quest
+        C_QuestLog.SetSelectedQuest(questID)
+        local description, objectiveText
+        if GetQuestLogQuestText then description, objectiveText = GetQuestLogQuestText(logIndex) end
+
+        local typeText = ns.QuestList.QuestTypeText(questID, nil)
+        local isComplete = C_QuestLog.IsComplete(questID)
+        if typeText ~= "" or isComplete then
+            Paragraph(((typeText ~= "" and ("|cff88ccff" .. typeText .. "|r  ")) or "")
+                .. (isComplete and ("|cff00ff00" .. ns.L("READY_TO_TURN_IN") .. "|r") or ""), fonts.objective, 1, 1, 1)
+        end
+        Section(ns.L("DETAIL_OBJECTIVES"))
+        Paragraph(objectiveText, fonts.quest, 1, 1, 1)
+        for _, objective in ipairs(C_QuestLog.GetQuestObjectives(questID) or {}) do
+            if objective.text and objective.text ~= "" then
+                if objective.finished then
+                    Paragraph("- " .. objective.text, fonts.objective, 0.45, 0.85, 0.45, 6)
+                else
+                    Paragraph("- " .. objective.text, fonts.objective, 0.85, 0.85, 0.85, 6)
+                end
+            end
+        end
         y = y + 4
+        if description and description ~= "" then
+            Section(ns.L("DETAIL_DESCRIPTION"))
+            Paragraph(description, fonts.objective, 0.75, 0.75, 0.75)
+            y = y + 4
+        end
+
+        for i = 1, (GetNumQuestLogRewards and GetNumQuestLogRewards(questID) or 0) do
+            local name, texture, count, quality, _, itemID = GetQuestLogRewardInfo(i, questID)
+            if name then rewards[#rewards + 1] = { kind = "reward", index = i, name = name, texture = texture,
+                count = count, quality = quality, itemID = itemID } end
+        end
+        for i = 1, (GetNumQuestLogChoices and GetNumQuestLogChoices(questID) or 0) do
+            local name, texture, count, quality, _, itemID = GetQuestLogChoiceInfo(i)
+            if name then choices[#choices + 1] = { kind = "choice", index = i, name = name, texture = texture,
+                count = count, quality = quality, itemID = itemID } end
+        end
+        if C_QuestLog.GetQuestRewardCurrencies then
+            local ok, list = pcall(C_QuestLog.GetQuestRewardCurrencies, questID)
+            for _, currency in ipairs(ok and list or {}) do
+                currencies[#currencies + 1] = { kind = "currency", name = currency.name, texture = currency.texture,
+                    count = currency.totalRewardAmount or currency.baseRewardAmount, quality = currency.quality,
+                    currencyID = currency.currencyID }
+            end
+        end
+        money = GetQuestLogRewardMoney and GetQuestLogRewardMoney(questID) or 0
+        xp = GetQuestLogRewardXP and GetQuestLogRewardXP(questID) or 0
+        spells = SpellRewards(questID)
+        reputations = ReputationRewards(questID)
+        title = GetQuestLogRewardTitle and GetQuestLogRewardTitle() or nil
+        honor = GetQuestLogRewardHonor and GetQuestLogRewardHonor(questID) or 0
+    else
+        -- Quest nicht im Log (Dungeonfenster): Spiel, soweit es sie kennt, sonst Questies Datenbank
+        local info = ns.GetQuestieQuestDetails and ns.GetQuestieQuestDetails(questID) or { objectives = {} }
+        local level = info.level
+        local r, g, b = 1, 0.82, 0
+        local levelColor = ns.QuestList.LevelColor(level)
+        if levelColor then r, g, b = levelColor.r, levelColor.g, levelColor.b end
+        local titleText = C_QuestLog.GetTitleForQuestID(questID) or info.name or ("Quest " .. questID)
+        if level and level > 0 then titleText = titleText .. " (" .. level .. ")" end
+        dv.title:SetText(titleText)
+        dv.title:SetTextColor(r, g, b)
+
+        -- Stand: schon erledigt / Stufe fehlt noch / noch nicht angenommen
+        local done = C_QuestLog.IsQuestFlaggedCompleted and C_QuestLog.IsQuestFlaggedCompleted(questID)
+        if done then
+            Paragraph("|TInterface\\RaidFrame\\ReadyCheck-Ready:12|t " .. ns.L("TIP_CHAIN_DONE"), fonts.objective, 0.45, 0.85, 0.45)
+        elseif info.requiredLevel and info.requiredLevel > UnitLevel("player") then
+            Paragraph(ns.L("DETAIL_NEEDS_LEVEL", info.requiredLevel), fonts.objective, 1, 0.35, 0.35)
+        else
+            Paragraph(ns.L("DETAIL_NOT_ACCEPTED"), fonts.objective, 0.7, 0.7, 0.7)
+        end
+
+        Section(ns.L("DETAIL_OBJECTIVES"))
+        for _, line in ipairs(info.objectivesText or {}) do
+            if type(line) == "string" and line ~= "" then Paragraph(line, fonts.quest, 1, 1, 1) end
+        end
+        for _, line in ipairs(info.objectives or {}) do
+            local text = done and line:gsub(": 0/(%d+)$", ": %1/%1") or line
+            Paragraph("- " .. text, fonts.objective, done and 0.45 or 0.85, done and 0.85 or 0.85, done and 0.45 or 0.85, 6)
+        end
+        y = y + 4
+        if info.starter or info.finisher then
+            Section(ns.L("DETAIL_GIVERS"))
+            if info.starter then Paragraph(ns.L("TIP_CHAIN_STARTER", info.starter), fonts.objective, 0.85, 0.85, 0.85) end
+            if info.finisher then Paragraph(ns.L("TIP_CHAIN_FINISHER", info.finisher), fonts.objective, 0.85, 0.85, 0.85) end
+            y = y + 4
+        end
+
+        RequestRewardData(questID)
+        rewards = PreloadedItemRewardList(questID)
+        spells = SpellRewards(questID)
+        reputations = ReputationRewards(questID)
+        money = info.money or 0
+        xp = info.xp or 0
     end
+    dv.id:SetText("#" .. questID)
 
     -- Questreihe (aus Questies Datenbank): erledigt = Haken, diese Quest = gold, offen = grau; mit Quest-ID.
     -- Nicht anklickbar, aber Maus darüber zeigt einen Tooltip.
@@ -1212,70 +1306,23 @@ RenderDetails = function()
             end
             text = text .. "  |cff6a6a6a#" .. entry.questID .. "|r"
             rowsUsed = rowsUsed + 1
-            local row = ChainRow(rowsUsed)
+            local row = ChainRow(dv, rowsUsed)
             row.entry, row.done, row.inLog, row.current = entry, done, inLog, entry.questID == questID
             row.text:SetFontObject(font)
             row.text:SetTextColor(cr, cg, cb)
             row.text:SetWidth(width - 8)
             row.text:SetText(text)
             row:ClearAllPoints()
-            row:SetPoint("TOPLEFT", detailContent, "TOPLEFT", 6, -y)
+            row:SetPoint("TOPLEFT", content, "TOPLEFT", 6, -y)
             row:SetSize(width - 8, row.text:GetStringHeight() + 2)
             row:Show()
             y = y + row:GetHeight() + 2
         end
         y = y + 4
     end
-    for i = rowsUsed + 1, #chainRows do chainRows[i]:Hide() end
+    for i = rowsUsed + 1, #dv.chain do dv.chain[i]:Hide() end
 
-    -- Belohnungen: feste Gegenstände, Auswahl, Währungen, Geld, Erfahrung
-    local rewards, choices, currencies = {}, {}, {}
-    for i = 1, (GetNumQuestLogRewards and GetNumQuestLogRewards(questID) or 0) do
-        local name, texture, count, quality, _, itemID = GetQuestLogRewardInfo(i, questID)
-        if name then rewards[#rewards + 1] = { kind = "reward", index = i, name = name, texture = texture,
-            count = count, quality = quality, itemID = itemID } end
-    end
-    for i = 1, (GetNumQuestLogChoices and GetNumQuestLogChoices(questID) or 0) do
-        local name, texture, count, quality, _, itemID = GetQuestLogChoiceInfo(i)
-        if name then choices[#choices + 1] = { kind = "choice", index = i, name = name, texture = texture,
-            count = count, quality = quality, itemID = itemID } end
-    end
-    if C_QuestLog.GetQuestRewardCurrencies then
-        local ok, list = pcall(C_QuestLog.GetQuestRewardCurrencies, questID)
-        for _, currency in ipairs(ok and list or {}) do
-            currencies[#currencies + 1] = { kind = "currency", name = currency.name, texture = currency.texture,
-                count = currency.totalRewardAmount or currency.baseRewardAmount, quality = currency.quality,
-                currencyID = currency.currencyID }
-        end
-    end
-    local money = GetQuestLogRewardMoney and GetQuestLogRewardMoney(questID) or 0
-    local xp = GetQuestLogRewardXP and GetQuestLogRewardXP(questID) or 0
-    local spells = SpellRewards(questID)
-    local reputations = ReputationRewards(questID)
-    local title = GetQuestLogRewardTitle and GetQuestLogRewardTitle() or nil
-    local honor = GetQuestLogRewardHonor and GetQuestLogRewardHonor(questID) or 0
-
-    local used = 0
-    local function Grid(list)
-        local columnWidth = math.floor((width - 4 - 4) / 2)
-        for i, entry in ipairs(list) do
-            used = used + 1
-            local button = RewardButton(used)
-            button.kind, button.index, button.itemID, button.currencyID = entry.kind, entry.index, entry.itemID,
-                entry.currencyID
-            button.spellID = entry.spellID
-            button.icon:SetTexture(entry.texture or 134400)
-            button.count:SetText((entry.count and entry.count > 1) and entry.count or "")
-            button.name:SetText(entry.name)
-            button.name:SetTextColor(QualityColor(entry.quality))
-            button:SetWidth(columnWidth)
-            button:ClearAllPoints()
-            local column = (i - 1) % 2
-            button:SetPoint("TOPLEFT", detailContent, "TOPLEFT", 2 + column * (columnWidth + 4), -y)
-            button:Show()
-            if column == 1 or i == #list then y = y + 36 end
-        end
-    end
+    -- Belohnungen
     local hasTitle = title and title ~= ""
     if #rewards + #choices + #currencies + #spells + #reputations > 0 or money > 0 or xp > 0 or hasTitle
         or honor > 0 then
@@ -1303,65 +1350,140 @@ RenderDetails = function()
         end
         if honor > 0 then Paragraph(ns.L("DETAIL_HONOR", honor), fonts.quest, 0.9, 0.35, 0.25) end
         if hasTitle then Paragraph(ns.L("DETAIL_TITLE", title), fonts.quest, 1, 0.82, 0) end
+    elseif not logIndex then
+        Section(ns.L("TIP_REWARDS"))
+        Paragraph(ns.L("DETAIL_REWARDS_UNKNOWN"), fonts.objective, 0.6, 0.6, 0.6)
     end
 
-    for i = n + 1, #detailTexts do
-        detailTexts[i]:Hide()
-        detailTexts[i].line:Hide()
+    for i = n + 1, #dv.texts do
+        dv.texts[i]:Hide()
+        dv.texts[i].line:Hide()
     end
-    for i = used + 1, #rewardButtons do rewardButtons[i]:Hide() end
-    detailContent:SetHeight(math.max(1, y + 6))
-    UpdateDetailButtons()
+    for i = used + 1, #dv.rewards do dv.rewards[i]:Hide() end
+    content:SetHeight(math.max(1, y + 6))
+    if dv.onRendered then dv.onRendered(dv) end
+end
+
+-- Neue Detailansicht anlegen: Rahmen mit Kopf (Zurück | Name | Quest-ID) und Scrollbereich.
+-- opts: allowNotInLog (auch Quests außerhalb des Logs), onBack, onMissing, footerHeight (Platz für Knöpfe unten)
+function ns.CreateQuestDetailView(parent, opts)
+    opts = opts or {}
+    Style = Style or ns.Style
+    local frame = CreateFrame("Frame", nil, parent, "BackdropTemplate")
+    frame:EnableMouse(true)
+    Style.SetFlat(frame, Style.COLOR.background)
+    frame:Hide()
+    local dv = { frame = frame, texts = {}, rewards = {}, chain = {}, allowNotInLog = opts.allowNotInLog,
+        onMissing = opts.onMissing }
+
+    -- Kopf; Rechtsklick = dasselbe Menü wie im Tracker (nur bei Quests im Questlog)
+    local header = HeaderBar(frame, HEADER_HEIGHT)
+    header:EnableMouse(true)
+    header:SetScript("OnMouseUp", function(self, button)
+        if button == "RightButton" and dv.questID and C_QuestLog.GetLogIndexForQuestID(dv.questID) then
+            ns.QuestList.OpenMenu(self, dv.questID)
+        end
+    end)
+    local back = Style.CreateButton(header, "<", 22, 18, function()
+        if opts.onBack then opts.onBack(dv) else frame:Hide() end
+    end, ns.L(opts.backTipKey or "TIP_BACK"))
+    back:SetPoint("LEFT", 5, 0)
+    dv.id = header:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    dv.id:SetPoint("RIGHT", -8, 0)
+    dv.title = header:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    dv.title:SetPoint("LEFT", back, "RIGHT", 6, 0)
+    dv.title:SetPoint("RIGHT", dv.id, "LEFT", -6, 0)
+    dv.title:SetJustifyH("LEFT")
+    dv.title:SetWordWrap(false)
+    dv.header = header
+
+    dv.scroll, dv.content = CreateScroll(frame)
+    dv.scroll:SetPoint("TOPLEFT", 8, -(HEADER_HEIGHT + 6))
+    dv.scroll:SetPoint("BOTTOMRIGHT", -8, (opts.footerHeight or 0) + 6)
+    dv.scroll:SetScript("OnSizeChanged", function() if frame:IsShown() and dv.questID then RenderDetailView(dv) end end)
+
+    function dv:Show(questID)
+        if not questID or questID == 0 then return end
+        if self.questID ~= questID then self.scroll:SetVerticalScroll(0) end
+        self.questID = questID
+        frame:Show()
+        if self.scroll:GetWidth() < 10 then
+            C_Timer.After(0, function() if frame:IsShown() then RenderDetailView(self) end end)
+        else
+            RenderDetailView(self)
+        end
+    end
+    function dv:Refresh()
+        if frame:IsShown() and self.questID then RenderDetailView(self) end
+    end
+    function dv:Hide() frame:Hide() end
+
+    detailViews[#detailViews + 1] = dv
+    return dv
+end
+
+---------------------------------------------------------------------------
+-- Detailansicht im Questlog an der Karte (folgt Blizzards unsichtbarer Detailansicht)
+---------------------------------------------------------------------------
+
+-- Blizzards Detailansicht verlassen (unsere folgt ihr und schließt mit)
+local function BackToList()
+    if type(_G.QuestMapFrame_ReturnFromQuestDetails) == "function" then
+        _G.QuestMapFrame_ReturnFromQuestDetails()
+    elseif blizzardDetails then
+        blizzardDetails:Hide()
+    end
+    if details then details:Hide() end
+    if panel then panel:Show() end
+end
+
+local detailButtons
+local function UpdateDetailButtons()
+    local questID = logDetail and logDetail.questID
+    if not questID or not detailButtons then return end
+    -- schon gemeinsam: "Nicht mehr gemeinsam machen", sonst "Der Gruppe vorschlagen" (nur in einer Gruppe)
+    local isGroupQuest = ns.IsGroupQuest and ns.IsGroupQuest(questID)
+    detailButtons.suggest:SetText(ns.L(isGroupQuest and "GQ_LEAVE" or "MENU_SUGGEST"))
+    local canSuggest = isGroupQuest or IsInGroup()
+    detailButtons.suggest:SetEnabled(canSuggest and true or false)
+    detailButtons.suggest:SetAlpha(canSuggest and 1 or 0.45)
+    detailButtons.pin:SetText(ns.L(ns.db.pinned[questID] and "BTN_UNPIN" or "BTN_PIN"))
+    local canShare = IsInGroup() and C_QuestLog.IsPushableQuest(questID)
+    detailButtons.share:SetEnabled(canShare)
+    detailButtons.share:SetAlpha(canShare and 1 or 0.45)
+end
+
+RenderDetails = function()
+    if logDetail then RenderDetailView(logDetail) end
 end
 
 local function ShowDetails(questID)
-    if not details or not questID or questID == 0 then return end
-    if detailQuestID ~= questID then detailScroll:SetVerticalScroll(0) end
-    detailQuestID = questID
+    if not logDetail or not questID or questID == 0 then return end
     -- Karte: nur die Marker dieser Quest
     if ns.QuestieFocusDetails then ns.QuestieFocusDetails(questID) end
     if panel then panel:Hide() end
     if blizzardDetails then blizzardDetails:SetAlpha(0) end
-    details:Show()
-    if detailScroll:GetWidth() < 10 then
-        C_Timer.After(0, function() if details:IsShown() then RenderDetails() end end)
-    else
-        RenderDetails()
-    end
+    logDetail:Show(questID)
 end
 
 local function CreateDetails(area)
-    local color = Style.COLOR
     blizzardDetails = _G.QuestMapFrame and _G.QuestMapFrame.DetailsFrame
-    details = CreateFrame("Frame", "ForeverQuestsLogDetails", _G.QuestMapFrame or area, "BackdropTemplate")
+    logDetail = ns.CreateQuestDetailView(_G.QuestMapFrame or area, {
+        footerHeight = 50,
+        onBack = BackToList,
+        onMissing = BackToList, -- Quest abgegeben/abgebrochen: zurück zur Liste
+    })
+    logDetail.onRendered = UpdateDetailButtons
+    details = logDetail.frame
     details:SetAllPoints(area)
     details:SetFrameLevel(area:GetFrameLevel() + 80)
-    details:EnableMouse(true)
-    Style.SetFlat(details, color.background)
-    details:Hide()
     -- Detailansicht offen = auf der Karte nur deren Marker; zu (zurück zur Liste, Karte zu) = alle verfolgten
     details:SetScript("OnShow", function()
-        if detailQuestID and ns.QuestieFocusDetails then ns.QuestieFocusDetails(detailQuestID) end
+        if logDetail.questID and ns.QuestieFocusDetails then ns.QuestieFocusDetails(logDetail.questID) end
     end)
     details:SetScript("OnHide", function()
         if ns.QuestieFocusDetails then ns.QuestieFocusDetails(nil) end
     end)
-
-    -- Kopf: Zurück | Name | Quest-ID; Rechtsklick auf den Kopf = dasselbe Menü wie im Tracker
-    local header = HeaderBar(details, HEADER_HEIGHT)
-    header:EnableMouse(true)
-    header:SetScript("OnMouseUp", function(self, button)
-        if button == "RightButton" and detailQuestID then ns.QuestList.OpenMenu(self, detailQuestID) end
-    end)
-    local back = Style.CreateButton(header, "<", 22, 18, BackToList, ns.L("TIP_BACK"))
-    back:SetPoint("LEFT", 5, 0)
-    detailID = header:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    detailID:SetPoint("RIGHT", -8, 0)
-    detailTitle = header:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    detailTitle:SetPoint("LEFT", back, "RIGHT", 6, 0)
-    detailTitle:SetPoint("RIGHT", detailID, "LEFT", -6, 0)
-    detailTitle:SetJustifyH("LEFT")
-    detailTitle:SetWordWrap(false)
 
     -- Knöpfe unten in zwei Reihen:
     --   oben:  Der Gruppe vorschlagen (bzw. Nicht mehr gemeinsam) | Teilen
@@ -1371,7 +1493,7 @@ local function CreateDetails(area)
     footer:SetPoint("BOTTOMRIGHT", -6, 6)
     footer:SetHeight(44)
     detailButtons = {}
-    local function Act(fn) return function() if detailQuestID then fn(detailQuestID) end end end
+    local function Act(fn) return function() if logDetail.questID then fn(logDetail.questID) end end end
     detailButtons.suggest = Style.CreateButton(footer, "", 10, 20, Act(function(questID)
         if ns.IsGroupQuest and ns.IsGroupQuest(questID) then
             ns.RemoveGroupQuest(questID, true)
@@ -1387,27 +1509,21 @@ local function CreateDetails(area)
     end))
     detailButtons.abandon = Style.CreateButton(footer, "|cffff5555" .. ns.L("BTN_ABANDON") .. "|r", 10, 20,
         Act(ns.QuestList.Abandon))
-    local function Row(buttons, y, reserve)
+    local function Row(buttons, y)
         local total = footer:GetWidth()
-        local w = (total - reserve - 4 * (#buttons - 1)) / #buttons
+        local w = (total - 4 * (#buttons - 1)) / #buttons
         for i, button in ipairs(buttons) do
             button:SetWidth(w)
             button:ClearAllPoints()
             button:SetPoint("TOPLEFT", footer, "TOPLEFT", (i - 1) * (w + 4), y)
         end
     end
-    local function Layout()
+    footer:SetScript("OnSizeChanged", function()
         local total = footer:GetWidth()
         if not total or total < 50 then return end
-        Row({ detailButtons.suggest, detailButtons.share }, 0, 0)
-        Row({ detailButtons.pin, detailButtons.abandon }, -24, 0)
-    end
-    footer:SetScript("OnSizeChanged", Layout)
-
-    detailScroll, detailContent = CreateScroll(details)
-    detailScroll:SetPoint("TOPLEFT", 8, -(HEADER_HEIGHT + 6))
-    detailScroll:SetPoint("BOTTOMRIGHT", footer, "TOPRIGHT", -2, 6)
-    detailScroll:SetScript("OnSizeChanged", function() if details:IsShown() then RenderDetails() end end)
+        Row({ detailButtons.suggest, detailButtons.share }, 0)
+        Row({ detailButtons.pin, detailButtons.abandon }, -24)
+    end)
 
     -- Blizzards (unsichtbare) Detailansicht: unsere zeigt sich mit ihr und schließt mit ihr.
     -- Ein Blocker über ihr fängt die Maus ab, falls sie größer ist als unser Fenster.
@@ -1415,7 +1531,7 @@ local function CreateDetails(area)
         blizzardDetails:SetAlpha(0)
         detailBlocker = CreateFrame("Frame", nil, details)
         detailBlocker:SetAllPoints(blizzardDetails)
-        detailBlocker:SetFrameLevel(details:GetFrameLevel() - 1)
+        detailBlocker:SetFrameLevel(math.max(0, details:GetFrameLevel() - 1))
         detailBlocker:EnableMouse(true)
         blizzardDetails:HookScript("OnShow", function(self)
             ShowDetails(self.questID or C_QuestLog.GetSelectedQuest())
