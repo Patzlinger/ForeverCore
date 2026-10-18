@@ -2445,7 +2445,8 @@ local function SettingsWindow()
     -- rechts: Platz für die Seiten (über die volle Höhe – die Seite bringt ihre eigene Titelleiste mit)
     local content = CreateFrame("Frame", nil, f)
     content:SetPoint("TOPLEFT", NAV_W + 1, 0)
-    content:SetPoint("BOTTOMRIGHT", 0, 0)
+    content:SetPoint("BOTTOMRIGHT", -1, 1)
+    content:SetClipsChildren(true) -- nichts ragt über den Rand (Auswahllisten und Tooltips sind eigene Fenster)
     f.content = content
     -- Ebenen immer relativ zum Fenster: "zuletzt geöffnet liegt oben" hebt das Fenster an – feste Ebenen rutschten
     -- dabei hinter den Fensterhintergrund (Seiten wirkten abgedunkelt und ließen sich nicht anklicken)
@@ -2587,6 +2588,8 @@ function UI.OpenSettings(which)
     end
     if settingsCurrent and settingsCurrent ~= page and settingsCurrent.frame then settingsCurrent.frame:fcRawHide() end
     settingsCurrent = page
+    page.frame:ClearAllPoints()
+    page.frame:SetPoint("TOPLEFT", f.content, "TOPLEFT", 0, page.frame.fcShift or 0)
     LayoutNav()
     if f:IsShown() then page.frame:fcRawShow() else f:Show() end
     if f.fcLevels then f.fcLevels() end -- neue Seite (evtl. eben erst gebaut) über den Fensterhintergrund
@@ -2634,12 +2637,16 @@ function UI.SettingsPanel(name, title, width, height, info)
     p.IsVisible = p.IsShown
 
     -- Titelleiste der Seite wie im alten Fenster (über die volle Breite des Seitenbereichs)
+    -- Einheitlich für alle Seiten: flache Titelleiste 26 hoch, genau auf Höhe der Titelleiste des großen Fensters.
+    -- Seiten aus Fenstern mit höherer Titelleiste (40: UI.MenuWindow, Style.CreateWindow von ForeverBars/ForeverQuests)
+    -- rücken um den Unterschied nach oben (p.fcShift) – ihr Inhalt behält alle Abstände untereinander.
     local menu = info.kind == "menu"
-    local headerH = menu and UI.MENU.headerHeight or 26
+    local shift = (menu and UI.MENU.headerHeight or 26) - 26
+    p.fcShift = shift
     local header = CreateFrame("Frame", nil, p, "BackdropTemplate")
-    header:SetPoint("TOPLEFT", p, "TOPLEFT", 0, -1)
+    header:SetPoint("TOPLEFT", p, "TOPLEFT", 0, -1 - shift)
     header:SetPoint("RIGHT", f.content, "RIGHT", -1, 0)
-    header:SetHeight(headerH)
+    header:SetHeight(26)
     header:SetBackdrop({ bgFile = WHITE })
     header:SetBackdropColor(C.header[1], C.header[2], C.header[3], 1)
     local line = header:CreateTexture(nil, "ARTWORK")
@@ -2653,16 +2660,12 @@ function UI.SettingsPanel(name, title, width, height, info)
     header:SetScript("OnDragStart", function() f:StartMoving() end)
     header:SetScript("OnDragStop", function() f:StopMovingOrSizing() end)
     p.header = header
-    if menu then
-        p.TitleText = header:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-        p.TitleText:SetPoint("LEFT", 16, 0)
-        p.SubText = header:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-        p.SubText:SetPoint("LEFT", p.TitleText, "RIGHT", 10, -1)
-        p.SubText:SetText(info.subtitle or "")
-    else
-        p.TitleText = header:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        p.TitleText:SetPoint("LEFT", 10, 0)
-    end
+    -- Titel wie bei allen Seiten, dahinter klein und grau der Untertitel (z. B. Addon-Name)
+    p.TitleText = header:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    p.TitleText:SetPoint("LEFT", 10, 0)
+    p.SubText = header:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    p.SubText:SetPoint("LEFT", p.TitleText, "RIGHT", 10, 0)
+    p.SubText:SetText(info.subtitle or "")
     p.TitleText:SetText(title or "")
     p.titleText, p.subText = p.TitleText, p.SubText -- (Schreibweise von Style.CreateWindow)
     p.CloseButton = f.CloseButton
