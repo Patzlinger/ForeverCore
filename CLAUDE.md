@@ -60,6 +60,9 @@ Philosophie, Regeln, Design und Abläufe. Wenn etwas hier nicht steht: am besteh
 - Fehler suchen: BugSack/BugGrabber, Datei `WTF\Account\*\SavedVariables\!BugGrabber.lua`
 
 ## 4. Taint vermeiden (wichtig!)
+- **Nichts in Blizzards Knopflisten einhängen** (z. B. `GameMenuFrame:AddButton` im Escape-Menü): danach gelten die
+  Knöpfe dort als vom Addon berührt, geschützte Aktionen daraus werden blockiert (ADDON_ACTION_FORBIDDEN "callback()").
+  Stattdessen eigene Knöpfe daneben anlegen und mit `HookScript("OnShow"/"OnHide")` ein- und ausblenden (Hub v47).
 - Blizzard-Rahmen **nie** mit `:Hide()`, `:SetParent()` oder `:SetScript()` verändern ("taint" blockiert sonst z. B.
   Raid-Symbole im Menü oder geschützte Aktionen). Stattdessen:
   - `UnregisterAllEvents()` + `RegisterStateDriver(frame, "visibility", "hide")`, oder
