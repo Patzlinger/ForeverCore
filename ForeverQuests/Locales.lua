@@ -58,6 +58,9 @@ local STRINGS = {
         MENU_DETAILS = "Questdetails anzeigen",
         MENU_PIN = "Quest anheften", MENU_UNPIN = "Nicht mehr anheften",
         MENU_SHARE = "Quest teilen", MENU_UNTRACK = "Nicht mehr verfolgen", MENU_ABANDON = "Quest abbrechen",
+        QUESTIE_FOCUS = "Auf der Karte hervorheben", QUESTIE_UNFOCUS = "Hervorhebung aufheben",
+        QUESTIE_FINISHER = "Abgabe auf der Karte zeigen", QUESTIE_TOMTOM = "TomTom-Wegpunkt setzen",
+        QUESTIE_WOWHEAD = "Wowhead-Link",
 
         -- Filter
         FILTER_TITLE = "Quests filtern (mehrere möglich)",
@@ -234,6 +237,9 @@ local STRINGS = {
         MENU_DETAILS = "Show quest details",
         MENU_PIN = "Pin quest", MENU_UNPIN = "Unpin quest",
         MENU_SHARE = "Share quest", MENU_UNTRACK = "Stop tracking", MENU_ABANDON = "Abandon quest",
+        QUESTIE_FOCUS = "Highlight on map", QUESTIE_UNFOCUS = "Remove highlight",
+        QUESTIE_FINISHER = "Show turn-in on map", QUESTIE_TOMTOM = "Set TomTom waypoint",
+        QUESTIE_WOWHEAD = "Wowhead link",
 
         FILTER_TITLE = "Filter quests (several possible)",
         FILTER_DEFAULT = "Default (as in menu)",

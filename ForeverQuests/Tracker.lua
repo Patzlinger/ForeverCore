@@ -425,6 +425,8 @@ local function OpenQuestMenu(owner, questID)
             onClick = function() C_QuestLog.RemoveQuestWatch(questID) end,
         })
     end
+    -- Questie-Befehle (Fokus, Abgabe auf der Karte, Wegpunkt, Wowhead), nur wenn Questie läuft
+    if ns.AddQuestieMenuItems then ns.AddQuestieMenuItems(items, questID) end
     table.insert(items, { divider = true })
     table.insert(items, {
         text = ns.L("MENU_ABANDON"),

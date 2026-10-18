@@ -8,11 +8,13 @@
 ## Version: 0.44b
 ## X-Curse-Project-ID: 1743753
 ## Dependencies: ForeverCore
+## OptionalDeps: Questie
 ## Group: ForeverCore
 ## SavedVariables: ForeverQuestsDB, ForeverHubDB
 
 Locales.lua
 ForeverQuests.lua
+Questie.lua
 Style.lua
 Data\Dungeons.lua
 Tracker.lua
