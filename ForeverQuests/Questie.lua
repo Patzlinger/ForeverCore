@@ -437,6 +437,37 @@ function ns.GetQuestieQuestDetails(questID)
     return ok and details or nil
 end
 
+-- Gegenstandsbelohnungen aus Questies Datenbank: Questie führt bei jedem Gegenstand, welche Quests ihn als
+-- Belohnung geben ("questRewards"). Daraus wird einmal ein Verzeichnis Quest -> Gegenstände gebaut (im Hintergrund,
+-- über mehrere Bilder verteilt). Feste Belohnung und Auswahl unterscheidet Questie dabei nicht.
+local rewardIndex, rewardIndexState -- Verzeichnis; Stand nil (nicht begonnen) / "building" / "done"
+local function BuildRewardIndex()
+    rewardIndexState = "building"
+    RunThreaded(function()
+        local db = Module("QuestieDB")
+        local index, count = {}, 0
+        for itemID in pairs(db.ItemPointers or {}) do
+            local quests = db.QueryItemSingle(itemID, "questRewards")
+            if type(quests) == "table" then
+                for _, questID in ipairs(quests) do
+                    index[questID] = index[questID] or {}
+                    table.insert(index[questID], itemID)
+                end
+            end
+            count = count + 1
+            if count % 400 == 0 then coroutine.yield() end
+        end
+        rewardIndex, rewardIndexState = index, "done"
+        if ns.RequestDungeonRefresh then ns.RequestDungeonRefresh() end
+    end)
+end
+
+function ns.GetQuestieRewardItems(questID)
+    if not ns.HasQuestie() then return nil end
+    if not rewardIndexState then pcall(BuildRewardIndex) end
+    return rewardIndex and questID and rewardIndex[questID] or nil
+end
+
 -- Rufbelohnungen aus Questies Datenbank: Liste { factionID, amount }
 function ns.GetQuestieReputation(questID)
     if not ns.HasQuestie() then return nil end

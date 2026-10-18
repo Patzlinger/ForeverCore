@@ -306,10 +306,15 @@ starter:SetScript("OnEvent", function(self)
     self:UnregisterAllEvents()
     local questie = _G.Questie
     if type(questie) ~= "table" or not questie.API or type(_G.QuestieLoader) ~= "table" then return end
+    -- danach (nach den Dungeons) das Verzeichnis der Questbelohnungen aufbauen
+    local function StartAll()
+        Start()
+        C_Timer.After(3, function() if ns.GetQuestieRewardItems then ns.GetQuestieRewardItems(0) end end)
+    end
     if questie.API.isReady then
-        C_Timer.After(2, Start)
+        C_Timer.After(2, StartAll)
     elseif questie.API.RegisterOnReady then
-        pcall(questie.API.RegisterOnReady, function() C_Timer.After(2, Start) end)
+        pcall(questie.API.RegisterOnReady, function() C_Timer.After(2, StartAll) end)
     end
 end)
 

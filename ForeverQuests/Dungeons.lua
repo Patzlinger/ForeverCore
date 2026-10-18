@@ -1203,10 +1203,11 @@ local function ChainLine(index, entry, quest)
     local doneQuest = C_QuestLog.IsQuestFlaggedCompleted and C_QuestLog.IsQuestFlaggedCompleted(entry.questID)
     local inLog = C_QuestLog.GetLogIndexForQuestID(entry.questID) ~= nil
     local color, suffix = "|cff9a9a9a", ""
-    if entry.questID == quest.id then
-        color = "|cffffd100"
-    elseif doneQuest then
+    -- erledigt geht vor: auch die Quest der Karte ist dann grün mit Haken (gold nur, solange sie offen ist)
+    if doneQuest then
         color, suffix = "|cff55cc66", " |TInterface\\RaidFrame\\ReadyCheck-Ready:12|t"
+    elseif entry.questID == quest.id then
+        color = "|cffffd100"
     elseif inLog then
         color, suffix = "|cffffffff", " |cff88ccff" .. ns.L("DETAIL_IN_LOG") .. "|r"
     end

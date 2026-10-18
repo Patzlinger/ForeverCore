@@ -902,6 +902,28 @@ local function PreloadedItemRewardList(questID)
     return list
 end
 
+-- Belohnungen aus Questies Datenbank (wenn das Spiel für die Quest keine liefert): Name, Symbol und Seltenheit
+-- kommen aus dem Spiel über die Gegenstands-ID (noch nicht geladene Gegenstände werden angefordert)
+local function QuestieRewardEntries(questID)
+    local list = {}
+    for _, itemID in ipairs(ns.GetQuestieRewardItems and ns.GetQuestieRewardItems(questID) or {}) do
+        local name, _, quality, _, _, _, _, _, _, texture
+        if C_Item and C_Item.GetItemInfo then name, _, quality, _, _, _, _, _, _, texture = C_Item.GetItemInfo(itemID) end
+        if not name and C_Item and C_Item.RequestLoadItemDataByID then C_Item.RequestLoadItemDataByID(itemID) end
+        texture = texture or (C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(itemID))
+        list[#list + 1] = { kind = "item", itemID = itemID, name = name or ns.L("ITEM_LOADING", itemID),
+            texture = texture, quality = quality }
+    end
+    return list
+end
+
+-- Belohnungen einer nicht angenommenen Quest: vom Spiel (falls der Server sie nachgeladen hat), sonst aus Questie
+local function NotInLogRewardList(questID)
+    local list = PreloadedItemRewardList(questID)
+    if #list == 0 then list = QuestieRewardEntries(questID) end
+    return list
+end
+
 -- Gegenstands-IDs der Belohnungen einer Quest (für die Karten im Dungeonfenster): im Questlog vollständig
 -- (feste Belohnungen und Auswahl), sonst die festen Belohnungen, soweit der Server sie nachgeladen hat.
 -- Fehlen sie noch, wird das Nachladen angestoßen (die Karten füllen sich danach von selbst).
@@ -909,7 +931,7 @@ function ns.QuestRewardItemIDs(questID)
     local ids = {}
     if not questID then return ids end
     local inLog = C_QuestLog.GetLogIndexForQuestID(questID)
-    for _, entry in ipairs(PreloadedItemRewardList(questID)) do
+    for _, entry in ipairs(inLog and PreloadedItemRewardList(questID) or NotInLogRewardList(questID)) do
         if entry.itemID then ids[#ids + 1] = entry.itemID end
     end
     if inLog and GetNumQuestLogChoices and GetQuestLogChoiceInfo then
@@ -927,7 +949,7 @@ end
 
 local function PreloadedItemRewards(questID)
     local lines = {}
-    for _, entry in ipairs(PreloadedItemRewardList(questID)) do
+    for _, entry in ipairs(NotInLogRewardList(questID)) do
         local color = entry.quality and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[entry.quality]
         local text = (entry.texture and ("|T" .. entry.texture .. ":14:14:0:0|t ") or "")
             .. (color and color.hex or "|cffffffff") .. entry.name .. "|r"
@@ -1314,7 +1336,7 @@ RenderDetailView = function(dv)
         end
 
         RequestRewardData(questID)
-        rewards = PreloadedItemRewardList(questID)
+        rewards = NotInLogRewardList(questID)
         spells = SpellRewards(questID)
         reputations = ReputationRewards(questID)
         money = info.money or 0
@@ -1334,10 +1356,11 @@ RenderDetailView = function(dv)
             local done = C_QuestLog.IsQuestFlaggedCompleted and C_QuestLog.IsQuestFlaggedCompleted(entry.questID)
             local inLog = C_QuestLog.GetLogIndexForQuestID(entry.questID) ~= nil
             local text, font, cr, cg, cb = i .. ". " .. label, fonts.objective, 0.6, 0.6, 0.6
-            if entry.questID == questID then
-                font, cr, cg, cb = fonts.quest, accent[1], accent[2], accent[3]
-            elseif done then
+            -- erledigt geht vor: auch die gerade gezeigte Quest ist dann grün mit Haken (nicht gold)
+            if done then
                 text, cr, cg, cb = text .. "  |TInterface\\RaidFrame\\ReadyCheck-Ready:12|t", 0.45, 0.85, 0.45
+            elseif entry.questID == questID then
+                font, cr, cg, cb = fonts.quest, accent[1], accent[2], accent[3]
             elseif inLog then
                 text, cr, cg, cb = text .. "  |cff88ccff" .. ns.L("DETAIL_IN_LOG") .. "|r", 0.9, 0.9, 0.9
             end
