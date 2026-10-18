@@ -1125,31 +1125,39 @@ local function FilterTable(dbKey)
     return ns.db[dbKey]
 end
 
--- Ausgeblendete Gruppen in der Reihenfolge der Liste; leer = alles sichtbar
+-- Filter-Auswahl als Liste und Art:
+--   "DEFAULT" = alles sichtbar (Liste leer)
+--   "CUSTOM"  = einzelne Gruppen ausgeblendet (Liste = ausgeblendete Gruppen)
+--   "ONLY"    = "Alles" ausgeschaltet (NONE gesetzt): nur angehakte Gruppen (Liste = angehakte Gruppen, evtl. leer)
 local function GetSelectedFilters(dbKey)
     local hidden = FilterTable(dbKey)
     local list = {}
+    if hidden.NONE then
+        for _, filter in ipairs(ns.FILTERS) do
+            if not hidden[filter.key] then table.insert(list, filter) end
+        end
+        return list, "ONLY"
+    end
     for _, filter in ipairs(ns.FILTERS) do
         if hidden[filter.key] then table.insert(list, filter) end
     end
-    return list
+    return list, #list > 0 and "CUSTOM" or "DEFAULT"
 end
 
--- Aktive Filter und Art: "INSTANCE" (automatisch im Dungeon: nur die Quests der Instanz),
--- "CUSTOM" (Gruppen ausgeblendet) oder "DEFAULT" (alles)
+-- Aktive Filter und Art: "INSTANCE" (automatisch im Dungeon: nur die Quests der Instanz) oder wie oben
 local function GetActiveFilters()
     if ns.db.instanceFilter and GetCurrentInstanceName() then
         return { INSTANCE_FILTER }, "INSTANCE"
     end
-    local list = GetSelectedFilters()
-    return list, #list > 0 and "CUSTOM" or "DEFAULT"
+    return GetSelectedFilters()
 end
 
--- Im Dungeon: Quest wird gezeigt, wenn sie zur Instanz gehört. Sonst: Quest wird ausgeblendet, sobald sie zu einer
--- ausgeblendeten Gruppe gehört (z. B. "Dungeon" aus = alle Dungeonquests weg)
+-- Im Dungeon bzw. bei "Alles" aus: Quest wird gezeigt, wenn sie zu einer der Gruppen gehört.
+-- Sonst: Quest wird ausgeblendet, sobald sie zu einer ausgeblendeten Gruppe gehört ("Dungeon" aus = Dungeonquests weg)
 local function PassesFilters(filters, info, header, mode)
+    if mode == "ONLY" and #filters == 0 then return false end -- "Alles" aus und nichts angehakt: nichts
     if #filters == 0 then return true end
-    if mode == "INSTANCE" then
+    if mode == "INSTANCE" or mode == "ONLY" then
         for _, filter in ipairs(filters) do
             if filter.test(info, header) then return true end
         end
@@ -1170,16 +1178,31 @@ local function GetActiveFilterText()
         table.insert(names, ns.L(filter.textKey))
     end
     if mode == "INSTANCE" then return table.concat(names, ", ") end
+    if mode == "ONLY" then
+        return #names > 0 and ns.L("FILTER_ONLY", table.concat(names, ", ")) or ns.L("FILTER_NOTHING")
+    end
     return ns.L("FILTER_HIDDEN", table.concat(names, ", "))
 end
 
--- "Alles" zeigt wieder alles, jeder andere Eintrag blendet seine Gruppe ein bzw. aus
+-- "Alles" schaltet um: alles sichtbar -> alles aus (dann einzelne Gruppen wieder anhaken), sonst -> alles sichtbar.
+-- Jeder andere Eintrag blendet seine Gruppe ein bzw. aus.
 local function ToggleFilter(key, dbKey, redraw)
     local hidden = FilterTable(dbKey)
     if key == "EVERYTHING" then
-        wipe(hidden)
+        if next(hidden) == nil then
+            hidden.NONE = true
+            for _, filter in ipairs(ns.FILTERS) do hidden[filter.key] = true end
+        else
+            wipe(hidden)
+        end
     else
         hidden[key] = not hidden[key] or nil
+        -- alle Gruppen wieder angehakt: zurück zu "Alles"
+        local anyHidden = false
+        for _, filter in ipairs(ns.FILTERS) do
+            if hidden[filter.key] then anyHidden = true end
+        end
+        if not anyHidden then wipe(hidden) end
     end
     if redraw then redraw() else ns.UpdateTracker() end
 end
@@ -1249,7 +1272,7 @@ local function CollectGroups(opts)
     local currentHeader
     local filters, filterMode, useTrackedOnly, showZones, search
     if opts then
-        filters, filterMode = GetSelectedFilters(opts.filterKey), "CUSTOM"
+        filters, filterMode = GetSelectedFilters(opts.filterKey)
         useTrackedOnly, showZones = false, true
         search = opts.search and opts.search:lower() or nil
     else
@@ -1712,7 +1735,7 @@ ns.QuestList = {
         return RenderQuestList(v, CollectGroups(opts), contentWidth, 1, emptyText)
     end,
     OpenFilterMenu = OpenFilterMenu,
-    HasFilters = function(dbKey) return #GetSelectedFilters(dbKey) > 0 end,
+    HasFilters = function(dbKey) return select(2, GetSelectedFilters(dbKey)) ~= "DEFAULT" end,
     -- für die Detailansicht im Questlog: dieselben Befehle wie im Rechtsklick-Menü
     OpenMenu = function(owner, questID) OpenQuestMenu(owner, questID, true) end,
     Abandon = AbandonQuest,
