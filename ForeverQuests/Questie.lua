@@ -21,12 +21,40 @@ DisableQuestieTracker()
 if type(_G.Questie) == "table" and not _G.Questie.db and type(_G.Questie.OnInitialize) == "function" then
     hooksecurefunc(_G.Questie, "OnInitialize", DisableQuestieTracker)
 end
+-- Blizzards eigene Questmarker auf Karte und Minimap aus, solange Questie läuft (wie Questies Symbolthema
+-- "Questie": Spieleinstellung questPOI = 0). Blizzard zeigt sie für alle verfolgten Quests – mit Questies Tracker
+-- war Blizzards Verfolgungsliste leer, mit unserem Tracker nicht mehr, so lagen plötzlich beide Marker auf der Karte.
+-- Hängt an "Blizzard-Questtracker ausblenden"; schaltet man das aus, kommen Blizzards Marker zurück (nur wenn wir
+-- sie abgeschaltet hatten).
+local function ApplyBlizzardMapMarkers()
+    local db = ns.db
+    if not db or type(_G.Questie) ~= "table" or not (GetCVar and SetCVar) then return end
+    if db.hideBlizzard then
+        if GetCVar("questPOI") ~= "0" then
+            db.questieHidPOI = true
+            SetCVar("questPOI", "0")
+        end
+        local button = _G.WorldMapQuestShowObjectives -- Blizzards Häkchen "Questziele zeigen" an der Karte
+        if button and button.SetChecked then button:SetChecked(false) end
+    elseif db.questieHidPOI then
+        db.questieHidPOI = nil
+        SetCVar("questPOI", "1")
+    end
+end
+
 local guard = CreateFrame("Frame")
 guard:RegisterEvent("ADDON_LOADED")
 guard:RegisterEvent("PLAYER_LOGIN")
 guard:SetScript("OnEvent", function(self, event)
     DisableQuestieTracker()
-    if event == "PLAYER_LOGIN" then self:UnregisterAllEvents() end
+    if event == "PLAYER_LOGIN" then
+        self:UnregisterAllEvents()
+        -- vor PLAYER_ENTERING_WORLD: Questie fängt dort Blizzards "Karte geht beim Login auf" bei questPOI = 0 ab
+        pcall(ApplyBlizzardMapMarkers)
+        if ns.UpdateBlizzardTracker then
+            hooksecurefunc(ns, "UpdateBlizzardTracker", function() pcall(ApplyBlizzardMapMarkers) end)
+        end
+    end
 end)
 
 -- Questie geladen und fertig gestartet?
