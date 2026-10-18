@@ -20,7 +20,7 @@ local DEFAULTS = {
     showTarget = true,    -- "Ziel: …" bei Einheiten
     showIDs = false,      -- Gegenstands-/Zauber-ID
     flatHealth = true,    -- Lebensbalken flach in Klassen-/Reaktionsfarbe
-    atCursor = false,     -- am Mauszeiger statt am Ankerplatz
+    atCursor = true,      -- am Mauszeiger statt am Ankerplatz (Standard)
     scale = 1,
     locked = true,
     pos = nil,            -- Ankerplatz { x, y } (BOTTOMRIGHT, von unten rechts); nil = Standard
@@ -33,6 +33,11 @@ local function GetDB()
     db = _G.ForeverTooltipDB
     for k, v in pairs(DEFAULTS) do
         if db[k] == nil then db[k] = v end
+    end
+    -- einmalig: neuer Standard "am Mauszeiger" (vorher Ankerplatz)
+    if not db.atCursorV2 then
+        db.atCursor = true
+        db.atCursorV2 = true
     end
     return db
 end
