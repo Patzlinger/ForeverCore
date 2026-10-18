@@ -11,6 +11,7 @@ local UI = ForeverHub.UI
 local T = UI.T
 local C = UI.COLOR
 local WHITE = "Interface\\Buttons\\WHITE8x8"
+local SHIELD = "Interface\\AddOns\\ForeverPlates\\Media\\Shield"
 local FONT = STANDARD_TEXT_FONT
 
 ---------------------------------------------------------------------------
@@ -76,6 +77,26 @@ local function Yes(v) return not IsSecret(v) and v and true or false end
 
 local function Safe(where, fn) return UI.Safe("ForeverPlates", where, fn) end
 ns.Safe = Safe
+
+-- Blizzard-Teil durchsichtig halten – auch wenn Blizzard ihn selbst wieder sichtbar stellt (z. B. Zauberleiste
+-- beim Einblenden). Nie verstecken oder umhängen, nur Deckkraft.
+local function Mute(region, on)
+    if not region or not region.SetAlpha then return end
+    on = on and true or false
+    if on and not region.fpMuteHooked then
+        region.fpMuteHooked = true
+        hooksecurefunc(region, "SetAlpha", function(self)
+            if self.fpMuted and not self.fpMuting then
+                self.fpMuting = true
+                self:SetAlpha(0)
+                self.fpMuting = nil
+            end
+        end)
+    end
+    if region.fpMuted == on then return end
+    region.fpMuted = on
+    region:SetAlpha(on and 0 or 1)
+end
 
 ---------------------------------------------------------------------------
 -- Farben
@@ -238,29 +259,47 @@ local function BuildCast(fp)
     cb.shield:SetSize(10, 12)
     cb.shield:SetPoint("RIGHT", cb, "LEFT", -1, 0)
     cb.shield:SetAlpha(0)
-    -- Ziel-Plakette am Ende der Leiste (in der Leiste, rechts)
-    cb.target = cb:CreateFontString(nil, "OVERLAY")
-    Font(cb.target, 8)
-    cb.target:SetPoint("RIGHT", cb, "RIGHT", -3, 0)
-    cb.target:SetJustifyH("RIGHT")
-    cb.plaque = cb:CreateTexture(nil, "ARTWORK", nil, 3)
-    cb.plaque:SetPoint("TOPLEFT", cb.target, "TOPLEFT", -4, 0)
-    cb.plaque:SetPoint("BOTTOM", cb, "BOTTOM", 0, 0)
-    cb.plaque:SetPoint("TOP", cb, "TOP", 0, 0)
-    cb.plaque:SetPoint("RIGHT", cb, "RIGHT", 0, 0)
-    cb.plaque:SetColorTexture(0, 0, 0, 0.6)
-    cb.plaqueLine = cb:CreateTexture(nil, "ARTWORK", nil, 4)
-    cb.plaqueLine:SetPoint("TOPRIGHT", cb.plaque, "TOPLEFT", 0, 0)
-    cb.plaqueLine:SetPoint("BOTTOMRIGHT", cb.plaque, "BOTTOMLEFT", 0, 0)
-    cb.plaqueLine:SetWidth(1)
-    cb.plaqueLine:SetColorTexture(1, 1, 1, 0.35)
     cb.text = cb:CreateFontString(nil, "OVERLAY")
     Font(cb.text, 8)
     cb.text:SetJustifyH("LEFT")
     cb.text:SetWordWrap(false)
     cb.text:SetPoint("LEFT", cb, "LEFT", 3, 0)
     cb.text:SetPoint("RIGHT", cb, "RIGHT", -3, 0)
+    -- Ziel-Plakette rechts neben der Leiste: höchstens 20 % der Plakettenbreite, längere Namen werden abgeschnitten
+    local tag = CreateFrame("Frame", nil, fp.overlay)
+    tag:Hide()
+    tag.bg = tag:CreateTexture(nil, "BACKGROUND")
+    tag.bg:SetPoint("TOPLEFT", -1, 1)
+    tag.bg:SetPoint("BOTTOMRIGHT", 1, -1)
+    tag.bg:SetColorTexture(0, 0, 0, 0.75)
+    tag.text = tag:CreateFontString(nil, "OVERLAY")
+    Font(tag.text, 8)
+    tag.text:SetPoint("LEFT", 2, 0)
+    tag.text:SetPoint("RIGHT", -2, 0)
+    tag.text:SetJustifyH("CENTER")
+    tag.text:SetWordWrap(false)
+    cb.tag = tag
+    cb:HookScript("OnHide", function() tag:Hide() end)
     fp.cast = cb
+end
+
+-- Zauberleiste direkt unter der Lebensleiste; mit Ziel-Plakette 80 %, sonst volle Breite
+local function LayoutCastRow(fp)
+    local cb, tag = fp.cast, fp.cast.tag
+    local h = db.castHeight
+    local w = fp.overlay:GetWidth() or 0
+    if IsSecret(w) then w = 0 end
+    tag:ClearAllPoints()
+    tag:SetPoint("TOPRIGHT", fp.overlay, "BOTTOMRIGHT", 0, -2)
+    tag:SetSize(math.max(20, math.floor(w * 0.2 + 0.5)), h)
+    cb:ClearAllPoints()
+    cb:SetPoint("TOPLEFT", fp.overlay, "BOTTOMLEFT", 0, -2)
+    if tag:IsShown() then
+        cb:SetPoint("BOTTOMRIGHT", tag, "BOTTOMLEFT", -2, 0)
+    else
+        cb:SetPoint("TOPRIGHT", fp.overlay, "BOTTOMRIGHT", 0, -2)
+        cb:SetHeight(h)
+    end
 end
 
 local function BuildCombo(fp)
@@ -305,8 +344,28 @@ local function Setup(frame)
     Font(fp.hpPct, 9)
     fp.hpPct:SetPoint("RIGHT", o, "RIGHT", -3, 0)
 
-    fp.threatText = o:CreateFontString(nil, "OVERLAY")
-    Font(fp.threatText, 10)
+    -- Bedrohung: kleines Schild in Bedrohungsfarbe mit der Prozentzahl darin
+    local badge = CreateFrame("Frame", nil, o)
+    badge:SetSize(20, 22)
+    badge:Hide()
+    badge.edge = badge:CreateTexture(nil, "BACKGROUND")
+    badge.edge:SetTexture(SHIELD)
+    badge.edge:SetPoint("TOPLEFT", -1, 1)
+    badge.edge:SetPoint("BOTTOMRIGHT", 1, -2)
+    badge.edge:SetVertexColor(0, 0, 0, 0.95)
+    badge.fill = badge:CreateTexture(nil, "ARTWORK")
+    badge.fill:SetTexture(SHIELD)
+    badge.fill:SetAllPoints()
+    badge.gloss = badge:CreateTexture(nil, "ARTWORK", nil, 1)
+    badge.gloss:SetTexture(SHIELD)
+    badge.gloss:SetPoint("TOPLEFT", 3, -2)
+    badge.gloss:SetPoint("BOTTOMRIGHT", -3, 8)
+    badge.gloss:SetVertexColor(1, 1, 1, 0.18)
+    fp.threatBadge = badge
+    fp.threatText = badge:CreateFontString(nil, "OVERLAY")
+    Font(fp.threatText, 8)
+    fp.threatText:SetPoint("CENTER", badge, "CENTER", 0, 2)
+    fp.threatText:SetTextColor(1, 1, 1)
 
     fp.quest = o:CreateTexture(nil, "OVERLAY")
     fp.quest:SetTexture("Interface\\GossipFrame\\AvailableQuestIcon")
@@ -320,6 +379,10 @@ local function Setup(frame)
 
     BuildCast(fp)
     BuildCombo(fp)
+    -- alles richtet sich nach der Breite der Plakette (Blizzard ändert sie mit der Plakettengröße)
+    o:SetScript("OnSizeChanged", function()
+        if fp.unit and fp.Relayout then fp.Relayout(fp) end
+    end)
     return fp
 end
 
@@ -518,7 +581,14 @@ local function LayoutAuras(fp)
     end
     -- Blizzards eigene Auren durchsichtig, solange unsere da sind (nur bei Gegnern)
     local ours = supported and want and (db.debuffs or db.cc or db.buffs)
-    if fp.frame.AurasFrame then fp.frame.AurasFrame:SetAlpha(ours and 0 or 1) end
+    local af = fp.frame.AurasFrame
+    if af then
+        Mute(af, ours)
+        Mute(af.DebuffListFrame, ours)
+        Mute(af.BuffListFrame, ours)
+        Mute(af.CrowdControlListFrame, ours)
+        Mute(af.LossOfControlFrame, ours)
+    end
 end
 
 local function ReleaseAuras(fp)
@@ -582,11 +652,12 @@ local function ThreatInfo(unit)
 end
 
 local function PlaceThreatText(fp)
-    fp.threatText:ClearAllPoints()
+    local badge = fp.threatBadge
+    badge:ClearAllPoints()
     if db.ccLeft then
-        fp.threatText:SetPoint("LEFT", fp.overlay, "RIGHT", 4, 0)
+        badge:SetPoint("LEFT", fp.overlay, "RIGHT", 4, 0)
     else
-        fp.threatText:SetPoint("RIGHT", fp.overlay, "LEFT", -4, 0)
+        badge:SetPoint("RIGHT", fp.overlay, "LEFT", -4, 0)
     end
 end
 
@@ -596,24 +667,25 @@ local function UpdateThreat(fp)
     if d.threat and fp.enemy and not fp.isPlayer then
         local status, pct = ThreatInfo(fp.unit)
         if IsSecret(status) then
-            -- Stufe geheim: nur die Zahl, ohne Farbe
+            -- Stufe geheim: nur die Zahl, Schild neutral grau
             if d.threatText and Has(pct) then
-                fp.threatText:SetFormattedText("%.0f%%", pct)
-                fp.threatText:SetTextColor(1, 1, 1)
+                fp.threatText:SetFormattedText("%.0f", pct)
+                fp.threatBadge.fill:SetVertexColor(0.45, 0.45, 0.5, 1)
                 show = true
             end
         elseif status then
             local c = (IsTank() and THREAT_TANK or THREAT_DPS)[status]
             if d.threatText and c then
-                if Has(pct) then fp.threatText:SetFormattedText("%.0f%%", pct) else fp.threatText:SetText("") end
-                fp.threatText:SetTextColor(c[1], c[2], c[3])
+                if Has(pct) then fp.threatText:SetFormattedText("%.0f", pct) else fp.threatText:SetText("") end
+                -- etwas gedämpft, damit die weiße Zahl im Schild lesbar bleibt
+                fp.threatBadge.fill:SetVertexColor(c[1] * 0.8, c[2] * 0.8, c[3] * 0.8, 1)
                 show = true
             end
             -- Schadensklassen: Leiste erst färben, wenn es eng wird; Tanks: immer (rot = Aggro verloren)
             if d.threatColorBar and c and (IsTank() or status > 0) then col = c end
         end
     end
-    fp.threatText:SetShown(show)
+    fp.threatBadge:SetShown(show)
     if col then
         fp.threatCol = col
         fp.hb:SetStatusBarColor(col[1], col[2], col[3])
@@ -664,17 +736,16 @@ local function CastColor(fp)
     end
 end
 
-local function HidePlaque(cb)
-    cb.target:SetText("")
-    cb.target:Hide()
-    cb.plaque:Hide()
-    cb.plaqueLine:Hide()
-    cb.text:SetPoint("RIGHT", cb, "RIGHT", -3, 0)
+local function HidePlaque(fp)
+    local tag = fp.cast.tag
+    tag.text:SetText("")
+    tag:Hide()
+    LayoutCastRow(fp)
 end
 
 local function UpdateCastTarget(fp)
     local cb = fp.cast
-    if not db.castTarget then HidePlaque(cb) return end
+    if not db.castTarget then HidePlaque(fp) return end
     local unit = fp.unit
     local name, class
     if UnitSpellTargetName then
@@ -690,17 +761,16 @@ local function UpdateCastTarget(fp)
             if Yes(UnitIsPlayer(tu)) then class = select(2, UnitClass(tu)) end
         end
     end
-    if not Has(name) then HidePlaque(cb) return end
-    cb.target:SetText(name)
+    if not Has(name) then HidePlaque(fp) return end
+    local tag = cb.tag
+    tag.text:SetText(name)
     local col = Yes(class) and C_ClassColor and C_ClassColor.GetClassColor(class)
-    if col then cb.target:SetTextColor(col.r, col.g, col.b) else cb.target:SetTextColor(1, 1, 1) end
+    if col then tag.text:SetTextColor(col.r, col.g, col.b) else tag.text:SetTextColor(1, 1, 1) end
     -- auf mich: Plakette rot hinterlegt
     local me = not IsSecret(name) and name == UnitName("player")
-    if me then cb.plaque:SetColorTexture(0.6, 0.08, 0.08, 0.9) else cb.plaque:SetColorTexture(0, 0, 0, 0.6) end
-    cb.target:Show()
-    cb.plaque:Show()
-    cb.plaqueLine:Show()
-    cb.text:SetPoint("RIGHT", cb.plaque, "LEFT", -3, 0)
+    if me then tag.bg:SetColorTexture(0.6, 0.08, 0.08, 0.9) else tag.bg:SetColorTexture(0, 0, 0, 0.75) end
+    tag:Show()
+    LayoutCastRow(fp)
 end
 
 local function UpdateCast(fp)
@@ -762,7 +832,7 @@ local function EndCast(fp, interrupted)
         cb:SetValue(1)
         cb:GetStatusBarTexture():SetVertexColor(COL.interrupted[1], COL.interrupted[2], COL.interrupted[3])
         cb.shield:SetAlpha(0)
-        HidePlaque(cb)
+        HidePlaque(fp)
         cb.text:SetText(T("Unterbrochen", "Interrupted"))
         cb.fading = true
         cb:Show()
@@ -793,12 +863,16 @@ local function UpdateCombo(fp)
     local cp, max = 0, 0
     if db.combo and fp.enemy and fp.isTarget then cp, max = ComboCount() end
     local shown = cp > 0
-    local w, gap = 9, 2
-    local total = max * w + (max - 1) * gap
+    -- als Leiste direkt auf dem Lebensbalken, genauso breit: gleich große Abschnitte mit 1 px Lücke
+    local width = fp.overlay:GetWidth() or 0
+    if IsSecret(width) then width = 0 end
+    local gap = 1
+    local seg = max > 0 and (width - (max - 1) * gap) / max or 0
     for i, t in ipairs(fp.combo) do
-        if shown and i <= max then
+        if shown and i <= max and seg > 0 then
             t:ClearAllPoints()
-            t:SetPoint("TOPLEFT", fp.overlay, "BOTTOM", -total / 2 + (i - 1) * (w + gap), -3)
+            t:SetSize(seg, 4)
+            t:SetPoint("BOTTOMLEFT", fp.overlay, "TOPLEFT", (i - 1) * (seg + gap), 2)
             local c = i <= cp and COL.comboOn or COL.comboOff
             t:SetVertexColor(c[1], c[2], c[3], 1)
             t:Show()
@@ -808,13 +882,6 @@ local function UpdateCombo(fp)
             t.edge:Hide()
         end
     end
-    -- Zauberleiste unter die Punkte
-    local cb = fp.cast
-    cb:ClearAllPoints()
-    local y = shown and -10 or -3
-    cb:SetPoint("TOPLEFT", fp.overlay, "BOTTOMLEFT", 0, y)
-    cb:SetPoint("TOPRIGHT", fp.overlay, "BOTTOMRIGHT", 0, y)
-    cb:SetHeight(db.castHeight)
 end
 
 local function UpdateRaid(fp)
@@ -827,10 +894,10 @@ local function UpdateRaid(fp)
     if idx == "secret" or not db.raidMarker or not fp.enemy then
         -- Wert geheim oder aus: Blizzards eigenen Marker zeigen
         fp.raid:Hide()
-        if blizz then blizz:SetAlpha(1) end
+        Mute(blizz, false)
         return
     end
-    if blizz then blizz:SetAlpha(0) end
+    Mute(blizz, true)
     if idx and SetRaidTargetIconTexture then
         local size = db.raidMarkerSize
         fp.raid:SetSize(size, size)
@@ -945,10 +1012,23 @@ local function Refresh(fp)
     fp.enemy = IsSecret(can) or can and true or false
     fp.isPlayer = Yes(UnitIsPlayer(unit))
     UpdateTargetState(fp)
-    -- Blizzards Zauberleiste durchsichtig, solange unsere läuft
+    -- Blizzards Zauberleiste und Lebenstext durchsichtig, solange unsere da sind
     local cbc = fp.frame.CastBarsContainer
-    if cbc then cbc:SetAlpha((db.castbar and fp.enemy) and 0 or 1) end
-    fp.cast:SetHeight(db.castHeight)
+    local ownCast = db.castbar and fp.enemy
+    if cbc then
+        Mute(cbc, ownCast)
+        Mute(cbc.castBar, ownCast)
+    end
+    Mute(fp.frame.castBar ~= (cbc and cbc.castBar) and fp.frame.castBar or nil, ownCast)
+    local ownHealth = db.healthText and (fp.enemy or db.healthFriendly)
+    Mute(fp.hb.Text, ownHealth)
+    Mute(fp.hb.LeftText, ownHealth)
+    Mute(fp.hb.RightText, ownHealth)
+    fp.Relayout = function()
+        LayoutCastRow(fp)
+        UpdateCombo(fp)
+    end
+    LayoutCastRow(fp)
     PlaceThreatText(fp)
     ApplySkin(fp)
     fp.exec:SetAllPoints(fp.hb:GetStatusBarTexture())

@@ -3,8 +3,8 @@
 -- "## Dependencies: ForeverCore" – ForeverCore laedt damit immer vor ihnen, ForeverHub.UI steht bereit.
 --  1. ForeverHub.UI: einheitlicher Stil (Fenster, Ueberschriften, Knoepfe, Regler, Minimap-Knopf,
 --     Chat-Ausgabe, Sprache). Jedes Forever-Addon baut seine Oberflaeche damit.
---  2. Sammelknopf: Sind mindestens zwei Forever-Addons aktiv, werden deren Minimap-Knoepfe
---     ausgeblendet und in einer ausklappbaren Liste gesammelt. Klicks gehen an den Original-Knopf.
+--  2. Sammelknopf: Die Minimap-Knoepfe der Forever-Addons bleiben versteckt; der eine Forever-Core-Knopf oeffnet
+--     das gemeinsame Einstellungsfenster (Umschalt: Hub-Fenster, Rechtsklick: /fmove).
 --  3. Hub-Fenster (/forever): Liste aller Forever-Addons mit direktem Weg in ihr Menue –
 --     auch ohne Minimap-Knoepfe. Addons dort ein-/ausschalten (gilt nach dem Neuladen);
 --     beim allerersten Start oeffnet es sich einmal als Begruessung.
@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 52
+local VERSION = 53
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -1809,6 +1809,7 @@ local KNOWN = {
     { name = "ForeverSpellbook", button = "ForeverSpellbookMinimapButton", cmd = "/fsb" },
     { name = "ForeverBags",   button = "ForeverBagsMinimapButton", cmd = "/fbags" },
     { name = "ForeverTooltip", button = "ForeverTooltipMinimapButton", cmd = "/ftip" },
+    { name = "ForeverPlates", button = "ForeverPlatesMinimapButton", cmd = "/fplates" },
     { name = "ForeverAlts",   button = "ForeverAltsMinimapButton", cmd = "/falts" },
     { name = "ForeverQuestmob", button = "ForeverQuestmobMinimapButton" },
     { name = "ForeverBoard",  button = "ForeverBoardMinimapButton" },
@@ -1862,7 +1863,7 @@ local function GetDB()
 end
 
 local entries = {}      -- gefundene Addons: { name, button, icon }
-local hubButton, flyout
+local hubButton
 local active = false    -- true: Sammelknopf aktiv, Einzelknoepfe versteckt
 
 local function IconOf(button)
@@ -1875,113 +1876,6 @@ local function IconOf(button)
     return 134400 -- Fragezeichen
 end
 
--- Ausklappbare Liste
-local ROW_H = 24
-
-local function BuildFlyout()
-    flyout = CreateFrame("Frame", "ForeverHubFlyout", UIParent, "BackdropTemplate")
-    flyout:SetFrameStrata("DIALOG")
-    UI.Hud(flyout, 0.92)
-    flyout:SetClampedToScreen(true)
-    flyout:Hide()
-    tinsert(UISpecialFrames, "ForeverHubFlyout") -- Escape schliesst die Liste
-
-    local logo = flyout:CreateTexture(nil, "OVERLAY")
-    logo:SetTexture(UI.LOGO)
-    logo:SetSize(14, 14)
-    logo:SetPoint("TOPLEFT", 6, -4)
-    local title = flyout:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    title:SetPoint("LEFT", logo, "RIGHT", 4, 0)
-    title:SetText(UI.NAME)
-
-    flyout.rows = {}
-    for i, e in ipairs(entries) do
-        local row = CreateFrame("Button", nil, flyout)
-        row:SetHeight(ROW_H)
-        row:SetPoint("TOPLEFT", 4, -20 - (i - 1) * ROW_H)
-        row:SetPoint("TOPRIGHT", -4, -20 - (i - 1) * ROW_H)
-        row:RegisterForClicks("AnyUp")
-        row:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
-
-        local icon = row:CreateTexture(nil, "ARTWORK")
-        icon:SetSize(18, 18)
-        icon:SetPoint("LEFT", 4, 0)
-        icon:SetTexture(e.icon)
-        local label = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-        label:SetPoint("LEFT", icon, "RIGHT", 6, 0)
-        label:SetText(e.name)
-
-        -- Klick und Tooltip an den Original-Knopf weiterreichen
-        row:SetScript("OnClick", function(_, mouseButton)
-            flyout:Hide()
-            local onClick = e.button:GetScript("OnClick")
-            if onClick then onClick(e.button, mouseButton) end
-        end)
-        row:SetScript("OnEnter", function(self)
-            local onEnter = e.button:GetScript("OnEnter")
-            if onEnter then
-                onEnter(self)
-            else
-                GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-                GameTooltip:AddLine(e.name)
-                GameTooltip:Show()
-            end
-        end)
-        row:SetScript("OnLeave", GameTooltip_Hide)
-        flyout.rows[i] = row
-    end
-
-    -- unten: alle Rahmen entsperren/sperren (wie /fmove)
-    local sep = flyout:CreateTexture(nil, "ARTWORK")
-    sep:SetColorTexture(1, 1, 1, 0.15)
-    sep:SetHeight(1)
-    sep:SetPoint("TOPLEFT", 8, -22 - #entries * ROW_H)
-    sep:SetPoint("TOPRIGHT", -8, -22 - #entries * ROW_H)
-    local move = CreateFrame("Button", nil, flyout)
-    move:SetHeight(ROW_H)
-    move:SetPoint("TOPLEFT", 4, -24 - #entries * ROW_H)
-    move:SetPoint("TOPRIGHT", -4, -24 - #entries * ROW_H)
-    move:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
-    local moveIcon = move:CreateTexture(nil, "ARTWORK")
-    moveIcon:SetSize(18, 18)
-    moveIcon:SetPoint("LEFT", 4, 0)
-    local moveLabel = move:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    moveLabel:SetPoint("LEFT", moveIcon, "RIGHT", 6, 0)
-    local function UpdateMoveRow()
-        local unlocked = UI.AnyUnlocked()
-        moveIcon:SetTexture(unlocked and "Interface\\Buttons\\LockButton-Locked-Up" or "Interface\\Buttons\\LockButton-Unlocked-Up")
-        moveLabel:SetText(unlocked and T("Alle sperren", "Lock all") or T("Alle verschieben", "Move all"))
-    end
-    move:SetScript("OnClick", function()
-        flyout:Hide()
-        UI.MoveAll()
-    end)
-    move:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-        GameTooltip:AddLine(T("Alle Forever-Rahmen", "All Forever frames"))
-        GameTooltip:AddLine(T("Entsperrt alle aktiven Addons zum Verschieben – nochmal klicken sperrt alle. Auch: /fmove",
-            "Unlocks all active addons for moving – click again to lock all. Also: /fmove"), 1, 1, 1, true)
-        GameTooltip:Show()
-    end)
-    move:SetScript("OnLeave", GameTooltip_Hide)
-    flyout:SetScript("OnShow", UpdateMoveRow)
-    flyout:SetSize(170, 26 + (#entries + 1) * ROW_H + 4)
-end
-
-local function ToggleFlyout()
-    if not flyout then BuildFlyout() end
-    if flyout:IsShown() then flyout:Hide() return end
-    flyout:ClearAllPoints()
-    -- je nach Lage des Knopfs nach links/rechts und oben/unten aufklappen
-    local x, y = hubButton:GetCenter()
-    local w, h = UIParent:GetWidth(), UIParent:GetHeight()
-    local vertical = (y and y > h / 2) and "TOP" or "BOTTOM"
-    local horizontal = (x and x > w / 2) and "RIGHT" or "LEFT"
-    local other = { TOP = "BOTTOM", BOTTOM = "TOP", LEFT = "RIGHT", RIGHT = "LEFT" }
-    flyout:SetPoint(vertical .. horizontal, hubButton, other[vertical] .. other[horizontal], 0, 0)
-    flyout:Show()
-end
-
 local function BuildHubButton()
     hubButton = UI.MinimapButton({
         name = "ForeverHubMinimapButton",
@@ -1989,26 +1883,31 @@ local function BuildHubButton()
         title = UI.NAME,
         angle = function() return GetDB().angle end,
         setAngle = function(a) GetDB().angle = a end,
+        -- Linksklick: das gemeinsame Einstellungsfenster (alle Addons als Seiten), Umschalt: Hub-Übersicht
         onClick = function(_, mouseButton)
             if mouseButton == "RightButton" then
-                if flyout then flyout:Hide() end
                 UI.MoveAll()
+            elseif IsShiftKeyDown() then
+                hub.ToggleWindow()
+            elseif _G.ForeverSettingsWindow and _G.ForeverSettingsWindow:IsShown() then
+                UI.CloseSettings()
             else
-                ToggleFlyout()
+                UI.OpenSettings()
             end
         end,
-        -- nur die Bedienung; welche Addons installiert sind, zeigt die ausgeklappte Liste
         lines = function()
-            return { T("Linksklick: Forever-Core-Addons zeigen", "Left-click: show Forever Core addons"),
+            return { T("Linksklick: Einstellungen aller Forever-Addons", "Left-click: settings of all Forever addons"),
+                T("Umschalt+Linksklick: Übersicht (/forever)", "Shift-left-click: overview (/forever)"),
                 T("Rechtsklick: alle Rahmen verschieben/sperren (/fmove)", "Right-click: move/lock all frames (/fmove)") }
         end,
     })
 end
 
--- ab zwei Forever-Addons immer sammeln (Einzelknoepfe versteckt), sonst wie ohne ForeverHub.
+-- Ein Knopf für alles: sobald ein Forever-Addon da ist, bleiben dessen eigene Minimap-Knöpfe versteckt
+-- (v53; vorher erst ab zwei Addons, mit ausklappbarer Liste).
 -- "Minimap-Knopf ausblenden" (im Hub-Fenster) versteckt alle Forever-Knoepfe; Zugang dann ueber /forever.
 local function ApplyMode()
-    active = #entries >= 2
+    active = #entries >= 1
     local hidden = GetDB().hideButton
     if active and not hubButton then BuildHubButton() end
     if hubButton then hubButton:SetShown(active and not hidden) end
@@ -2038,7 +1937,6 @@ local function Setup()
         end
     end
     -- Liste neu bauen, falls inzwischen weitere Addons dazugekommen sind
-    if flyout and #entries ~= before then flyout:Hide() flyout = nil end
     ApplyMode()
     if RegisterSettings then RegisterSettings() end
     if RegisterCompartment then RegisterCompartment() end

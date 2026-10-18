@@ -71,7 +71,7 @@ Profile: /forever profile – jeder Charakter nutzt das gemeinsame Profil oder e
 Addons auf einmal oder einzeln). Austausch: /forever export bzw. /forever import – ein Text für die
 ganze Oberfläche (Häkchen je Addon); ein Import wird als neues Profil gespeichert.
 
-Alles verschieben: /fmove (oder Rechtsklick auf den Sammelknopf) entsperrt alle aktiven
+Alles verschieben: /fmove (oder Rechtsklick auf den Forever-Core-Knopf) entsperrt alle aktiven
 Forever-Addons auf einmal – mit Raster und Einrasten (Umschalt = frei). Nochmal /fmove sperrt alle.
 
 Sprache: Deutscher Client = Deutsch, alle anderen = Englisch.

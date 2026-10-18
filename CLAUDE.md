@@ -132,8 +132,9 @@ Philosophie, Regeln, Design und Abläufe. Wenn etwas hier nicht steht: am besteh
      `AddArrow`, `Check(parent, x, y, label, onClick)`, `Slider(...)`, `StyleSlider`, `EditBox`, `Number` (Zahlenfeld mit –/+),
      `ShowMenu`/`HideMenu`/`ChoiceMenu` (flache Auswahllisten), `MinimapButton(o)`, `Hud`, `Box`, `SetFlat`,
      `Grid`, `AddMover`, `BeginDrag`/`EndDrag` (Raster + Einrasten), `Round`, `CenterOffset`, `COLOR`, `LOGO`, `NAME`
-  2. **Sammelknopf**: ab zwei Forever-Addons werden deren Minimap-Knöpfe ausgeblendet und in einer Liste am
-     Forever-Core-Knopf gesammelt (Klick wird an den Original-Knopf weitergereicht)
+  2. **Sammelknopf** (seit v53 ohne Liste): sobald ein Forever-Addon da ist, sind dessen Minimap-Knöpfe ausgeblendet;
+     der Forever-Core-Knopf öffnet mit Linksklick das gemeinsame Einstellungsfenster, Umschalt+Linksklick das
+     Hub-Fenster, Rechtsklick /fmove. Neue Addons brauchen deshalb eine Einstellungsseite (`UI.SettingsPanel`)
   3. **Hub-Fenster** `/forever` (`/fhub`, Ebene `HIGH`, bleibt beim Öffnen eines Addons im Hintergrund offen):
      alle installierten Forever-Addons mit Chatbefehl und "Öffnen"-Knopf ins jeweilige Menü,
      "Alle verschieben", Minimap-Knopf ein/aus, **Sprache für alle Forever-Addons**; `/forever reset` holt Knöpfe zurück.
