@@ -34,6 +34,7 @@
 - ForeverQuests with Questie: Blizzard's own quest markers no longer show up on the map next to Questie's (they are turned off while "Hide Blizzard quest tracker" is on, just like Questie's own icon theme does).
 - ForeverQuests, quest together: you no longer show up twice (as "You" and with your full name), so the member count is right.
 - ForeverQuests: quests you haven't picked up yet now show their item rewards in tooltips and on the dungeon cards (taken from Questie's database).
+- ForeverQuests, quest chains: if the last part of a chain gives items, they now show up as real rewards on the dungeon cards and in the quest details (marked with the part they come from), not only in the tooltip.
 - ForeverQuests, quest chains: finished parts are always green with a check mark; gold marks only the part you are currently working on (in your quest log).
 - ForeverQuests: the dungeon window no longer breaks with an error when Questie or AtlasLoot is missing or outdated – you get one chat message instead and the window keeps working.
 

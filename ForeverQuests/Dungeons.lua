@@ -945,22 +945,54 @@ end
 
 -- Zeigt die Belohnungen einer Quest: eingeklappt nur die Zeile "Belohnungen (3)",
 -- ausgeklappt zusätzlich die Gegenstände in zwei Spalten. Gibt die benötigte Höhe zurück.
-local function LayoutRewards(entry, quest, width)
-    local rewards = quest.rewards
+local function LayoutRewards(entry, quest, width, chain)
+    local own = quest.rewards or {}
     entry.rewardButtons = entry.rewardButtons or {}
-    if not rewards or #rewards == 0 then
+    -- Gegenstände vom letzten Teil der Questreihe (wenn die Karte gerade einen früheren Teil zeigt):
+    -- als echte Belohnungen darunter, mit Hinweis, aus welchem Teil sie stammen
+    local final = {}
+    local last = chain and chain[#chain]
+    if last and last.questID ~= quest.id and ns.QuestRewardItemIDs then
+        final = ns.QuestRewardItemIDs(last.questID)
+    end
+    if entry.finalLabel then entry.finalLabel:Hide() end
+    if #own + #final == 0 then
         entry.rewardToggle:Hide()
         for _, button in ipairs(entry.rewardButtons) do button:Hide() end
         return 0
     end
 
     local expanded = rewardsExpanded[quest] ~= false -- Standard: aufgeklappt
-    entry.rewardToggle.text:SetText(ns.L("REWARDS_COUNT", #rewards))
+    entry.rewardToggle.text:SetText(ns.L("REWARDS_COUNT", #own + #final))
     entry.rewardToggle.arrow:SetRotation(expanded and -math.pi / 2 or 0)
     entry.rewardToggle:Show()
     if not expanded then
         for _, button in ipairs(entry.rewardButtons) do button:Hide() end
         return 19 -- nur die Zeile zum Ausklappen
+    end
+
+    -- eigene Belohnungen, danach (mit Überschrift) die vom Ende der Reihe
+    local rewards, offsetOf = {}, {}
+    for _, itemID in ipairs(own) do rewards[#rewards + 1] = itemID end
+    local ownRows = math.ceil(#own / 2)
+    local labelHeight = 0
+    if #final > 0 then
+        if not entry.finalLabel then
+            entry.finalLabel = entry.rewardArea:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+            entry.finalLabel:SetJustifyH("LEFT")
+            entry.finalLabel:SetTextColor(0.53, 0.8, 1)
+        end
+        local name = GetGameQuestTitle(last.questID) or last.name or QuestIDFallback(last.questID)
+        entry.finalLabel:SetWidth(width)
+        entry.finalLabel:SetText(ns.L("CHAIN_FINAL_REWARDS", #chain, #chain, name))
+        entry.finalLabel:ClearAllPoints()
+        entry.finalLabel:SetPoint("TOPLEFT", entry.rewardArea, "TOPLEFT", 0, -(ownRows * REWARD_ROW_HEIGHT + 2))
+        entry.finalLabel:Show()
+        labelHeight = entry.finalLabel:GetStringHeight() + 6
+        for i, itemID in ipairs(final) do
+            rewards[#rewards + 1] = itemID
+            offsetOf[#rewards] = i
+        end
     end
 
     local columnWidth = math.floor((width - 6) / 2)
@@ -979,19 +1011,21 @@ local function LayoutRewards(entry, quest, width)
         button.name:SetText(name or ns.L("ITEM_LOADING", itemID))
         button.name:SetTextColor(r, g, b)
 
-        local column = (i - 1) % 2
-        local row = math.floor((i - 1) / 2)
+        local position = offsetOf[i] or i -- Platz innerhalb der eigenen Gruppe
+        local column = (position - 1) % 2
+        local top = offsetOf[i] and (ownRows * REWARD_ROW_HEIGHT + labelHeight) or 0
         button:ClearAllPoints()
-        button:SetPoint("TOPLEFT", entry.rewardArea, "TOPLEFT", column * (columnWidth + 6), -row * REWARD_ROW_HEIGHT)
+        button:SetPoint("TOPLEFT", entry.rewardArea, "TOPLEFT", column * (columnWidth + 6),
+            -(top + math.floor((position - 1) / 2) * REWARD_ROW_HEIGHT))
         button:SetWidth(columnWidth)
         button:Show()
     end
     for i = #rewards + 1, #entry.rewardButtons do
         entry.rewardButtons[i]:Hide()
     end
-    local rows = math.ceil(#rewards / 2)
-    entry.rewardArea:SetSize(width, rows * REWARD_ROW_HEIGHT)
-    return rows * REWARD_ROW_HEIGHT + 22 -- inkl. Zeile "Belohnungen"
+    local height = (ownRows + math.ceil(#final / 2)) * REWARD_ROW_HEIGHT + labelHeight
+    entry.rewardArea:SetSize(width, height)
+    return height + 22 -- inkl. Zeile "Belohnungen"
 end
 
 ---------------------------------------------------------------------------
@@ -1483,7 +1517,7 @@ RefreshDetail = function()
             local chainHeight = LayoutCardChain(entry, questieChain, quest, width - 24)
             entry.rewardToggle:ClearAllPoints()
             entry.rewardToggle:SetPoint("TOPLEFT", entry.info, "BOTTOMLEFT", -2, -3 - chainHeight)
-            local rewardHeight = LayoutRewards(entry, quest, width - 24)
+            local rewardHeight = LayoutRewards(entry, quest, width - 24, questieChain)
             local height = math.max(entry.title:GetStringHeight(), 16) + entry.desc:GetStringHeight() + entry.info:GetStringHeight() + 20
                 + rewardHeight + giverItemHeight + chainHeight
             entry:ClearAllPoints()

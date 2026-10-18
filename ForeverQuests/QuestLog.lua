@@ -808,7 +808,8 @@ local function RewardTooltip(self)
     local tip = Style.GetTooltip()
     tip:SetOwner(self, "ANCHOR_RIGHT")
     local questID = self.dv and self.dv.questID
-    local inLog = questID and C_QuestLog.GetLogIndexForQuestID(questID)
+    -- Belohnung einer anderen Quest (Ende der Questreihe): nicht über den Questlog dieser Quest nachschlagen
+    local inLog = questID and not self.otherQuest and C_QuestLog.GetLogIndexForQuestID(questID)
     local shown = false
     if self.kind == "currency" then
         if self.currencyID and tip.SetCurrencyByID then
@@ -863,7 +864,7 @@ local function RewardButton(dv, index)
         if self.kind == "currency" or self.kind == "spell" or not IsModifiedClick() then return end
         local questID = self.dv.questID
         local link
-        if questID and C_QuestLog.GetLogIndexForQuestID(questID) and GetQuestLogItemLink then
+        if questID and not self.otherQuest and C_QuestLog.GetLogIndexForQuestID(questID) and GetQuestLogItemLink then
             C_QuestLog.SetSelectedQuest(questID)
             link = GetQuestLogItemLink(self.kind, self.index)
         elseif self.itemID and C_Item and C_Item.GetItemInfo then
@@ -1217,7 +1218,7 @@ RenderDetailView = function(dv)
             local button = RewardButton(dv, used)
             button.kind, button.index, button.itemID, button.currencyID = entry.kind, entry.index, entry.itemID,
                 entry.currencyID
-            button.spellID = entry.spellID
+            button.spellID, button.otherQuest = entry.spellID, entry.otherQuest
             button.icon:SetTexture(entry.texture or 134400)
             button.count:SetText((entry.count and entry.count > 1) and entry.count or "")
             button.name:SetText(entry.name)
@@ -1383,10 +1384,23 @@ RenderDetailView = function(dv)
     end
     for i = rowsUsed + 1, #dv.chain do dv.chain[i]:Hide() end
 
+    -- Gegenstände vom letzten Teil der Questreihe (wenn das nicht diese Quest ist): als echte Belohnungen,
+    -- mit Hinweis, aus welchem Teil sie stammen
+    local finalRewards, finalLabel = {}, nil
+    local last = chain and chain[#chain]
+    if last and last.questID ~= questID then
+        local lastInLog = C_QuestLog.GetLogIndexForQuestID(last.questID) ~= nil
+        finalRewards = lastInLog and PreloadedItemRewardList(last.questID) or NotInLogRewardList(last.questID)
+        if #finalRewards == 0 and not lastInLog then RequestRewardData(last.questID) end
+        for _, entry in ipairs(finalRewards) do entry.otherQuest = true end
+        finalLabel = ns.L("CHAIN_FINAL_REWARDS", #chain, #chain,
+            C_QuestLog.GetTitleForQuestID(last.questID) or last.name or ("Quest #" .. last.questID))
+    end
+
     -- Belohnungen
     local hasTitle = title and title ~= ""
-    if #rewards + #choices + #currencies + #spells + #reputations > 0 or money > 0 or xp > 0 or hasTitle
-        or honor > 0 then
+    if #rewards + #choices + #currencies + #spells + #reputations + #finalRewards > 0 or money > 0 or xp > 0
+        or hasTitle or honor > 0 then
         Section(ns.L("TIP_REWARDS"))
         Grid(rewards)
         Grid(currencies)
@@ -1411,6 +1425,11 @@ RenderDetailView = function(dv)
         end
         if honor > 0 then Paragraph(ns.L("DETAIL_HONOR", honor), fonts.quest, 0.9, 0.35, 0.25) end
         if hasTitle then Paragraph(ns.L("DETAIL_TITLE", title), fonts.quest, 1, 0.82, 0) end
+        if #finalRewards > 0 then
+            y = y + 2
+            Paragraph(finalLabel, fonts.objective, 0.53, 0.8, 1)
+            Grid(finalRewards)
+        end
     elseif not logIndex then
         Section(ns.L("TIP_REWARDS"))
         Paragraph(ns.L("DETAIL_REWARDS_UNKNOWN"), fonts.objective, 0.6, 0.6, 0.6)
