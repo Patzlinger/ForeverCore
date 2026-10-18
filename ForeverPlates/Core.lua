@@ -1045,20 +1045,22 @@ local function EndCast(fp, interrupted, by)
         cb.shield:SetAlpha(0)
         cb.spark:Hide()
         HidePlaque(fp)
-        cb.text:SetText(T("Unterbrochen", "Interrupted"))
-        -- wer unterbrochen hat (GUID aus dem Ereignis): in der Ziel-Plakette, in Klassenfarbe
+        -- wer unterbrochen hat: GUID aus dem Ereignis; ist sie geheim, aber ich habe eben selbst unterbrochen -> ich
+        local who, whoClass
         if Yes(by) and GetPlayerInfoByGUID then
             local _, class, _, _, _, name = GetPlayerInfoByGUID(by)
-            if Yes(name) then
-                local tag = cb.tag
-                tag.text:SetText(name)
-                local col = Yes(class) and C_ClassColor and C_ClassColor.GetClassColor(class)
-                if col then tag.text:SetTextColor(col.r, col.g, col.b) else tag.text:SetTextColor(1, 1, 1) end
-                tag.label:SetText(T("von", "by"))
-                tag.label:SetTextColor(0.62, 0.62, 0.66)
-                tag:Show()
-                LayoutCastRow(fp)
-            end
+            if Yes(name) then who, whoClass = name, Yes(class) and class or nil end
+        end
+        if not who and GetTime() - (ns.lastKick or 0) < 0.6 then
+            who = UnitName("player")
+            whoClass = select(2, UnitClass("player"))
+        end
+        if who then
+            local col = whoClass and C_ClassColor and C_ClassColor.GetClassColor(whoClass)
+            local shown = col and col:WrapTextInColorCode(who) or who
+            cb.text:SetText(T("Unterbrochen: ", "Interrupted: ") .. shown)
+        else
+            cb.text:SetText(T("Unterbrochen", "Interrupted"))
         end
         cb.fading = true
         cb:Show()
@@ -1502,7 +1504,12 @@ H.UI_ERROR_MESSAGE = function(_, msg)
     end
 end
 -- ein Zauber hat geklappt: Sicht ist wieder da
-H.UNIT_SPELLCAST_SUCCEEDED = function(unit) if unit == "player" then ClearLos() end end
+H.UNIT_SPELLCAST_SUCCEEDED = function(unit, _, spellID)
+    if unit ~= "player" then return end
+    ClearLos()
+    -- eigene Unterbrechung merken (falls das Spiel den Unterbrecher geheim hält)
+    if kickSpell and not IsSecret(spellID) and spellID == kickSpell then ns.lastKick = GetTime() end
+end
 H.UNIT_POWER_FREQUENT = function(unit, powerType)
     if unit ~= "player" or IsSecret(powerType) or powerType ~= "COMBO_POINTS" then return end
     for _, fp in pairs(plates) do if fp.isTarget then UpdateCombo(fp) end end
