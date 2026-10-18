@@ -23,13 +23,15 @@ ns.DEFAULTS = {
     questInfo = true,    -- Twinks in Quest-Tooltips und im Hinweis "Dungeon betreten" (ForeverQuests)
     sortKey = "level",   -- Sortierung der Liste: level, name, money, rested, updated
     sortDesc = true,
+    hiddenColumns = {},  -- ausgeblendete Spalten der Übersicht ([Schlüssel] = true)
+    recipeTooltip = true, -- im Gegenstands-Tooltip zeigen, welcher Charakter ihn herstellen kann
 }
 
 function ns.GetDB()
     if type(_G.ForeverAltsDB) ~= "table" then _G.ForeverAltsDB = {} end
     local db = _G.ForeverAltsDB
     for k, v in pairs(ns.DEFAULTS) do
-        if db[k] == nil then db[k] = v end
+        if db[k] == nil then db[k] = type(v) == "table" and CopyTable(v) or v end
     end
     return db
 end

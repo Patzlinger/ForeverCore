@@ -4,23 +4,30 @@ local ADDON_NAME, ns = ...
 local UI, T = ns.UI, ns.T
 local C = UI.COLOR
 
-local ROW_H = 22
+local ROW_H = 32 -- zwei Textzeilen (Berufe)
 local PAD = 12
--- Spalten: Schlüssel, Überschrift, Breite, Sortierung (nil = nicht sortierbar)
+local MIN_WIDTH = 560 -- Platz für die Spalten-Schalter unten
+-- Spalten: Schlüssel, Überschrift, Breite, Sortierung (nil = nicht sortierbar), fixed = immer sichtbar.
+-- Jede andere Spalte lässt sich unten im Fenster ein- und ausschalten (ns.GetDB().hiddenColumns).
 local COLUMNS = {
-    { key = "name",   title = function() return T("Charakter", "Character") end, width = 170, sort = "name" },
-    { key = "level",  title = function() return T("Stufe", "Level") end,         width = 60,  sort = "level" },
-    { key = "rested", title = function() return T("Erholung", "Rested") end,     width = 76,  sort = "rested" },
-    { key = "money",  title = function() return T("Gold", "Gold") end,           width = 120, sort = "money" },
-    { key = "zone",   title = function() return T("Ort", "Location") end,        width = 150, sort = "updated" },
-    { key = "profs",  title = function() return T("Berufe", "Professions") end,  width = 150 },
-    { key = "quests", title = function() return T("Quests", "Quests") end,       width = 64 },
+    { key = "name",   title = function() return T("Charakter", "Character") end, width = 170, sort = "name", fixed = true },
+    { key = "level",  title = function() return T("Stufe", "Level") end,         width = 70,  sort = "level" },
+    { key = "rested", title = function() return T("Erholung", "Rested") end,     width = 80,  sort = "rested" },
+    { key = "money",  title = function() return T("Gold", "Gold") end,           width = 130, sort = "money" },
+    { key = "zone",   title = function() return T("Ort", "Location") end,        width = 160, sort = "updated" },
+    { key = "profs",  title = function() return T("Berufe", "Professions") end,  width = 200 },
 }
-local WIDTH = PAD * 2 + 16
-for _, col in ipairs(COLUMNS) do WIDTH = WIDTH + col.width end
 
-local window, scroll, content, footer, headerButtons
+local window, scroll, content, footer, headerButtons, toggles
 local rows = {}
+
+local function Visible(col) return col.fixed or not ns.GetDB().hiddenColumns[col.key] end
+
+local function VisibleWidth()
+    local w = 16
+    for _, col in ipairs(COLUMNS) do if Visible(col) then w = w + col.width end end
+    return w
+end
 
 local function Money(value)
     value = value or 0
@@ -95,10 +102,15 @@ local function RowTooltip(row)
     if c.profs and #c.profs > 0 then
         tip:AddLine(" ")
         tip:AddLine(T("Berufe", "Professions"), C.accent[1], C.accent[2], C.accent[3])
+        local recipes = {}
+        for _, r in ipairs(ns.RecipeProfessions(c)) do recipes[r.prof] = r.count end
         for _, p in ipairs(c.profs) do
             local icon = p.icon and ("|T" .. p.icon .. ":14:14:0:0|t ") or ""
-            tip:AddDoubleLine(icon .. (p.name or "?"), (p.rank or "?") .. " / " .. (p.max or "?"), 1, 1, 1, 0.8, 0.8, 0.8)
+            local known = recipes[p.name] and string.format(T("  |cff8a8a8a%d Rezepte|r", "  |cff8a8a8a%d recipes|r"), recipes[p.name]) or ""
+            tip:AddDoubleLine(icon .. (p.name or "?") .. known, (p.rank or "?") .. " / " .. (p.max or "?"), 1, 1, 1, 0.8, 0.8, 0.8)
         end
+        tip:AddLine(T("Rezepte: Berufsfenster auf dem Charakter einmal öffnen", "Recipes: open the profession window on that character once"),
+            0.5, 0.5, 0.5, true)
     end
     local dungeon = DungeonQuests(c)
     if #dungeon > 0 then
@@ -111,11 +123,8 @@ local function RowTooltip(row)
                 1, 1, 1, 0.8, 0.8, 0.8)
         end
     end
-    if c.questCount then
-        tip:AddLine(string.format(T("%d Quests im Log", "%d quests in the log"), c.questCount), 0.6, 0.6, 0.6)
-    end
     tip:AddLine(" ")
-    tip:AddLine(T("Rechtsklick: Taschen, Bank, Dungeon, Vergessen", "Right-click: bags, bank, dungeon, forget"), 0.5, 0.5, 0.5)
+    tip:AddLine(T("Rechtsklick: Taschen, Bank, Rezepte, Dungeon, Vergessen", "Right-click: bags, bank, recipes, dungeon, forget"), 0.5, 0.5, 0.5)
     tip:Show()
 end
 
@@ -143,6 +152,15 @@ local function RowMenu(row)
         local hasBank = bags.HasBank and bags.HasBank(entry.key)
         items[#items + 1] = { text = hasBank and T("Bank ansehen", "Show bank") or T("Bank (noch nicht besucht)", "Bank (not visited yet)"),
             disabled = not hasBank, onClick = function() bags.ShowCharacter(entry.key, "bank") end }
+    end
+    -- Rezepte (gespeichert, sobald der Charakter sein Berufsfenster einmal geöffnet hat)
+    local recipeProfs = ns.RecipeProfessions(entry.data)
+    if #recipeProfs > 0 then
+        items[#items + 1] = { divider = true }
+        for _, r in ipairs(recipeProfs) do
+            items[#items + 1] = { text = string.format(T("Rezepte: %s (%d)", "Recipes: %s (%d)"), r.prof, r.count),
+                onClick = function() ns.ShowRecipes(entry.key, r.prof) end }
+        end
     end
     local quests = QuestsAPI()
     if quests and quests.ShowDungeonOfQuest then
@@ -187,16 +205,16 @@ local function GetRow(i)
     row.mark:SetPoint("BOTTOMLEFT")
     row.mark:SetWidth(3)
     row.mark:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 0.9)
-    row.cells = {}
-    local x = 8
+    -- je Spalte eine obere und eine untere Zeile (die untere nutzen Stufe und Berufe); Lage setzt RefreshWindow
+    row.cells, row.cells2 = {}, {}
     for j, col in ipairs(COLUMNS) do
-        local fs = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-        fs:SetPoint("LEFT", x, 0)
-        fs:SetWidth(col.width - 8)
-        fs:SetJustifyH(col.key == "money" and "RIGHT" or "LEFT")
-        fs:SetWordWrap(false)
-        row.cells[j] = fs
-        x = x + col.width
+        for _, list in ipairs({ row.cells, row.cells2 }) do
+            local fs = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+            fs:SetWidth(col.width - 10)
+            fs:SetJustifyH("LEFT")
+            fs:SetWordWrap(false)
+            list[j] = fs
+        end
     end
     row:SetScript("OnEnter", RowTooltip)
     row:SetScript("OnLeave", function() UI.GetTooltip():Hide() end)
@@ -205,33 +223,39 @@ local function GetRow(i)
     return row
 end
 
+-- Texte je Spalte: { obere Zeile, untere Zeile }
 local function CellTexts(entry)
     local c = entry.data
     local maxed = c.maxLevel and c.level and c.level >= c.maxLevel
-    local level = tostring(c.level or "?")
-    if not maxed and c.xpMax and c.xpMax > 0 then
-        level = level .. string.format(" |cff8a8a8a%d%%|r", math.floor((c.xp or 0) / c.xpMax * 100))
-    end
+    local xpLine = (not maxed and c.xpMax and c.xpMax > 0)
+        and string.format("|cff8a8a8a%d %% EP|r", math.floor((c.xp or 0) / c.xpMax * 100)) or ""
     local rested, estimated = ns.RestedPercent(entry)
     local restedText = rested and string.format("|cff4d99ff%s%d %%|r", estimated and "≈ " or "", rested) or "|cff6a6a6a–|r"
-    local profs = {}
-    for _, p in ipairs(c.profs or {}) do profs[#profs + 1] = (p.name or "?") .. " " .. (p.rank or "") end
-    local dungeon = #DungeonQuests(c)
-    local quests = tostring(c.questCount or 0)
-    if dungeon > 0 then quests = quests .. string.format(" |cffffd100(%d)|r", dungeon) end
+    -- Berufe auf zwei Zeilen: die ersten beiden oben, der Rest (meist Nebenberufe) unten
+    local top, bottom = {}, {}
+    for i, p in ipairs(c.profs or {}) do
+        local text = (p.name or "?") .. " |cffffffff" .. (p.rank or "") .. "|r"
+        table.insert(i <= 2 and top or bottom, text)
+    end
+    local subZone = (c.subZone and c.subZone ~= "" and c.subZone ~= c.zone) and c.subZone or ""
     return {
-        ns.ColoredName(c) .. (entry.me and (" |cff8a8a8a" .. T("(du)", "(you)") .. "|r") or ""),
-        level, restedText, Money(c.money),
-        "|cffbbbbbb" .. (c.zone or "?") .. "|r",
-        "|cffbbbbbb" .. (#profs > 0 and table.concat(profs, ", ") or "–") .. "|r",
-        quests,
+        name = { ns.ColoredName(c), entry.me and ("|cff8a8a8a" .. T("eingeloggt", "logged in") .. "|r")
+            or ("|cff6a6a6a" .. Ago(c.updated) .. "|r") },
+        level = { tostring(c.level or "?"), xpLine },
+        rested = { restedText, "" },
+        money = { Money(c.money), "" },
+        zone = { "|cffbbbbbb" .. (c.zone or "?") .. "|r", "|cff8a8a8a" .. subZone .. "|r" },
+        profs = { "|cffbbbbbb" .. (#top > 0 and table.concat(top, ", ") or "–") .. "|r",
+            "|cff8a8a8a" .. table.concat(bottom, ", ") .. "|r" },
     }
 end
 
 function ns.RefreshWindow()
     if not window or not window:IsShown() then return end
     local list = ns.Characters()
-    local width = WIDTH - PAD * 2 - 16
+    local inner = VisibleWidth()
+    window:SetWidth(math.max(MIN_WIDTH, inner + PAD * 2))
+    local width = inner - 16
     content:SetWidth(width)
     local total = 0
     for i, entry in ipairs(list) do
@@ -242,7 +266,28 @@ function ns.RefreshWindow()
         row:SetWidth(width)
         row.bg:SetColorTexture(1, 1, 1, i % 2 == 0 and 0.03 or 0)
         row.mark:SetShown(entry.me)
-        for j, text in ipairs(CellTexts(entry)) do row.cells[j]:SetText(text) end
+        local texts, x = CellTexts(entry), 8
+        for j, col in ipairs(COLUMNS) do
+            local upper, lower = row.cells[j], row.cells2[j]
+            local shown = Visible(col)
+            upper:SetShown(shown)
+            lower:SetShown(shown)
+            if shown then
+                local t = texts[col.key]
+                upper:ClearAllPoints()
+                lower:ClearAllPoints()
+                -- nur eine Zeile: senkrecht mittig; zwei Zeilen: oben und unten
+                if t[2] == "" then
+                    upper:SetPoint("LEFT", x, 0)
+                else
+                    upper:SetPoint("TOPLEFT", x, -4)
+                    lower:SetPoint("BOTTOMLEFT", x, 4)
+                end
+                upper:SetText(t[1])
+                lower:SetText(t[2])
+                x = x + col.width
+            end
+        end
         row:Show()
         total = total + (entry.data.money or 0)
     end
@@ -250,6 +295,16 @@ function ns.RefreshWindow()
     content:SetHeight(math.max(1, #list * ROW_H))
     footer:SetText(string.format(T("%d Charaktere  ·  Gold gesamt: %s", "%d characters  ·  total gold: %s"), #list, Money(total)))
     local db = ns.GetDB()
+    local hx = PAD + 8
+    for i, b in ipairs(headerButtons) do
+        b:SetShown(Visible(COLUMNS[i]))
+        if b:IsShown() then
+            b:ClearAllPoints()
+            b:SetPoint("TOPLEFT", window, "TOPLEFT", hx, -34)
+            hx = hx + COLUMNS[i].width
+        end
+    end
+    for _, cb in ipairs(toggles) do cb:SetChecked(Visible(cb.column)) end
     for _, b in ipairs(headerButtons) do
         local active = b.sort and b.sort == db.sortKey
         b.text:SetText(b.title())
@@ -264,16 +319,13 @@ end
 -- Fenster
 ---------------------------------------------------------------------------
 local function Build()
-    window = UI.Window("ForeverAltsWindow", T("Twinks", "Alts"), WIDTH, 440)
-    window:SetResizeBounds(WIDTH, 220, WIDTH, 1000)
+    window = UI.Window("ForeverAltsWindow", T("Twinks", "Alts"), math.max(MIN_WIDTH, VisibleWidth() + PAD * 2), 460)
 
-    -- Spaltenüberschriften (Klick: danach sortieren, nochmal: umdrehen)
+    -- Spaltenüberschriften (Klick: danach sortieren, nochmal: umdrehen); Lage setzt RefreshWindow
     headerButtons = {}
-    local x = PAD + 8 -- wie die Zellen der Zeilen (Inhalt beginnt bei PAD, Zellen 8 weiter innen)
     for _, col in ipairs(COLUMNS) do
         local b = CreateFrame("Button", nil, window)
         b:SetSize(col.width, 20)
-        b:SetPoint("TOPLEFT", x, -34)
         b.text = b:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         b.text:SetPoint("LEFT")
         b.arrow = b:CreateTexture(nil, "OVERLAY")
@@ -289,7 +341,6 @@ local function Build()
             end)
         end
         headerButtons[#headerButtons + 1] = b
-        x = x + col.width
     end
     local line = window:CreateTexture(nil, "ARTWORK")
     line:SetPoint("TOPLEFT", PAD, -56)
@@ -299,7 +350,7 @@ local function Build()
 
     scroll = CreateFrame("ScrollFrame", nil, window)
     scroll:SetPoint("TOPLEFT", PAD, -60)
-    scroll:SetPoint("BOTTOMRIGHT", -PAD - 16, 40)
+    scroll:SetPoint("BOTTOMRIGHT", -PAD - 16, 72)
     content = CreateFrame("Frame", nil, scroll)
     content:SetSize(1, 1)
     scroll:SetScrollChild(content)
@@ -308,6 +359,31 @@ local function Build()
         local maxScroll = math.max(0, content:GetHeight() - self:GetHeight())
         self:SetVerticalScroll(math.min(maxScroll, math.max(0, self:GetVerticalScroll() - delta * ROW_H * 2)))
     end)
+
+    -- Spalten ein-/ausschalten (unten, über der Fußzeile)
+    local toggleLine = window:CreateTexture(nil, "ARTWORK")
+    toggleLine:SetPoint("BOTTOMLEFT", PAD, 66)
+    toggleLine:SetPoint("BOTTOMRIGHT", -PAD, 66)
+    toggleLine:SetHeight(1)
+    toggleLine:SetColorTexture(1, 1, 1, 0.08)
+    toggles = {}
+    local prev
+    for _, col in ipairs(COLUMNS) do
+        if not col.fixed then
+            local cb = UI.Check(window, nil, nil, col.title(), ns.Safe(T("Spalten", "Columns"), function(checked)
+                ns.GetDB().hiddenColumns[col.key] = (not checked) or nil
+                ns.RefreshWindow()
+            end))
+            cb.column = col
+            if prev then
+                cb:SetPoint("LEFT", prev.label, "RIGHT", 16, 0)
+            else
+                cb:SetPoint("BOTTOMLEFT", PAD + 4, 44)
+            end
+            toggles[#toggles + 1] = cb
+            prev = cb
+        end
+    end
 
     footer = window:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     footer:SetPoint("BOTTOMLEFT", PAD + 4, 16)

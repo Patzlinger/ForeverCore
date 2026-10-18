@@ -6,7 +6,7 @@ local options
 local checks = {}
 
 local function Build()
-    options = UI.SettingsPanel("ForeverAltsOptions", T("ForeverAlts – Einstellungen", "ForeverAlts – Settings"), 460, 320,
+    options = UI.SettingsPanel("ForeverAltsOptions", T("ForeverAlts – Einstellungen", "ForeverAlts – Settings"), 460, 350,
         { key = "ForeverAlts", group = UI.SETTINGS_GROUPS.comfort, label = T("Twinks", "Alts") })
     local W = 420
     local function Check(y, label, key)
@@ -26,7 +26,8 @@ local function Build()
 
     UI.Header(options, 18, -170, T("Mit anderen Forever-Addons", "With other Forever addons"), W)
     Check(-192, T("Twinks bei Quests zeigen (ForeverQuests)", "Show alts on quests (ForeverQuests)"), "questInfo")
-    UI.Hint(options, 22, -220, W - 12, T("Im Quest-Tooltip und im Hinweis \"Dungeon betreten\": welche Twinks die Quest " ..
+    Check(-216, T("\"Herstellbar von\" im Gegenstands-Tooltip", "\"Can be made by\" in item tooltips"), "recipeTooltip")
+    UI.Hint(options, 22, -244, W - 12, T("Im Quest-Tooltip und im Hinweis \"Dungeon betreten\": welche Twinks die Quest " ..
         "auch haben. Taschen und Bank der Twinks: Rechtsklick in der Übersicht (ForeverBags).",
         "In the quest tooltip and the \"Entering dungeon\" hint: which alts have the quest too. Bags and bank of your " ..
         "alts: right-click in the overview (ForeverBags)."))

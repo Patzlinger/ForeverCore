@@ -14,5 +14,6 @@
 ## SavedVariables: ForeverAltsDB, ForeverAltsData, ForeverHubDB
 
 Data.lua
+Recipes.lua
 Window.lua
 Options.lua
