@@ -25,6 +25,7 @@ Philosophie, Regeln, Design und Abläufe. Wenn etwas hier nicht steht: am besteh
 | ForeverQuests | flowfy | im Repository, noch nicht im Release |
 | ForeverBars | flowfy | im Repository, noch nicht im Release |
 | ForeverBags | flowfy | Prototyp (seit 2026-10-17) |
+| ForeverTooltip | Patzlinger | Prototyp (seit 2026-10-18, nicht im Release) |
 | `tools/`, `release/` | gemeinsam | – |
 
 - **Keine Absprachen nötig: jeder arbeitet frei an allen Addons** (Zusammenarbeit auf Augenhöhe). Die Spalte
@@ -355,6 +356,7 @@ Damit alle Einstellungsfenster gleich aussehen, gelten diese Maße. Quelle: `For
   | /fchat, /foreverchat | ForeverChat |
   | /fmm, /foreverminimap | ForeverMinimap |
   | /fbags, /foreverbags | ForeverBags |
+  | /ftip, /forevertooltip | ForeverTooltip |
 - Tastenkürzel über `Bindings.xml` + `BINDING_HEADER_…`/`BINDING_NAME_…` (Bereich "AddOns")
 
 ## 12. Code-Stil
