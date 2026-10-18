@@ -957,6 +957,16 @@ if UI.API then
             if not window:IsShown() then window:Show() end
             return true
         end,
+        -- Zeigt das Fenster gerade die Taschen bzw. Bank dieses Charakters? (für Ein-/Ausschalten per Knopf)
+        IsShowing = function(key, kind)
+            if not (window and window:IsShown()) then return false end
+            kind = kind == "bank" and "bank" or "bags"
+            if view == nil then return key == ns.CharKey() and kind == "bags" end
+            return view.key == key and view.kind == kind
+        end,
+        Close = function()
+            if window and window:IsShown() then window:Hide() end
+        end,
         HasBank = function(key)
             local c = ns.CharacterData(key)
             return c and c.bank ~= nil or false

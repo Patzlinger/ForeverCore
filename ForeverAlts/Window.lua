@@ -1,5 +1,5 @@
 -- ForeverAlts – Window.lua: Übersicht aller Charaktere als Tabelle (Klick auf eine Spaltenüberschrift sortiert).
--- Maus über einer Zeile: alle Einzelheiten; Rechtsklick: Taschen/Bank (ForeverBags), Dungeon (ForeverQuests), Vergessen.
+-- Maus über einer Zeile: alle Einzelheiten; Klick auf einen Beruf: Rezepte; Knöpfe am Ende: Taschen/Bank (ForeverBags), Ausblenden.
 local ADDON_NAME, ns = ...
 local UI, T = ns.UI, ns.T
 local C = UI.COLOR
@@ -20,7 +20,7 @@ local COLUMNS = {
     { key = "mail",   title = function() return T("Post", "Mail") end,           width = 84,  sort = "mail" },
     { key = "honor",  title = function() return T("Ehre", "Honor") end,          width = 84,  sort = "honor" },
     { key = "last",   title = function() return T("Letzter Login", "Last login") end, width = 96, sort = "updated" },
-    -- Knöpfe Taschen / Bank / Vergessen am Zeilenende (mit Trennlinie davor), immer sichtbar
+    -- Knöpfe Taschen / Bank / Ausblenden am Zeilenende (mit Trennlinie davor), immer sichtbar
     { key = "actions", title = function() return "" end, width = 82, fixed = true },
 }
 
@@ -89,6 +89,7 @@ local function RowTooltip(row)
     local tip = UI.GetTooltip()
     tip:SetOwner(row, "ANCHOR_RIGHT")
     tip:AddDoubleLine(ns.ColoredName(c), c.realm or "", 1, 1, 1, 0.6, 0.6, 0.6)
+    if c.title then tip:AddLine(c.title, 0.85, 0.76, 0.48) end
     tip:AddLine(string.format(T("Stufe %s %s", "Level %s %s"), c.level or "?", c.race or ""), 0.85, 0.85, 0.85)
     if c.xpMax and c.xpMax > 0 and not (c.maxLevel and c.level and c.level >= c.maxLevel) then
         tip:AddLine(string.format(T("Erfahrung: %s / %s (%d %%)", "Experience: %s / %s (%d %%)"), Short(c.xp), Short(c.xpMax),
@@ -137,24 +138,11 @@ local function RowTooltip(row)
         end
     end
     tip:AddLine(" ")
-    tip:AddLine(T("Klick auf einen Beruf: Rezepte · Knöpfe rechts: Taschen, Bank, Vergessen",
-        "Click a profession: recipes · buttons on the right: bags, bank, forget"), 0.5, 0.5, 0.5, true)
+    if c.hidden then tip:AddLine(T("Ausgeblendet", "Hidden"), 0.9, 0.4, 0.4) end
+    tip:AddLine(T("Klick auf einen Beruf: Rezepte · Knöpfe rechts: Taschen, Bank, Ausblenden",
+        "Click a profession: recipes · buttons on the right: bags, bank, hide"), 0.5, 0.5, 0.5, true)
     tip:Show()
 end
-
----------------------------------------------------------------------------
--- Rechtsklick-Menü einer Zeile
----------------------------------------------------------------------------
-StaticPopupDialogs["FOREVERALTS_FORGET"] = {
-    text = T("%s aus der Übersicht entfernen? (Kommt beim nächsten Login dieses Charakters zurück.)",
-        "Remove %s from the overview? (Returns the next time this character logs in.)"),
-    button1 = YES, button2 = NO,
-    OnAccept = function(_, key)
-        ns.ForgetCharacter(key)
-        ns.RefreshWindow()
-    end,
-    timeout = 0, whileDead = true, hideOnEscape = true, preferredIndex = 3,
-}
 
 -- kleiner Tooltip für die Knöpfe in einer Zeile
 local function ButtonTip(self, title, line, r, g, b)
@@ -181,7 +169,8 @@ local function ProfButton(row)
         if self.count then SetCursor("INSPECT_CURSOR") end
         self.text:SetTextColor(C.accent[1], C.accent[2], C.accent[3])
         if self.count then
-            ButtonTip(self, self.prof, string.format(T("Klick: %d Rezepte ansehen", "Click: show %d recipes"), self.count))
+            ButtonTip(self, self.prof, string.format(T("Linksklick: im Berufsfenster öffnen (%d Rezepte)\nRechtsklick: Liste mit Suche",
+                "Left-click: open in the profession window (%d recipes)\nRight-click: list with search"), self.count))
         else
             ButtonTip(self, self.prof, T("Rezepte noch unbekannt – auf diesem Charakter das Berufsfenster einmal öffnen.",
                 "Recipes not known yet – open the profession window on this character once."))
@@ -192,13 +181,17 @@ local function ProfButton(row)
         self.text:SetTextColor(self.r, self.g, self.b)
         UI.GetTooltip():Hide()
     end)
-    b:SetScript("OnClick", function(self)
-        if self.count and self.key then ns.ShowRecipes(self.key, self.prof) end
+    b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    -- Linksklick: Blizzards Berufsfenster (über den gespeicherten Berufs-Link); geht das nicht, die eigene Liste
+    b:SetScript("OnClick", function(self, button)
+        if not (self.count and self.key) then return end
+        if button == "LeftButton" and ns.OpenProfessionWindow(self.key, self.prof) then return end
+        ns.ShowRecipes(self.key, self.prof)
     end)
     return b
 end
 
--- Knopf mit Symbol am Zeilenende (Taschen, Bank, Vergessen)
+-- Knopf mit Symbol am Zeilenende (Taschen, Bank, Ausblenden)
 local function ActionButton(row, icon, onClick, tooltip)
     local b = CreateFrame("Button", nil, row)
     b:SetSize(20, 20)
@@ -221,26 +214,34 @@ end
 
 local function BuildActions(row)
     row.actions = {
+        -- Klick zeigt die Taschen, ein zweiter Klick (wenn sie gerade zu sehen sind) blendet sie wieder aus
         ActionButton(row, "Interface\\Icons\\INV_Misc_Bag_08", function(entry)
             local bags = BagsAPI()
-            if bags and bags.ShowCharacter then bags.ShowCharacter(entry.key, "bags") end
+            if bags and bags.IsShowing and bags.IsShowing(entry.key, "bags") then bags.Close()
+            elseif bags and bags.ShowCharacter then bags.ShowCharacter(entry.key, "bags") end
         end, function(self)
             ButtonTip(self, T("Taschen ansehen", "Show bags"), self.enabled and nil
                 or T("Braucht ForeverBags (und einmal eingeloggt).", "Needs ForeverBags (and one login)."))
         end),
         ActionButton(row, "Interface\\Icons\\INV_Box_02", function(entry)
             local bags = BagsAPI()
-            if bags and bags.ShowCharacter then bags.ShowCharacter(entry.key, "bank") end
+            if bags and bags.IsShowing and bags.IsShowing(entry.key, "bank") then bags.Close()
+            elseif bags and bags.ShowCharacter then bags.ShowCharacter(entry.key, "bank") end
         end, function(self)
             ButtonTip(self, T("Bank ansehen", "Show bank"), self.enabled and nil
                 or T("Bank noch nicht besucht (oder ForeverBags fehlt).", "Bank not visited yet (or ForeverBags missing)."))
         end),
+        -- Ausblenden bzw. (bei schon ausgeblendeten, sichtbar über "Ausgeblendete zeigen") wieder einblenden
         ActionButton(row, "Interface\\Buttons\\UI-GroupLoot-Pass-Up", function(entry)
-            StaticPopup_Show("FOREVERALTS_FORGET", entry.data.name or entry.key, nil, entry.key)
-        end, function(self)
-            ButtonTip(self, T("Vergessen …", "Forget …"), self.enabled
-                and T("Aus der Übersicht entfernen.", "Remove from the overview.")
-                or T("Den eingeloggten Charakter kann man nicht vergessen.", "The logged-in character can't be forgotten."))
+            ns.SetHidden(entry.key, not entry.data.hidden)
+            ns.RefreshWindow()
+        end, function(self, entry)
+            local hidden = entry and entry.data.hidden
+            ButtonTip(self, hidden and T("Einblenden", "Show again") or T("Ausblenden", "Hide"), not self.enabled
+                and T("Den eingeloggten Charakter kann man nicht ausblenden.", "The logged-in character can't be hidden.")
+                or (hidden and T("Wieder in der Übersicht zeigen.", "Show in the overview again.")
+                or T("Aus der Übersicht ausblenden (Daten bleiben). Zurückholen: unten \"Ausgeblendete zeigen\".",
+                    "Hide from the overview (data is kept). Bring back: \"Show hidden\" at the bottom.")))
         end),
     }
     -- feine senkrechte Trennlinie vor den Knöpfen
@@ -317,7 +318,8 @@ local function CellTexts(entry)
     local honor = c.honor and BreakUpLargeNumbers and BreakUpLargeNumbers(c.honor) or (c.honor and tostring(c.honor)) or "|cff6a6a6a–|r"
     local honorLine = c.pvpRank or (c.honorKills and c.honorKills > 0 and string.format(T("%d Siege", "%d kills"), c.honorKills)) or ""
     return {
-        name = { ns.ColoredName(c), "|cff6a6a6a" .. (c.realm or "") .. "|r" },
+        -- oben "Vorname Nachname", darunter der Titel (sonst der Realm)
+        name = { ns.ColoredName(c), c.title and ("|cffd8c27a" .. c.title .. "|r") or ("|cff6a6a6a" .. (c.realm or "") .. "|r") },
         played = played,
         mail = { mail, mailLine },
         honor = { "|cffe08050" .. honor .. "|r", "|cff8a8a8a" .. honorLine .. "|r" },
@@ -380,7 +382,7 @@ local function LayoutProfs(row, entry, x, width)
     end
 end
 
--- Knöpfe Taschen / Bank / Vergessen mit Trennlinie davor
+-- Knöpfe Taschen / Bank / Ausblenden mit Trennlinie davor
 local function LayoutActions(row, entry, x)
     local bags = BagsAPI()
     local hasBags = bags and bags.FreeSlots and bags.FreeSlots(entry.key) ~= nil
@@ -388,6 +390,9 @@ local function LayoutActions(row, entry, x)
     row.actions[1]:SetUsable(hasBags and true or false)
     row.actions[2]:SetUsable(hasBank and true or false)
     row.actions[3]:SetUsable(not entry.me)
+    -- ausgeblendet: Auge zum Wiedereinblenden statt des X
+    row.actions[3].icon:SetTexture(entry.data.hidden and "Interface\\Icons\\INV_Misc_Eye_01"
+        or "Interface\\Buttons\\UI-GroupLoot-Pass-Up")
     row.sep:ClearAllPoints()
     row.sep:SetPoint("TOPLEFT", row, "TOPLEFT", x - 6, -4)
     row.sep:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", x - 6, 4)
@@ -416,6 +421,7 @@ function ns.RefreshWindow()
         row:SetWidth(width)
         row.bg:SetColorTexture(1, 1, 1, i % 2 == 0 and 0.03 or 0)
         row.mark:SetShown(entry.me)
+        row:SetAlpha(entry.data.hidden and 0.5 or 1) -- ausgeblendete (nur mit "Ausgeblendete zeigen" da) blass
         local texts, x = CellTexts(entry), 8
         for j, col in ipairs(COLUMNS) do
             local upper, lower = row.cells[j], row.cells2[j]
@@ -460,6 +466,7 @@ function ns.RefreshWindow()
         end
     end
     for _, cb in ipairs(toggles) do cb:SetChecked(Visible(cb.column)) end
+    if window.hiddenCheck then window.hiddenCheck:SetChecked(db.showHidden and true or false) end
     for _, b in ipairs(headerButtons) do
         local active = b.sort and b.sort == db.sortKey
         b.text:SetText(b.title())
@@ -543,8 +550,16 @@ local function Build()
             prev = cb
         end
     end
-    -- Mindestbreite: alle Spalten-Schalter passen nebeneinander
-    local togglesWidth = 0
+    -- nach den Spalten: ausgeblendete Charaktere (blass) zeigen, um sie wieder einzublenden
+    local hiddenCheck = UI.Check(window, nil, nil, T("Ausgeblendete zeigen", "Show hidden"), ns.Safe(T("Spalten", "Columns"),
+        function(checked)
+            ns.GetDB().showHidden = checked
+            ns.RefreshWindow()
+        end))
+    hiddenCheck:SetPoint("LEFT", prev.label, "RIGHT", 28, 0)
+    window.hiddenCheck = hiddenCheck
+    -- Mindestbreite: alle Schalter passen nebeneinander
+    local togglesWidth = 16 + 8 + hiddenCheck.label:GetStringWidth() + 28
     for _, cb in ipairs(toggles) do togglesWidth = togglesWidth + 16 + 8 + cb.label:GetStringWidth() + 16 end
     MIN_WIDTH = math.max(MIN_WIDTH, math.ceil(togglesWidth) + PAD * 2 + 8)
 

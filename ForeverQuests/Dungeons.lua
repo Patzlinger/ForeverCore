@@ -995,13 +995,23 @@ local function CreateRewardButton(parent)
     highlight:SetAllPoints()
     highlight:SetColorTexture(1, 1, 1, 0.06)
 
-    -- Maus drüber: Gegenstands-Tooltip; Shift-Klick: im Chat verlinken
+    -- Maus drüber: Gegenstands-Tooltip; mit gedrückter Shift-Taste zusätzlich der Vergleich mit der getragenen
+    -- Ausrüstung (Blizzards GameTooltip, der die Vergleichs-Tooltips mitbringt); Shift-Klick: im Chat verlinken
+    local function ShowItem(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetItemByID(self.itemID)
+        GameTooltip:Show()
+        if IsShiftKeyDown() and GameTooltip_ShowCompareItem then pcall(GameTooltip_ShowCompareItem, GameTooltip) end
+    end
     button:SetScript("OnEnter", function(self)
-        ns.Style.GetTooltip():SetOwner(self, "ANCHOR_RIGHT")
-        ns.Style.GetTooltip():SetItemByID(self.itemID)
-        ns.Style.GetTooltip():Show()
+        ShowItem(self)
+        self:RegisterEvent("MODIFIER_STATE_CHANGED") -- Shift drücken/loslassen, während die Maus darauf ist
     end)
-    button:SetScript("OnLeave", function() ns.Style.GetTooltip():Hide() end)
+    button:SetScript("OnEvent", function(self) if self:IsMouseOver() then ShowItem(self) end end)
+    button:SetScript("OnLeave", function(self)
+        self:UnregisterEvent("MODIFIER_STATE_CHANGED")
+        GameTooltip:Hide()
+    end)
     button:SetScript("OnClick", function(self)
         if self.link and IsModifiedClick() then
             HandleModifiedItemClick(self.link)

@@ -68,7 +68,29 @@ local function ReadClassic(kind)
     return prof, list
 end
 
+-- Zeigt das Berufsfenster gerade einen verlinkten Beruf (eines Twinks, Gildenmitglieds …)? Dann nicht als eigene
+-- Rezepte speichern
+local function IsLinked()
+    local ok, linked = pcall(function()
+        if C_TradeSkillUI and C_TradeSkillUI.IsTradeSkillLinked and C_TradeSkillUI.IsTradeSkillLinked() then return true end
+        if C_TradeSkillUI and C_TradeSkillUI.IsTradeSkillGuild and C_TradeSkillUI.IsTradeSkillGuild() then return true end
+        if IsTradeSkillLinked and IsTradeSkillLinked() then return true end
+        return false
+    end)
+    return ok and linked
+end
+
+-- Link auf die eigene Rezeptliste (damit ein anderer Charakter später Blizzards Berufsfenster damit öffnen kann)
+local function ListLink()
+    local ok, link = pcall(function()
+        if C_TradeSkillUI and C_TradeSkillUI.GetTradeSkillListLink then return C_TradeSkillUI.GetTradeSkillListLink() end
+        if GetTradeSkillListLink then return GetTradeSkillListLink() end
+    end)
+    return ok and type(link) == "string" and link ~= "" and link or nil
+end
+
 local function Save(kind)
+    if IsLinked() then return end
     local prof, list = ReadModern()
     if not list then prof, list = ReadClassic(kind) end
     if not prof or prof == "" or prof == "UNKNOWN" or not list or #list == 0 then return end
@@ -76,8 +98,20 @@ local function Save(kind)
     if not c then return end
     c.recipes = c.recipes or {}
     table.sort(list, function(a, b) return a.name < b.name end)
-    c.recipes[prof] = { updated = time(), list = list }
+    c.recipes[prof] = { updated = time(), list = list, link = kind ~= "craft" and ListLink() or nil }
     ns.recipeVersion = (ns.recipeVersion or 0) + 1
+end
+
+-- Blizzards Berufsfenster mit den gespeicherten Rezepten eines Charakters öffnen (über den Link, den er beim
+-- letzten Öffnen hinterlegt hat – wie ein Klick auf einen Berufs-Link im Chat). true = Link vorhanden und geöffnet.
+function ns.OpenProfessionWindow(key, prof)
+    local c = ns.CharacterData(key)
+    local data = c and c.recipes and c.recipes[prof]
+    if not (data and data.link) or InCombatLockdown() then return false end
+    local linkData = data.link:match("|H(trade:[^|]+)|h")
+    if not linkData then return false end
+    local ok = pcall(SetItemRef, linkData, data.link, "LeftButton")
+    return ok
 end
 
 local pending, scheduled = {}, false

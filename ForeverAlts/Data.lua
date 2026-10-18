@@ -25,6 +25,7 @@ ns.DEFAULTS = {
     sortDesc = true,
     hiddenColumns = {},  -- ausgeblendete Spalten der Übersicht ([Schlüssel] = true)
     recipeTooltip = true, -- im Gegenstands-Tooltip zeigen, welcher Charakter ihn herstellen kann
+    showHidden = false,   -- ausgeblendete Charaktere trotzdem (blass) zeigen, um sie wieder einzublenden
 }
 
 function ns.GetDB()
@@ -61,8 +62,11 @@ end
 
 function ns.CharacterData(key) return Data().chars[key] end
 
-function ns.ForgetCharacter(key)
-    if key ~= ns.CharKey() then Data().chars[key] = nil end
+-- Ausblenden statt Löschen: die Daten bleiben, der Charakter erscheint nur nicht mehr in der Übersicht
+-- (und nicht in den Hinweisen anderer Addons). Unten im Fenster "Ausgeblendete zeigen" holt ihn zurück.
+function ns.SetHidden(key, hidden)
+    local c = Data().chars[key]
+    if c and key ~= ns.CharKey() then c.hidden = hidden and true or nil end
 end
 
 local function Me()
@@ -71,10 +75,10 @@ local function Me()
     return chars[key]
 end
 
--- Klassenfarbiger Name
+-- Klassenfarbiger Name (voller Name "Vorname Nachname", wenn bekannt)
 function ns.ColoredName(c)
     local color = c and c.class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[c.class]
-    local name = c and c.name or "?"
+    local name = c and (c.fullName or c.name) or "?"
     if color then return string.format("|cff%02x%02x%02x%s|r", color.r * 255, color.g * 255, color.b * 255, name) end
     return name
 end
@@ -86,7 +90,7 @@ function ns.Characters()
     local list = {}
     for key, c in pairs(Data().chars) do
         if type(c) == "table" and (key == me or ((not db.sameRealm or c.realm == myRealm)
-            and (not db.sameFaction or c.faction == myFaction))) then
+            and (not db.sameFaction or c.faction == myFaction) and (db.showHidden or not c.hidden))) then
             list[#list + 1] = { key = key, data = c, me = key == me }
         end
     end
@@ -271,6 +275,36 @@ function ns.PlayedNow(entry)
     return c.playedTotal + extra, c.playedLevel and (c.playedLevel + extra) or nil
 end
 
+-- Voller Name: UnitName("player") liefert in Forever nur den Vornamen, Addon-Nachrichten kommen aber mit
+-- "Vorname Nachname-Realm" an. Darum schickt ForeverAlts sich beim Login einmal unsichtbar selbst eine Nachricht.
+local NAME_PREFIX = "FALTS"
+if C_ChatInfo and C_ChatInfo.RegisterAddonMessagePrefix then pcall(C_ChatInfo.RegisterAddonMessagePrefix, NAME_PREFIX) end
+
+function ns.RequestFullName()
+    if not (C_ChatInfo and C_ChatInfo.SendAddonMessage) then return end
+    pcall(C_ChatInfo.SendAddonMessage, NAME_PREFIX, "N", "WHISPER", UnitName("player"))
+end
+
+local function StoreFullName(sender)
+    if type(sender) ~= "string" or issecret(sender) then return end
+    local full = sender:match("^(.-)%-[^%-]+$") or sender -- "-Realm" ab
+    local first = UnitName("player")
+    if first and full:sub(1, #first) == first then
+        Me().fullName = full ~= first and full or nil
+        if ns.RefreshWindow then ns.RefreshWindow() end
+    end
+end
+
+-- Titel (z. B. PvP-Rang oder Erfolgstitel), ohne den Platzhalter für den Namen
+local function ReadTitle(c)
+    local ok, title = pcall(function()
+        local id = GetCurrentTitle and GetCurrentTitle()
+        return id and id > 0 and GetTitleName and GetTitleName(id) or nil
+    end)
+    title = ok and type(title) == "string" and strtrim((title:gsub("%%s", ""))) or nil
+    c.title = (title and title ~= "") and title or nil
+end
+
 -- Alles des eingeloggten Charakters neu lesen (what = nil: alles; "money"/"xp"/"quests"/"profs": nur das)
 function ns.Update(what)
     if InCombatLockdown() then
@@ -298,6 +332,7 @@ function ns.Update(what)
     end
     if not what or what == "profs" then c.profs = ReadProfessions() end
     if not what or what == "honor" then ReadHonor(c) end
+    if not what or what == "title" then ReadTitle(c) end
     if not what or what == "mail" or what == "mailbox" then ReadMail(c, what == "mailbox") end
     if not what or what == "quests" then c.quests, c.questCount = ReadQuests() end
     if not what and GetAverageItemLevel then
@@ -318,7 +353,7 @@ if UI.API then
             local out = {}
             if not questID or not ns.GetDB().questInfo then return out end
             for _, entry in ipairs(ns.Characters()) do
-                local q = not entry.me and entry.data.quests and entry.data.quests[questID]
+                local q = not entry.me and not entry.data.hidden and entry.data.quests and entry.data.quests[questID]
                 if q then
                     out[#out + 1] = { key = entry.key, name = entry.data.name, coloredName = ns.ColoredName(entry.data),
                         complete = q.complete, done = q.done, total = q.total }
@@ -354,14 +389,25 @@ local EVENTS = {
     PLAYER_PVP_RANK_CHANGED = "honor", HONOR_CURRENCY_UPDATE = "honor", PLAYER_PVP_KILLS_CHANGED = "honor",
     CURRENCY_DISPLAY_UPDATE = "honor",
     UPDATE_PENDING_MAIL = "mail", MAIL_INBOX_UPDATE = "mailbox", MAIL_SHOW = "mailbox",
+    KNOWN_TITLES_UPDATE = "title", PLAYER_TITLE_CHANGED = "title",
 }
 local events = CreateFrame("Frame")
 events:RegisterEvent("PLAYER_LOGIN")
 events:RegisterEvent("PLAYER_LOGOUT")
 events:RegisterEvent("TIME_PLAYED_MSG")
 for event in pairs(EVENTS) do pcall(events.RegisterEvent, events, event) end
-events:SetScript("OnEvent", ns.Safe("Ereignis", function(_, event, total, level)
+events:RegisterEvent("CHAT_MSG_ADDON")
+events:RegisterEvent("UNIT_NAME_UPDATE")
+events:SetScript("OnEvent", ns.Safe("Ereignis", function(_, event, total, level, _, sender)
+    if event == "CHAT_MSG_ADDON" then
+        if not issecret(total) and total == NAME_PREFIX then StoreFullName(sender) end
+        return
+    elseif event == "UNIT_NAME_UPDATE" then
+        if total == "player" then Queue("title") end
+        return
+    end
     if event == "PLAYER_LOGIN" then
+        C_Timer.After(5, ns.RequestFullName)
         -- Berufe, Quests und Dungeondaten (ForeverQuests baut sie aus Questie) sind erst nach ein paar Sekunden da
         C_Timer.After(3, function() Queue() end)
         C_Timer.After(15, function() Queue("quests") end)
