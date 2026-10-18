@@ -543,7 +543,7 @@ local function ShowRewardTooltip(owner, questID)
     tooltip:Show()
 end
 
-local function ShowQuestTooltip(owner, questID)
+local function ShowQuestTooltip(owner, questID, noHint)
     local tooltip = ns.Style.GetTooltip()
     tooltip:SetOwner(owner, AnchorOf(owner))
     local logIndex = C_QuestLog.GetLogIndexForQuestID(questID)
@@ -596,8 +596,11 @@ local function ShowQuestTooltip(owner, questID)
     C_QuestLog.SetSelectedQuest(previous or 0)
 
     AddRewardLines(tooltip, questID)
-    tooltip:AddLine(" ")
-    tooltip:AddLine(ns.L("TIP_QUEST_HINT"), 0.5, 0.5, 0.5, true)
+    -- Klick-Hinweise nur, wo man klicken kann (nicht z. B. in der Questreihe der Detailansicht)
+    if not noHint then
+        tooltip:AddLine(" ")
+        tooltip:AddLine(ns.L("TIP_QUEST_HINT"), 0.5, 0.5, 0.5, true)
+    end
     tooltip:Show()
 end
 
@@ -1710,6 +1713,7 @@ ns.QuestList = {
         return fn and level and fn(level) or nil
     end,
     QuestTypeText = GetQuestTypeText,
+    ShowQuestTooltip = ShowQuestTooltip,
     Fonts = function() ns.UpdateFonts() return fonts end,
 }
 

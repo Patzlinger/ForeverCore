@@ -13,6 +13,8 @@ local function DisableQuestieTracker()
     local questie = _G.Questie
     if type(questie) == "table" and questie.db and questie.db.profile then
         questie.db.profile.trackerEnabled = false
+        -- Auf der Karte nur die Marker verfolgter Quests (= die Quests in unserem Tracker), nicht des ganzen Logs
+        questie.db.profile.hideUntrackedQuestsMapIcons = true
     end
 end
 
@@ -248,6 +250,90 @@ function ns.QuestieHover(questID)
 end
 
 ---------------------------------------------------------------------------
+-- Detailansicht im Questlog offen: auf der Karte nur die Marker DIESER Quest (auch wenn sie nicht verfolgt wird),
+-- ohne Questgeber-Ausrufezeichen. Zurück in der Übersicht wieder die Marker aller verfolgten Quests.
+-- Umsetzung: Questies Abfrage "Marker dieser Quest zeigen?" wird ergänzt (ohne Questie-Dateien zu ändern),
+-- danach zeichnet Questie seine Symbole neu.
+---------------------------------------------------------------------------
+local focusQuestID
+local availableBeforeFocus
+
+-- Questies Zeichenfunktionen müssen in einem Coroutine-Faden laufen (sie pausieren zwischendurch): jedes Bild weiter
+local function RunThreaded(fn)
+    local co = coroutine.create(fn)
+    local function Step()
+        local ok, err = coroutine.resume(co)
+        if not ok then
+            print(ns.ChatPrefix() .. ": Questie - " .. tostring(err))
+        elseif coroutine.status(co) ~= "dead" then
+            C_Timer.After(0, Step)
+        end
+    end
+    Step()
+end
+
+local function WrapShouldShow()
+    local questieQuest = Module("QuestieQuest")
+    if questieQuest.fqWrapped or type(questieQuest.ShouldShowQuestNotes) ~= "function" then return end
+    questieQuest.fqWrapped = true
+    local original = questieQuest.ShouldShowQuestNotes
+    questieQuest.ShouldShowQuestNotes = function(self, questId)
+        if focusQuestID then return questId == focusQuestID end
+        return original(self, questId)
+    end
+end
+
+local function RefreshQuestieIcons()
+    RunThreaded(function()
+        local questieQuest = Module("QuestieQuest")
+        -- auch Marker einer nicht verfolgten Quest anlegen (Questie legt sie sonst erst beim Verfolgen an)
+        if focusQuestID then
+            local quest = Module("QuestieDB").GetQuest(focusQuestID)
+            if quest then questieQuest:PopulateObjectiveNotes(quest) end
+        end
+        questieQuest:ShowQuestIcons()
+        questieQuest:HideQuestIcons()
+    end)
+end
+
+function ns.QuestieFocusDetails(questID)
+    if not ns.HasQuestie() then return end
+    if questID == focusQuestID then return end
+    local ok = pcall(WrapShouldShow)
+    if not ok then return end
+    local profile = _G.Questie.db.profile
+    profile.hideUntrackedQuestsMapIcons = true -- (ohne das fragt Questie gar nicht nach)
+    local wasFocused = focusQuestID ~= nil
+    focusQuestID = questID
+    -- Questgeber-"!" in der Detailansicht aus, danach wieder wie vorher
+    if questID and not wasFocused then
+        availableBeforeFocus = profile.enableAvailable
+        if profile.enableAvailable then
+            profile.enableAvailable = false
+            Call(function() Module("QuestieQuest").ToggleAvailableQuests(false) end)
+        end
+    elseif not questID and wasFocused then
+        if availableBeforeFocus then
+            profile.enableAvailable = true
+            Call(function() Module("QuestieQuest").ToggleAvailableQuests(true) end)
+        end
+        availableBeforeFocus = nil
+    end
+    RefreshQuestieIcons()
+end
+
+-- Beim Ausloggen/Neuladen während offener Detailansicht: Questgeber-Einstellung zurück
+do
+    local logout = CreateFrame("Frame")
+    logout:RegisterEvent("PLAYER_LOGOUT")
+    logout:SetScript("OnEvent", function()
+        if focusQuestID and availableBeforeFocus and _G.Questie and _G.Questie.db then
+            _G.Questie.db.profile.enableAvailable = true
+        end
+    end)
+end
+
+---------------------------------------------------------------------------
 -- Questreihe aus Questies Datenbank: Vorquests (rückwärts) und Folgequests (vorwärts).
 -- Rückgabe: Liste { questID, name, level } in Reihenfolge, oder nil (Questie fehlt / keine Reihe)
 ---------------------------------------------------------------------------
@@ -257,7 +343,8 @@ function ns.GetQuestChain(questID)
         local db = Module("QuestieDB")
         local function Entry(id)
             return { questID = id, name = db.QueryQuestSingle(id, "name"), level = db.QueryQuestSingle(id, "questLevel"),
-                requiredLevel = db.QueryQuestSingle(id, "requiredLevel") }
+                requiredLevel = db.QueryQuestSingle(id, "requiredLevel"),
+                objectives = db.QueryQuestSingle(id, "objectivesText") }
         end
         local function Previous(id)
             for _, key in ipairs({ "preQuestSingle", "preQuestGroup" }) do

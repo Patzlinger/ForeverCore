@@ -656,39 +656,36 @@ end
 
 -- Zeilen der Questreihe (Pool): nicht anklickbar, Tooltip mit Name, ID, Stufen und Stand
 local chainRows = {}
+-- Tooltip wie im Tracker: Quest im Log = genau der Tracker-Tooltip (Ziel, Beschreibung, Fortschritt, Belohnungen);
+-- sonst derselbe Aufbau aus Questies Daten (Name in Schwierigkeitsfarbe mit Stufe, Questziel, Stand)
 local function ChainTooltip(self)
     local entry = self.entry
     if not entry then return end
+    if self.inLog then
+        ns.QuestList.ShowQuestTooltip(self, entry.questID, true)
+        return
+    end
     local tip = Style.GetTooltip()
     tip:SetOwner(self, "ANCHOR_RIGHT")
     local r, g, b = 1, 0.82, 0
     local color = ns.QuestList.LevelColor(entry.level)
     if color then r, g, b = color.r, color.g, color.b end
-    tip:AddLine(entry.name or ("Quest #" .. entry.questID), r, g, b)
-    tip:AddLine(ns.L("TIP_CHAIN_ID", entry.questID), 0.6, 0.6, 0.6)
-    if entry.level and entry.level > 0 then tip:AddLine(ns.L("TIP_CHAIN_LEVEL", entry.level), 1, 1, 1) end
-    if entry.requiredLevel and entry.requiredLevel > 0 then
-        tip:AddLine(ns.L("TIP_CHAIN_REQUIRED", entry.requiredLevel), 1, 1, 1)
+    local title = entry.name or ("Quest #" .. entry.questID)
+    if entry.level and entry.level > 0 then title = title .. " (" .. entry.level .. ")" end
+    tip:AddLine(title, r, g, b)
+    for _, line in ipairs(entry.objectives or {}) do
+        if type(line) == "string" and line ~= "" then tip:AddLine(line, 1, 1, 1, true) end
     end
     tip:AddLine(" ")
-    if self.current then
-        tip:AddLine(ns.L("TIP_CHAIN_CURRENT"), Style.COLOR.accent[1], Style.COLOR.accent[2], Style.COLOR.accent[3])
-    elseif self.done then
+    if self.done then
         tip:AddLine(ns.L("TIP_CHAIN_DONE"), 0.45, 0.85, 0.45)
-    elseif self.inLog then
-        tip:AddLine(ns.L("DETAIL_IN_LOG"), 0.53, 0.8, 1)
     else
         tip:AddLine(ns.L("TIP_CHAIN_OPEN"), 0.7, 0.7, 0.7)
     end
-    -- Quest im Log: Ziele mit Fortschritt
-    if self.inLog and not self.current then
-        for _, objective in ipairs(C_QuestLog.GetQuestObjectives(entry.questID) or {}) do
-            if objective.text and objective.text ~= "" then
-                local shade = objective.finished and 0.5 or 1
-                tip:AddLine("- " .. objective.text, shade, shade, shade, true)
-            end
-        end
+    if entry.requiredLevel and entry.requiredLevel > 0 then
+        tip:AddLine(ns.L("TIP_CHAIN_REQUIRED", entry.requiredLevel), 0.75, 0.75, 0.75)
     end
+    tip:AddLine(ns.L("TIP_CHAIN_ID", entry.questID), 0.5, 0.5, 0.5)
     tip:Show()
 end
 
@@ -696,6 +693,7 @@ local function ChainRow(index)
     local row = chainRows[index]
     if row then return row end
     row = CreateFrame("Frame", nil, detailContent)
+    row.view = { anchor = "ANCHOR_RIGHT" } -- Tooltip-Seite für den Tracker-Tooltip
     row:EnableMouse(true)
     row.text = row:CreateFontString(nil, "OVERLAY")
     row.text:SetPoint("TOPLEFT")
@@ -1020,6 +1018,8 @@ local function ShowDetails(questID)
     if not details or not questID or questID == 0 then return end
     if detailQuestID ~= questID then detailScroll:SetVerticalScroll(0) end
     detailQuestID = questID
+    -- Karte: nur die Marker dieser Quest
+    if ns.QuestieFocusDetails then ns.QuestieFocusDetails(questID) end
     if panel then panel:Hide() end
     if blizzardDetails then blizzardDetails:SetAlpha(0) end
     details:Show()
@@ -1039,6 +1039,13 @@ local function CreateDetails(area)
     details:EnableMouse(true)
     Style.SetFlat(details, color.background)
     details:Hide()
+    -- Detailansicht offen = auf der Karte nur deren Marker; zu (zurück zur Liste, Karte zu) = alle verfolgten
+    details:SetScript("OnShow", function()
+        if detailQuestID and ns.QuestieFocusDetails then ns.QuestieFocusDetails(detailQuestID) end
+    end)
+    details:SetScript("OnHide", function()
+        if ns.QuestieFocusDetails then ns.QuestieFocusDetails(nil) end
+    end)
 
     -- Kopf: Zurück | Name | Quest-ID; Rechtsklick auf den Kopf = dasselbe Menü wie im Tracker
     local header = HeaderBar(details, HEADER_HEIGHT)
