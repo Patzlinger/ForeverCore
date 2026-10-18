@@ -618,18 +618,43 @@ local function IsOffline(unit)
     return isPlayer and not connected
 end
 
+-- Füllfarbe eines Balkens. Skin "Forever": Farbe etwas gedeckter (ein Fünftel Richtung Grau, wie die Erfahrungs-
+-- leiste von ForeverBars) und mit leichtem Glanz – senkrechter Verlauf, unten dunkler, oben heller.
+-- Ohne Skin: wie bisher (ein früherer Verlauf wird dabei auf Weiß zurückgesetzt). Gibt die benutzte Farbe zurück.
+local function SetBarFill(bar, r, g, bl)
+    local tex = bar:GetStatusBarTexture()
+    local canGradient = tex and tex.SetGradient and CreateColor
+    if GetDB().skin == "FOREVER" then
+        local gray = (r + g + bl) / 3
+        r, g, bl = r * 0.8 + gray * 0.2, g * 0.8 + gray * 0.2, bl * 0.8 + gray * 0.2
+        if canGradient then
+            bar:SetStatusBarColor(1, 1, 1)
+            tex:SetGradient("VERTICAL", CreateColor(r * 0.72, g * 0.72, bl * 0.72, 1),
+                CreateColor(math.min(1, r * 1.12), math.min(1, g * 1.12), math.min(1, bl * 1.12), 1))
+            return r, g, bl
+        end
+    elseif canGradient then
+        tex:SetGradient("VERTICAL", CreateColor(1, 1, 1, 1), CreateColor(1, 1, 1, 1))
+    end
+    bar:SetStatusBarColor(r, g, bl)
+    return r, g, bl
+end
+ns.SetBarFill = SetBarFill
+
 local function UpdateColor(b)
     local v, look = b.v, Look()
     if IsOffline(b.unit) then
-        v.health:SetStatusBarColor(0.4, 0.4, 0.4)
+        SetBarFill(v.health, 0.4, 0.4, 0.4)
         v.healthBg:SetVertexColor(0.15, 0.15, 0.15)
         return
     end
-    local r, g, bl = BarColor(b.unit)
-    v.health:SetStatusBarColor(r, g, bl)
+    local r, g, bl = SetBarFill(v.health, BarColor(b.unit))
     if look.lossColorMode == "custom" then
         local c = look.lossColor
         v.healthBg:SetVertexColor(c[1], c[2], c[3])
+    elseif GetDB().skin == "FOREVER" then
+        -- verlorene Lebenspunkte: sehr dunkle Klassenfarbe, fast schwarz – die Füllung hebt sich klar ab
+        v.healthBg:SetVertexColor(r * 0.16 + 0.03, g * 0.16 + 0.03, bl * 0.16 + 0.04)
     else
         v.healthBg:SetVertexColor(r * 0.22, g * 0.22, bl * 0.22)
     end
@@ -641,6 +666,11 @@ local function UpdateName(b)
     local v, f, unit = b.v, FrameDB(b.key), b.unit
     local name = UnitName(unit)
     v.name:SetText(name)
+    -- Skin: Eckklammern für Elite/Rare (unabhängig davon, ob die Stufe angezeigt wird)
+    if ns.SkinClassification then
+        local cls = UnitClassification(unit)
+        ns.SkinClassification(b, (not IsSecret(cls)) and cls or nil)
+    end
     if not f.levelShow then v.level:SetText("") return end
     local level = UnitLevel(unit)
     if IsSecret(level) then v.level:SetText(level) v.level:SetTextColor(1, 0.82, 0) return end
@@ -767,7 +797,7 @@ local function UpdatePower(b)
     local c = PowerBarColor and not IsSecret(pType, pToken) and (PowerBarColor[pToken] or PowerBarColor[pType])
     local r, g, bl = 0, 0.45, 1
     if c then r, g, bl = c.r, c.g, c.b end
-    v.power:SetStatusBarColor(r, g, bl)
+    r, g, bl = SetBarFill(v.power, r, g, bl)
     v.powerBg:SetVertexColor(r * 0.25, g * 0.25, bl * 0.25)
     local cur, max = UnitPower(unit), UnitPowerMax(unit)
     if IsSecret(cur, max) then
@@ -915,65 +945,202 @@ local function SetFont(fs, look, size, justify)
     fs:SetJustifyH(justify)
 end
 
--- Skin "Forever" (optional, nur Aussehen): der Stil der Forever-Fenster – schlanker grauer Rand, flache Balken,
--- Schrift mit Schatten statt Umriss, dunkles Namensband mit feiner Goldlinie und Goldkante oben. Farben (Klasse,
--- Reaktion), Texte und Funktionen bleiben unberührt; ein Schalter in den Einstellungen (Optik) wechselt zurück.
+---------------------------------------------------------------------------
+-- Skin "Forever" (optional, nur Aussehen) – die Designsprache der Forever-Fenster auf den Einheitenrahmen:
+--   * Rahmen wie die Forever-Tooltips: feine graue Kante, oben eine Goldlinie; innen trennen dunkle Fugen
+--     Porträt, Lebens- und Energiebalken (statt eines durchgehend grauen Rands)
+--   * Balken gedeckt mit leichtem Glanz (SetBarFill) und einer hauchfeinen Lichtkante oben
+--   * Namensband: dunkles Band mit Verlauf und feiner Goldlinie darunter (wie die Titelleisten)
+--   * Porträt unten leicht abgedunkelt, damit es in den Rahmen übergeht
+--   * Elite/Boss: goldene Eckklammern an der oberen Außenecke, Rare: silberne
+--   * Maus darüber: Kante leuchtet gold (wie bei den Knöpfen); Spielerrahmen im Kampf: Oberkante dezent rot
+-- Funktionen, Texte und Farbwahl (Klasse, Reaktion) bleiben; ein Schalter in den Einstellungen (Optik) wechselt zurück.
+---------------------------------------------------------------------------
+local SKIN_INNER = { 0.025, 0.025, 0.035, 1 } -- Fugen zwischen den Teilen (fast schwarz)
+local SKIN_COMBAT = { 0.85, 0.22, 0.18 }       -- Oberkante des Spielerrahmens im Kampf
+local SKIN_RARE = { 0.78, 0.84, 0.95 }         -- Eckklammern bei seltenen Gegnern (Silber)
+
 local function SkinLook(look)
-    local C = UI.COLOR
     local s = {}
     for k, val in pairs(look) do s[k] = val end
     s.texture = WHITE
     s.borderSize = 1
-    s.borderColor = { C.border[1], C.border[2], C.border[3], 1 }
+    s.borderColor = SKIN_INNER
     s.outline = ""
     s.shadow = true
     return s
 end
 
+-- Farbe der Außenkante: Maus darüber = Gold; Spieler im Kampf = Oberkante rot; sonst grau mit Goldlinie oben
+local function SkinEdgeColors(b)
+    local sk = b.v.skin
+    if not sk or not sk.shown then return end
+    local C, a = UI.COLOR, UI.COLOR.accent
+    if b.fuHover then
+        for _, e in pairs(sk.edges) do e:SetColorTexture(a[1], a[2], a[3], 0.9) end
+        return
+    end
+    for side, e in pairs(sk.edges) do
+        if side ~= "top" then e:SetColorTexture(C.border[1], C.border[2], C.border[3], 1) end
+    end
+    if b.unit == "player" and sk.inCombat then
+        sk.edges.top:SetColorTexture(SKIN_COMBAT[1], SKIN_COMBAT[2], SKIN_COMBAT[3], 0.9)
+    else
+        sk.edges.top:SetColorTexture(a[1], a[2], a[3], 0.65)
+    end
+end
+
+-- Eckklammern (zwei kurze Linien an der oberen Außenecke) für Elite, Boss und Rare
+function ns.SkinClassification(b, classification)
+    local sk = b.v.skin
+    if not sk then return end
+    local color
+    if sk.shown then
+        if classification == "elite" or classification == "worldboss" or classification == "rareelite" then
+            color = UI.COLOR.accent
+        elseif classification == "rare" then
+            color = SKIN_RARE
+        end
+    end
+    for i, t in ipairs(sk.bracket) do
+        if color then
+            if i <= 2 then
+                t:SetColorTexture(color[1], color[2], color[3], 1)
+            else
+                t:SetColorTexture(0, 0, 0, 0.6) -- feiner dunkler Schatten innen an der Klammer
+            end
+        end
+        t:SetShown(color ~= nil)
+    end
+end
+
+local function CreateSkinParts(b)
+    local v = b.v
+    local layer = CreateFrame("Frame", nil, v.content)
+    layer:SetAllPoints(v.content)
+    layer:SetFrameLevel(v.content:GetFrameLevel() + 4) -- über den Balken, unter Texten und Symbolen
+    local function Tex(sub) return layer:CreateTexture(nil, "OVERLAY", nil, sub or 0) end
+    local sk = { layer = layer, edges = {}, bracket = {} }
+    for _, side in ipairs({ "top", "bottom", "left", "right" }) do sk.edges[side] = Tex(2) end
+    sk.band, sk.line = Tex(-2), Tex(-1)
+    sk.shineHealth, sk.shinePower = Tex(-1), Tex(-1)
+    sk.vignette = Tex(-2)
+    for i = 1, 4 do sk.bracket[i] = Tex(3) end
+    v.skin = sk
+    -- Maus darüber: Kante gold
+    b:HookScript("OnEnter", function(self) self.fuHover = true SkinEdgeColors(self) end)
+    b:HookScript("OnLeave", function(self) self.fuHover = nil SkinEdgeColors(self) end)
+    return sk
+end
+
+-- Kampfbeginn/-ende: Oberkante des Spielerrahmens
+local function SkinCombat(inCombat)
+    local b = ns.frames.player
+    local sk = b and b.v.skin
+    if not sk then return end
+    sk.inCombat = inCombat
+    SkinEdgeColors(b)
+end
+ns.On("PLAYER_REGEN_DISABLED", "Skin", function() SkinCombat(true) end)
+ns.On("PLAYER_REGEN_ENABLED", "Skin", function() SkinCombat(false) end)
+
 -- Zusatzflächen des Skins (einmalig angelegt, ohne Skin versteckt)
-local function ApplySkinParts(b, enabled, stacked, size)
+local function ApplySkinParts(b, enabled, stacked, size, f)
     local v = b.v
     local sk = v.skin
     if not enabled then
         if sk then
-            sk.top:Hide() sk.band:Hide() sk.line:Hide()
+            sk.shown = false
+            sk.layer:Hide()
         end
         return
     end
-    if not sk then
-        sk = {
-            top = v.top:CreateTexture(nil, "BORDER"),
-            band = v.top:CreateTexture(nil, "BORDER"),
-            line = v.top:CreateTexture(nil, "BORDER"),
-        }
-        v.skin = sk
-    end
+    sk = sk or CreateSkinParts(b)
+    sk.shown = true
+    sk.layer:Show()
+    local c = v.content
+
+    -- Außenkante (1 px rundherum, genau über dem dunklen Rand)
+    local e = sk.edges
+    e.top:ClearAllPoints() e.top:SetPoint("TOPLEFT", c) e.top:SetPoint("TOPRIGHT", c) e.top:SetHeight(1)
+    e.bottom:ClearAllPoints() e.bottom:SetPoint("BOTTOMLEFT", c) e.bottom:SetPoint("BOTTOMRIGHT", c) e.bottom:SetHeight(1)
+    e.left:ClearAllPoints() e.left:SetPoint("TOPLEFT", c) e.left:SetPoint("BOTTOMLEFT", c) e.left:SetWidth(1)
+    e.right:ClearAllPoints() e.right:SetPoint("TOPRIGHT", c) e.right:SetPoint("BOTTOMRIGHT", c) e.right:SetWidth(1)
+    sk.inCombat = b.unit == "player" and InCombatLockdown() or false
+    SkinEdgeColors(b)
+
+    -- Lichtkanten oben auf den Balken
+    sk.shineHealth:ClearAllPoints()
+    sk.shineHealth:SetPoint("TOPLEFT", v.health, "TOPLEFT")
+    sk.shineHealth:SetPoint("TOPRIGHT", v.health, "TOPRIGHT")
+    sk.shineHealth:SetHeight(1)
+    sk.shineHealth:SetColorTexture(1, 1, 1, 0.12)
+    sk.shineHealth:SetShown(not stacked) -- mit Namensband trägt dessen Goldlinie die Kante
+    sk.shinePower:ClearAllPoints()
+    sk.shinePower:SetPoint("TOPLEFT", v.power, "TOPLEFT")
+    sk.shinePower:SetPoint("TOPRIGHT", v.power, "TOPRIGHT")
+    sk.shinePower:SetHeight(1)
+    sk.shinePower:SetColorTexture(1, 1, 1, 0.10)
+    sk.shinePower:SetShown(f.powerHeight > 0)
+
+    -- Namensband mit feiner Goldlinie darunter (nur wenn Name und LP in zwei Zeilen stehen)
     local a = UI.COLOR.accent
-    -- Goldkante oben (wie die Linie unter der Titelleiste der Fenster)
-    sk.top:ClearAllPoints()
-    sk.top:SetPoint("TOPLEFT", v.content, "TOPLEFT", 0, 0)
-    sk.top:SetPoint("TOPRIGHT", v.content, "TOPRIGHT", 0, 0)
-    sk.top:SetHeight(1)
-    sk.top:SetColorTexture(a[1], a[2], a[3], 0.55)
-    sk.top:Show()
-    -- Namensband mit feiner Linie darunter (nur wenn Name und LP in zwei Zeilen stehen)
     if stacked then
         sk.band:ClearAllPoints()
         sk.band:SetPoint("TOPLEFT", v.health, "TOPLEFT", 0, 0)
         sk.band:SetPoint("TOPRIGHT", v.health, "TOPRIGHT", 0, 0)
         sk.band:SetHeight(size + 5)
-        sk.band:SetColorTexture(0, 0, 0, 0.38)
+        sk.band:SetColorTexture(1, 1, 1, 1)
+        if sk.band.SetGradient and CreateColor then
+            -- oben dunkler, nach unten auslaufend
+            sk.band:SetGradient("VERTICAL", CreateColor(0, 0, 0, 0.22), CreateColor(0, 0, 0, 0.55))
+        else
+            sk.band:SetColorTexture(0, 0, 0, 0.4)
+        end
         sk.band:Show()
         sk.line:ClearAllPoints()
         sk.line:SetPoint("TOPLEFT", sk.band, "BOTTOMLEFT", 0, 0)
         sk.line:SetPoint("TOPRIGHT", sk.band, "BOTTOMRIGHT", 0, 0)
         sk.line:SetHeight(1)
-        sk.line:SetColorTexture(a[1], a[2], a[3], 0.35)
+        sk.line:SetColorTexture(a[1], a[2], a[3], 0.4)
         sk.line:Show()
     else
         sk.band:Hide()
         sk.line:Hide()
     end
+
+    -- Porträt: unten leicht abgedunkelt
+    if f.portrait ~= "none" and v.portrait:IsShown() then
+        sk.vignette:ClearAllPoints()
+        sk.vignette:SetPoint("BOTTOMLEFT", v.portrait, "BOTTOMLEFT")
+        sk.vignette:SetPoint("BOTTOMRIGHT", v.portrait, "BOTTOMRIGHT")
+        sk.vignette:SetHeight(math.max(4, math.floor(v.portrait:GetHeight() * 0.45)))
+        sk.vignette:SetColorTexture(1, 1, 1, 1)
+        if sk.vignette.SetGradient and CreateColor then
+            sk.vignette:SetGradient("VERTICAL", CreateColor(0, 0, 0, 0.55), CreateColor(0, 0, 0, 0))
+            sk.vignette:Show()
+        else
+            sk.vignette:Hide()
+        end
+    else
+        sk.vignette:Hide()
+    end
+
+    -- Eckklammern an der oberen Außenecke (Seite des Porträts; ohne Porträt rechts)
+    local outerRight = f.portrait == "none" or f.portraitSide == "RIGHT"
+    local corner = outerRight and "TOPRIGHT" or "TOPLEFT"
+    local dx = outerRight and -1 or 1
+    local len = math.max(6, math.floor(math.min(f.height, 40) * 0.3))
+    local br = sk.bracket
+    -- zwei Linien je Klammer, leicht nach außen versetzt (wie eine eingefasste Ecke), plus dunkler Schatten
+    br[1]:ClearAllPoints() br[1]:SetPoint(corner, c, corner, -dx * 2, 2) br[1]:SetSize(len, 2)
+    br[2]:ClearAllPoints() br[2]:SetPoint(corner, c, corner, -dx * 2, 2) br[2]:SetSize(2, len)
+    br[3]:ClearAllPoints() br[3]:SetPoint(corner, c, corner, -dx * 2 + dx, 1) br[3]:SetSize(len - 1, 1)
+    br[4]:ClearAllPoints() br[4]:SetPoint(corner, c, corner, -dx * 2 + dx, 1) br[4]:SetSize(1, len - 1)
+    br[3]:SetDrawLayer("OVERLAY", 4) br[4]:SetDrawLayer("OVERLAY", 4)
+    for i = 1, 4 do br[i]:Hide() end
+    local cls = UnitExists(b.unit) and UnitClassification(b.unit) or nil
+    ns.SkinClassification(b, (not IsSecret(cls)) and cls or nil)
 end
 
 function ns.Layout(b)
@@ -1102,7 +1269,7 @@ function ns.Layout(b)
         v.resting:SetPoint("CENTER", v.content, "TOPRIGHT", 2, -2)
     end
 
-    ApplySkinParts(b, skinned, stacked, size)
+    ApplySkinParts(b, skinned, stacked, size, f)
 
     -- Verschiebe-Hinweis
     v.mover:SetShown(not d.locked)

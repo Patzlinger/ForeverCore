@@ -367,8 +367,8 @@ do
         { key = "DEFAULT", label = T("Standard", "Default") },
         { key = "FOREVER", label = T("Forever (Test)", "Forever (test)") },
     }, G("skin"))
-    UI.Hint(p, R + 4, -278, 300, T("Nur das Aussehen: flache Balken, grauer Rand mit Goldkante und ein dunkles Namensband wie in den Forever-Fenstern. Farben, Texte und Funktionen bleiben, wie sie sind.",
-        "Look only: flat bars, a grey border with a gold edge and a dark name band like in the Forever windows. Colors, texts and functions stay as they are."))
+    UI.Hint(p, R + 4, -278, 300, T("Nur das Aussehen, im Stil der Forever-Fenster: feine Kante mit Goldlinie, dunkle Fugen, gedeckte Balken mit leichtem Glanz, Namensband, goldene/silberne Eckklammern bei Elite/Rare, goldene Kante bei Maus darüber, rote Oberkante am Spieler im Kampf. Funktionen bleiben, wie sie sind.",
+        "Look only, in the style of the Forever windows: fine edge with a gold line, dark seams, muted bars with a soft shine, name band, gold/silver corner brackets for elite/rare, gold edge on mouse-over, red top edge on the player in combat. Functions stay as they are."))
 end
 
 options:SetScript("OnShow", Safe(SETTINGS, function()
