@@ -1028,7 +1028,8 @@ local function ChainTooltip(self)
     if entry.requiredLevel and entry.requiredLevel > 0 then
         tip:AddLine(ns.L("TIP_CHAIN_REQUIRED", entry.requiredLevel), 0.75, 0.75, 0.75)
     end
-    tip:AddLine(ns.L("TIP_CHAIN_ID", entry.questID), 0.5, 0.5, 0.5)
+    if ns.db.showQuestIDs then tip:AddLine(ns.L("TIP_CHAIN_ID", entry.questID), 0.5, 0.5, 0.5) end
+    if ns.AddAltLines then ns.AddAltLines(tip, entry.questID) end
     tip:Show()
 end
 

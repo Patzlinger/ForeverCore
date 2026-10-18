@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 48
+local VERSION = 49
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -33,6 +33,10 @@ if PREV and PREV.UI then tinsert(SHARED.uiTables, PREV.UI) end
 ---------------------------------------------------------------------------
 local UI = {}
 hub.UI = UI
+-- Schnittstellen zwischen Forever-Addons (v49), statt eigener globaler Namen: ein Addon legt seine Funktionen unter
+-- UI.API.<Addonname> = { … } ab, ein anderes ruft sie nur auf, wenn es sie gibt (das Addon kann fehlen)
+SHARED.api = SHARED.api or {}
+UI.API = SHARED.api
 
 -- Sprache (gemeinsam fuer alle Forever-Addons): Deutsch gibt es nur auf einem deutschen Client; dort laesst
 -- sich im Hub-Fenster (/forever) Englisch waehlen. Gespeichert in ForeverHubDB.language ("deDE"/"enUS",
@@ -1805,6 +1809,7 @@ local KNOWN = {
     { name = "ForeverSpellbook", button = "ForeverSpellbookMinimapButton", cmd = "/fsb" },
     { name = "ForeverBags",   button = "ForeverBagsMinimapButton", cmd = "/fbags" },
     { name = "ForeverTooltip", button = "ForeverTooltipMinimapButton", cmd = "/ftip" },
+    { name = "ForeverAlts",   button = "ForeverAltsMinimapButton", cmd = "/falts" },
     { name = "ForeverQuestmob", button = "ForeverQuestmobMinimapButton" },
     { name = "ForeverBoard",  button = "ForeverBoardMinimapButton" },
     { name = "ForeverNotes",  button = "ForeverNotesMinimapButton" },

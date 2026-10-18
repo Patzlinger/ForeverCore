@@ -1,0 +1,18 @@
+## Interface: 16001
+## Title: ForeverAlts |cff8a8a8a(Prototyp)|r
+## IconTexture: Interface\AddOns\ForeverAlts\Media\ForeverCore
+## Category: Forever Core
+## Notes: Overview of all your characters: level, rested XP, gold, professions, location and open dungeon quests
+## Notes-deDE: Übersicht aller deiner Charaktere: Stufe, Erholung, Gold, Berufe, Ort und offene Dungeonquests
+## Version: 0.44b
+## X-Curse-Project-ID: 1743753
+## Author: flowfy
+## X-License: MIT
+## Dependencies: ForeverCore
+## OptionalDeps: ForeverQuests, ForeverBags
+## Group: ForeverCore
+## SavedVariables: ForeverAltsDB, ForeverAltsData, ForeverHubDB
+
+Data.lua
+Window.lua
+Options.lua

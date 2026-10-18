@@ -543,6 +543,29 @@ local function ShowRewardTooltip(owner, questID)
     tooltip:Show()
 end
 
+-- Mit ForeverAlts: welche deiner anderen Charaktere die Quest auch haben (mit Fortschritt) bzw. schon erledigt haben.
+-- Die Daten liefert ForeverAlts über die gemeinsame Schnittstelle des Hubs (fehlt das Addon, passiert nichts).
+function ns.AddAltLines(tooltip, questID)
+    local HUB = _G.ForeverHub and _G.ForeverHub.UI
+    local alts = HUB and HUB.API and HUB.API.ForeverAlts
+    if not (alts and alts.CharsWithQuest and questID) then return end
+    local ok, list = pcall(alts.CharsWithQuest, questID)
+    if not ok or type(list) ~= "table" or #list == 0 then return end
+    tooltip:AddLine(" ")
+    tooltip:AddLine(ns.L("TIP_ALTS"), 1, 0.82, 0)
+    for _, alt in ipairs(list) do
+        local state
+        if alt.complete then
+            state = "|cff00ff00" .. ns.L("READY_TO_TURN_IN") .. "|r"
+        elseif alt.total and alt.total > 0 then
+            state = alt.done .. "/" .. alt.total
+        else
+            state = ns.L("DETAIL_IN_LOG")
+        end
+        tooltip:AddDoubleLine(alt.coloredName or alt.name or "?", state, 1, 1, 1, 0.8, 0.8, 0.8)
+    end
+end
+
 local function ShowQuestTooltip(owner, questID, noHint)
     local tooltip = ns.Style.GetTooltip()
     tooltip:SetOwner(owner, AnchorOf(owner))
@@ -596,6 +619,7 @@ local function ShowQuestTooltip(owner, questID, noHint)
     C_QuestLog.SetSelectedQuest(previous or 0)
 
     AddRewardLines(tooltip, questID)
+    ns.AddAltLines(tooltip, questID)
     -- Klick-Hinweise nur, wo man klicken kann (nicht z. B. in der Questreihe der Detailansicht)
     if not noHint then
         tooltip:AddLine(" ")

@@ -2457,8 +2457,38 @@ end
 
 -- Nach einem Sprachwechsel: Fenster mit neuen Texten neu aufbauen (beim nächsten Öffnen)
 -- Quests der Dungeons haben sich geändert (Questie-Daten nachgeladen): Zwischenspeicher leeren
+-- Schnittstelle für andere Forever-Addons (ForeverAlts): zu welchem Dungeon eine Quest gehört, Dungeon öffnen
+local apiQuestIndex -- [questID] = Dungeon (beim Neuaufbau der Dungeondaten verworfen)
+local function DungeonByQuest(questID)
+    if not apiQuestIndex then
+        apiQuestIndex = {}
+        for _, dungeon in ipairs(ns.ALL_DUNGEON_DATA or {}) do
+            for _, quest in ipairs(dungeon.quests or {}) do
+                if quest.id then apiQuestIndex[quest.id] = dungeon end
+            end
+        end
+    end
+    return questID and apiQuestIndex[questID]
+end
+do
+    local HUB = _G.ForeverHub and _G.ForeverHub.UI
+    if HUB and HUB.API then
+        HUB.API.ForeverQuests = {
+            DungeonOfQuest = function(questID)
+                local dungeon = DungeonByQuest(questID)
+                return dungeon and Localized(dungeon, "name"), dungeon and dungeon.isRaid == true
+            end,
+            ShowDungeonOfQuest = function(questID)
+                local dungeon = DungeonByQuest(questID)
+                if dungeon then ns.ShowDungeon(dungeon) end
+            end,
+        }
+    end
+end
+
 function ns.InvalidateDungeonCaches()
     chainIndex = nil
+    apiQuestIndex = nil
     wipe(headerDungeons)
 end
 
@@ -2566,6 +2596,25 @@ function ns.RefreshDungeonHint()
     local text = ns.L("HINT_TEXT", Localized(dungeon, "name"), hintFrame.inLog or 0, hintFrame.missing or 0)
     local group = GroupHintText(dungeon)
     if group then text = text .. "\n\n" .. group end
+    -- mit ForeverAlts: welche Twinks Quests für diesen Dungeon im Log haben
+    local HUB = _G.ForeverHub and _G.ForeverHub.UI
+    local alts = HUB and HUB.API and HUB.API.ForeverAlts
+    if alts and alts.CharsWithQuest then
+        local counts, order = {}, {}
+        for _, questID in ipairs(DungeonQuestIDs(dungeon)) do
+            local ok, list = pcall(alts.CharsWithQuest, questID)
+            for _, alt in ipairs(ok and list or {}) do
+                local key = alt.coloredName or alt.name or "?"
+                if not counts[key] then order[#order + 1] = key end
+                counts[key] = (counts[key] or 0) + 1
+            end
+        end
+        if #order > 0 then
+            local parts = {}
+            for _, key in ipairs(order) do parts[#parts + 1] = key .. " (" .. counts[key] .. ")" end
+            text = text .. "\n\n" .. ns.L("HINT_ALTS", table.concat(parts, ", "))
+        end
+    end
     hintFrame:SetWidth(group and 460 or 360)
     hintFrame.text:SetText(text)
     hintFrame:SetHeight(math.max(128, 50 + hintFrame.text:GetStringHeight() + 48))

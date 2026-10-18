@@ -40,6 +40,9 @@
 - ForeverQuests, quest together: you no longer show up twice (as "You" and with your full name), so the member count is right.
 - ForeverQuests: quests you haven't picked up yet now show their item rewards in tooltips and on the dungeon cards (taken from Questie's database).
 - ForeverQuests, quest chains: if the last part of a chain gives items, they now show up as real rewards on the dungeon cards and in the quest details (marked with the part they come from), not only in the tooltip.
+- **ForeverAlts (new, prototype):** one overview of all your characters – level and XP, rested XP (estimated for characters that are logged out), gold with a total, location, professions, quests in the log and open dungeon quests. Hover a row for all details, click a column title to sort, right-click for the bags and bank of that character (ForeverBags), its dungeons (ForeverQuests) or to remove it from the list. /falts. With ForeverQuests, quest tooltips and the "Entering dungeon" hint show which of your alts have the quest too.
+- ForeverQuests: the "Entering dungeon" hint now shows your group: how many of the dungeon quests each member has, how far they are, which quests they have that you are missing and which of yours they are missing (full details if they use ForeverQuests too).
+- Settings window: the Cast bar, Chat and Tooltip pages have their section boxes back; the Minimap page fits again (right border).
 - Settings window: sections no longer overlap and long labels no longer run out of their box (ForeverFrames, ForeverUnits, ForeverBags). The quest tracker entry is now called "Quest & dungeon tracker".
 - ForeverQuests, dungeon window: quests with the same name in one dungeon now form one quest chain card when Questie doesn't know the chain (e.g. new Forever quests like "Unending Torment").
 - ForeverQuests, quest chains: finished parts are always green with a check mark; gold marks only the part you are currently working on (in your quest log).

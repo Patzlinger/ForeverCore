@@ -26,6 +26,7 @@ Philosophie, Regeln, Design und Abläufe. Wenn etwas hier nicht steht: am besteh
 | ForeverBars | flowfy | im Repository, noch nicht im Release |
 | ForeverBags | flowfy | Prototyp (seit 2026-10-17) |
 | ForeverTooltip | Patzlinger | Prototyp (seit 2026-10-18, nicht im Release) |
+| ForeverAlts | flowfy | Prototyp (seit 2026-10-18, nicht im Release) |
 | `tools/`, `release/` | gemeinsam | – |
 
 - **Keine Absprachen nötig: jeder arbeitet frei an allen Addons** (Zusammenarbeit auf Augenhöhe). Die Spalte
@@ -166,6 +167,13 @@ Philosophie, Regeln, Design und Abläufe. Wenn etwas hier nicht steht: am besteh
   - für `/fmove`: `UI.RegisterMovable("ForeverName", isLocked, setLocked)` – `isLocked()` liefert true/false,
     `setLocked(locked)` sperrt bzw. entsperrt (inkl. Menü aktualisieren). Addons mit eigener Stil-Datei melden sich
     in einer kleinen `HubLink.lua` an (siehe ForeverQuests/ForeverBars)
+- **Addons rufen sich gegenseitig nur über `UI.API` auf** (Hub v49), nicht über neue globale Namen: ein Addon legt
+  `UI.API.<Addonname> = { Funktion = … }` ab, ein anderes ruft nur auf, wenn es das gibt (`if UI.API.X and UI.API.X.F`),
+  am besten mit `pcall`. Bisher: `ForeverQuests` (DungeonOfQuest, ShowDungeonOfQuest), `ForeverBags` (ShowCharacter,
+  HasBank, FreeSlots), `ForeverAlts` (Characters, CharsWithQuest, Toggle). Wer liefert, trägt das in die .toc als
+  `## OptionalDeps` des Nutzers ein, damit er vorher lädt.
+- **Einstellungsseiten dürfen `SetScript("OnShow"/"OnHide")` benutzen** (Hub v48): die Seite fängt das ab, die
+  Abschnitts-Kästen von `UI.Header` und die Hub-Haken bleiben erhalten. Seiten müssen in 720 Breite passen.
 - **Wiederkehrende Aufgaben nur über den gemeinsamen Takt** (Hub v46): `UI.Every(sekunden, fn, { addon, name, when })`
   statt `C_Timer.NewTicker`. `when` = Bedingung, nur dann läuft die Aufgabe (z. B. nur in der Gruppe, nur wenn sichtbar);
   Startzeiten werden verteilt, Fehler einmal gemeldet; `UI.StopEvery(task)` beendet sie. Kurzlebige Ticker, die nur
@@ -374,6 +382,7 @@ Damit alle Einstellungsfenster gleich aussehen, gelten diese Maße. Quelle: `For
   | /fmm, /foreverminimap | ForeverMinimap |
   | /fbags, /foreverbags | ForeverBags |
   | /ftip, /forevertooltip | ForeverTooltip |
+  | /falts, /foreveralts | ForeverAlts |
 - Tastenkürzel über `Bindings.xml` + `BINDING_HEADER_…`/`BINDING_NAME_…` (Bereich "AddOns")
 
 ## 12. Code-Stil

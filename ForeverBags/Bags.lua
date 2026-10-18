@@ -940,6 +940,43 @@ function ns.ToggleBags()
     window:SetShown(not window:IsShown())
 end
 
+-- Schnittstelle für andere Forever-Addons (ForeverAlts): Taschen bzw. Bank eines gespeicherten Charakters zeigen,
+-- freie Plätze eines Charakters
+if UI.API then
+    UI.API.ForeverBags = {
+        ShowCharacter = function(key, kind)
+            if not window then return end
+            local c = ns.CharacterData(key)
+            if key == ns.CharKey() and kind ~= "bank" then
+                SetView(nil)
+            elseif c and c[kind == "bank" and "bank" or "bags"] then
+                SetView({ key = key, kind = kind == "bank" and "bank" or "bags" })
+            else
+                return false
+            end
+            if not window:IsShown() then window:Show() end
+            return true
+        end,
+        HasBank = function(key)
+            local c = ns.CharacterData(key)
+            return c and c.bank ~= nil or false
+        end,
+        FreeSlots = function(key)
+            local c = ns.CharacterData(key)
+            if not (c and c.bags) then return nil end
+            local free, total = 0, 0
+            for _, bag in pairs(c.bags) do
+                local size = type(bag) == "table" and bag.size or 0
+                total = total + size
+                for slot = 1, size do
+                    if not bag[slot] then free = free + 1 end
+                end
+            end
+            return free, total
+        end,
+    }
+end
+
 ---------------------------------------------------------------------------
 -- Blizzards Bank-/Gildenbank-Fenster unsichtbar und nicht anklickbar machen (Bank.lua, GuildBank.lua).
 -- Schließen geht nicht: deren OnHide beendet den Besuch beim Bankier. Nur Deckkraft und Maus – keine
