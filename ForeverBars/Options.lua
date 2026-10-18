@@ -444,7 +444,7 @@ local function CreateOptions()
     local T = ForeverHub.UI.T
     options.statusWidthSlider = CreateSlider(layoutPage, T("Breite (px)", "Width (px)"), 14, -382, 180,
         function() return 100 end, function() return math.floor(UIParent:GetWidth()) end,
-        function() return SelectedConfig().width or math.floor(ns.StatusWidth(SelectedConfig())) end,
+        function() return SelectedConfig().width or math.floor(ns.StatusWidth(SelectedConfig(), selectedKey)) end,
         function(value) SelectedConfig().width = value; Changed() end)
     options.statusHeightSlider = CreateSlider(layoutPage, T("Höhe (px)", "Height (px)"), 14, -426, 180,
         function() return 8 end, function() return 48 end,

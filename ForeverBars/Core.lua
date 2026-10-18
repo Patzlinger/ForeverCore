@@ -105,7 +105,7 @@ ns.defaults = {
         xp = BarDefaults(true), rep = BarDefaults(true),
     },
     -- (Profile verwaltet seit 0.41b ForeverCore – je Charakter, siehe RegisterSettings am Ende dieser Datei)
-    layoutVersion = 24,-- Stand der Standard-Anordnung (siehe MigrateLayout)
+    layoutVersion = 25,-- Stand der Standard-Anordnung (siehe MigrateLayout)
     skin = "FOREVER",        -- Aussehen der Knöpfe (ns.SKINS in Bars.lua)
     hoverAlpha = 15,         -- Stärke des Hover-Leuchtens über den Knöpfen (%)
     procGlow = "FOREVER",    -- Leuchten bei Procs: "FOREVER" (goldener Rahmen), "BLIZZARD", "OFF"
@@ -164,7 +164,8 @@ ns.defaults.bars.bags.growX = "LEFT"
 ns.defaults.bars.bags.collapsible = true   -- Pfeil zum Aus-/Einklappen der Taschen
 ns.defaults.bars.bags.enabled = false      -- Taschenleiste standardmäßig aus (Taschen öffnen per Taste B)
 -- Aktionsleisten: "100 %" sind bereits 105 % der Blizzard-Größe (siehe ns.BarScale in Bars.lua)
-for i = 1, 8 do ns.defaults.bars["bar" .. i].scale = 100 end
+-- seit Layout 25 standardmäßig 105 %: so lang wie die Erfahrungsleiste in gut lesbarer Größe
+for i = 1, 8 do ns.defaults.bars["bar" .. i].scale = 105 end
 ns.defaults.bars.bags.bagsCollapsed = true -- eingeklappt: nur der Rucksack
 ns.defaults.bars.prof.buttons = 12 -- 12 Plätze, 6 breit und 2 hoch, frei belegbar
 ns.defaults.bars.prof.perRow = 6
@@ -242,7 +243,8 @@ ns.FillDefaults = FillDefaults
 --               selbst verschoben hast (Leisten mit gesetzter Position, cfg.moved, behalten sie)
 --  23 (0.44b+): der Abstand aus 22 kam nicht an (Bedingung traf nie zu) – behoben, Positionen nochmals neu berechnet
 --  24 (0.44b+): Leisten 6-8 direkt über Leiste 3, Begleiter/Haltung über der obersten Aktionsleiste – Positionen neu
-local LAYOUT_VERSION = 24
+--  25 (0.44b+): Aktionsleisten standardmäßig 105 % (so lang wie die Erfahrungsleiste) – Positionen neu
+local LAYOUT_VERSION = 25
 -- Standardgrößen vor 16 (nur Leisten, die noch darauf stehen, wachsen mit)
 local OLD_SCALES = { pet = 56, stance = 56, prof = 80, food = 80, bags = 76, queue = 50 }
 local STANDARD_LAYOUT_BARS = { "bar1", "bar2", "bar3", "bar6", "bar7", "bar8", "pet", "stance", "prof", "food",
@@ -273,6 +275,17 @@ function ns.MigrateLayout(db)
         if version < 2 then
             target.bars = CopyTable(ns.defaults.bars)
         else
+            if version < 25 then
+                -- Aktionsleisten, die noch auf dem alten Standard (100 %) stehen, auf 105 %; Anordnung neu
+                for i = 1, 8 do
+                    local bar = target.bars["bar" .. i]
+                    if bar and (bar.scale == nil or bar.scale == 100) then bar.scale = ns.defaults.bars["bar" .. i].scale end
+                end
+                for _, key in ipairs(STANDARD_LAYOUT_BARS) do
+                    local bar = target.bars[key]
+                    if bar then bar.x, bar.y = nil, nil end
+                end
+            end
             if version < 3 and target.bars.prof then
                 target.bars.prof.scale = ns.defaults.bars.prof.scale
                 target.bars.prof.x, target.bars.prof.y = nil, nil

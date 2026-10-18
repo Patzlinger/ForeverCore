@@ -998,13 +998,18 @@ function ns.StatusHeight(key, cfg)
     return math.max(8, cfg and cfg.height or ns.STATUS_HEIGHT[key] or 16)
 end
 
-function ns.StatusWidth(cfg)
-    return math.max(100, cfg and cfg.width or ns.ActionBarWidth())
+-- Breite vor der eigenen Größe der Leiste: die Leiste wird danach noch mit ihrer Größe (z. B. 105 %) skaliert.
+-- Ohne eigene Breite soll sie sichtbar genau so lang sein wie Aktionsleiste 1 – also durch die eigene Größe teilen
+-- (vorher wurde doppelt vergrößert, die Leiste war dann länger als die Aktionsleisten).
+function ns.StatusWidth(cfg, key)
+    if cfg and cfg.width then return math.max(100, cfg.width) end
+    local own = (cfg and key and ns.BarScale and ns.BarScale(key, cfg)) or 1
+    return math.max(100, ns.ActionBarWidth() / own)
 end
 
 function ns.LayoutStatus(def, cfg, holder)
     local w = widgets[def.key] or Build(def.key, holder)
-    holder:SetSize(ns.StatusWidth(cfg), ns.StatusHeight(def.key, cfg))
+    holder:SetSize(ns.StatusWidth(cfg, def.key), ns.StatusHeight(def.key, cfg))
     w.root:ClearAllPoints()
     w.root:SetAllPoints(holder)
     ns.ApplyStatusLook(w)
