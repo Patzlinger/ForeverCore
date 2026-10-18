@@ -18,8 +18,16 @@ local AVERAGE_OF = 5        -- Kills/Quests bis Level-Up: Schnitt der letzten 5
 local HISTORY_SIZE = 10     -- so viele vergangene Level merken
 local MATCH_WINDOW = 1.5    -- Sekunden, in denen XP und Kill-/Quest-Meldung zusammengehören
 local FLAT = "Interface\\Buttons\\WHITE8x8"
-local INSET = 3                                  -- Dicke des Rands (Füllung liegt innen)
-local GOLD_EDGE = { 0.85, 0.70, 0.35, 0.90 }     -- dezent goldener Rand wie die alte Erfahrungsleiste
+local INSET = 2                                  -- 1 px Rand + 1 px dunkle Fuge, Füllung liegt innen
+-- Stil wie die Forever-Fenster: dunkle Fläche, feiner grauer Rand, goldene Linie oben
+local EDGE = { 0.22, 0.22, 0.26, 1 }
+local TOP_LINE = { 1, 0.82, 0, 0.55 }
+local TEXT_COLOR = { 0.92, 0.92, 0.90 }
+-- Füllfarben: gleiche Farbfamilie wie Blizzard, aber gedeckter; Unterschied über Helligkeit und Deckkraft
+-- statt über knallige Farben. Jede Füllung bekommt einen leichten Glanz (oben heller, unten dunkler).
+local XP_COLOR = { 0.50, 0.36, 0.74, 1.00 }      -- aktuelle Erfahrung: weiches Violett
+local RESTED_COLOR = { 0.36, 0.56, 0.86, 0.42 }  -- Erholung: helles Blau, durchscheinend
+local QUEST_COLOR = { 0.86, 0.72, 0.34, 0.58 }   -- fertige Quests: Gold, durchscheinend
 
 -- Standardhöhen (px); die Breite ist standardmäßig die der Aktionsleiste 1
 ns.STATUS_HEIGHT = { xp = 16, rep = 12 }
@@ -391,23 +399,57 @@ end
 ---------------------------------------------------------------------------
 -- Inhalt der Leiste (im Halter von Bars.lua): flacher Forever-Look, Füllung, Zehntel-Striche, drei Textzonen
 ---------------------------------------------------------------------------
+-- Schrift wie in den Forever-Fenstern: Friz Quadrata ohne Umriss, mit weichem Schatten
 local function BarFont(fs)
-    local font = _G.TextStatusBarText or _G.NumberFontNormalSmall
-    if font then fs:SetFontObject(font) else fs:SetFontObject("GameFontHighlightSmall") end
+    fs:SetFontObject("GameFontHighlightSmall")
     fs:SetShadowOffset(1, -1)
-    fs:SetShadowColor(0, 0, 0, 1)
+    fs:SetShadowColor(0, 0, 0, 0.9)
+    fs:SetTextColor(TEXT_COLOR[1], TEXT_COLOR[2], TEXT_COLOR[3])
     fs:SetWordWrap(false)
 end
 
-local function Layer(w, r, g, b, a, level)
+-- Füllfarbe mit leichtem Glanz: senkrechter Verlauf von etwas dunkler (unten) nach etwas heller (oben)
+local function SetFill(s, r, g, b, a)
+    local tex = s:GetStatusBarTexture()
+    if not tex then return end
+    local lo, hi = 0.78, 1.18
+    local function clamp(v) return math.min(1, v) end
+    if tex.SetGradient and CreateColor then
+        tex:SetVertexColor(1, 1, 1, 1)
+        tex:SetGradient("VERTICAL", CreateColor(r * lo, g * lo, b * lo, a), CreateColor(clamp(r * hi), clamp(g * hi), clamp(b * hi), a))
+    else
+        s:SetStatusBarColor(r, g, b, a)
+    end
+end
+ns.SetStatusFill = SetFill
+
+local function Layer(w, color, level)
     local s = CreateFrame("StatusBar", nil, w.root)
     s:SetAllPoints(w.inner)
     s:SetStatusBarTexture(FLAT)
-    s:SetStatusBarColor(r, g, b, a)
+    SetFill(s, color[1], color[2], color[3], color[4])
     s:SetFrameLevel(w.root:GetFrameLevel() + level)
     s:SetMinMaxValues(0, 1)
     s:SetValue(0)
     return s
+end
+
+-- feine helle Endmarke (wo Erholung bzw. Quest-XP enden), damit die Bereiche auch bei gedeckten Farben klar bleiben
+local function Mark(w, r, g, b)
+    local t = w.tickLayer:CreateTexture(nil, "OVERLAY", nil, 2)
+    t:SetColorTexture(r, g, b, 0.9)
+    t:SetWidth(1)
+    t:Hide()
+    return t
+end
+
+local function PlaceMark(w, mark, fraction)
+    local width = w.inner:GetWidth() or 0
+    if not fraction or fraction <= 0 or fraction >= 0.999 or width <= 0 then mark:Hide() return end
+    mark:ClearAllPoints()
+    mark:SetPoint("TOP", w.tickLayer, "TOPLEFT", width * fraction, 0)
+    mark:SetPoint("BOTTOM", w.tickLayer, "BOTTOMLEFT", width * fraction, 0)
+    mark:Show()
 end
 
 local Tooltip -- weiter unten
@@ -416,22 +458,31 @@ local function Build(key, holder)
     local w = { key = key, textParts = {}, hovered = false }
     local root = CreateFrame("Frame", nil, holder, "BackdropTemplate")
     root:SetAllPoints(holder)
-    root:SetBackdrop({ bgFile = FLAT, edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", edgeSize = 10,
-        insets = { left = 3, right = 3, top = 3, bottom = 3 } })
-    root:SetBackdropColor(0.04, 0.04, 0.05, 0.95)
-    root:SetBackdropBorderColor(GOLD_EDGE[1], GOLD_EDGE[2], GOLD_EDGE[3], GOLD_EDGE[4])
+    -- scharfer 1-px-Rand wie die Forever-Fenster (statt des weichen Tooltip-Rands) und goldene Linie oben
+    root:SetBackdrop({ bgFile = FLAT, edgeFile = FLAT, edgeSize = 1 })
+    root:SetBackdropColor(0.05, 0.05, 0.065, 0.92)
+    root:SetBackdropBorderColor(EDGE[1], EDGE[2], EDGE[3], EDGE[4])
     root:EnableMouse(true)
     w.root = root
+    w.topLine = root:CreateTexture(nil, "BORDER")
+    w.topLine:SetPoint("TOPLEFT", 1, -1)
+    w.topLine:SetPoint("TOPRIGHT", -1, -1)
+    w.topLine:SetHeight(1)
+    w.topLine:SetColorTexture(TOP_LINE[1], TOP_LINE[2], TOP_LINE[3], TOP_LINE[4])
     w.inner = CreateFrame("Frame", nil, root)
-    w.inner:SetPoint("TOPLEFT", INSET, -INSET)
+    w.inner:SetPoint("TOPLEFT", INSET, -INSET - 1)
     w.inner:SetPoint("BOTTOMRIGHT", -INSET, INSET)
+    -- leerer Teil der Leiste etwas heller als der Rahmen, damit Striche und Kante sichtbar bleiben
+    w.track = root:CreateTexture(nil, "ARTWORK")
+    w.track:SetAllPoints(w.inner)
+    w.track:SetColorTexture(0.10, 0.10, 0.12, 0.9)
 
     if key == "xp" then
-        w.rested = Layer(w, 0.30, 0.46, 0.76, 0.50, 1)  -- Erholung (blau, gedeckt)
-        w.quest = Layer(w, 0.82, 0.68, 0.30, 0.70, 2)   -- fertige Quests (gold, gedeckt)
-        w.fill = Layer(w, 0.46, 0.30, 0.64, 1.00, 3)    -- aktuelle XP (lila, gedeckt)
+        w.rested = Layer(w, RESTED_COLOR, 1) -- Erholung
+        w.quest = Layer(w, QUEST_COLOR, 2)   -- fertige Quests
+        w.fill = Layer(w, XP_COLOR, 3)       -- aktuelle XP
     else
-        w.fill = Layer(w, 0.30, 0.50, 0.30, 1.00, 3)    -- Ruf (Farbe des Rangs, gedeckt)
+        w.fill = Layer(w, { 0.30, 0.50, 0.30, 1 }, 3) -- Ruf (Farbe des Rangs, siehe RenderRep)
     end
 
     -- Zehntel-Striche über der Füllung, Texte noch darüber
@@ -439,12 +490,27 @@ local function Build(key, holder)
     tickLayer:SetAllPoints(w.inner)
     tickLayer:SetFrameLevel(root:GetFrameLevel() + 5)
     w.tickLayer = tickLayer
-    w.ticks = {}
+    -- Glanzkante: feine helle Linie oben auf der Leiste
+    w.shine = tickLayer:CreateTexture(nil, "OVERLAY", nil, -1)
+    w.shine:SetPoint("TOPLEFT")
+    w.shine:SetPoint("TOPRIGHT")
+    w.shine:SetHeight(1)
+    w.shine:SetColorTexture(1, 1, 1, 0.10)
+    -- Striche "eingraviert": dunkle Linie mit hellem Saum daneben – klar sichtbar, ohne hart zu wirken
+    w.ticks, w.tickLights = {}, {}
     for i = 1, 9 do
         local t = tickLayer:CreateTexture(nil, "OVERLAY")
-        t:SetColorTexture(0, 0, 0, 0.7)
+        t:SetColorTexture(0, 0, 0, 0.55)
         t:SetWidth(1)
         w.ticks[i] = t
+        local l = tickLayer:CreateTexture(nil, "OVERLAY")
+        l:SetColorTexture(1, 1, 1, 0.07)
+        l:SetWidth(1)
+        w.tickLights[i] = l
+    end
+    if key == "xp" then
+        w.restedMark = Mark(w, 0.62, 0.78, 1)   -- Ende der Erholung
+        w.questMark = Mark(w, 1, 0.86, 0.45)    -- Ende der Quest-XP
     end
     local top = CreateFrame("Frame", nil, root)
     top:SetAllPoints(w.inner)
@@ -489,12 +555,18 @@ local function PlaceTicks(w)
     local width = w.inner:GetWidth()
     local show = cfg and cfg.barTicks and width and width > 0
     for i, t in ipairs(w.ticks) do
+        local l = w.tickLights[i]
         t:ClearAllPoints()
+        l:ClearAllPoints()
         if show then
-            t:SetPoint("TOP", w.tickLayer, "TOPLEFT", width * i / 10, 0)
-            t:SetPoint("BOTTOM", w.tickLayer, "BOTTOMLEFT", width * i / 10, 0)
+            local x = math.floor(width * i / 10 + 0.5)
+            t:SetPoint("TOPLEFT", w.tickLayer, "TOPLEFT", x, -1)
+            t:SetPoint("BOTTOMLEFT", w.tickLayer, "BOTTOMLEFT", x, 1)
+            l:SetPoint("TOPLEFT", t, "TOPRIGHT", 0, 0)
+            l:SetPoint("BOTTOMLEFT", t, "BOTTOMRIGHT", 0, 0)
         end
         t:SetShown(show and true or false)
+        l:SetShown(show and true or false)
     end
 end
 
@@ -537,9 +609,13 @@ end
 
 function ns.ApplyStatusLook(w)
     PlaceTicks(w)
+    -- etwas kleiner als die Knopfschrift (höchstens 10), ohne Umriss – wie in den Forever-Fenstern
     local innerH = (w.inner:GetHeight() or 12)
-    local size = math.max(7, math.min((ns.db.fontSize or 12) - 1, math.floor(innerH + 2)))
-    for _, fs in ipairs({ w.center, w.left, w.right }) do ns.SetTextFont(fs, size) end
+    local size = math.max(7, math.min(10, math.floor(innerH + 1)))
+    local font = (GameFontHighlightSmall and GameFontHighlightSmall:GetFont()) or STANDARD_TEXT_FONT
+    for _, fs in ipairs({ w.center, w.left, w.right }) do
+        if not (font and fs:SetFont(font, size, "")) then ns.SetTextFont(fs, size) end
+    end
     ns.FitStatusTexts(w)
 end
 
@@ -574,6 +650,8 @@ local function RenderXP(w)
     w.fill:SetValue(xp)
     w.quest:SetValue(math.min(maxXP, xp + questXP))
     w.rested:SetValue(math.min(maxXP, xp + rested))
+    PlaceMark(w, w.restedMark, rested > 0 and (xp + rested) / maxXP or nil)
+    PlaceMark(w, w.questMark, questXP > 0 and (xp + questXP) / maxXP or nil)
 
     -- Hinweis, sobald die fertigen Quests fürs Level-Up reichen (einmal pro Level)
     local enough = questXP > 0 and questXP >= missing
@@ -635,7 +713,9 @@ local function RenderRep(w)
     w.root:Show()
     w.fill:SetMinMaxValues(0, f.max)
     w.fill:SetValue(f.value)
-    w.fill:SetStatusBarColor(f.r, f.g, f.b, 1)
+    -- Farbe des Rangs, etwas gedeckter (ein Viertel Richtung Grau) und mit Glanz
+    local gray = (f.r + f.g + f.b) / 3
+    SetFill(w.fill, f.r * 0.75 + gray * 0.25, f.g * 0.75 + gray * 0.25, f.b * 0.75 + gray * 0.25, 1)
 
     local remaining = f.max - f.value
     local pct = f.value / f.max * 100
