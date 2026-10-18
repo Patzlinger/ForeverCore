@@ -158,6 +158,9 @@ SlashCmdList.FOREVERQUESTS = function(msg)
                     tostring(header)))
             end
         end
+    elseif msg == "dungeonquellen" or msg == "dungeonsources" then
+        -- je Dungeon: wie viele Quests aus Questie, wie viele neu, wie viele aus dem alten Stand
+        ns.DebugDungeonSources()
     elseif msg == "ecke" or msg == "corner" then
         -- Fehlersuche: welche Texturen liegen unter der Maus auf der Weltkarte?
         ns.DebugMapCorner()

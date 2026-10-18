@@ -20,6 +20,7 @@ local refreshPending = false
 -- Die Daten aus der Excel-Datei bleiben vollständig (ALL_DUNGEONS); ns.DUNGEON_DATA ist die angezeigte Auswahl.
 local BETA_MAX_LEVEL = 30
 local ALL_DUNGEONS = ns.DUNGEON_DATA
+ns.ALL_DUNGEON_DATA = ALL_DUNGEONS -- vollständige Liste (QuestieDungeons.lua ergänzt sie mit Questies Daten)
 
 local function FirstNumber(text)
     return tonumber(tostring(text or ""):match("%d+"))
@@ -2047,6 +2048,12 @@ local function CreateWindow()
 end
 
 -- Nach einem Sprachwechsel: Fenster mit neuen Texten neu aufbauen (beim nächsten Öffnen)
+-- Quests der Dungeons haben sich geändert (Questie-Daten nachgeladen): Zwischenspeicher leeren
+function ns.InvalidateDungeonCaches()
+    chainIndex = nil
+    wipe(headerDungeons)
+end
+
 function ns.ResetDungeonWindow()
     if not window then return end
     local wasShown = window:IsShown()

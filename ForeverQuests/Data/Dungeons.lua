@@ -1,7 +1,9 @@
 local addonName, ns = ...
 
--- Dungeon-Questdaten. Diese Datei wird aus ForeverQuests_Dungeons.xlsx erzeugt –
--- Änderungen am besten in der Excel-Datei machen und neu übertragen lassen.
+-- Dungeon-Questdaten. Früher aus ForeverQuests_Dungeons.xlsx erzeugt – die Excel-Datei wird nicht mehr gebraucht.
+-- Ist Questie installiert, holt QuestieDungeons.lua die Quests jedes Dungeons aus Questies Datenbank; diese Datei
+-- liefert dann nur noch die Dungeon-Grunddaten (Name, Stufen, Eingang, Typ, Fraktion) und die Gegenstands-
+-- belohnungen. Ohne Questie gilt der Questbestand hier als eingefrorener Stand. Änderungen direkt hier eintragen.
 --
 -- Je Dungeon: name, nameEN, levels, zone (Eingang), zoneEN, entranceX/entranceY,
 --   type ("Classic"/"Neu in Forever"), faction ("Horde", "Alliance", "Both"), quests

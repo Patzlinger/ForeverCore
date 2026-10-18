@@ -24,4 +24,5 @@ QuestLog.lua
 Options.lua
 Minimap.lua
 Dungeons.lua
+QuestieDungeons.lua
 HubLink.lua
