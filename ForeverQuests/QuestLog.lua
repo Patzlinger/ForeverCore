@@ -804,8 +804,12 @@ local function DetailText(dv, index)
     return text
 end
 
+-- Gegenstände mit gedrückter Shift-Taste: Blizzards GameTooltip samt Vergleich mit der getragenen Ausrüstung
+-- (wie im Dungeonfenster); sonst unser eigener Tooltip ohne Vergleich
 local function RewardTooltip(self)
-    local tip = Style.GetTooltip()
+    local compare = IsShiftKeyDown() and self.kind ~= "currency" and self.kind ~= "spell"
+    local tip = compare and GameTooltip or Style.GetTooltip()
+    if compare then Style.GetTooltip():Hide() elseif GameTooltip:GetOwner() == self then GameTooltip:Hide() end
     tip:SetOwner(self, "ANCHOR_RIGHT")
     local questID = self.dv and self.dv.questID
     -- Belohnung einer anderen Quest (Ende der Questreihe): nicht über den Questlog dieser Quest nachschlagen
@@ -830,6 +834,7 @@ local function RewardTooltip(self)
     end
     if not shown then tip:AddLine(self.name:GetText() or "?", 1, 1, 1) end
     tip:Show()
+    if compare and shown and GameTooltip_ShowCompareItem then pcall(GameTooltip_ShowCompareItem, GameTooltip) end
 end
 
 -- Belohnungs-Feld: Symbol mit Anzahl, Name in Seltenheitsfarbe; Shift-Klick verlinkt, Strg-Klick = Anprobe
@@ -855,10 +860,14 @@ local function RewardButton(dv, index)
         local a = Style.COLOR.accent
         self:SetBackdropBorderColor(a[1], a[2], a[3], 0.9)
         RewardTooltip(self)
+        self:RegisterEvent("MODIFIER_STATE_CHANGED") -- Shift drücken/loslassen, während die Maus darauf ist
     end)
+    button:SetScript("OnEvent", function(self) if self:IsMouseOver() then RewardTooltip(self) end end)
     button:SetScript("OnLeave", function(self)
+        self:UnregisterEvent("MODIFIER_STATE_CHANGED")
         self:SetBackdropBorderColor(unpack(Style.COLOR.border))
         Style.GetTooltip():Hide()
+        if GameTooltip:GetOwner() == self then GameTooltip:Hide() end
     end)
     button:SetScript("OnClick", function(self)
         if self.kind == "currency" or self.kind == "spell" or not IsModifiedClick() then return end

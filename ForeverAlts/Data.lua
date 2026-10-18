@@ -310,6 +310,45 @@ local function StoreFullName(sender)
     end
 end
 
+-- Weitere Quellen ohne Chat: Name samt Rang/Titel aus dem Spiel (UnitPVPName) und die Überschrift des
+-- Charakterfensters. Der Titel wird herausgenommen; übrig bleibt "Vorname Nachname" (zwei Wörter ab dem Vornamen).
+local function NameFromText(text)
+    if type(text) ~= "string" or issecret(text) then return end
+    local first = UnitName("player")
+    if not first or issecret(first) then return end
+    local start = text:find(first, 1, true)
+    if not start then return end
+    local surname = text:sub(start + #first):match("^ ([^%s%-<,]+)")
+    if not surname then return end
+    -- kein Titelwort erwischen (z. B. "Hexeron der Entdecker")
+    local title = Me().title
+    if title and title:find(surname, 1, true) then return end
+    Me().fullName = first .. " " .. surname
+    if ns.RefreshWindow then ns.RefreshWindow() end
+end
+
+function ns.TryNameFromTexts()
+    if Me().fullName then return end
+    if UnitPVPName then NameFromText(UnitPVPName("player")) end
+    if Me().fullName then return end
+    local frame = _G.CharacterFrame
+    local titleText = _G.CharacterFrameTitleText
+        or (frame and frame.TitleContainer and frame.TitleContainer.TitleText)
+    if titleText and titleText.GetText then NameFromText(titleText:GetText()) end
+end
+
+-- Charakterfenster geöffnet: dessen Überschrift lesen (nur lesen, nichts am Fenster ändern)
+local nameWatcher = CreateFrame("Frame")
+nameWatcher:RegisterEvent("PLAYER_LOGIN")
+nameWatcher:SetScript("OnEvent", function(self)
+    self:UnregisterAllEvents()
+    C_Timer.After(3, function() pcall(ns.TryNameFromTexts) end)
+    local frame = _G.CharacterFrame
+    if frame and frame.HookScript then
+        frame:HookScript("OnShow", function() C_Timer.After(0.2, function() pcall(ns.TryNameFromTexts) end) end)
+    end
+end)
+
 -- Titel (z. B. PvP-Rang oder Erfolgstitel), ohne den Platzhalter für den Namen
 local function ReadTitle(c)
     local ok, title = pcall(function()
