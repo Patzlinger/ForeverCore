@@ -41,6 +41,27 @@ do
         return s
     end
     local function Gap() col.y = col.y - 12 end
+    -- Auswahl: Beschriftung links, Knopf mit Pfeil rechts, Liste wie im Hub
+    local function Choice(label, key, listFn)
+        local fs = UI.Text(options, "label", label)
+        fs:SetPoint("TOPLEFT", col.x, col.y - 4)
+        local b = UI.Button(options, "", 170, nil)
+        b:SetPoint("TOPLEFT", col.x + 120, col.y)
+        if UI.AddArrow then UI.AddArrow(b) end
+        local function LabelOf(v)
+            for _, e in ipairs(listFn()) do if e.key == v then return e.label end end
+            return tostring(v)
+        end
+        b:SetScript("OnClick", function(self)
+            UI.ChoiceMenu(self, listFn(), function() return ns.GetDB()[key] end, function(v)
+                ns.GetDB()[key] = v
+                self:SetText(LabelOf(v))
+                ns.ApplyAll()
+            end)
+        end)
+        controls[#controls + 1] = { refresh = function() b:SetText(LabelOf(ns.GetDB()[key])) end }
+        col.y = col.y - 28
+    end
 
     -- linke Spalte
     Column(18)
@@ -85,7 +106,13 @@ do
     -- rechte Spalte
     Column(374)
     Header(T("Aussehen", "Look"))
-    Check(T("Forever-Look (flach, dunkel) – aus: Klassisch", "Forever look (flat, dark) – off: classic"), "skin")
+    Check(T("Wie ForeverFrames (Textur und Schrift)", "Like ForeverFrames (texture and font)"), "syncLook")
+    Choice(T("Leistentextur", "Bar texture"), "texture", function() return ns.TextureChoices() end)
+    Choice(T("Schrift", "Font"), "font", function() return ns.FontChoices() end)
+    Choice(T("Schriftrand", "Font edge"), "fontOutline", function() return ns.OUTLINES end)
+    Slider(T("Schriftgröße", "Font size"), "fontSizeAdd", -2, 4, 1, nil, true,
+        function(v) return (v > 0 and "+" or "") .. v end)
+    Check(T("Forever-Rahmen (dunkler Grund, feiner Rand)", "Forever frame (dark background, fine border)"), "skin")
     Check(T("Stufe neben dem Namen", "Level next to the name"), "showLevel")
     Check(T("Andere dämpfen, solange ein Ziel gewählt ist", "Dim the others while you have a target"), "dimOthers")
     Check(T("Plaketten stapeln statt überlappen", "Stack plates instead of overlapping"), "stack", false,
@@ -99,14 +126,14 @@ do
     Check(T("Schwächungen oben", "Debuffs on top"), "debuffs")
     Check(T("nur meine (DoTs)", "only mine (DoTs)"), "debuffsMine", true)
     Slider(T("Größe", "Size"), "debuffSize", 12, 32, 1, " px", true)
-    Slider(T("Anzahl", "Count"), "debuffMax", 1, 10, 1, nil, true)
+
     Check(T("Kontrolleffekte (CC) groß an der Seite", "Crowd control (CC) large at the side"), "cc")
     Check(T("links statt rechts", "left instead of right"), "ccLeft", true)
     Slider(T("Größe", "Size"), "ccSize", 16, 40, 1, " px", true)
     Check(T("Stärkungen anzeigen", "Show buffs"), "buffs")
     Check(T("nur entfernbare (Purge)", "only purgeable"), "buffsPurgeable", true)
     Slider(T("Größe", "Size"), "buffSize", 10, 28, 1, " px", true)
-    Slider(T("Anzahl", "Count"), "buffMax", 1, 8, 1, nil, true)
+
 
     UI.Hint(options, 18, -764, 680, T(
         "Prototyp – noch nicht im Release. Gegner bekommen eigene Plaketten; Blizzards Plakette bleibt unsichtbar "
@@ -121,6 +148,7 @@ do
         for _, c in ipairs(controls) do
             if c.cb then c.cb:SetChecked(d[c.key] and true or false) end
             if c.slider then c.slider:Load(d[c.key]) end
+            if c.refresh then c.refresh() end
         end
     end)
 

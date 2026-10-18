@@ -19,7 +19,12 @@ local FONT = STANDARD_TEXT_FONT
 -- Einstellungen
 ---------------------------------------------------------------------------
 ns.DEFAULTS = {
-    skin = true,              -- Look "Forever" (flach, dunkel); aus = "Klassisch"
+    skin = true,              -- Forever-Rahmen: dunkler Grund, feiner Rand, Glanzkante
+    syncLook = true,          -- Textur und Schrift wie ForeverFrames (falls installiert)
+    texture = "raid",         -- Leistentextur (Liste wie ForeverFrames/ForeverUnits)
+    font = "friz",
+    fontOutline = "",         -- "" = weicher Schatten, sonst Umriss
+    fontSizeAdd = 0,          -- Schrift größer/kleiner
     width = 0,                -- Breite der Plakette, 0 = wie Blizzards Plakette (passt zur Klickfläche)
     barHeight = 12,           -- Höhe der Lebensleiste
     targetScale = 110,        -- Ziel etwas größer (Prozent)
@@ -232,16 +237,80 @@ local function HealthBar(frame)
     return frame.healthBar or (frame.HealthBarsContainer and frame.HealthBarsContainer.healthBar)
 end
 
-local function PlateFont()
-    local fo = _G.SystemFont_NamePlate
-    local path = fo and fo.GetFont and fo:GetFont()
-    return path or FONT
+ns.TEXTURES = {
+    { key = "raid",     label = T("Raid (Blizzard)", "Raid (Blizzard)"), path = "Interface\\RaidFrame\\Raid-Bar-Hp-Fill" },
+    { key = "flat",     label = T("Flach", "Flat"),       path = "Interface\\Buttons\\WHITE8x8" },
+    { key = "blizzard", label = "Blizzard",               path = "Interface\\TargetingFrame\\UI-StatusBar" },
+    { key = "gradient", label = T("Verlauf", "Gradient"), path = "Interface\\Buttons\\GreyscaleRamp64" },
+}
+ns.FONTS = {
+    { key = "friz",   label = "Friz Quadrata", path = "Fonts\\FRIZQT__.TTF" },
+    { key = "arialn", label = "Arial Narrow",  path = "Fonts\\ARIALN.TTF" },
+    { key = "2002",   label = "2002",          path = "Fonts\\2002.TTF" },
+    { key = "2002b",  label = T("2002 Fett", "2002 Bold"), path = "Fonts\\2002B.TTF" },
+}
+ns.OUTLINES = {
+    { key = "",        label = T("Weicher Schatten", "Soft shadow") },
+    { key = "OUTLINE", label = T("Umriss", "Outline") },
+}
+
+local function SharedMedia() return LibStub and LibStub("LibSharedMedia-3.0", true) end
+local function WithSharedMedia(list, mediaType)
+    local out, seen = {}, {}
+    for _, e in ipairs(list) do out[#out + 1] = e seen[e.label] = true end
+    local lsm = SharedMedia()
+    if lsm then
+        for _, name in ipairs(lsm:List(mediaType)) do
+            if not seen[name] then out[#out + 1] = { key = "lsm:" .. name, label = name } end
+        end
+    end
+    return out
+end
+function ns.TextureChoices() return WithSharedMedia(ns.TEXTURES, "statusbar") end
+function ns.FontChoices() return WithSharedMedia(ns.FONTS, "font") end
+local function MediaPath(key, list, mediaType)
+    if type(key) == "string" and key:sub(1, 4) == "lsm:" then
+        local lsm = SharedMedia()
+        local path = lsm and lsm:Fetch(mediaType, key:sub(5), true)
+        if path then return path end
+    end
+    for _, e in ipairs(list) do
+        if e.key == key then return e.path end
+    end
+    return list[1].path
+end
+
+-- aktuelle Optik: von ForeverFrames (abgestimmt) oder die eigene
+function ns.HasForeverFrames() return type(_G.ForeverFramesLook) == "function" end
+local function Look()
+    local d = db or GetDB()
+    if d.syncLook and ns.HasForeverFrames() then
+        local ok, look = pcall(_G.ForeverFramesLook)
+        if ok and type(look) == "table" and look.texture and look.font then
+            return look.texture, look.font, look.outline or ""
+        end
+    end
+    return MediaPath(d.texture, ns.TEXTURES, "statusbar"), MediaPath(d.font, ns.FONTS, "font"), d.fontOutline or ""
+end
+
+local texts = setmetatable({}, { __mode = "k" }) -- alle Texte: Grundgröße und feste Umriss-Wahl
+local function SetLookFont(fs, size, flags)
+    local _, path, outline = Look()
+    local fl = flags or outline
+    if fl == "NONE" then fl = "" end
+    size = size + ((db and db.fontSizeAdd) or 0)
+    if not pcall(fs.SetFont, fs, path, size, fl) then fs:SetFont(FONT, size, fl) end
+    fs:SetShadowColor(0, 0, 0, 1)
+    if fl == "" then fs:SetShadowOffset(1, -1) else fs:SetShadowOffset(0, 0) end
 end
 
 local function Font(fs, size, flags)
-    fs:SetFont(PlateFont(), size, flags or "")
-    fs:SetShadowColor(0, 0, 0, 1)
-    fs:SetShadowOffset(1, -1)
+    texts[fs] = { size, flags }
+    SetLookFont(fs, size, flags)
+end
+
+local function ApplyFonts()
+    for fs, t in pairs(texts) do SetLookFont(fs, t[1], t[2]) end
 end
 
 -- Texte über eine Vorlage mit weicher Skalierung (Blizzard skaliert Plaketten mit der Entfernung)
@@ -366,6 +435,9 @@ local function Setup(plate, frame)
     -- unsere Plakette: Kind des Plaketten-Rahmens (nicht von Blizzards UnitFrame, das bei Gegnern durchsichtig ist),
     -- mittig auf Blizzards Lebensleiste – dort, wo man klickt
     local root = CreateFrame("Frame", nil, plate)
+    -- Blizzard verkleinert Plaketten mit der Entfernung; kleine Schrift wird dabei verwaschen hochgerechnet.
+    -- Unsere Plakette bleibt deshalb immer in der Größe der Oberfläche (scharf), nur die Lage folgt Blizzard.
+    if root.SetIgnoreParentScale then root:SetIgnoreParentScale(true) end
     root:SetPoint("CENTER", hb, "CENTER", 0, 0)
     root:SetFrameLevel(frame:GetFrameLevel() + 10)
     root:Hide()
@@ -1147,12 +1219,20 @@ end
 ---------------------------------------------------------------------------
 -- Looks: "Forever" (flach, dunkel, feiner Rand) und "Klassisch" (Blizzard-Leiste mit Glanz); Ziel mit Goldrand
 ---------------------------------------------------------------------------
-local CLASSIC_BAR = "Interface\\TargetingFrame\\UI-StatusBar"
+-- ignoriert unsere Plakette Blizzards Skalierung, braucht sie selbst die Oberflächen-Skalierung
+local fp_ignoreScale = CreateFrame("Frame").SetIgnoreParentScale ~= nil
+
+local function UIScale()
+    if not fp_ignoreScale then return 1 end
+    local s = UIParent:GetEffectiveScale()
+    return (not IsSecret(s) and s and s > 0) and s or 1
+end
 
 local function ApplyLook(fp)
     local forever = db.skin
-    fp.bar:SetStatusBarTexture(forever and WHITE or CLASSIC_BAR)
-    fp.cast:SetStatusBarTexture(forever and WHITE or CLASSIC_BAR)
+    local tex = Look()
+    fp.bar:SetStatusBarTexture(tex)
+    fp.cast:SetStatusBarTexture(tex)
     if forever then
         fp.bg:SetColorTexture(C.background[1], C.background[2], C.background[3], 0.9)
     else
@@ -1160,13 +1240,13 @@ local function ApplyLook(fp)
     end
     fp.gloss:SetShown(forever)
     local e = fp.isTarget and C.accent or { 0, 0, 0 }
-    SetEdgesColor(fp.edges, e[1], e[2], e[3], 1)
+    SetEdgesColor(fp.edges, e[1], e[2], e[3], (forever or fp.isTarget) and 1 or 0.8)
     -- Ziel etwas größer, die anderen leicht gedämpft (solange ein Ziel gewählt ist)
-    fp.root:SetScale(fp.isTarget and (db.targetScale / 100) or 1)
+    fp.root:SetScale(UIScale() * (fp.isTarget and (db.targetScale / 100) or 1))
     local dim = db.dimOthers and not fp.isTarget and Yes(UnitExists("target"))
     fp.root:SetAlpha(dim and 0.7 or 1)
     -- Status-Textur kann neu sein: Finishing-Farbe und Glanz wieder daran
-    local tex = fp.bar:GetStatusBarTexture()
+    tex = fp.bar:GetStatusBarTexture()
     fp.exec:ClearAllPoints()
     fp.exec:SetAllPoints(tex)
     fp.gloss:ClearAllPoints()
@@ -1262,6 +1342,7 @@ end
 
 function ns.ApplyAll()
     GetDB()
+    ApplyFonts()
     for _, fp in pairs(plates) do Refresh(fp) end
 end
 
