@@ -360,6 +360,13 @@ local function BuildCast(fp)
     gloss:SetPoint("TOPRIGHT", cb:GetStatusBarTexture(), "TOPRIGHT")
     gloss:SetHeight(3)
     gloss:SetColorTexture(1, 1, 1, 0.18)
+    Edges(cb, "OVERLAY", cb, 0, 0, 0, 1, 1)
+    local spark = cb:CreateTexture(nil, "OVERLAY", nil, 2)
+    spark:SetWidth(2)
+    spark:SetPoint("TOP", cb:GetStatusBarTexture(), "TOPRIGHT", 0, 0)
+    spark:SetPoint("BOTTOM", cb:GetStatusBarTexture(), "BOTTOMRIGHT", 0, 0)
+    spark:SetColorTexture(1, 1, 0.9, 0.9)
+    cb.spark = spark
     -- nicht unterbrechbar: kleines Schild links vor der Leiste
     cb.shield = cb:CreateTexture(nil, "OVERLAY")
     cb.shield:SetAtlas("nameplates-InterruptShield")
@@ -376,14 +383,19 @@ local function BuildCast(fp)
     local tag = CreateFrame("Frame", nil, fp.overlay)
     tag:Hide()
     tag.bg = tag:CreateTexture(nil, "BACKGROUND")
-    tag.bg:SetPoint("TOPLEFT", -1, 1)
-    tag.bg:SetPoint("BOTTOMRIGHT", 1, -1)
-    tag.bg:SetColorTexture(0, 0, 0, 0.75)
+    tag.bg:SetAllPoints()
+    tag.bg:SetColorTexture(C.header[1], C.header[2], C.header[3], 0.95)
+    tag.edges = Edges(tag, "BORDER", tag, C.border[1], C.border[2], C.border[3], 1, 1)
+    tag.arrow = NewText(tag)
+    Font(tag.arrow, 8)
+    tag.arrow:SetPoint("LEFT", 2, 0)
+    tag.arrow:SetText("»")
+    tag.arrow:SetTextColor(C.accent[1], C.accent[2], C.accent[3])
     tag.text = NewText(tag)
     Font(tag.text, 8)
-    tag.text:SetPoint("LEFT", 2, 0)
+    tag.text:SetPoint("LEFT", tag.arrow, "RIGHT", 2, 0)
     tag.text:SetPoint("RIGHT", -2, 0)
-    tag.text:SetJustifyH("CENTER")
+    tag.text:SetJustifyH("LEFT")
     tag.text:SetWordWrap(false)
     cb.tag = tag
     cb:HookScript("OnHide", function() tag:Hide() end)
@@ -402,7 +414,7 @@ local function LayoutCastRow(fp)
     cb:ClearAllPoints()
     cb:SetPoint("TOPLEFT", fp.overlay, "BOTTOMLEFT", 0, -2)
     if tag:IsShown() then
-        cb:SetPoint("BOTTOMRIGHT", tag, "BOTTOMLEFT", -2, 0)
+        cb:SetPoint("BOTTOMRIGHT", tag, "BOTTOMLEFT", -4, 0)
     else
         cb:SetPoint("TOPRIGHT", fp.overlay, "BOTTOMRIGHT", 0, -2)
         cb:SetHeight(h)
@@ -963,7 +975,11 @@ local function UpdateCastTarget(fp)
     if col then tag.text:SetTextColor(col.r, col.g, col.b) else tag.text:SetTextColor(1, 1, 1) end
     -- auf mich: Plakette rot hinterlegt
     local me = not IsSecret(name) and name == UnitName("player")
-    if me then tag.bg:SetColorTexture(0.6, 0.08, 0.08, 0.9) else tag.bg:SetColorTexture(0, 0, 0, 0.75) end
+    if me then
+        tag.bg:SetColorTexture(0.5, 0.1, 0.1, 0.95)
+    else
+        tag.bg:SetColorTexture(C.header[1], C.header[2], C.header[3], 0.95)
+    end
     tag:Show()
     LayoutCastRow(fp)
 end
@@ -1005,6 +1021,7 @@ local function UpdateCast(fp)
     end
     cb.text:SetText(name)
     cb.text:SetTextColor(1, 1, 1)
+    cb.spark:Show()
     fp.castNotInt = notInt
     fp.casting = true
     CastColor(fp)
@@ -1027,6 +1044,7 @@ local function EndCast(fp, interrupted, by)
         cb:SetValue(1)
         cb:GetStatusBarTexture():SetVertexColor(COL.interrupted[1], COL.interrupted[2], COL.interrupted[3])
         cb.shield:SetAlpha(0)
+        cb.spark:Hide()
         HidePlaque(fp)
         cb.text:SetText(T("Unterbrochen", "Interrupted"))
         -- wer unterbrochen hat (GUID aus dem Ereignis): in der Ziel-Plakette, in Klassenfarbe
@@ -1037,7 +1055,7 @@ local function EndCast(fp, interrupted, by)
                 tag.text:SetText(name)
                 local col = Yes(class) and C_ClassColor and C_ClassColor.GetClassColor(class)
                 if col then tag.text:SetTextColor(col.r, col.g, col.b) else tag.text:SetTextColor(1, 1, 1) end
-                tag.bg:SetColorTexture(0, 0, 0, 0.75)
+                tag.bg:SetColorTexture(C.header[1], C.header[2], C.header[3], 0.95)
                 tag:Show()
                 LayoutCastRow(fp)
             end
@@ -1063,6 +1081,10 @@ end
 local function ComboCount()
     local pt = Enum and Enum.PowerType and Enum.PowerType.ComboPoints or 4
     local cp, max = UnitPower("player", pt), UnitPowerMax("player", pt)
+    if GetComboPoints then
+        local ok, onTarget = pcall(GetComboPoints, "player", "target")
+        if ok and not IsSecret(onTarget) then cp = onTarget end
+    end
     if IsSecret(cp, max) or not max or max <= 0 then return 0, 0 end
     return cp or 0, math.min(max, 7)
 end
@@ -1472,7 +1494,7 @@ H.UI_ERROR_MESSAGE = function(_, msg)
 end
 -- ein Zauber hat geklappt: Sicht ist wieder da
 H.UNIT_SPELLCAST_SUCCEEDED = function(unit) if unit == "player" then ClearLos() end end
-H.UNIT_POWER_UPDATE = function(unit, powerType)
+H.UNIT_POWER_FREQUENT = function(unit, powerType)
     if unit ~= "player" or IsSecret(powerType) or powerType ~= "COMBO_POINTS" then return end
     for _, fp in pairs(plates) do if fp.isTarget then UpdateCombo(fp) end end
 end
