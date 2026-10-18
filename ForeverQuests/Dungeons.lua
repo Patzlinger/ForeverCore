@@ -295,14 +295,15 @@ local function IsCompleted(quest)
     return quest.id ~= nil and C_QuestLog.IsQuestFlaggedCompleted(quest.id)
 end
 
--- Reiter "Mein Levelbereich": Dungeon passt, wenn das eigene Level im Levelbereich liegt
--- (ein paar Level vorher zählt schon mit)
+-- Reiter "Mein Level": Dungeon passt, wenn das eigene Level im Levelbereich liegt; Dungeons, deren Mindestlevel
+-- bis zu N Level über dem eigenen liegt, zählen mit (N = Regler unten im Fenster, 0–10, Standard 2)
 local function IsDungeonInMyRange(dungeon)
     local minLevel, maxLevel = (dungeon.levels or ""):match("(%d+)%D+(%d+)")
     minLevel, maxLevel = tonumber(minLevel), tonumber(maxLevel)
     if not minLevel then return true end
     local level = UnitLevel("player")
-    return level >= minLevel - LEVEL_EARLY and level <= maxLevel
+    local above = ns.db and tonumber(ns.db.dungeonLevelAbove) or LEVEL_EARLY
+    return level >= minLevel - above and level <= maxLevel
 end
 
 -- Filter ohne "Abgeschlossene ausblenden" (Fraktion). Der Reiter "Mein Level" filtert nur die Dungeons der Liste,
@@ -2182,6 +2183,8 @@ local function CreateWindow()
         return levelTabActive and "level" or "all"
     end
     local function UpdateTabs()
+        -- Level-Regler unten nur im Reiter "Mein Level"
+        if window.levelFilter then window.levelFilter:SetShown(levelTabActive) end
         for _, tab in ipairs(tabs) do
             local active = tab.key == CurrentTab()
             if active then
@@ -2355,6 +2358,32 @@ local function CreateWindow()
         RefreshList()
         RefreshDetail()
     end)
+
+    -- Nur im Reiter "Mein Level": Regler, wie viele Level über dem eigenen ein Dungeon beginnen darf (0–10)
+    local levelFilter = CreateFrame("Frame", nil, window)
+    levelFilter:SetSize(300, 20)
+    levelFilter:SetPoint("LEFT", completedCheck.label, "RIGHT", 24, 0)
+    levelFilter.text = levelFilter:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    levelFilter.text:SetPoint("LEFT")
+    local levelSlider = ns.Style.CreateSlider(levelFilter, 120)
+    levelSlider:SetMinMaxValues(0, 10)
+    levelSlider:SetPoint("LEFT", levelFilter.text, "RIGHT", 10, 0)
+    local function ShowLevelValue(value)
+        levelFilter.text:SetText(ns.L("LEVEL_ABOVE", value))
+    end
+    levelSlider:SetValue(tonumber(ns.db.dungeonLevelAbove) or LEVEL_EARLY)
+    ShowLevelValue(tonumber(ns.db.dungeonLevelAbove) or LEVEL_EARLY)
+    levelSlider:SetScript("OnValueChanged", function(_, value)
+        value = math.floor(value + 0.5)
+        ShowLevelValue(value)
+        if ns.db.dungeonLevelAbove == value then return end
+        ns.db.dungeonLevelAbove = value
+        listScroll:SetVerticalScroll(0)
+        RefreshList()
+        RefreshDetail()
+    end)
+    levelFilter:SetShown(levelTabActive)
+    window.levelFilter = levelFilter
 
     -- Hinweis rechts in der Fußleiste
     local linkHint = window:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
