@@ -27,6 +27,7 @@ ns.DEFAULTS = {
     fontSizeAdd = 0,          -- Schrift größer/kleiner
     width = 0,                -- Breite der Plakette, 0 = wie Blizzards Plakette (passt zur Klickfläche)
     barHeight = 12,           -- Höhe der Lebensleiste
+    offsetY = 14,             -- Plakette höher über dem Gegner (Modell bleibt sichtbar)
     targetScale = 110,        -- Ziel etwas größer (Prozent)
     dimOthers = true,         -- übrige Plaketten leicht gedämpft, solange ein Ziel gewählt ist
     showLevel = true,         -- Stufe neben dem Namen
@@ -1286,6 +1287,9 @@ local function Resize(fp)
         if IsSecret(w) or not w or w < 30 then w = 110 end
     end
     fp.root:SetSize(w, db.barHeight)
+    -- höher setzen (Blizzards Klickfläche bleibt an ihrem Platz, sie ist ohnehin größer als die Leiste)
+    fp.root:ClearAllPoints()
+    fp.root:SetPoint("CENTER", fp.hb, "CENTER", 0, db.offsetY or 0)
 end
 
 ---------------------------------------------------------------------------
