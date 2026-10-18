@@ -169,6 +169,23 @@ function ns.UpdateSlot(button, bag, slot)
     -- Questgegenstand: gelber, dickerer Rand
     local quest = info and C_Container.GetContainerItemQuestInfo and C_Container.GetContainerItemQuestInfo(bag, slot)
     button.fbagsQuest = quest and (quest.isQuestItem or quest.questID ~= nil) and true or false
+    -- Startet der Gegenstand eine Quest (gehört zu einer Quest, die man noch nicht hat): Blizzards gelbes
+    -- Ausrufezeichen über dem Symbol, wie in Blizzards Taschen
+    local starter = quest and quest.questID ~= nil and not quest.isActive
+    local bang = button.IconQuestTexture or button.fbagsBang
+    if not bang and starter then
+        bang = button:CreateTexture(nil, "OVERLAY", nil, 2)
+        bang:SetAllPoints()
+        button.fbagsBang = bang
+    end
+    if bang then
+        if starter then
+            bang:SetTexture(_G.TEXTURE_ITEM_QUEST_BANG or "Interface\\ContainerFrame\\UI-Icon-QuestBang")
+            bang:Show()
+        else
+            bang:Hide()
+        end
+    end
     ApplyEdge(button, button:IsMouseOver())
     button:Show()
 end
