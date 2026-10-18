@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 46
+local VERSION = 47
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -3122,31 +3122,31 @@ function hub.OpenSettings()
     end
 end
 
--- Knopf "Forever Hub" im Spielmenue (Escape), direkt unter "Makros". Blizzard baut die Knoepfe bei jedem Oeffnen
--- neu auf (GameMenuFrame:AddButton): wir haengen uns hinter "Makros"; fehlt der, kommt der Knopf ans Ende.
+-- Knopf "Forever Hub" am Spielmenue (Escape): ein EIGENER Knopf direkt unter dem Menue – nicht in Blizzards
+-- Knopfliste. (Frueher per GameMenuFrame:AddButton eingehaengt: das machte die Knoepfe des Menues "von einem Addon
+-- beruehrt", und Blizzard blockierte danach geschuetzte Aktionen daraus – ADDON_ACTION_FORBIDDEN "callback()".)
 do
     local menu = _G.GameMenuFrame
-    if menu and type(menu.AddButton) == "function" and type(menu.InitButtons) == "function" then
-        local added = false
+    if menu and menu.HookScript then
+        local b
         local function OpenHub()
             if _G.ForeverHub ~= hub then return end
             if PlaySound and SOUNDKIT then PlaySound(SOUNDKIT.IG_MAINMENU_OPTION) end
             HideUIPanel(menu)
             hub.ToggleWindow()
         end
-        local function AddHubButton(self)
-            added = true
-            self:AddButton("Forever Hub", OpenHub)
-        end
-        hooksecurefunc(menu, "AddButton", function(self, text)
-            if not added and text == _G.MACROS and _G.ForeverHub == hub then AddHubButton(self) end
-        end)
-        hooksecurefunc(menu, "InitButtons", function(self)
-            if not added and _G.ForeverHub == hub and (not self.AddSection or pcall(self.AddSection, self)) then
-                AddHubButton(self)
+        menu:HookScript("OnShow", function()
+            if _G.ForeverHub ~= hub then return end
+            if not b then
+                b = UI.Button(UIParent, "Forever Hub", 150, OpenHub)
+                b:SetFrameStrata(menu:GetFrameStrata())
+                b:SetFrameLevel(menu:GetFrameLevel() + 5)
             end
-            added = false -- beim naechsten Oeffnen wieder neu einhaengen
+            b:ClearAllPoints()
+            b:SetPoint("TOP", menu, "BOTTOM", 0, -6)
+            b:Show()
         end)
+        menu:HookScript("OnHide", function() if b then b:Hide() end end)
     end
 end
 

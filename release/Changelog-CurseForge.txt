@@ -31,6 +31,7 @@
 - ForeverQuests, quest together: the "Together" box now shows the quest just like the rest of the tracker (level color, quest type, ready to turn in, reward chest, quest item, tooltip on hover) plus its quest ID. All shared quests now sit together in one "Together" window, separated by a fine line; right-click a quest there to stop doing it together.
 
 ### Fixed
+- The "Forever Hub" button at the game menu (Escape) no longer causes "blocked action" errors: it is now its own button right below the menu instead of being added to Blizzard's list of buttons.
 - ForeverBars: the experience and reputation bars are now exactly as long as action bar 1 (they were a bit longer). The action bars are 5 % bigger by default so everything lines up at a readable size; bars you scaled yourself stay as they are. The reputation and experience bars now sit right below action bar 1 (as if snapped to it) and keep a little more room to the bottom of the screen.
 - ForeverMinimap: map icons of other addons (e.g. Questie's mailbox and flight master icons) no longer end up in the minimap button strip.
 - ForeverQuests with Questie: Blizzard's own quest markers no longer show up on the map next to Questie's (they are turned off while "Hide Blizzard quest tracker" is on, just like Questie's own icon theme does).
