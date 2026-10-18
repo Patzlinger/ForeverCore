@@ -453,6 +453,27 @@ local function SearchText()
     return text ~= "" and text or nil
 end
 
+-- Fußzeile: abgabebereite Quests im Log (auch nicht verfolgte) und die Erfahrung, die das Abgeben bringt
+local readyFooter
+local function UpdateReadyFooter()
+    if not readyFooter then return end
+    local count, xp = 0, 0
+    for i = 1, C_QuestLog.GetNumQuestLogEntries() do
+        local info = C_QuestLog.GetInfo(i)
+        if info and not info.isHeader and info.questID and info.questID > 0 and C_QuestLog.IsComplete(info.questID) then
+            count = count + 1
+            xp = xp + (GetQuestLogRewardXP and GetQuestLogRewardXP(info.questID) or 0)
+        end
+    end
+    if count == 0 then
+        readyFooter.text:SetText("|cff8a8a8a" .. ns.L("LOG_READY_NONE") .. "|r")
+    else
+        local xpText = xp > 0 and ("  ·  |cff9999ff+" .. (BreakUpLargeNumbers and BreakUpLargeNumbers(xp) or xp) .. " "
+            .. ns.L("LOG_XP") .. "|r") or ""
+        readyFooter.text:SetText(ns.L("LOG_READY", count) .. xpText)
+    end
+end
+
 local function UpdateCount()
     local _, numQuests = C_QuestLog.GetNumQuestLogEntries()
     numQuests = numQuests or 0
@@ -487,6 +508,7 @@ function ns.UpdateQuestLog()
         end)
     filterButton:SetText(filtered and ("|cff00ff00" .. ns.L("BTN_FILTER") .. "|r") or ns.L("BTN_FILTER"))
     UpdateCount()
+    UpdateReadyFooter()
     local maxScroll = math.max(0, height - scrollFrame:GetHeight())
     if scrollFrame:GetVerticalScroll() > maxScroll then scrollFrame:SetVerticalScroll(maxScroll) end
 end
@@ -674,9 +696,27 @@ local function CreatePanel(area)
     end)
     searchBox:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
 
+    -- Fußzeile: abgabebereite Quests und ihre Erfahrung
+    readyFooter = CreateFrame("Frame", nil, panel, "BackdropTemplate")
+    readyFooter:SetPoint("BOTTOMLEFT", 1, 1)
+    readyFooter:SetPoint("BOTTOMRIGHT", -1, 1)
+    readyFooter:SetHeight(20)
+    readyFooter:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8" })
+    readyFooter:SetBackdropColor(unpack(color.header))
+    local footerLine = readyFooter:CreateTexture(nil, "ARTWORK")
+    footerLine:SetPoint("TOPLEFT")
+    footerLine:SetPoint("TOPRIGHT")
+    footerLine:SetHeight(1)
+    footerLine:SetColorTexture(color.accent[1], color.accent[2], color.accent[3], 0.35)
+    readyFooter.text = readyFooter:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    readyFooter.text:SetPoint("LEFT", 8, 0)
+    readyFooter.text:SetPoint("RIGHT", -8, 0)
+    readyFooter.text:SetJustifyH("LEFT")
+    readyFooter.text:SetWordWrap(false)
+
     scrollFrame, content = CreateScroll(panel)
     scrollFrame:SetPoint("TOPLEFT", 6, -(HEADER_HEIGHT + 6))
-    scrollFrame:SetPoint("BOTTOMRIGHT", -6, 6)
+    scrollFrame:SetPoint("BOTTOMRIGHT", readyFooter, "TOPRIGHT", -5, 4)
 
     logView = ns.QuestList.NewView(content, "ForeverQuestsLog")
     logView.onHover = HighlightOnMap

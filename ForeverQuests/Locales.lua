@@ -16,7 +16,8 @@ local STRINGS = {
 
         -- Tracker
         TRACKER_TITLE = "Quests",
-        TRACKER_READY_XP = "Abgabe: +%s EP",
+        LOG_READY = "|cff00ff00Abgabebereit:|r %d Quest(s)", LOG_READY_NONE = "Keine Quest abgabebereit",
+        LOG_XP = "EP",
         TAG_CLASS = "[Klasse]", TAG_REPUTATION = "[Ruf]", TAG_PROFESSION = "[Beruf]",
         PINNED = "Angeheftet",
         OTHER = "Sonstige",
@@ -233,7 +234,8 @@ local STRINGS = {
         FONT_STANDARD = "Default",
 
         TRACKER_TITLE = "Quests",
-        TRACKER_READY_XP = "Turn in: +%s XP",
+        LOG_READY = "|cff00ff00Ready to turn in:|r %d quest(s)", LOG_READY_NONE = "No quest ready to turn in",
+        LOG_XP = "XP",
         TAG_CLASS = "[Class]", TAG_REPUTATION = "[Rep]", TAG_PROFESSION = "[Profession]",
         PINNED = "Pinned",
         OTHER = "Other",

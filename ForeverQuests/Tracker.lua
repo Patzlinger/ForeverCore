@@ -1716,21 +1716,7 @@ function ns.UpdateTracker()
             return ns.L("EMPTY_LOG")
         end)
 
-    -- Erfahrung aller abgabebereiten Quests im Log (auch nicht verfolgter), z. B. "+3.450 EP"
-    local readyXP = 0
-    if GetQuestLogRewardXP then
-        for i = 1, C_QuestLog.GetNumQuestLogEntries() do
-            local info = C_QuestLog.GetInfo(i)
-            if info and not info.isHeader and info.questID and info.questID > 0 and C_QuestLog.IsComplete(info.questID) then
-                readyXP = readyXP + (GetQuestLogRewardXP(info.questID) or 0)
-            end
-        end
-    end
-    local xpText = ""
-    if readyXP > 0 then
-        xpText = "  |cff9999ff" .. ns.L("TRACKER_READY_XP", BreakUpLargeNumbers and BreakUpLargeNumbers(readyXP) or readyXP) .. "|r"
-    end
-    title:SetText(ns.L("TRACKER_TITLE") .. "  |cff8a8a8a" .. count .. "|r" .. xpText)
+    title:SetText(ns.L("TRACKER_TITLE") .. "  |cff8a8a8a" .. count .. "|r")
     -- Titelleiste folgt der eingestellten Hintergrund-Transparenz
     local headerColor = ns.Style.COLOR.header
     headerBar:SetBackdropColor(headerColor[1], headerColor[2], headerColor[3], math.max(alpha, 0.15))
