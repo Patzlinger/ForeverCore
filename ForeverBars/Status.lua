@@ -23,13 +23,12 @@ local INSET = 2                                  -- 1 px Rand + 1 px dunkle Fuge
 local EDGE = { 0.22, 0.22, 0.26, 1 }
 local TOP_LINE = { 1, 0.82, 0, 0.55 }
 local TEXT_COLOR = { 1, 1, 0.98 }
--- Füllfarben: gleiche Farbfamilie wie Blizzard, aber gedeckter; Unterschied über Helligkeit und Deckkraft
--- statt über knallige Farben. Jede Füllung bekommt einen leichten Glanz (oben heller, unten dunkler).
-local XP_COLOR = { 0.50, 0.36, 0.74, 1.00 }      -- aktuelle Erfahrung ohne Erholung: weiches Violett
--- Erholung wie gewohnt in Blau: ist man erholt, wird die Füllung blau, der erholte Bereich dahinter hellblau
-local XP_RESTED_COLOR = { 0.22, 0.46, 0.88, 1.00 } -- aktuelle Erfahrung, solange man erholt ist
-local RESTED_COLOR = { 0.42, 0.64, 1.00, 0.62 }  -- erholter Bereich: helles Blau, gut sichtbar, leicht durchscheinend
-local QUEST_COLOR = { 0.86, 0.72, 0.34, 0.58 }   -- fertige Quests: Gold, durchscheinend
+-- Füllfarben wie im ursprünglichen ForeverXP: Erfahrung kräftig Violett, Erholung Blau, fertige Quests Gold
+-- (auf Wunsch zurück, 2026-10-18). Jede Füllung bekommt einen leichten Glanz (oben heller, unten dunkler).
+local XP_COLOR = { 0.60, 0.20, 0.90, 1.00 }      -- aktuelle Erfahrung: Violett
+local XP_RESTED_COLOR = XP_COLOR                 -- (bleibt Violett, auch wenn man erholt ist)
+local RESTED_COLOR = { 0.20, 0.50, 1.00, 0.60 }  -- erholter Bereich: Blau
+local QUEST_COLOR = { 1.00, 0.80, 0.10, 0.80 }   -- fertige Quests: Gold
 
 -- Standardhöhen (px); die Breite ist standardmäßig die der Aktionsleiste 1
 ns.STATUS_HEIGHT = { xp = 16, rep = 12 }
@@ -477,7 +476,7 @@ local function Build(key, holder)
     -- leerer Teil der Leiste etwas heller als der Rahmen, damit Striche und Kante sichtbar bleiben
     w.track = root:CreateTexture(nil, "ARTWORK")
     w.track:SetAllPoints(w.inner)
-    w.track:SetColorTexture(0.10, 0.10, 0.12, 0.9)
+    w.track:SetColorTexture(0.04, 0.04, 0.05, 0.95) -- fast schwarz wie im ursprünglichen ForeverXP
 
     if key == "xp" then
         w.rested = Layer(w, RESTED_COLOR, 1) -- Erholung
