@@ -342,11 +342,13 @@ do
         { key = "RIGHT", label = T("Spieler nebeneinander", "Players side by side") },
     }, "layout", 170)
 
-    W.Header(p, L, -312, T("Testmodus (ohne Gruppe einstellen)", "Test mode (configure without a group)"))
+    -- Abstände: zwischen dem letzten Element eines Kastens und der nächsten Überschrift mind. ~24 px, sonst
+    -- überdecken sich die Kästen (der Hub zeichnet sie bis zur nächsten Überschrift)
+    W.Header(p, L, -320, T("Testmodus (ohne Gruppe einstellen)", "Test mode (configure without a group)"))
     local prev
     for i, n in ipairs({ 5, 10, 20, 40, 0 }) do
         local b = W.Button(p, n == 0 and T("Aus", "Off") or tostring(n), 52, function() ns.SetTestMode(n) end)
-        if prev then b:SetPoint("LEFT", prev, "RIGHT", 4, 0) else b:SetPoint("TOPLEFT", L, -332) end
+        if prev then b:SetPoint("LEFT", prev, "RIGHT", 4, 0) else b:SetPoint("TOPLEFT", L, -340) end
         prev = b
     end
 
@@ -354,21 +356,21 @@ do
     W.Check(p, R, -24, T("Rahmen sperren", "Lock frames"), "locked", "mover")
     W.Check(p, R, -48, T("Auch ohne Gruppe anzeigen", "Show when solo"), "showSolo", "layout")
     W.Check(p, R, -72, T("Mich selbst in der Gruppe zeigen", "Show myself in the group"), "showPlayer", "layout")
-    W.Check(p, R, -96, T("Nach Rolle sortieren (Tank, Heiler, Schaden)", "Sort by role (tank, healer, damage)"), "sortByRole", "layout")
+    W.Check(p, R, -96, T("Nach Rolle sortieren (Tank, Heiler, DD)", "Sort by role (tank, healer, damage)"), "sortByRole", "layout")
     W.Check(p, R, -120, T("Tooltip beim Überfahren", "Tooltip on mouseover"), "tooltip")
     W.Check(p, R, -144, T("Spieler außer Reichweite ausblenden", "Fade players out of range"), "rangeFade")
     W.Slider(p, R + 4, -172, T("Sichtbarkeit außer Reichweite", "Visibility out of range"), "rangeAlpha", 0.05, 1, 0.05, nil, { mult = 100, unit = " %" })
 
-    W.Header(p, R, -220, T("Blizzard-Rahmen", "Blizzard frames"))
-    W.Check(p, R, -240, T("Blizzard-Gruppenrahmen ausblenden", "Hide Blizzard party frames"), "hideBlizzParty", "blizz")
-    W.Check(p, R, -264, T("Blizzard-Raidrahmen ausblenden", "Hide Blizzard raid frames"), "hideBlizzRaid", "blizz")
-    W.Check(p, R, -288, T("Blizzard-Raid-Manager ausblenden", "Hide Blizzard raid manager"), "hideBlizzManager", "blizz")
-    W.Hint(p, R + 4, -316, 300, T("Ausgeblendete Blizzard-Rahmen kommen erst nach /reload zurück. " ..
+    W.Header(p, R, -236, T("Blizzard-Rahmen", "Blizzard frames"))
+    W.Check(p, R, -256, T("Blizzard-Gruppenrahmen ausblenden", "Hide Blizzard party frames"), "hideBlizzParty", "blizz")
+    W.Check(p, R, -280, T("Blizzard-Raidrahmen ausblenden", "Hide Blizzard raid frames"), "hideBlizzRaid", "blizz")
+    W.Check(p, R, -304, T("Blizzard-Raid-Manager ausblenden", "Hide Blizzard raid manager"), "hideBlizzManager", "blizz")
+    W.Hint(p, R + 4, -332, 300, T("Ausgeblendete Blizzard-Rahmen kommen erst nach /reload zurück. " ..
         "Größe und Anordnung ändern sich im Kampf erst nach dem Kampf.",
         "Hidden Blizzard frames only return after /reload. Size and layout changes made in combat apply after combat."))
 
     -- Position (linke obere Ecke) per Zahl, Raster und Einrasten
-    W.Header(p, L, -376, T("Position (obere linke Ecke ab Bildschirmrand)", "Position (top left corner from screen edge)"))
+    W.Header(p, L, -392, T("Position (obere linke Ecke ab Bildschirmrand)", "Position (top left corner from screen edge)"))
     local function PosGet(i)
         return function()
             local pos = GetDB().pos
@@ -385,15 +387,15 @@ do
             ns.SetPosition(x, y)
         end)
     end
-    local posX = Register(UI.Number(p, L + 4, -400, "X", PosGet(1), PosSet(1)))
-    local posY = Register(UI.Number(p, L + 150, -400, "Y", PosGet(2), PosSet(2)))
+    local posX = Register(UI.Number(p, L + 4, -416, "X", PosGet(1), PosSet(1)))
+    local posY = Register(UI.Number(p, L + 150, -416, "Y", PosGet(2), PosSet(2)))
     function ns.OnMoved()
         posX:Load()
         posY:Load()
     end
-    W.Check(p, L, -428, T("Raster beim Ziehen und hier", "Grid while dragging and here"), "gridShow", "mover")
-    W.Check(p, L, -452, T("Einrasten (Umschalt beim Ziehen = aus)", "Snap (Shift while dragging = off)"), "snap")
-    W.Hint(p, L + 4, -480, 300, T("Raster und Einrasten wirken nur, wenn die Rahmen entsperrt sind.",
+    W.Check(p, L, -444, T("Raster beim Ziehen und hier", "Grid while dragging and here"), "gridShow", "mover")
+    W.Check(p, L, -468, T("Einrasten (Umschalt beim Ziehen = aus)", "Snap (Shift while dragging = off)"), "snap")
+    W.Hint(p, L + 4, -496, 300, T("Raster und Einrasten wirken nur, wenn die Rahmen entsperrt sind.",
         "Grid and snapping only apply while the frames are unlocked."))
 end
 
@@ -417,28 +419,28 @@ do
     W.Color(p, L + 4, -164, T("Rand / Hintergrund", "Border / background"), "borderColor", true)
     W.Slider(p, L, -190, T("Randstärke", "Border size"), "borderSize", 0, 4, 1, nil, { unit = " px" })
 
-    W.Header(p, L, -238, T("Energiebalken", "Power bar"))
-    W.KeyChoice(p, L, -260, T("Anzeigen", "Show"), "powerMode", {
+    W.Header(p, L, -256, T("Energiebalken", "Power bar"))
+    W.KeyChoice(p, L, -278, T("Anzeigen", "Show"), "powerMode", {
         { key = "all", label = T("Bei allen", "For everyone") },
         { key = "mana", label = T("Nur Mana", "Mana only") },
         { key = "none", label = T("Aus", "Off") },
     }, nil)
-    W.Slider(p, L, -290, T("Höhe", "Height"), "powerHeight", 1, 20, 1, nil, { unit = " px" })
+    W.Slider(p, L, -308, T("Höhe", "Height"), "powerHeight", 1, 20, 1, nil, { unit = " px" })
 
-    W.Header(p, L, -336, T("Begleiter (Pet)", "Pet"))
-    W.Check(p, L + 150, -333, T("anzeigen", "show"), "petShow", "layout")
-    W.KeyChoice(p, L, -360, T("Position", "Position"), "petPosition", {
+    W.Header(p, L, -370, T("Begleiter (Pet)", "Pet"))
+    W.Check(p, L + 150, -367, T("anzeigen", "show"), "petShow", "layout")
+    W.KeyChoice(p, L, -392, T("Position", "Position"), "petPosition", {
         { key = "RIGHT", label = T("Rechts neben dem Spieler", "Right of the player") },
         { key = "LEFT", label = T("Links neben dem Spieler", "Left of the player") },
         { key = "INSIDE", label = T("Im Rahmen (rechts)", "Inside the frame (right)") },
     }, "layout", 170)
-    W.Slider(p, L, -390, T("Breite", "Width"), "petWidth", 3, 30, 1, "layout", { unit = " px" })
-    W.KeyChoice(p, L, -430, T("Farbe", "Color"), "petColorMode", {
+    W.Slider(p, L, -422, T("Breite", "Width"), "petWidth", 3, 30, 1, "layout", { unit = " px" })
+    W.KeyChoice(p, L, -462, T("Farbe", "Color"), "petColorMode", {
         { key = "custom", label = T("Eigene Farbe", "Custom color") },
         { key = "owner", label = T("Klassenfarbe Besitzer", "Owner class color") },
     }, nil, 150)
-    W.Color(p, L + 270, -432, "", "petColor", false)
-    W.Check(p, L, -458, T("Umgekehrt (fehlende LP verschwinden unten)", "Reversed (missing health empties at the bottom)"), "petReverse")
+    W.Color(p, L + 270, -464, "", "petColor", false)
+    W.Check(p, L, -490, T("Umgekehrt (fehlende LP leeren sich unten)", "Reversed (missing health empties at the bottom)"), "petReverse")
 
     W.Header(p, R, -4, T("Heilung und Schilde", "Healing and shields"))
     W.Check(p, R, -24, T("Heilvorhersage (Blizzard)", "Heal prediction (Blizzard)"), "healPrediction")
@@ -460,14 +462,14 @@ do
     W.Color(p, R + 220, -211, "", "aggroColor", true)
     W.Check(p, R, -232, T("Wenig Leben: Balken orange / rot", "Low health: bar orange / red"), "healthGradient")
 
-    W.Header(p, R, -260, T("Begleiter-Beschriftung (senkrecht)", "Pet label (vertical)"))
-    W.KeyChoice(p, R + 4, -282, T("Anzeigen", "Show"), "petLabel", {
+    W.Header(p, R, -282, T("Begleiter-Beschriftung (senkrecht)", "Pet label (vertical)"))
+    W.KeyChoice(p, R + 4, -304, T("Anzeigen", "Show"), "petLabel", {
         { key = "name", label = T("Name des Begleiters", "Pet name") },
         { key = "pet", label = "\"Pet\"" },
         { key = "none", label = T("Aus", "Off") },
     }, nil, 150)
-    W.Slider(p, R + 4, -312, T("Schriftgröße", "Font size"), "petLabelSize", 6, 14, 1, nil)
-    W.Hint(p, R + 4, -350, 300, T("Lange Namen werden auf die Höhe des Rahmens gekürzt.",
+    W.Slider(p, R + 4, -334, T("Schriftgröße", "Font size"), "petLabelSize", 6, 14, 1, nil)
+    W.Hint(p, R + 4, -372, 300, T("Lange Namen werden auf die Höhe des Rahmens gekürzt.",
         "Long names are shortened to the frame height."))
 end
 
@@ -495,7 +497,7 @@ do
     W.Slider(p, L, y - 162, T("Max. Zeichen (0 = alle)", "Max. characters (0 = all)"), "nameMaxChars", 0, 20, 1, nil)
 
     -- Status (links unten)
-    y = -250
+    y = -276
     W.Header(p, L, y, T("Status (Tot / Offline / AFK)", "Status (dead / offline / AFK)"))
     W.Check(p, L + 220, y + 3, T("anzeigen", "show"), "statusShow")
     W.Slider(p, L, y - 22, T("Größe", "Size"), "statusSize", 6, 30, 1, nil)
@@ -524,7 +526,7 @@ do
     W.Check(p, R + 150, y - 186, T("Bei vollen LP leer", "Empty at full health"), "hpHideFull")
 
     -- Energie-Text (rechts unten)
-    y = -250
+    y = -276
     W.Header(p, R, y, T("Energie-Text", "Power text"))
     W.Check(p, R + 160, y + 3, T("anzeigen", "show"), "powerTextShow")
     W.KeyChoice(p, R, y - 22, T("Format", "Format"), "powerTextFormat", {
@@ -534,7 +536,9 @@ do
     W.Slider(p, R, y - 50, T("Größe", "Size"), "powerTextSize", 6, 30, 1, nil)
     PositionRows(p, R, y - 88, "powerText")
 
-    W.Hint(p, L, -470, 640, T("Hinweis: Im Kampf sind Lebenspunkte für Addons gesperrt. Dann zeigt der Text " ..
+    -- Hinweis in einem eigenen Kasten über beide Spalten (sonst ragt er aus dem linken Kasten heraus)
+    W.Header(p, L, -458, T("Im Kampf", "In combat"), 648)
+    W.Hint(p, L + 4, -478, 636, T("Hinweis: Im Kampf sind Lebenspunkte für Addons gesperrt. Dann zeigt der Text " ..
         "eine vereinfachte Form (\"Bei vollen LP leer\" wirkt erst wieder nach dem Kampf).",
         "Note: in combat, health values are locked for addons. The text then uses a simplified form " ..
         "(\"Empty at full health\" applies again after combat)."))
@@ -594,13 +598,13 @@ do
     W.Hint(p, L + 4, -284, 300, T("Bannbare Debuffs (die du entfernen kannst) stehen immer vorne.",
         "Dispellable debuffs (that you can remove) always come first."))
 
-    W.Header(p, L, -318, T("Restzeit auf den Symbolen (Debuffs und Buffs)", "Remaining time on icons (debuffs and buffs)"))
-    W.Check(p, L, -338, T("Countdown-Scheibe", "Countdown swipe"), "auraTimerSwipe")
-    W.Check(p, L, -362, T("Restzeit als Zahl", "Remaining time as number"), "auraTimerNumbers")
-    W.Slider(p, L + 4, -390, T("Größe der Zahl", "Number size"), "auraTimerSize", 6, 20, 1, nil)
+    W.Header(p, L, -334, T("Restzeit auf den Symbolen (Debuffs und Buffs)", "Remaining time on icons (debuffs and buffs)"))
+    W.Check(p, L, -354, T("Countdown-Scheibe", "Countdown swipe"), "auraTimerSwipe")
+    W.Check(p, L, -378, T("Restzeit als Zahl", "Remaining time as number"), "auraTimerNumbers")
+    W.Slider(p, L + 4, -406, T("Größe der Zahl", "Number size"), "auraTimerSize", 6, 20, 1, nil)
 
-    W.Check(p, L, -432, T("Blizzard-Anzeige (aktualisiert auch im Kampf)", "Blizzard display (also updates in combat)"), "auraEngine")
-    W.Check(p, L, -456, T("Tooltip auf Debuffs/Buffs (Klick-Zauber gehen trotzdem)", "Tooltip on debuffs/buffs (click casting still works)"), "auraTooltip")
+    W.Check(p, L, -448, T("Blizzard-Anzeige (aktualisiert auch im Kampf)", "Blizzard display (also updates in combat)"), "auraEngine")
+    W.Check(p, L, -472, T("Tooltip auf Debuffs und Buffs", "Tooltip on debuffs and buffs"), "auraTooltip")
 
     W.Header(p, R, -4, T("Bannbare Debuffs hervorheben", "Highlight dispellable debuffs"))
     W.Check(p, R, -24, T("Nur was ich bannen kann", "Only what I can dispel"), "dispelOnlyMine")
@@ -610,8 +614,8 @@ do
     W.Check(p, R, -184, T("Rahmen um den Rahmen in Typfarbe", "Frame border in type color"), "dispelBorder")
     W.Slider(p, R + 4, -212, T("Rahmenstärke", "Border size"), "dispelBorderSize", 1, 6, 1, nil, { unit = " px" })
 
-    W.Header(p, R, -262, T("Farben je Typ", "Colors per type"))
-    local y = -284
+    W.Header(p, R, -276, T("Farben je Typ", "Colors per type"))
+    local y = -298
     for i, t in ipairs(ns.DEBUFF_TYPES) do
         local col = (i - 1) % 2
         local row = math.floor((i - 1) / 2)
@@ -619,10 +623,12 @@ do
     end
     W.Color(p, R + 4 + 150, y - 2 * 26, T("Ohne Typ", "No type"), "colorNone", false)
 
-    W.Hint(p, L, -486, 640, T("Im Kampf sperrt Blizzard die Aura-Daten für Addons – die Symbole zeichnet dann die Blizzard-Anzeige. " ..
-        "Typ-Symbol und Typ-Rahmen werden nach dem Kampf wieder aktualisiert.",
-        "In combat Blizzard locks aura data for addons – the Blizzard display draws the icons then. " ..
-        "Type icon and type border update again after combat."))
+    -- Hinweis rechts in einem eigenen Kasten (über die ganze Breite ragte er aus dem linken Kasten heraus)
+    W.Header(p, R, -396, T("Im Kampf", "In combat"))
+    W.Hint(p, R + 4, -416, 300, T("Blizzard sperrt die Aura-Daten für Addons – die Symbole zeichnet dann die Blizzard-Anzeige. " ..
+        "Typ-Symbol und Typ-Rahmen werden nach dem Kampf wieder aktualisiert. Klick-Zauber auf den Symbolen gehen auch mit Tooltip.",
+        "Blizzard locks aura data for addons – the Blizzard display draws the icons then. " ..
+        "Type icon and type border update again after combat. Click casting on the icons works with tooltips too."))
 end
 
 ---------------------------------------------------------------------------
@@ -642,18 +648,20 @@ do
     PositionRows(p, L, -136, "buff")
     W.KeyChoice(p, L, -204, T("Weitere Symbole", "More icons"), "buffGrow", GROW_CHOICES, nil, 150)
     W.Check(p, L, -232, T("Ablaufzeit anzeigen", "Show remaining time"), "buffCooldown")
-    W.Check(p, L, -256, T("Auch HoTs/Schutz-Buffs anderer Spieler (alle Klassen)", "Also HoTs/protective buffs of others (all classes)"), "buffOthers")
-    W.Hint(p, L + 4, -284, 300, T("Z. B. Verjüngung eines Druiden, Erneuerung eines Priesters. Dauerhafte Buffs wie Seelenstärke werden nie gezeigt.",
-        "E.g. a druid's Rejuvenation, a priest's Renew. Permanent buffs like Fortitude are never shown."))
+    W.Check(p, L, -256, T("HoTs/Schutz-Buffs anderer Spieler", "HoTs/protective buffs of others"), "buffOthers")
+    W.Hint(p, L + 4, -284, 300, T("Alle Klassen, z. B. Verjüngung eines Druiden, Erneuerung eines Priesters. Dauerhafte Buffs wie Seelenstärke werden nie gezeigt.",
+        "All classes, e.g. a druid's Rejuvenation, a priest's Renew. Permanent buffs like Fortitude are never shown."))
+    W.Check(p, L, -326, T("Blizzard-Anzeige (aktualisiert auch im Kampf)", "Blizzard display (also updates in combat)"), "auraEngine")
+    W.Check(p, L + 4, -350, T("Dazu kurze eigene Buffs (unter 2 Min.)", "Plus short own buffs (under 2 min)"), "buffEngineShort")
 
-    W.Check(p, L, -404, T("Blizzard-Anzeige (aktualisiert auch im Kampf)", "Blizzard display (also updates in combat)"), "auraEngine")
-    W.Check(p, L + 4, -430, T("Dazu weitere kurze eigene Buffs (unter 2 Min.)", "Plus other short own buffs (under 2 min)"), "buffEngineShort")
-
-    W.Header(p, L, -318, T("Klassenliste (eingebaut)", "Class list (built-in)"))
-    local classInfo = W.Hint(p, L + 4, -338, 300, "")
+    W.Header(p, L, -398, T("Klassenliste (eingebaut)", "Class list (built-in)"))
+    local classInfo = W.Hint(p, L + 4, -418, 300, "")
     classInfo:SetFontObject("GameFontHighlightSmall")
     Register({ Load = function() classInfo:SetText(ns.GetClassBuffLabels()) end })
-    W.Hint(p, L + 4, -372, 300, T("Fehlt dir ein Zauber? Trag ihn rechts in die eigene Liste ein und wähle \"HoTs + Klassen- + eigene Liste\".",
+    -- direkt unter der (unterschiedlich langen) Klassenliste
+    local classHint = W.Hint(p, nil, nil, 300, "")
+    classHint:SetPoint("TOPLEFT", classInfo, "BOTTOMLEFT", 0, -8)
+    classHint:SetText(T("Fehlt dir ein Zauber? Trag ihn rechts in die eigene Liste ein und wähle \"HoTs + Klassen- + eigene Liste\".",
         "Missing a spell? Add it to your own list on the right and pick \"HoTs + class + own list\"."))
 
     W.Header(p, R, -4, T("Eigene Liste (für deine aktuelle Klasse)", "Own list (for your current class)"))

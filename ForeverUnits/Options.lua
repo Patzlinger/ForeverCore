@@ -168,7 +168,9 @@ local L, R = 8, 330 -- linke / rechte Spalte
 do
     local p = AddTab(T("Allgemein", "General"))
     UI.Header(p, L, -4, T("Bedienung", "Controls"))
-    Check(p, L, -24, T("Rahmen sperren (entsperrt: ziehen zum Verschieben)", "Lock frames (unlocked: drag to move)"), G("locked"))
+    -- Abstände: zwischen dem letzten Element eines Kastens und der nächsten Überschrift mind. ~24 px, und Texte
+    -- nicht breiter als die Spalte – sonst überdecken sich die Kästen (der Hub zeichnet sie bis zur nächsten Überschrift)
+    Check(p, L, -24, T("Rahmen sperren (entsperrt verschiebbar)", "Lock frames (unlocked: drag to move)"), G("locked"))
     Check(p, L, -48, T("Tooltip beim Überfahren", "Tooltip on mouseover"), G("tooltip"))
     local resetPos = UI.Button(p, T("Positionen zurücksetzen", "Reset positions"), 180, Safe(SETTINGS, function()
         for key, f in pairs(GetDB().frames) do
@@ -178,23 +180,23 @@ do
     end))
     resetPos:SetPoint("TOPLEFT", L + 4, -80)
 
-    UI.Header(p, L, -120, T("Symbole und Farben", "Icons and colors"))
-    Check(p, L, -140, T("PvP-Symbol (wenn PvP aktiv ist)", "PvP icon (when PvP is active)"), G("pvpShow"))
-    Check(p, L, -164, T("Anführer-Krone", "Leader crown"), G("leaderShow"))
-    Check(p, L, -188, T("Zielmarkierung", "Raid marker"), G("markShow"))
-    Check(p, L, -212, T("Ausruhen-Symbol am Spieler (Gasthaus/Hauptstadt)", "Resting icon on player (inn/capital)"), G("restingShow"))
-    Check(p, L, -236, T("NPCs in Reaktionsfarbe (rot/gelb)", "NPCs in reaction color (red/yellow)"), G("npcReactionColor"))
+    UI.Header(p, L, -128, T("Symbole und Farben", "Icons and colors"))
+    Check(p, L, -148, T("PvP-Symbol (wenn PvP aktiv ist)", "PvP icon (when PvP is active)"), G("pvpShow"))
+    Check(p, L, -172, T("Anführer-Krone", "Leader crown"), G("leaderShow"))
+    Check(p, L, -196, T("Zielmarkierung", "Raid marker"), G("markShow"))
+    Check(p, L, -220, T("Ausruhen-Symbol (Gasthaus/Hauptstadt)", "Resting icon (inn/capital)"), G("restingShow"))
+    Check(p, L, -244, T("NPCs in Reaktionsfarbe (rot/gelb)", "NPCs in reaction color (red/yellow)"), G("npcReactionColor"))
 
-    UI.Header(p, L, -276, T("Auren", "Auras"))
-    Check(p, L, -296, T("Restzeit als Scheibe", "Remaining time as swipe"), G("auraTimer"))
-    Check(p, L, -320, T("Tooltip auf Auren (Klicks gehen trotzdem durch)", "Tooltip on auras (clicks still pass through)"), G("auraTooltip"))
-    Check(p, L, -344, T("DoT-Leisten nur bei angreifbaren Zielen", "DoT bars only on attackable targets"), G("dotOnlyHostile"))
+    UI.Header(p, L, -290, T("Auren", "Auras"))
+    Check(p, L, -310, T("Restzeit als Scheibe", "Remaining time as swipe"), G("auraTimer"))
+    Check(p, L, -334, T("Tooltip auf Auren (Klicks gehen durch)", "Tooltip on auras (clicks pass through)"), G("auraTooltip"))
+    Check(p, L, -358, T("DoT-Leisten nur bei angreifbaren Zielen", "DoT bars only on attackable targets"), G("dotOnlyHostile"))
 
-    UI.Header(p, L, -384, T("Ausrichten (wenn entsperrt)", "Alignment (when unlocked)"))
-    Check(p, L, -404, T("Raster anzeigen", "Show grid"), G("gridShow"))
-    Check(p, L, -428, T("Einrasten an Rahmen, Bildschirmmitte und Raster", "Snap to frames, screen center and grid"), G("snap"))
-    Slider(p, L, -458, T("Rasterabstand", "Grid spacing"), 8, 128, 4, G("gridSize"), { unit = " px" })
-    UI.Hint(p, L + 4, -498, 300, T("Beim Ziehen Umschalt halten = ohne Einrasten. Genaue Position: X/Y im Reiter Rahmen.",
+    UI.Header(p, L, -404, T("Ausrichten (wenn entsperrt)", "Alignment (when unlocked)"))
+    Check(p, L, -424, T("Raster anzeigen", "Show grid"), G("gridShow"))
+    Check(p, L, -448, T("Einrasten (Rahmen, Mitte, Raster)", "Snap (frames, center, grid)"), G("snap"))
+    Slider(p, L, -478, T("Rasterabstand", "Grid spacing"), 8, 128, 4, G("gridSize"), { unit = " px" })
+    UI.Hint(p, L + 4, -518, 300, T("Beim Ziehen Umschalt halten = ohne Einrasten. Genaue Position: X/Y im Reiter Rahmen.",
         "Hold Shift while dragging = no snapping. Exact position: X/Y in the Frames tab."))
 
     UI.Header(p, R, -4, T("Blizzard-Rahmen ausblenden", "Hide Blizzard frames"))
@@ -206,7 +208,7 @@ do
     UI.Hint(p, R + 4, -126, 300, T("Ausgeblendete Blizzard-Rahmen kommen erst nach /reload zurück.",
         "Hidden Blizzard frames only return after /reload."))
 
-    UI.Header(p, R, -170, T("Alles", "Everything"))
+    UI.Header(p, R, -180, T("Alles", "Everything"))
     StaticPopupDialogs["FOREVERUNITS_RESET"] = {
         text = T("Alle Einstellungen von ForeverUnits zurücksetzen?", "Reset all ForeverUnits settings?"),
         button1 = YES, button2 = NO,
@@ -220,18 +222,18 @@ do
     local resetAll = UI.Button(p, T("Alles zurücksetzen", "Reset everything"), 180, function()
         StaticPopup_Show("FOREVERUNITS_RESET")
     end)
-    resetAll:SetPoint("TOPLEFT", R + 4, -194)
+    resetAll:SetPoint("TOPLEFT", R + 4, -202)
 
-    UI.Header(p, R, -240, T("Kombopunkte (Ziel)", "Combo points (target)"))
-    Check(p, R, -260, T("Kombopunkte anzeigen", "Show combo points"), G("comboShow"))
-    Choice(p, R, -288, T("Ort", "Place"), 170, {
+    UI.Header(p, R, -252, T("Kombopunkte (Ziel)", "Combo points (target)"))
+    Check(p, R, -272, T("Kombopunkte anzeigen", "Show combo points"), G("comboShow"))
+    Choice(p, R, -300, T("Ort", "Place"), 170, {
         { key = "PORTRAIT", label = T("Spalte außen am Porträt", "Column outside the portrait") },
         { key = "BELOW",    label = T("Balken mit Strichen unten", "Bar with segments below") },
         { key = "ABOVE",    label = T("Punkte oben", "Dots above") },
     }, G("comboPoint"))
-    Check(p, R, -316, T("Leere Punkte zeigen (angreifbares Ziel)", "Show empty points (attackable target)"), G("comboShowEmpty"))
-    Slider(p, R, -346, T("Größe", "Size"), 4, 16, 1, G("comboSize"), { unit = " px" })
-    UI.Hint(p, R + 4, -386, 300, T("Nur für Schurken und Druiden (Katzengestalt). Entsperrt zeigt ein Platzhalter die Lage.",
+    Check(p, R, -328, T("Leere Punkte zeigen (angreifbares Ziel)", "Show empty points (attackable target)"), G("comboShowEmpty"))
+    Slider(p, R, -358, T("Größe", "Size"), 4, 16, 1, G("comboSize"), { unit = " px" })
+    UI.Hint(p, R + 4, -398, 300, T("Nur für Schurken und Druiden (Katzengestalt). Entsperrt zeigt ein Platzhalter die Lage.",
         "Rogues and druids (cat form) only. When unlocked, a placeholder shows where they sit."))
 end
 
@@ -252,40 +254,40 @@ do
     Slider(p, L, -170, T("Energiebalken (0 = aus)", "Power bar (0 = off)"), 0, 20, 1, F("powerHeight"), { unit = " px" })
     Slider(p, L, -210, T("Schriftgröße", "Font size"), 7, 20, 1, F("fontSize"))
 
-    UI.Header(p, L, -256, T("Porträt", "Portrait"))
-    Choice(p, L, -278, T("Anzeigen", "Show"), 170, {
+    UI.Header(p, L, -270, T("Porträt", "Portrait"))
+    Choice(p, L, -292, T("Anzeigen", "Show"), 170, {
         { key = "none", label = T("Aus", "Off") },
         { key = "class", label = T("Klassensymbol (NPCs: Porträt)", "Class icon (NPCs: portrait)") },
         { key = "portrait", label = T("2D-Porträt", "2D portrait") },
     }, F("portrait"))
-    Choice(p, L, -306, T("Seite", "Side"), 170, {
+    Choice(p, L, -320, T("Seite", "Side"), 170, {
         { key = "LEFT", label = T("Links", "Left") },
         { key = "RIGHT", label = T("Rechts", "Right") },
     }, F("portraitSide"))
 
-    UI.Header(p, L, -344, T("DoT-Leisten (nur Ziel und Fokus)", "DoT bars (target and focus only)"))
-    Check(p, L, -364, T("Meine DoTs als Leisten, kürzeste oben", "My DoTs as bars, shortest on top"), F("dotBars"))
-    Choice(p, L, -390, T("Leiste", "Bar"), 170, {
+    UI.Header(p, L, -368, T("DoT-Leisten (nur Ziel und Fokus)", "DoT bars (target and focus only)"))
+    Check(p, L, -388, T("Meine DoTs als Leisten, kürzeste oben", "My DoTs as bars, shortest on top"), F("dotBars"))
+    Choice(p, L, -414, T("Leiste", "Bar"), 170, {
         { key = "drain", label = T("Läuft ab (Restzeit)", "Drains (time left)") },
         { key = "fill", label = T("Füllt sich (vergangene Zeit)", "Fills (time passed)") },
     }, F("dotDirection"))
-    Choice(p, L, -418, T("Position", "Position"), 170, {
+    Choice(p, L, -440, T("Position", "Position"), 170, {
         { key = "BELOW", label = T("Unter dem Rahmen", "Below the frame") },
         { key = "ABOVE", label = T("Über dem Rahmen", "Above the frame") },
         { key = "LEFT", label = T("Links daneben", "To the left") },
         { key = "RIGHT", label = T("Rechts daneben", "To the right") },
         { key = "FREE", label = T("Frei verschiebbar", "Free (movable)") },
     }, F("dotPoint"))
-    Slider(p, L, -448, "X", -200, 200, 1, F("dotX"), { width = 110 })
-    Slider(p, L + 160, -448, "Y", -200, 200, 1, F("dotY"), { width = 90 })
-    Slider(p, L, -488, T("Anzahl", "Count"), 1, 10, 1, F("dotNum"), { width = 110 })
-    Slider(p, L + 160, -488, T("Höhe", "Height"), 10, 30, 1, F("dotHeight"), { width = 90, unit = " px" })
-    Slider(p, L, -528, T("Breite (0 = wie Rahmen)", "Width (0 = like frame)"), 0, 400, 2, F("dotWidth"), { unit = " px" })
-    UI.Header(p, R, -420, T("Position (X/Y ab Bildschirmmitte)", "Position (X/Y from screen center)"))
-    Number(p, R + 4, -442, "X", F("x"))
-    Number(p, R + 150, -442, "Y", F("y"))
+    Slider(p, L, -468, "X", -200, 200, 1, F("dotX"), { width = 110 })
+    Slider(p, L + 160, -468, "Y", -200, 200, 1, F("dotY"), { width = 90 })
+    Slider(p, L, -504, T("Anzahl", "Count"), 1, 10, 1, F("dotNum"), { width = 110 })
+    Slider(p, L + 160, -504, T("Höhe", "Height"), 10, 30, 1, F("dotHeight"), { width = 90, unit = " px" })
+    Slider(p, L, -540, T("Breite (0 = wie Rahmen)", "Width (0 = like frame)"), 0, 400, 2, F("dotWidth"), { unit = " px" })
+    UI.Header(p, R, -448, T("Position (X/Y ab Bildschirmmitte)", "Position (X/Y from screen center)"))
+    Number(p, R + 4, -470, "X", F("x"))
+    Number(p, R + 150, -470, "Y", F("y"))
 
-    local dotHint = UI.Hint(p, R + 4, -480, 300, "")
+    local dotHint = UI.Hint(p, R + 4, -506, 300, "")
     Register({ Load = function()
         dotHint:SetText(ns.dotBarBinding
             and T("DoT-Leisten: Restzeit läuft als Balken und Zahl. Zahl orange = Auffrischfenster (unter 30 %), rot = gleich vorbei.",
@@ -311,13 +313,15 @@ do
     }, F("hpFormat"))
     Check(p, R, -164, T("Energie als Zahl (ab 7 px Balkenhöhe)", "Power as number (from 7 px bar height)"), F("powerText"))
 
-    UI.Header(p, R, -204, T("Auren", "Auras"))
-    Check(p, R, -224, T("Buffs", "Buffs"), F("buffs"))
-    Check(p, R, -248, T("Debuffs", "Debuffs"), F("debuffs"))
-    Check(p, R, -272, T("Nur meine Debuffs (mit DoT-Leisten: hier die der anderen)", "Only my debuffs (with DoT bars: others' here)"), F("onlyMine"))
-    Slider(p, R, -302, T("Größe", "Size"), 10, 40, 1, F("auraSize"), { unit = " px" })
-    Slider(p, R, -342, T("Anzahl", "Count"), 1, 16, 1, F("auraNum"))
-    UI.Hint(p, R + 4, -380, 300, T("Auren zeichnet die Blizzard-Anzeige – auch im Kampf aktuell.",
+    UI.Header(p, R, -212, T("Auren", "Auras"))
+    Check(p, R, -232, T("Buffs", "Buffs"), F("buffs"))
+    Check(p, R, -256, T("Debuffs", "Debuffs"), F("debuffs"))
+    Check(p, R, -280, T("Nur meine Debuffs", "Only my debuffs"), F("onlyMine"))
+    Slider(p, R, -310, T("Größe", "Size"), 10, 40, 1, F("auraSize"), { unit = " px" })
+    Slider(p, R, -350, T("Anzahl", "Count"), 1, 16, 1, F("auraNum"))
+    UI.Hint(p, R + 4, -388, 300, T("Mit DoT-Leisten stehen bei \"Nur meine Debuffs\" hier die der anderen. " ..
+        "Auren zeichnet die Blizzard-Anzeige – auch im Kampf aktuell.",
+        "With DoT bars, \"Only my debuffs\" shows the others' debuffs here. " ..
         "Auras are drawn by the Blizzard display – up to date in combat too."))
 end
 
@@ -356,18 +360,18 @@ do
     }, G("lossColorMode"))
     Color(p, R + 4, -108, T("Eigene Farbe fehlende LP", "Custom missing health color"), "lossColor", false)
 
-    UI.Header(p, R, -144, T("Heilung und Schilde (eigene Optik)", "Healing and shields (own look)"))
-    Check(p, R, -164, T("Heilvorhersage", "Heal prediction"), G("healPrediction"))
-    Color(p, R + 220, -167, "", "healColor", true)
-    Check(p, R, -188, T("Schilde (Absorption)", "Shields (absorbs)"), G("shields"))
-    Color(p, R + 220, -191, "", "shieldColor", true)
+    UI.Header(p, R, -152, T("Heilung und Schilde (eigene Optik)", "Healing and shields (own look)"))
+    Check(p, R, -172, T("Heilvorhersage", "Heal prediction"), G("healPrediction"))
+    Color(p, R + 220, -175, "", "healColor", true)
+    Check(p, R, -196, T("Schilde (Absorption)", "Shields (absorbs)"), G("shields"))
+    Color(p, R + 220, -199, "", "shieldColor", true)
 
-    UI.Header(p, R, -228, T("Skin (Test)", "Skin (test)"))
-    Choice(p, R, -250, T("Aussehen", "Style"), 170, {
+    UI.Header(p, R, -244, T("Skin (Test)", "Skin (test)"))
+    Choice(p, R, -266, T("Aussehen", "Style"), 170, {
         { key = "DEFAULT", label = T("Standard", "Default") },
         { key = "FOREVER", label = T("Forever (Test)", "Forever (test)") },
     }, G("skin"))
-    UI.Hint(p, R + 4, -278, 300, T("Nur das Aussehen, im Stil der Forever-Fenster: feine Kante mit Goldlinie, dunkle Fugen, gedeckte Balken mit leichtem Glanz, Namensband, goldene/silberne Eckklammern bei Elite/Rare, goldene Kante bei Maus darüber, rote Oberkante am Spieler im Kampf. Funktionen bleiben, wie sie sind.",
+    UI.Hint(p, R + 4, -294, 300, T("Nur das Aussehen, im Stil der Forever-Fenster: feine Kante mit Goldlinie, dunkle Fugen, gedeckte Balken mit leichtem Glanz, Namensband, goldene/silberne Eckklammern bei Elite/Rare, goldene Kante bei Maus darüber, rote Oberkante am Spieler im Kampf. Funktionen bleiben, wie sie sind.",
         "Look only, in the style of the Forever windows: fine edge with a gold line, dark seams, muted bars with a soft shine, name band, gold/silver corner brackets for elite/rare, gold edge on mouse-over, red top edge on the player in combat. Functions stay as they are."))
 end
 

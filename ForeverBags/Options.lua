@@ -67,7 +67,7 @@ local function ColorSwatch(parent, x, y, label, key)
 end
 
 local function CreateOptions()
-    local W, H = 680, 380
+    local W, H = 680, 410
     -- Seite im zentralen Einstellungsfenster von Forever Core (verhält sich wie das bisherige eigene Fenster)
     options = UI.SettingsPanel("ForeverBagsOptions", L("OPT_TITLE"), W, H,
         { key = "ForeverBags", group = UI.SETTINGS_GROUPS.comfort, label = UI.T("Taschen", "Bags") })
@@ -81,10 +81,11 @@ local function CreateOptions()
     UI.Hint(options, x + 28, -146, colW - 32, L("OPT_OPEN_CURSOR_HINT"))
     Check(options, x, -172, L("OPT_COUNTS"), "tooltipCounts")
 
-    UI.Header(options, x, -212, L("SEC_WINDOWS"), colW)
-    Check(options, x, -234, L("OPT_REPLACE_BANK"), "replaceBank")
-    Check(options, x, -258, L("OPT_REPLACE_GUILD"), "replaceGuildBank")
-    local bankColumns = UI.Slider(options, x + 4, -290, L("OPT_BANK_COLUMNS"), 6, 24, 1, function(value)
+    -- mind. ~24 px Luft zur nächsten Überschrift, sonst überdecken sich die Kästen
+    UI.Header(options, x, -222, L("SEC_WINDOWS"), colW)
+    Check(options, x, -244, L("OPT_REPLACE_BANK"), "replaceBank")
+    Check(options, x, -268, L("OPT_REPLACE_GUILD"), "replaceGuildBank")
+    local bankColumns = UI.Slider(options, x + 4, -300, L("OPT_BANK_COLUMNS"), 6, 24, 1, function(value)
         ns.db.bankColumns = value
         if ns.LayoutBank then ns.LayoutBank() end
     end, { width = 200 })

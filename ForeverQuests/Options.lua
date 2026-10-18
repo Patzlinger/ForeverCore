@@ -170,7 +170,7 @@ local function CreateOptions()
     -- Seite im zentralen Einstellungsfenster von Forever Core (verhält sich wie das bisherige eigene Fenster)
     local HUB = _G.ForeverHub.UI
     options = HUB.SettingsPanel("ForeverQuestsOptions", L("OPT_TITLE"), 680, 620,
-        { key = "ForeverQuests", group = HUB.SETTINGS_GROUPS.nav, label = HUB.T("Questtracker", "Quest tracker"), kind = "menu" })
+        { key = "ForeverQuests", group = HUB.SETTINGS_GROUPS.nav, label = HUB.T("Quest- und Dungeontracker", "Quest & dungeon tracker"), kind = "menu" })
     options.subText:SetText(L("ADDON_NAME"))
     -- Beim Schließen des Menüs wird der Tracker wieder gesperrt
     options:SetScript("OnHide", function()
@@ -329,7 +329,7 @@ end
 do
     local HUB = _G.ForeverHub and _G.ForeverHub.UI
     if HUB and HUB.RegisterSettingsLink then
-        HUB.RegisterSettingsLink({ key = "ForeverQuests", group = HUB.SETTINGS_GROUPS.nav, label = HUB.T("Questtracker", "Quest tracker"),
+        HUB.RegisterSettingsLink({ key = "ForeverQuests", group = HUB.SETTINGS_GROUPS.nav, label = HUB.T("Quest- und Dungeontracker", "Quest & dungeon tracker"),
             open = function() ns.ToggleOptions() end })
     end
 end
