@@ -62,6 +62,15 @@ local STRINGS = {
         QUESTIE_FINISHER = "Abgabe auf der Karte zeigen", QUESTIE_TOMTOM = "TomTom-Wegpunkt setzen",
         QUESTIE_WOWHEAD = "Wowhead-Link",
 
+        -- Questlog an der Weltkarte
+        OPT_QUESTLOG = "Questlog im Forever-Stil (nach /reload)",
+        LOG_SEARCH = "Quests durchsuchen …",
+        LOG_EMPTY_SEARCH = "Keine Quest passt zur Suche.",
+        TIP_WATCH_ON = "Verfolgen (im Tracker anzeigen)",
+        TIP_WATCH_OFF = "Nicht mehr verfolgen",
+        TIP_LOG_FILTER = "Eigene Filter für den Questlog (unabhängig vom Tracker)",
+        TIP_LOG_COUNT = "Quests im Questlog / höchstens möglich",
+
         -- Filter
         FILTER_TITLE = "Quests filtern (mehrere möglich)",
         FILTER_DEFAULT = "Standard (laut Menü)",
@@ -240,6 +249,14 @@ local STRINGS = {
         QUESTIE_FOCUS = "Highlight on map", QUESTIE_UNFOCUS = "Remove highlight",
         QUESTIE_FINISHER = "Show turn-in on map", QUESTIE_TOMTOM = "Set TomTom waypoint",
         QUESTIE_WOWHEAD = "Wowhead link",
+
+        OPT_QUESTLOG = "Quest log in Forever style (after /reload)",
+        LOG_SEARCH = "Search quests …",
+        LOG_EMPTY_SEARCH = "No quest matches your search.",
+        TIP_WATCH_ON = "Track (show in the tracker)",
+        TIP_WATCH_OFF = "Stop tracking",
+        TIP_LOG_FILTER = "Separate filters for the quest log (independent of the tracker)",
+        TIP_LOG_COUNT = "Quests in your log / maximum",
 
         FILTER_TITLE = "Filter quests (several possible)",
         FILTER_DEFAULT = "Default (as in menu)",

@@ -2,9 +2,15 @@ local addonName, ns = ...
 
 local tracker, title, scrollFrame, content, overlay, filterButton, headerBar
 local menuButton, dungeonButton, unlockHint
-local lines = {}
-local boxes = {}
 local updatePending = false
+
+-- Zeichenziel ("Ansicht"): der Tracker oder der Questlog an der Weltkarte (QuestLog.lua). Beide benutzen dieselben
+-- Zeilen, Fenster, Tooltips und Menüs; jede Ansicht hat ihre eigenen Zeilen und eingeklappten Gebiete.
+-- Felder: content (Rahmen, in den gezeichnet wird), lines, boxes, prefix (Namen der Zeilen), collapsed,
+-- anchor (Tooltip-Seite), expanded (eigener Auf-/Zuklapp-Stand; nur Questlog), watchToggle (Häkchen "verfolgen")
+local trackerView = { lines = {}, boxes = {}, prefix = "ForeverQuestsTracker", anchor = "ANCHOR_LEFT" }
+local view = trackerView
+local lines = trackerView.lines
 
 -- Aufgeklappt-Zustand je Quest, per Pfeil gesetzt (true/false).
 -- Fehlt ein Eintrag, gilt die Menü-Einstellung bzw. das automatische Aufklappen.
@@ -442,10 +448,33 @@ end
 
 -- Eingeklappte Gebiete (nur für diese Sitzung): [Schlüssel] = true
 ns.collapsedGroups = {}
+trackerView.collapsed = ns.collapsedGroups
 
-local function ToggleGroup(groupKey)
-    ns.collapsedGroups[groupKey] = not ns.collapsedGroups[groupKey] or nil
-    ns.UpdateTracker()
+-- Ansicht neu zeichnen (der Tracker zeichnet den offenen Questlog gleich mit)
+local function Redraw(v)
+    if v and v ~= trackerView then
+        if ns.UpdateQuestLog then ns.UpdateQuestLog() end
+    else
+        ns.UpdateTracker()
+    end
+end
+
+local function ToggleGroup(v, groupKey)
+    v = v or trackerView
+    v.collapsed[groupKey] = not v.collapsed[groupKey] or nil
+    Redraw(v)
+end
+
+-- Aufgeklappt in dieser Ansicht? (Questlog: eigener Stand, Standard eingeklappt)
+local function IsExpandedIn(v, questID)
+    if v and v.expanded then return v.expanded[questID] == true end
+    return ns.IsExpanded(questID)
+end
+
+-- Tooltip-Seite je Ansicht (Tracker: links, Questlog: rechts); owner ist die Zeile oder ein Symbol darauf
+local function AnchorOf(owner)
+    local v = owner and (owner.view or (owner.GetParent and owner:GetParent() and owner:GetParent().view))
+    return (v and v.anchor) or "ANCHOR_LEFT"
 end
 
 ---------------------------------------------------------------------------
@@ -504,7 +533,7 @@ end
 -- Tooltip der Beutetruhe: nur Questname und Belohnungen
 local function ShowRewardTooltip(owner, questID)
     local tooltip = ns.Style.GetTooltip()
-    tooltip:SetOwner(owner, "ANCHOR_LEFT")
+    tooltip:SetOwner(owner, AnchorOf(owner))
     tooltip:AddLine(C_QuestLog.GetTitleForQuestID(questID) or ("Quest " .. questID), 1, 0.82, 0)
     AddRewardLines(tooltip, questID)
     tooltip:AddLine(" ")
@@ -514,7 +543,7 @@ end
 
 local function ShowQuestTooltip(owner, questID)
     local tooltip = ns.Style.GetTooltip()
-    tooltip:SetOwner(owner, "ANCHOR_LEFT")
+    tooltip:SetOwner(owner, AnchorOf(owner))
     local logIndex = C_QuestLog.GetLogIndexForQuestID(questID)
     local info = logIndex and C_QuestLog.GetInfo(logIndex)
 
@@ -575,7 +604,7 @@ local function OnLineEnter(self)
         -- Im Menü abschaltbar
         if ns.db.showQuestTooltip then ShowQuestTooltip(self, self.questID) end
     elseif self.groupKey then
-        ns.Style.GetTooltip():SetOwner(self, "ANCHOR_LEFT")
+        ns.Style.GetTooltip():SetOwner(self, AnchorOf(self))
         ns.Style.GetTooltip():AddLine(ns.L("TIP_GROUP_TOGGLE"), 1, 1, 1)
         ns.Style.GetTooltip():Show()
     end
@@ -584,7 +613,7 @@ end
 local function OnLineClick(self, button)
     -- Klick auf die Titelleiste eines Gebiets (oder "Gemeinsam"): ein-/ausklappen
     if self.groupKey then
-        if button == "LeftButton" then ToggleGroup(self.groupKey) end
+        if button == "LeftButton" then ToggleGroup(self.view, self.groupKey) end
         return
     end
     local questID = self.questID
@@ -627,22 +656,41 @@ local function OnLineClick(self, button)
 end
 
 local function OnArrowClick(self)
-    local groupKey = self:GetParent().groupKey
-    if groupKey then
-        ToggleGroup(groupKey)
+    local line = self:GetParent()
+    local v = line.view
+    if line.groupKey then
+        ToggleGroup(v, line.groupKey)
         return
     end
-    local questID = self:GetParent().questID
+    local questID = line.questID
     if not questID then return end
+    if v and v.expanded then
+        -- Questlog: eigener Stand, der Tracker bleibt unverändert
+        v.expanded[questID] = not v.expanded[questID] or nil
+        Redraw(v)
+        return
+    end
     ns.expanded[questID] = not ns.IsExpanded(questID)
     ns.autoExpandedAt[questID] = nil
     ns.UpdateTracker()
 end
 
+-- Häkchen "verfolgen" (nur im Questlog): Quest in den Tracker aufnehmen bzw. herausnehmen
+local function OnWatchClick(self)
+    local questID = self:GetParent().questID
+    if not questID then return end
+    if C_QuestLog.GetQuestWatchType(questID) then
+        C_QuestLog.RemoveQuestWatch(questID)
+    elseif C_QuestLog.AddQuestWatch then
+        C_QuestLog.AddQuestWatch(questID)
+    end
+    ns.RequestUpdate()
+end
+
 -- Tooltip des Questgegenstands (item = das Symbol mit .link und .logIndex)
 local function ShowQuestItemTooltip(owner, item)
     local tip = ns.Style.GetTooltip()
-    tip:SetOwner(owner, "ANCHOR_LEFT")
+    tip:SetOwner(owner, AnchorOf(owner))
     -- 1. Spielfunktion für Questgegenstände, 2. Gegenstand über die ID, 3. Link; jeweils abgesichert
     local shown = false
     if item.logIndex and tip.SetQuestLogSpecialItem then
@@ -720,9 +768,11 @@ local function HideOwnTooltip(self)
 end
 
 local function GetLine(index)
-    local line = lines[index]
+    local line = view.lines[index]
     if not line then
-        line = CreateFrame("Button", "ForeverQuestsTrackerLine" .. index, content)
+        local prefix = view.prefix
+        line = CreateFrame("Button", prefix .. "Line" .. index, view.content)
+        line.view = view
         line:RegisterForClicks("LeftButtonUp", "RightButtonUp")
         line:SetScript("OnClick", OnLineClick)
         -- Beim Darüberfahren: Tooltip der Zeile; solange die Maus drauf ist, wird auf die Symbole geachtet
@@ -730,17 +780,20 @@ local function GetLine(index)
             self.hoverMode = nil
             self:SetScript("OnUpdate", OnLineUpdate)
             OnLineUpdate(self)
+            -- Questlog: Quest auf der Karte hervorheben
+            if self.questID and self.view.onHover then self.view.onHover(self.questID) end
         end)
         line:SetScript("OnLeave", function(self)
             self:SetScript("OnUpdate", nil)
             self.hoverMode = nil
             HideOwnTooltip(self)
+            if self.view.onHover then self.view.onHover(nil) end
         end)
 
         -- Kleine Beutetruhe rechts für Quests mit guten Belohnungen.
         -- Bevorzugt die Schatztruhe von der Karte; falls es die nicht gibt, ein Kisten-Symbol.
         -- Als kleiner Knopf, damit die Truhe beim Darüberfahren die Belohnungen zeigt
-        local chest = CreateFrame("Button", "ForeverQuestsTrackerChest" .. index, line)
+        local chest = CreateFrame("Button", prefix .. "Chest" .. index, line)
         chest:SetSize(REWARD_ICON_SIZE, REWARD_ICON_SIZE)
         chest:SetPoint("TOPRIGHT", line, "TOPRIGHT", 0, 0)
         chest:SetHitRectInsets(-3, -3, -3, -3)
@@ -776,7 +829,7 @@ local function GetLine(index)
         -- Questgegenstand: kleines Symbol rechts (nur Hinweis mit Tooltip, kein Knopf -
         -- Gegenstände benutzen geht im Kampf nur über geschützte Blizzard-Knöpfe)
         -- Mit Namen, damit es im Blizzard-Werkzeug /fstack erkennbar ist
-        local item = CreateFrame("Button", "ForeverQuestsTrackerItem" .. index, line)
+        local item = CreateFrame("Button", prefix .. "Item" .. index, line)
         item:SetSize(REWARD_ICON_SIZE, REWARD_ICON_SIZE)
         item:SetHitRectInsets(-3, -3, -3, -3) -- etwas größere Fläche für die Maus
         item.icon = item:CreateTexture(nil, "ARTWORK")
@@ -803,6 +856,32 @@ local function GetLine(index)
         arrow:SetScript("OnLeave", function(self) self.icon:SetVertexColor(1, 1, 1) end)
         line.arrow = arrow
 
+        -- Häkchen "verfolgen" links vor dem Pfeil (nur im Questlog): hohl = nicht verfolgt, gold = im Tracker
+        local watch = CreateFrame("Button", nil, line, "BackdropTemplate")
+        watch:SetSize(ICON_SIZE - 1, ICON_SIZE - 1)
+        watch:SetPoint("TOPRIGHT", line, "TOPLEFT", -(ICON_SIZE + 6), 0)
+        watch:SetHitRectInsets(-3, -3, -3, -3)
+        ns.Style.SetFlat(watch, ns.Style.COLOR.input)
+        watch.fill = watch:CreateTexture(nil, "ARTWORK")
+        watch.fill:SetPoint("TOPLEFT", 2, -2)
+        watch.fill:SetPoint("BOTTOMRIGHT", -2, 2)
+        local accent = ns.Style.COLOR.accent
+        watch.fill:SetColorTexture(accent[1], accent[2], accent[3], 1)
+        watch:SetScript("OnClick", OnWatchClick)
+        watch:SetScript("OnEnter", function(self)
+            self:SetBackdropBorderColor(accent[1], accent[2], accent[3], 0.9)
+            local tip = ns.Style.GetTooltip()
+            tip:SetOwner(self, AnchorOf(self))
+            tip:AddLine(ns.L(self.fill:IsShown() and "TIP_WATCH_OFF" or "TIP_WATCH_ON"), 1, 1, 1)
+            tip:Show()
+        end)
+        watch:SetScript("OnLeave", function(self)
+            self:SetBackdropBorderColor(unpack(ns.Style.COLOR.border))
+            HideOwnTooltip(self)
+        end)
+        watch:Hide()
+        line.watch = watch
+
         -- Nur bei Titelleisten: Auge der Gruppensuche direkt hinter dem Namen (wenn das Gebiet ein Dungeon ist)
         -- und danach ein Zusatztext (Anzahl der Quests)
         local eye = CreateFrame("Button", nil, line)
@@ -826,10 +905,10 @@ local function GetLine(index)
         line.eye = eye
         line.suffix = line:CreateFontString(nil, "OVERLAY")
 
-        lines[index] = line
+        view.lines[index] = line
     end
     -- Zeilen liegen über den Rahmen
-    line:SetFrameLevel(content:GetFrameLevel() + 5)
+    line:SetFrameLevel(view.content:GetFrameLevel() + 5)
     return line
 end
 
@@ -840,6 +919,7 @@ end
 --   arrow     = nil: kein Pfeil, true: aufgeklappt (nach unten), false: eingeklappt (nach rechts)
 --   reward    = Seltenheit der besten Belohnung, wenn eine Truhe angezeigt werden soll, sonst nil
 --   questItem = { link = Gegenstandslink, icon = Symbol } für den Questgegenstand, sonst nil
+--   watch     = nil: kein Häkchen, true/false: Häkchen "verfolgen" an/aus (Questlog)
 local function AddLine(index, y, x, width, text, fontObject, r, g, b, opts)
     opts = opts or {}
     local line = GetLine(index)
@@ -876,8 +956,15 @@ local function AddLine(index, y, x, width, text, fontObject, r, g, b, opts)
         line.questItem:Hide()
     end
     line:ClearAllPoints()
-    line:SetPoint("TOPLEFT", content, "TOPLEFT", x, -y)
+    line:SetPoint("TOPLEFT", view.content, "TOPLEFT", x, -y)
     line:SetSize(width, height)
+    if opts.watch == nil then
+        line.watch:Hide()
+    else
+        line.watch.fill:SetShown(opts.watch)
+        line.watch:SetFrameLevel(line:GetFrameLevel() + 2)
+        line.watch:Show()
+    end
     line.questID = opts.questID
     line.groupKey = opts.groupKey
     line.groupQuestID = nil -- (Reiter "Gruppe" setzt das nach AddLine)
@@ -924,9 +1011,9 @@ end
 -- dunkles Feld mit grauem Rand, oben eine Titelleiste mit farbiger Linie darunter.
 -- Die Hintergrund-Transparenz kommt aus dem Menü.
 local function GetBox(index, alpha)
-    local box = boxes[index]
+    local box = view.boxes[index]
     if not box then
-        box = CreateFrame("Frame", nil, content, "BackdropTemplate")
+        box = CreateFrame("Frame", nil, view.content, "BackdropTemplate")
         box:SetBackdrop(ns.Style.BACKDROP)
         box.header = box:CreateTexture(nil, "ARTWORK", nil, -1)
         box.header:SetPoint("TOPLEFT", 1, -1)
@@ -935,13 +1022,13 @@ local function GetBox(index, alpha)
         box.accent:SetHeight(1)
         box.accent:SetPoint("TOPLEFT", box.header, "BOTTOMLEFT")
         box.accent:SetPoint("TOPRIGHT", box.header, "BOTTOMRIGHT")
-        boxes[index] = box
+        view.boxes[index] = box
     end
     local color = ns.Style.COLOR
     box:SetBackdropColor(color.panel[1], color.panel[2], color.panel[3], alpha)
     box:SetBackdropBorderColor(color.border[1], color.border[2], color.border[3], math.max(alpha, 0.3))
     box.header:SetColorTexture(color.header[1], color.header[2], color.header[3], math.max(alpha, 0.15))
-    box:SetFrameLevel(content:GetFrameLevel() + 1)
+    box:SetFrameLevel(view.content:GetFrameLevel() + 1)
     for _, sep in ipairs(box.separators or {}) do sep:Hide() end -- Trennlinien (nur im Fenster "Gemeinsam")
     return box
 end
@@ -1026,12 +1113,19 @@ local INSTANCE_FILTER = {
     end,
 }
 
+-- Gespeicherte Filterauswahl: dbKey "filters" (Tracker) oder "logFilters" (Questlog)
+local function FilterTable(dbKey)
+    dbKey = dbKey or "filters"
+    if type(ns.db[dbKey]) ~= "table" then ns.db[dbKey] = {} end
+    return ns.db[dbKey]
+end
+
 -- Gewählte Filter (mehrere möglich) in der Reihenfolge der Liste; leer = Standard
-local function GetSelectedFilters()
-    if type(ns.db.filters) ~= "table" then ns.db.filters = {} end
+local function GetSelectedFilters(dbKey)
+    local selected = FilterTable(dbKey)
     local list = {}
     for _, filter in ipairs(ns.FILTERS) do
-        if filter.key ~= "DEFAULT" and ns.db.filters[filter.key] then
+        if filter.key ~= "DEFAULT" and selected[filter.key] then
             table.insert(list, filter)
         end
     end
@@ -1068,30 +1162,38 @@ local function GetActiveFilterText()
 end
 
 -- "Standard" hebt alle Filter auf, jeder andere Eintrag wird an- bzw. abgehakt
-local function ToggleFilter(key)
-    GetSelectedFilters() -- legt die Liste bei Bedarf an
+local function ToggleFilter(key, dbKey, redraw)
+    local selected = FilterTable(dbKey)
     if key == "DEFAULT" then
-        wipe(ns.db.filters)
+        wipe(selected)
     else
-        ns.db.filters[key] = not ns.db.filters[key] or nil
+        selected[key] = not selected[key] or nil
     end
-    ns.UpdateTracker()
+    if redraw then redraw() else ns.UpdateTracker() end
 end
 
--- Filter-Liste im eigenen flachen Stil (siehe Style.ShowMenu); bleibt beim Anhaken offen
-local function OpenFilterMenu(owner)
-    GetSelectedFilters()
+-- Filter-Liste im eigenen flachen Stil (siehe Style.ShowMenu); bleibt beim Anhaken offen.
+-- Ohne Angaben: Filter des Trackers; dbKey/redraw: eigene Auswahl (Questlog, ohne Instanz-Filter)
+local function OpenFilterMenu(owner, dbKey, redraw)
+    local selected = FilterTable(dbKey)
     local items = { { title = ns.L("FILTER_TITLE") } }
     for _, filter in ipairs(ns.FILTERS) do
-        table.insert(items, {
-            checkbox = true,
-            text = ns.L(filter.textKey),
-            checked = function()
-                if filter.key == "DEFAULT" then return next(ns.db.filters) == nil end
-                return ns.db.filters[filter.key] == true
-            end,
-            onClick = function() ToggleFilter(filter.key) end,
-        })
+        -- "Alle" bedeutet im Tracker "auch nicht verfolgte"; der Questlog zeigt ohnehin alle
+        if not (dbKey and filter.key == "ALL") then
+            table.insert(items, {
+                checkbox = true,
+                text = ns.L(filter.textKey),
+                checked = function()
+                    if filter.key == "DEFAULT" then return next(selected) == nil end
+                    return selected[filter.key] == true
+                end,
+                onClick = function() ToggleFilter(filter.key, dbKey, redraw) end,
+            })
+        end
+    end
+    if dbKey then
+        ns.Style.ShowMenu(owner, items)
+        return
     end
     table.insert(items, { divider = true })
     table.insert(items, {
@@ -1111,16 +1213,36 @@ end
 -- Quests sammeln
 ---------------------------------------------------------------------------
 
+-- Passt die Quest zum Suchtext? (Name, Gebiet oder Questziel; ohne Groß-/Kleinschreibung)
+local function MatchesSearch(search, info, header)
+    if not search or search == "" then return true end
+    local function Has(text) return text and text:lower():find(search, 1, true) ~= nil end
+    if Has(info.title) or Has(header) then return true end
+    for _, objective in ipairs(C_QuestLog.GetQuestObjectives(info.questID) or {}) do
+        if Has(objective.text) then return true end
+    end
+    return false
+end
+
 -- Sammelt die anzuzeigenden Quests, gruppiert nach Gebiet (Überschrift im Questlog).
 -- Angeheftete Quests kommen in einen eigenen Rahmen ganz oben.
-local function CollectGroups()
+-- opts (Questlog): all = alle Quests, immer nach Gebieten; filterKey = eigene Filterauswahl; search = Suchtext
+local function CollectGroups(opts)
     local db = ns.db
     local groups = {}
     local pinnedGroup = { header = ns.L("PINNED"), pinned = true, quests = {} }
     local currentHeader
-    local filters, filterMode = GetActiveFilters()
-    -- Ein gesetzter Filter durchsucht das ganze Questlog, nicht nur verfolgte Quests
-    local useTrackedOnly = db.onlyTracked and filterMode == "DEFAULT"
+    local filters, filterMode, useTrackedOnly, showZones, search
+    if opts then
+        filters = GetSelectedFilters(opts.filterKey)
+        useTrackedOnly, showZones = false, true
+        search = opts.search and opts.search:lower() or nil
+    else
+        filters, filterMode = GetActiveFilters()
+        -- Ein gesetzter Filter durchsucht das ganze Questlog, nicht nur verfolgte Quests
+        useTrackedOnly = db.onlyTracked and filterMode == "DEFAULT"
+        showZones = db.showZones
+    end
     for i = 1, C_QuestLog.GetNumQuestLogEntries() do
         local info = C_QuestLog.GetInfo(i)
         if info then
@@ -1128,7 +1250,8 @@ local function CollectGroups()
                 currentHeader = info.title
             elseif not info.isHidden and info.questID and info.questID > 0
                 and not (ns.IsGroupQuest and ns.IsGroupQuest(info.questID)) -- steht schon oben unter "Gemeinsam"
-                and PassesFilters(filters, info, currentHeader) then
+                and PassesFilters(filters, info, currentHeader)
+                and MatchesSearch(search, info, currentHeader) then
                 info.zoneHeader = currentHeader
                 if db.pinned[info.questID] then
                     -- Angeheftete Quests werden immer angezeigt, auch wenn sie nicht verfolgt werden
@@ -1136,7 +1259,7 @@ local function CollectGroups()
                 elseif not useTrackedOnly or C_QuestLog.GetQuestWatchType(info.questID) ~= nil then
                     local group = groups[#groups]
                     -- Ohne Gebietsanzeige landen alle Quests in einem einzigen Rahmen
-                    if not group or (db.showZones and group.header ~= currentHeader) then
+                    if not group or (showZones and group.header ~= currentHeader) then
                         group = { header = currentHeader, quests = {} }
                         table.insert(groups, group)
                     end
@@ -1221,8 +1344,8 @@ local function RenderGroupQuest(entry, y, index, nameX, nameWidth, objectiveX, o
         questItem = questItem,
     })
     -- auch ohne eigene Quest im Questlog per Rechtsklick beendbar
-    lines[index].groupQuestID = questID
-    lines[index]:EnableMouse(true)
+    view.lines[index].groupQuestID = questID
+    view.lines[index]:EnableMouse(true)
     if logIndex then CheckProgress(questID, C_QuestLog.GetQuestObjectives(questID) or {}, isComplete) end
     if isComplete then
         index = index + 1
@@ -1284,7 +1407,7 @@ local function RenderGroupView(y, index, alpha, contentWidth, nameX, nameWidth, 
     local box = GetBox(1, alpha)
     local accent = ns.Style.COLOR.accent
     local groupKey = "#GQ"
-    local collapsed = ns.collapsedGroups[groupKey] == true
+    local collapsed = view.collapsed[groupKey] == true
     -- Titelleiste: "Gemeinsam" mit Anzahl der gemeinsamen Quests (Klick klappt ein/aus)
     index = index + 1
     y = AddLine(index, y + 5, nameX, nameWidth, ns.L("GQ_TAG"), fonts.header, accent[1], accent[2], accent[3], {
@@ -1313,7 +1436,7 @@ local function RenderGroupView(y, index, alpha, contentWidth, nameX, nameWidth, 
     end
     y = y + padding
     box:ClearAllPoints()
-    box:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -boxTop)
+    box:SetPoint("TOPLEFT", view.content, "TOPLEFT", 0, -boxTop)
     box:SetSize(contentWidth, y - boxTop)
     box:Show()
     y = y + BOX_GAP
@@ -1338,31 +1461,27 @@ local function UpdateTabs()
     end
 end
 
-function ns.UpdateTracker()
-    updatePending = false
-    if not tracker then return end
+-- Zeichnet die Quest-Fenster (Gemeinsam, Angeheftet, Gebiete) in eine Ansicht.
+-- v = Ansicht, groups = Ergebnis von CollectGroups, contentWidth = Breite, alpha = Deckkraft der Fenster,
+-- emptyText = Text, wenn nichts da ist (Funktion). Rückgabe: Anzahl der Quests, Höhe des Inhalts
+local function RenderQuestList(v, groups, contentWidth, alpha, emptyText)
+    view = v
     local db = ns.db
-    UpdateTabs()
-
-    ns.UpdateFonts()
-    BuildFactionNames()
-    local contentWidth = math.max(1, tracker:GetWidth() - 12)
-    content:SetWidth(contentWidth)
+    local isTracker = v == trackerView
+    local showZones = (not isTracker) or db.showZones
+    v.content:SetWidth(contentWidth)
 
     local padding = BOX_PADDING
-    local alpha = 1 - db.backgroundTransparency / 100
-
     local innerX = padding + 2
     local innerWidth = contentWidth - 2 * innerX
-    -- Platz links für den Pfeil
-    local iconSpace = ICON_SIZE + 4
+    -- Platz links für den Pfeil (im Questlog zusätzlich für das Häkchen "verfolgen")
+    local iconSpace = ICON_SIZE + 4 + (v.watchToggle and (ICON_SIZE + 3) or 0)
     local nameX = innerX + iconSpace
     local nameWidth = innerWidth - iconSpace
     local objectiveX = nameX + 8
     local objectiveWidth = nameWidth - 8
 
     -- gemeinsame Quests (mit der Gruppe) stehen ganz oben, danach die normale Liste
-    local groups = CollectGroups()
     local y, index, count = 0, 0, 0
     local groupBoxes = 0
     if ns.HasGroupQuests and ns.HasGroupQuests() then
@@ -1380,9 +1499,9 @@ function ns.UpdateTracker()
         -- Titelleiste des Fensters (Gebiet, Klasse, Ruf oder "Angeheftet") mit Anzahl der Quests.
         -- Klick darauf oder auf den Pfeil klappt das Gebiet ein bzw. aus.
         local collapsed = false
-        if db.showZones or group.pinned then
+        if showZones or group.pinned then
             local groupKey = group.pinned and "#PINNED" or (group.header or "#OTHER")
-            collapsed = ns.collapsedGroups[groupKey] == true
+            collapsed = v.collapsed[groupKey] == true
             index = index + 1
             -- Ist das Gebiet ein Dungeon aus den Dungeon-Daten, steht das Auge der Gruppensuche dahinter
             local eyeDungeon = not group.pinned and ns.FindDungeonForHeader and ns.FindDungeonForHeader(group.header) or nil
@@ -1411,7 +1530,8 @@ function ns.UpdateTracker()
 
             local isComplete = C_QuestLog.IsComplete(questID)
             local objectives = C_QuestLog.GetQuestObjectives(questID) or {}
-            CheckProgress(questID, objectives, isComplete)
+            -- automatisches Aufklappen bei Fortschritt gilt nur im Tracker
+            if isTracker then CheckProgress(questID, objectives, isComplete) end
 
             -- Eingeklapptes Gebiet: Quests werden mitgezählt, aber nicht angezeigt
             if not collapsed then
@@ -1471,7 +1591,7 @@ function ns.UpdateTracker()
             local arrowState = nil
             local expanded = false
             if #details > 0 then
-                expanded = ns.IsExpanded(questID)
+                expanded = IsExpandedIn(v, questID)
                 arrowState = expanded
             end
 
@@ -1481,6 +1601,7 @@ function ns.UpdateTracker()
                 arrow = arrowState,
                 reward = rewardQuality,
                 questItem = questItem,
+                watch = v.watchToggle and (C_QuestLog.GetQuestWatchType(questID) ~= nil) or nil,
             })
 
             if expanded then
@@ -1495,11 +1616,38 @@ function ns.UpdateTracker()
 
         y = y + padding
         box:ClearAllPoints()
-        box:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -boxTop)
+        box:SetPoint("TOPLEFT", v.content, "TOPLEFT", 0, -boxTop)
         box:SetSize(contentWidth, y - boxTop)
         box:Show()
         y = y + BOX_GAP
     end
+
+    if count == 0 then
+        index = index + 1
+        y = AddLine(index, y, 0, contentWidth, emptyText(), fonts.objective, 0.6, 0.6, 0.6)
+    end
+
+    -- Übrige Zeilen und Rahmen aus vorherigen Durchläufen verstecken
+    for i = index + 1, #v.lines do
+        v.lines[i]:Hide()
+    end
+    for i = boxesUsed + 1, #v.boxes do
+        v.boxes[i]:Hide()
+    end
+    v.content:SetHeight(math.max(1, y))
+    view = trackerView
+    return count, y
+end
+
+function ns.UpdateTracker()
+    updatePending = false
+    if not tracker then return end
+    local db = ns.db
+    UpdateTabs()
+
+    ns.UpdateFonts()
+    BuildFactionNames()
+    local alpha = 1 - db.backgroundTransparency / 100
 
     -- Filter-Knopf grün bei gewähltem Filter, orange beim automatischen Instanz-Filter
     local _, filterMode = GetActiveFilters()
@@ -1512,41 +1660,44 @@ function ns.UpdateTracker()
         filterButton:SetText(ns.L("BTN_FILTER"))
     end
 
-    if count == 0 then
-        index = index + 1
-        local text
-        if filterMode == "INSTANCE" then
-            text = ns.L("EMPTY_INSTANCE")
-        elseif filterActive then
-            text = ns.L("EMPTY_FILTER")
-        elseif db.onlyTracked then
-            text = ns.L("EMPTY_TRACKED")
-        else
-            text = ns.L("EMPTY_LOG")
-        end
-        y = AddLine(index, y, 0, contentWidth, text, fonts.objective, 0.6, 0.6, 0.6)
-    end
-
-    -- Übrige Zeilen und Rahmen aus vorherigen Durchläufen verstecken
-    for i = index + 1, #lines do
-        lines[i]:Hide()
-    end
-    for i = boxesUsed + 1, #boxes do
-        boxes[i]:Hide()
-    end
+    local count, y = RenderQuestList(trackerView, CollectGroups(), math.max(1, tracker:GetWidth() - 12), alpha,
+        function()
+            if filterMode == "INSTANCE" then return ns.L("EMPTY_INSTANCE") end
+            if filterActive then return ns.L("EMPTY_FILTER") end
+            if db.onlyTracked then return ns.L("EMPTY_TRACKED") end
+            return ns.L("EMPTY_LOG")
+        end)
 
     title:SetText(ns.L("TRACKER_TITLE") .. "  |cff8a8a8a" .. count .. "|r")
     -- Titelleiste folgt der eingestellten Hintergrund-Transparenz
     local headerColor = ns.Style.COLOR.header
     headerBar:SetBackdropColor(headerColor[1], headerColor[2], headerColor[3], math.max(alpha, 0.15))
-    content:SetHeight(math.max(1, y))
 
     -- Scrollposition begrenzen, falls die Liste kürzer geworden ist
     local maxScroll = math.max(0, y - scrollFrame:GetHeight())
     if scrollFrame:GetVerticalScroll() > maxScroll then
         scrollFrame:SetVerticalScroll(maxScroll)
     end
+
+    -- offener Questlog an der Weltkarte zeigt dieselben Quests: gleich mit aktualisieren
+    if ns.UpdateQuestLog then ns.UpdateQuestLog() end
 end
+
+-- Bausteine für den Questlog an der Weltkarte (QuestLog.lua)
+ns.QuestList = {
+    -- neue Ansicht in einem Inhaltsrahmen (content) anlegen
+    NewView = function(content, prefix)
+        return { content = content, lines = {}, boxes = {}, prefix = prefix, collapsed = {}, expanded = {},
+            anchor = "ANCHOR_RIGHT", watchToggle = true }
+    end,
+    Render = function(v, opts, contentWidth, emptyText)
+        ns.UpdateFonts()
+        BuildFactionNames()
+        return RenderQuestList(v, CollectGroups(opts), contentWidth, 1, emptyText)
+    end,
+    OpenFilterMenu = OpenFilterMenu,
+    HasFilters = function(dbKey) return #GetSelectedFilters(dbKey) > 0 end,
+}
 
 -- Mehrere Ereignisse kurz hintereinander werden zu einer Aktualisierung zusammengefasst
 function ns.RequestUpdate()
@@ -1786,7 +1937,7 @@ function ns.CreateTracker()
         function() ns.ToggleDungeons() end, function(tooltip) tooltip:AddLine(ns.L("TIP_DUNGEONS")) end)
     dungeonButton:SetPoint("RIGHT", -4, 0)
 
-    filterButton = Style.CreateButton(headerBar, ns.L("BTN_FILTER"), 42, 18, OpenFilterMenu, function(tooltip)
+    filterButton = Style.CreateButton(headerBar, ns.L("BTN_FILTER"), 42, 18, function(self) OpenFilterMenu(self) end, function(tooltip)
         tooltip:AddLine(ns.L("FILTER_TITLE"))
         tooltip:AddLine(ns.L("TIP_FILTER_ACTIVE", GetActiveFilterText()), 1, 1, 1, true)
     end)
@@ -1826,6 +1977,7 @@ function ns.CreateTracker()
     content = CreateFrame("Frame", nil, scrollFrame)
     content:SetSize(1, 1)
     scrollFrame:SetScrollChild(content)
+    trackerView.content = content
 
     -- Reiter "Quests" | "Gruppe" unter der Titelleiste (nur bei vorgeschlagenen Quests, siehe GroupQuests.lua)
     tabRow = CreateFrame("Frame", nil, tracker)

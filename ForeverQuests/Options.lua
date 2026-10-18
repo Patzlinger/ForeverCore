@@ -245,6 +245,8 @@ local function CreateOptions()
         ns.ApplyBetaFilter()
         if ns.ResetDungeonWindow then ns.ResetDungeonWindow() end
     end)
+    -- Questlog an der Weltkarte im Forever-Stil (Blizzards Rahmen kommt erst nach /reload zurück)
+    CreateSettingCheckbox(looks, L("OPT_QUESTLOG"), 14, -318, "questLogSkin")
 
     -- Unten: Position und Größe
     local function screenWidth() return math.floor(UIParent:GetWidth()) end

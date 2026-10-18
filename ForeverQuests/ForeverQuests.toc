@@ -20,6 +20,7 @@ Style.lua
 Data\Dungeons.lua
 Tracker.lua
 GroupQuests.lua
+QuestLog.lua
 Options.lua
 Minimap.lua
 Dungeons.lua

@@ -48,6 +48,9 @@ ns.defaults = {
     filters = {},
     -- In Instanzen automatisch nur die Quests der Instanz zeigen
     instanceFilter = true,
+    -- Questlog an der Weltkarte im Forever-Stil (QuestLog.lua; gilt nach /reload)
+    questLogSkin = true,
+    logFilters = {},         -- Filter des Questlogs (eigene Auswahl, unabhängig vom Tracker)
     -- Sprache: "AUTO" (wie der WoW-Client), "deDE" oder "enUS"
     language = "AUTO",
 }
@@ -138,6 +141,9 @@ SlashCmdList.FOREVERQUESTS = function(msg)
     elseif msg == "maus" or msg == "mouse" then
         -- Fehlersuche: welches Fenster bekommt die Maus?
         ns.DebugMouse()
+    elseif msg == "karte" or msg == "map" then
+        -- Fehlersuche: Aufbau von Weltkarte und Questlog
+        ns.DebugMap()
     elseif msg == "lfg" then
         -- Zeigt, was das Spiel für die Gruppensuche anbietet (Fehlersuche)
         ns.DebugGroupFinder()
