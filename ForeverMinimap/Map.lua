@@ -1347,11 +1347,10 @@ function ns.SetupMap()
     end))
 
     -- Uhr und Koordinaten: ein sparsamer Takt (4x pro Sekunde), nur solange die Minimap sichtbar ist
-    C_Timer.NewTicker(0.25, function()
-        if not Minimap:IsVisible() then return end
+    UI.Every(0.25, function()
         UpdateClock()
         UpdateCoords()
-    end)
+    end, { addon = "ForeverMinimap", name = "Clock", when = function() return Minimap:IsVisible() end })
 
     ns.ApplyAll()
     C_Timer.After(2, ns.CollectEdgeButtons)

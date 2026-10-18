@@ -1063,16 +1063,15 @@ events:SetScript("OnEvent", function(_, event, arg1)
 end)
 
 -- zeitabhängige Werte (pro Stunde, Zeit bis Level-Up) laufen ohne Ereignis weiter
-C_Timer.NewTicker(REFRESH, function()
-    if not ns.db then return end
+-- (gemeinsamer Takt aus ForeverCore)
+UI.Every(REFRESH, function()
     TickLevelTime()
     ns.UpdateStatus()
-end)
+end, { addon = "ForeverBars", name = "Status", when = function() return ns.db ~= nil end })
 
 -- Blizzards Leisten zur Sicherheit selten nachprüfen (sonst über Ereignisse, siehe oben)
-C_Timer.NewTicker(30, function()
-    if ns.ready and not InCombatLockdown() then ns.UpdateBlizzardStatus() end
-end)
+UI.Every(30, function() ns.UpdateBlizzardStatus() end, { addon = "ForeverBars", name = "Blizzard status",
+    when = function() return ns.ready and not InCombatLockdown() end })
 
 -- /fxp: wie früher das Addon ForeverXP (ohne Zusatz öffnet sich das Menü bei der Erfahrungsleiste)
 SLASH_FOREVERXP1 = "/fxp"

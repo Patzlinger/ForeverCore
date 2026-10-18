@@ -95,7 +95,7 @@ function ns.RequestBounds()
         pcall(ns.UpdateBounds)
     end)
 end
-C_Timer.NewTicker(5, function() pcall(ns.UpdateBounds) end)
+ns.UI.Every(5, function() ns.UpdateBounds() end, { addon = "ForeverFrames", name = "Bounds" }) -- (gemeinsamer Takt aus ForeverCore)
 
 -- Raster nur entsperrt und nur beim Ziehen oder bei offenen Einstellungen
 -- (ein Dauer-Raster waere stoerend, solange man nur kurz entsperrt)
@@ -1284,7 +1284,9 @@ ns.On("PLAYER_ENTERING_WORLD", "Welt betreten", function()
 end)
 
 -- Reichweite regelmaessig pruefen
-C_Timer.NewTicker(0.25, Safe(T("Reichweite", "Range"), function() ForEachShown(UpdateRange) end))
+-- (gemeinsamer Takt aus ForeverCore: nur in einer Gruppe oder im Testmodus – allein gibt es keine Reichweite zu prüfen)
+ns.UI.Every(0.25, function() ForEachShown(UpdateRange) end, { addon = "ForeverFrames", name = T("Reichweite", "Range"),
+    when = function() return IsInGroup() or (ns.testCount or 0) > 0 end })
 
 ns.On("PLAYER_LOGIN", "Start", function()
     appliedMode = ns.ActiveMode()

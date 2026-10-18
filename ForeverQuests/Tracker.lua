@@ -2141,7 +2141,13 @@ function ns.CreateTracker()
         ns.RequestUpdate()
     end)
 
-    C_Timer.NewTicker(10, CheckAutoCollapse)
+    -- (gemeinsamer Takt aus ForeverCore)
+    local hub = _G.ForeverHub and _G.ForeverHub.UI
+    if hub and hub.Every then
+        hub.Every(10, CheckAutoCollapse, { addon = "ForeverQuests", name = "Auto collapse" })
+    else
+        C_Timer.NewTicker(10, CheckAutoCollapse)
+    end
 
     ns.ApplyLayout()
 end

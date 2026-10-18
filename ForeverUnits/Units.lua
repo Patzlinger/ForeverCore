@@ -1434,10 +1434,11 @@ ns.On("UNIT_PET", T("Begleiter", "Pet"), function(unit)
 end)
 
 -- "Ziel des Ziels" meldet keine Aenderungen: regelmaessig nachsehen (nur wenn sichtbar)
-C_Timer.NewTicker(0.25, Safe(T("Ziel des Ziels", "Target of target"), function()
+-- (gemeinsamer Takt aus ForeverCore: nur, solange es ein Ziel des Ziels gibt)
+UI.Every(0.25, function()
     local b = Frame("targettarget")
-    if b and b:IsVisible() and UnitExists("targettarget") then ns.UpdateAll(b) end
-end))
+    if b and b:IsVisible() then ns.UpdateAll(b) end
+end, { addon = "ForeverUnits", name = T("Ziel des Ziels", "Target of target"), when = function() return UnitExists("targettarget") end })
 
 ns.On("PLAYER_ENTERING_WORLD", T("Welt betreten", "Entering world"), function()
     ns.HideBlizzard()

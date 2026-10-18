@@ -408,9 +408,10 @@ end
 ns.On("PLAYER_ENTERING_WORLD", T("Begleiter", "Pet"), PetSpaceSoon)
 ns.On("PLAYER_REGEN_ENABLED", T("Begleiter", "Pet"), PetSpaceSoon)
 if ns.SetTestMode then hooksecurefunc(ns, "SetTestMode", PetSpaceSoon) end -- Testmodus (Frames.lua)
-C_Timer.NewTicker(5, Safe(T("Begleiter", "Pet"), function()
-    if not InCombatLockdown() then ns.UpdatePetSpace() end
-end))
+-- (gemeinsamer Takt aus ForeverCore)
+ns.UI.Every(5, function() ns.UpdatePetSpace() end, { addon = "ForeverFrames", name = T("Begleiter", "Pet"),
+    when = function() return not InCombatLockdown() end })
 ns.On("PLAYER_TARGET_CHANGED", T("Begleiter", "Pet"), function() ForEachPet(UpdatePetTarget) end)
 
-C_Timer.NewTicker(0.25, Safe(T("Begleiter-Reichweite", "Pet range"), function() ForEachPet(UpdatePetRange) end))
+ns.UI.Every(0.25, function() ForEachPet(UpdatePetRange) end, { addon = "ForeverFrames", name = T("Begleiter-Reichweite", "Pet range"),
+    when = function() return IsInGroup() or (ns.testCount or 0) > 0 end })

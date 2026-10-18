@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 45
+local VERSION = 46
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -300,6 +300,54 @@ end
 
 -- Hauptfenster / Einstellungsfenster: flach und dunkel, Titelleiste mit Goldlinie,
 -- verschiebbar, mit Escape schliessbar
+-- Gemeinsamer Takt für alle Forever-Addons: statt vieler einzelner Zeitschleifen (C_Timer.NewTicker) läuft ein einziger
+-- unsichtbarer Rahmen. Jede Aufgabe hat ihr Intervall und optional eine Bedingung "when" (nur dann wird sie
+-- ausgeführt – z. B. nur in einer Gruppe, nur wenn sichtbar). Startzeiten werden verteilt, damit nicht alle Aufgaben
+-- im selben Bild rechnen. Fehler einer Aufgabe werden einmal gemeldet, die anderen laufen weiter.
+--   local task = UI.Every(0.25, fn, { addon = "ForeverUnits", name = "Ziel des Ziels", when = function() ... end })
+--   UI.StopEvery(task)
+-- Der Rahmen hat kein Elternteil: er läuft auch bei ausgeblendeter Oberfläche (Alt+Z) weiter, wie C_Timer.
+SHARED.tasks = SHARED.tasks or {}
+local tasks = SHARED.tasks
+if not SHARED.taskDriver then
+    local driver = CreateFrame("Frame")
+    SHARED.taskDriver = driver
+    driver:SetScript("OnUpdate", function(_, elapsed)
+        for i = 1, #tasks do
+            local t = tasks[i]
+            if t and not t.stopped then
+                t.acc = t.acc + elapsed
+                if t.acc >= t.interval then
+                    t.acc = t.acc - t.interval
+                    if t.acc > t.interval then t.acc = 0 end -- nach einer Ladepause nicht nachholen
+                    local run = true
+                    if t.when then
+                        local ok, res = pcall(t.when)
+                        run = ok and res and true or false
+                    end
+                    if run then
+                        local ok, err = pcall(t.fn)
+                        if not ok and not t.reported then
+                            t.reported = true
+                            if UI.ReportError then UI.ReportError(t.addon or "ForeverCore", t.name or "Takt", err) end
+                        end
+                    end
+                end
+            end
+        end
+    end)
+end
+
+function UI.Every(interval, fn, opts)
+    opts = opts or {}
+    local t = { interval = math.max(0.01, interval or 1), fn = fn, when = opts.when, addon = opts.addon, name = opts.name }
+    t.acc = math.random() * t.interval -- Startzeiten verteilen
+    tasks[#tasks + 1] = t
+    return t
+end
+
+function UI.StopEvery(t) if t then t.stopped = true end end
+
 -- Schließen-Kreuz im Forever-Stil: zwei feine, gedrehte Linien (keine Blizzard-Grafik – Blizzards UIPanelCloseButton
 -- wurde in diesem Client zeitweise nicht mehr gezeichnet). Grau, beim Darüberfahren gold.
 function UI.CloseButton(parent, onClick)

@@ -2980,6 +2980,13 @@ function ns.ApplyLayout()
     -- Flächen zum Hineinziehen (einmalig anlegen, sobald die Halter da sind)
     -- (keine Fläche zum Hineinziehen bei der früheren Verbrauchbar-Leiste: sie zeigt nur noch Markierungen)
     CreateCatcher("prof")
+    -- Abblenden (Maus darüber / außerhalb des Kampfes) überhaupt nötig? Sonst ruht der Takt dafür
+    local fade = ns.db.hideOutOfCombat and true or false
+    for _, def in ipairs(ns.BAR_DEFS) do
+        local cfg = ns.db.bars[def.key]
+        if cfg and cfg.enabled and cfg.fadeMouseover then fade = true end
+    end
+    ns.fadeActive = fade
     -- ForeverQuests hängt den Tracker unter das angedockte Mikromenü (siehe dort MinimapAnchor)
     local hubUI = _G.ForeverHub and _G.ForeverHub.UI
     if hubUI and hubUI.Fire then hubUI.Fire("ForeverBars.Layout") end
@@ -3124,7 +3131,7 @@ local function CheckEditMode()
 end
 
 function ns.WatchEditMode()
-    C_Timer.NewTicker(EDIT_MODE_INTERVAL, CheckEditMode)
+    _G.ForeverHub.UI.Every(EDIT_MODE_INTERVAL, CheckEditMode, { addon = "ForeverBars", name = "Edit mode" }) -- (gemeinsamer Takt)
 end
 
 ---------------------------------------------------------------------------
@@ -3239,7 +3246,9 @@ function ns.SetupBars()
     ns.CreateFoodButtons()
     HookProcGlow()
     ns.ApplyLayout()
-    C_Timer.NewTicker(FADE_INTERVAL, UpdateFading)
+    -- (gemeinsamer Takt aus ForeverCore: nur, wenn überhaupt eine Leiste abblendet – siehe ns.fadeActive in ApplyLayout)
+    _G.ForeverHub.UI.Every(FADE_INTERVAL, UpdateFading, { addon = "ForeverBars", name = "Fade",
+        when = function() return ns.fadeActive ~= false end })
 
     ns.WatchEditMode()
 

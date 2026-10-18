@@ -652,18 +652,12 @@ end
 
 -- Aenderungen sammeln, hoechstens 2x pro Sekunde pruefen
 local dirty = true
-local ticker = CreateFrame("Frame")
-local acc = 0
-ticker:SetScript("OnUpdate", function(_, elapsed)
-    acc = acc + elapsed
-    if acc < 0.5 then return end
-    acc = 0
-    if dirty then
-        dirty = false
-        Update()
-    end
-end)
-C_Timer.NewTicker(10, function() dirty = true end) -- Buffs laufen ab, ohne dass sich etwas meldet
+-- (gemeinsamer Takt aus ForeverCore)
+UI.Every(0.5, function()
+    dirty = false
+    Update()
+end, { addon = "ForeverBuffs", name = "Update", when = function() return dirty end })
+UI.Every(10, function() dirty = true end, { addon = "ForeverBuffs", name = "Expire" }) -- Buffs laufen ab, ohne dass sich etwas meldet
 
 local events = CreateFrame("Frame")
 for _, e in ipairs({ "PLAYER_LOGIN", "PLAYER_ENTERING_WORLD", "UNIT_AURA", "BAG_UPDATE_DELAYED", "GROUP_ROSTER_UPDATE",

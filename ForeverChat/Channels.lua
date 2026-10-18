@@ -548,7 +548,8 @@ function ns.SetupChannels()
         pcall(ev.RegisterEvent, ev, e)
     end
     ev:SetScript("OnEvent", function() C_Timer.After(0.2, ns.UpdateChannelButton) end)
-    C_Timer.NewTicker(2, Place) -- Sicherheitsnetz: Reiter ändern ihre Breite auch ohne Ereignis
+    -- Sicherheitsnetz: Reiter ändern ihre Breite auch ohne Ereignis (gemeinsamer Takt; nur mit eingeschaltetem Knopf)
+    UI.Every(2, Place, { addon = "ForeverChat", name = "Channels", when = function() return ns.GetDB().channelButton end })
     C_Timer.After(1, function()
         CleanupOldWindows()
         ns.UpdateChannelButton()
