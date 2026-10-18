@@ -30,7 +30,7 @@ eintragen; behobene mit Datum und Ursache nach „Erledigt“ verschieben.
 | ForeverBars | flowfy | im Repository, noch nicht im Release |
 | ForeverBags | flowfy | Prototyp (seit 2026-10-17) |
 | ForeverTooltip | Patzlinger | Prototyp (seit 2026-10-18, nicht im Release) |
-| ForeverPlates | Patzlinger | Prototyp (seit 2026-10-18, nicht im Release) |
+| ForeverPlates | Patzlinger | im Gesamtpaket (seit 2026-10-19, `release/addons.txt`; noch nicht veröffentlicht) |
 | ForeverAlts | flowfy | Prototyp (seit 2026-10-18, nicht im Release) |
 | `tools/`, `release/` | gemeinsam | – |
 
@@ -388,7 +388,7 @@ Damit alle Einstellungsfenster gleich aussehen, gelten diese Maße. Quelle: `For
   | /fmm, /foreverminimap | ForeverMinimap |
   | /fbags, /foreverbags | ForeverBags |
   | /ftip, /forevertooltip | ForeverTooltip |
-  | /fplates, /foreverplates | ForeverPlates (`/fplates skin` = Forever-Stil an/aus) |
+  | /fplates, /foreverplates | ForeverPlates (`/fplates skin` = Forever-Rahmen an/aus) |
   | /falts, /foreveralts | ForeverAlts |
 - Tastenkürzel über `Bindings.xml` + `BINDING_HEADER_…`/`BINDING_NAME_…` (Bereich "AddOns")
 

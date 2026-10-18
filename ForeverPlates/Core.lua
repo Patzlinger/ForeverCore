@@ -1,4 +1,4 @@
--- ForeverPlates (Prototyp): eigene Namensplaketten für Gegner – Name und Stufe, Leben in % und als Zahl, Bedrohung als
+-- ForeverPlates: eigene Namensplaketten für Gegner – Name und Stufe, Leben in % und als Zahl, Bedrohung als
 -- Schild mit Prozent (Leiste färbt sich je nach Rolle), schmale Zauberleiste mit Ziel-Plakette und Unterbrechen-
 -- Hinweis, eigene DoTs oben, Kontrolleffekte (CC) groß an der Seite, Buffs wahlweise, Finishing-Bereich, Combopunkte
 -- auf dem Ziel, Questgegner und große Raidmarker. Zwei Looks: "Forever" (flach, dunkel) und "Klassisch".

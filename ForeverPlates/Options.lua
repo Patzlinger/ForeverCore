@@ -7,8 +7,7 @@ local Safe = ns.Safe
 
 local ToggleOptions
 do
-    local options = UI.SettingsPanel("ForeverPlatesOptions", T("ForeverPlates – Einstellungen (Prototyp)",
-        "ForeverPlates – Settings (prototype)"), 720, 800,
+    local options = UI.SettingsPanel("ForeverPlatesOptions", T("ForeverPlates – Einstellungen", "ForeverPlates – Settings"), 720, 800,
         { key = "ForeverPlates", group = UI.SETTINGS_GROUPS.frames, label = T("Namensplaketten", "Nameplates") })
     local W = 330
     local controls = {}
@@ -210,9 +209,9 @@ do
         function() ns.ApplyFriendly() end)
 
     UI.Hint(options, 18, -764, 680, T(
-        "Prototyp – noch nicht im Release. Gegner bekommen eigene Plaketten; Blizzards Plakette bleibt unsichtbar "
+        "Gegner bekommen eigene Plaketten; Blizzards Plakette bleibt unsichtbar "
         .. "darunter (Position, Klicks). Klickfläche und Abstände: Blizzards Optionen (Esc » Optionen » Namensplaketten).",
-        "Prototype – not in the release yet. Enemies get our own plates; Blizzard's plate stays invisible underneath "
+        "Enemies get our own plates; Blizzard's plate stays invisible underneath "
         .. "(position, clicks). Click area and spacing: Blizzard's options (Esc » Options » Nameplates)."))
 
     SelectTab(1)
