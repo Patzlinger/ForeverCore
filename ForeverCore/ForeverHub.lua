@@ -2401,12 +2401,24 @@ local function SettingsWindow()
     f.content = content
     -- Ebenen immer relativ zum Fenster: "zuletzt geöffnet liegt oben" hebt das Fenster an – feste Ebenen rutschten
     -- dabei hinter den Fensterhintergrund (Seiten wirkten abgedunkelt und ließen sich nicht anklicken)
+    -- (auch alle Unterflächen darin, z. B. die Reiter-Flächen von ForeverUnits/ForeverFrames: sie wanderten sonst nicht
+    -- mit und lagen hinter dem Fensterhintergrund) – nur anheben, wo nötig, die Reihenfolge untereinander bleibt
+    local function KeepAbove(parent, depth)
+        if depth > 8 then return end
+        local level = parent:GetFrameLevel()
+        for _, child in ipairs({ parent:GetChildren() }) do
+            if child:GetFrameLevel() <= level then child:SetFrameLevel(level + 1) end
+            KeepAbove(child, depth + 1)
+        end
+    end
     local function Levels()
         local base = f:GetFrameLevel()
         content:SetFrameLevel(base + 2)
+        KeepAbove(content, 1)
         if f.CloseButton then f.CloseButton:SetFrameLevel(base + 60) end -- Schließen-Kreuz über der Titelleiste der Seite
     end
     hooksecurefunc(f, "SetFrameLevel", Levels)
+    f.fcLevels = Levels
     Levels()
     -- passt das Fenster nicht auf den Bildschirm, beim Öffnen verkleinern (größer ziehen geht weiter mit dem Griff)
     f:HookScript("OnShow", function(self)
@@ -2529,6 +2541,7 @@ function UI.OpenSettings(which)
     settingsCurrent = page
     LayoutNav()
     if f:IsShown() then page.frame:fcRawShow() else f:Show() end
+    if f.fcLevels then f.fcLevels() end -- neue Seite (evtl. eben erst gebaut) über den Fensterhintergrund
 end
 
 function UI.CloseSettings()
