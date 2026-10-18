@@ -226,7 +226,7 @@ local function QuestIDFallback(questID)
     return ns.L("QUEST_FALLBACK", questID or 0)
 end
 
--- Anzeigename: aus dem Spiel, sonst aus der Excel-Datei, sonst Platzhalter.
+-- Anzeigename: aus dem Spiel, sonst aus Questies Daten, sonst Platzhalter.
 -- Kennt das Spiel die Quest-ID nicht, steht "(Not available in Beta)" dahinter.
 local function QuestName(quest)
     local title = GetGameQuestTitle(quest.id)
@@ -238,7 +238,7 @@ local function QuestName(quest)
     return name or QuestIDFallback(quest.id)
 end
 
--- Questlevel: aus der Excel-Datei (nur bei Quests ohne ID eingetragen) oder aus dem Spiel
+-- Questlevel: aus Questies Daten oder aus dem Spiel
 local function QuestLevel(quest)
     local level = tonumber((quest.level or ""):match("%d+"))
     if not level and quest.id and C_QuestLog.GetQuestDifficultyLevel then
@@ -256,7 +256,7 @@ local function PrequestText(quest)
     return quest.prequest
 end
 
--- Questgeber: Name aus der Excel-Datei oder - wenn die Quest von einem Gegenstand startet -
+-- Questgeber: Name aus Questies Daten oder - wenn die Quest von einem Gegenstand startet -
 -- Symbol und Name des Gegenstands aus dem Spiel (über die Item-ID).
 -- Noch nicht geladene Gegenstände werden angefordert (Ereignis ITEM_DATA_LOAD_RESULT aktualisiert das Fenster).
 local requestedItems = {}
