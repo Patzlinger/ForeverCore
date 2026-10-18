@@ -491,6 +491,7 @@ local DNG_PREFIX = "FQDNG"
 local issecret = issecretvalue or function() return false end
 if C_ChatInfo and C_ChatInfo.RegisterAddonMessagePrefix then pcall(C_ChatInfo.RegisterAddonMessagePrefix, DNG_PREFIX) end
 local groupReplies = {}   -- [Vorname] = { [questID] = Stand }
+local groupProgress = {}  -- [Vorname] = { [questID] = { erledigt, nötig } } (Questziele, nur Quests im Log)
 local lastRequest = {}    -- [Dungeon] = Zeitpunkt der letzten Anfrage
 
 local function DngChannel()
@@ -520,6 +521,23 @@ local function MyDungeonState(questID)
     end
     if C_QuestLog.IsQuestFlaggedCompleted and C_QuestLog.IsQuestFlaggedCompleted(questID) then return "C" end
     return "N"
+end
+
+-- eigener Fortschritt einer Quest im Log: Summe der erfüllten / nötigen Questziele (nil, wenn unbekannt)
+local function MyQuestProgress(questID)
+    if not C_QuestLog.GetLogIndexForQuestID(questID) or not C_QuestLog.GetQuestObjectives then return nil end
+    local ok, done, total = pcall(function()
+        local d, t = 0, 0
+        for _, objective in ipairs(C_QuestLog.GetQuestObjectives(questID) or {}) do
+            local need = tonumber(objective.numRequired) or 0
+            if need <= 0 then need = 1 end
+            local have = tonumber(objective.numFulfilled) or (objective.finished and need or 0)
+            if objective.finished then have = need end
+            d, t = d + math.min(have, need), t + need
+        end
+        return d, t
+    end)
+    if ok and total and total > 0 then return done, total end
 end
 
 local function DungeonQuestIDs(dungeon)
@@ -595,7 +613,7 @@ do
     comms:RegisterEvent("GROUP_ROSTER_UPDATE")
     comms:SetScript("OnEvent", function(_, event, prefix, message, _, sender)
         if event == "GROUP_ROSTER_UPDATE" then
-            if not IsInGroup() then wipe(groupReplies) end
+            if not IsInGroup() then wipe(groupReplies) wipe(groupProgress) end
             return
         end
         if prefix ~= DNG_PREFIX or issecret(message) or issecret(sender) or type(message) ~= "string" then return end
@@ -603,22 +621,69 @@ do
         if not name or name == DngShortName(UnitName("player")) then return end
         local kind, rest = strsplit("|", message, 2)
         if kind == "Q" and rest then
+            -- Antwort je Quest: "<id>:<Stand>", bei Quests im Log mit Fortschritt "<id>:L2/5" (ältere Versionen lesen
+            -- nur den Buchstaben und überspringen den Rest – bleibt verträglich)
             local parts = {}
             for id in rest:gmatch("%d+") do
                 local questID = tonumber(id)
-                parts[#parts + 1] = questID .. ":" .. MyDungeonState(questID)
+                local entry = questID .. ":" .. MyDungeonState(questID)
+                local done, total = MyQuestProgress(questID)
+                if done then entry = entry .. done .. "/" .. total end
+                parts[#parts + 1] = entry
             end
             if #parts > 0 then DngSend("R|" .. table.concat(parts, ",")) end
         elseif kind == "R" and rest then
             local reply = groupReplies[name] or {}
             groupReplies[name] = reply
-            for id, state in rest:gmatch("(%d+):(%a)") do reply[tonumber(id)] = state end
+            local progress = groupProgress[name] or {}
+            groupProgress[name] = progress
+            for id, state, done, total in rest:gmatch("(%d+):(%a)(%d*)/?(%d*)") do
+                reply[tonumber(id)] = state
+                progress[tonumber(id)] = (done ~= "" and total ~= "") and { tonumber(done), tonumber(total) } or nil
+            end
+            if ns.RefreshDungeonHint then ns.RefreshDungeonHint() end
             local tip = ns.Style.GetTooltip()
             if groupButton and tip:IsShown() and tip:GetOwner() == groupButton and groupButton:IsMouseOver() then
                 groupButton:GetScript("OnEnter")(groupButton)
             end
         end
     end)
+end
+
+-- Gruppe im Hinweis "Dungeon betreten": je Mitspieler, wie viele Dungeonquests er dabeihat, wie weit er ist,
+-- welche er hat, die dir fehlen, und welche deiner Quests ihm fehlen. Ohne ForeverQuests beim Mitspieler kennt das
+-- Spiel nur, ob er eine Quest im Log hat (kein Fortschritt, "fehlt" unbekannt). nil ohne Gruppe.
+local function GroupHintText(dungeon)
+    if not dungeon or not IsInGroup() then return nil end
+    local ids = DungeonQuestIDs(dungeon)
+    local lines = { "|cffffd100" .. ns.L("HINT_GROUP") .. "|r" }
+    for _, unit in ipairs(GetGroupUnits()) do
+        local name = DngShortName(UnitName(unit))
+        if name then
+            local count, extra, missing, done, total = 0, 0, 0, 0, 0
+            local answered = groupReplies[name] ~= nil
+            for _, questID in ipairs(ids) do
+                local mine = MyDungeonState(questID)
+                local theirs = MemberState(unit, name, questID)
+                local theyHave = theirs == "L" or theirs == "F"
+                local iHave = mine == "L" or mine == "F"
+                if theyHave then
+                    count = count + 1
+                    local p = groupProgress[name] and groupProgress[name][questID]
+                    if p then done, total = done + p[1], total + p[2] end
+                end
+                if theyHave and mine == "N" then extra = extra + 1 end
+                if iHave and answered and theirs == "N" then missing = missing + 1 end
+            end
+            local text = ns.L("HINT_MEMBER", name, count)
+            if total > 0 then text = text .. ns.L("HINT_MEMBER_PROGRESS", math.floor(done / total * 100 + 0.5)) end
+            if extra > 0 then text = text .. " |cff33ff99" .. ns.L("HINT_MEMBER_EXTRA", extra) .. "|r" end
+            if missing > 0 then text = text .. " |cffff7070" .. ns.L("HINT_MEMBER_MISSING", missing) .. "|r" end
+            if not answered then text = text .. " |cff8a8a8a" .. ns.L("HINT_MEMBER_UNKNOWN") .. "|r" end
+            lines[#lines + 1] = text
+        end
+    end
+    return #lines > 1 and table.concat(lines, "\n") or nil
 end
 
 -- Levelbereich eingefärbt nach Schwierigkeit für den eigenen Charakter (anhand des Mindestlevels)
@@ -2494,6 +2559,18 @@ local function CountHintQuests(dungeon)
     return inLog, missing
 end
 
+-- Text des Hinweises (eigene Quests, darunter die Gruppe); die Fensterhöhe wächst mit
+function ns.RefreshDungeonHint()
+    if not hintFrame or not hintFrame.dungeon then return end
+    local dungeon = hintFrame.dungeon
+    local text = ns.L("HINT_TEXT", Localized(dungeon, "name"), hintFrame.inLog or 0, hintFrame.missing or 0)
+    local group = GroupHintText(dungeon)
+    if group then text = text .. "\n\n" .. group end
+    hintFrame:SetWidth(group and 460 or 360)
+    hintFrame.text:SetText(text)
+    hintFrame:SetHeight(math.max(128, 50 + hintFrame.text:GetStringHeight() + 48))
+end
+
 local function ShowDungeonHint(dungeon, inLog, missing)
     if not hintFrame then
         hintFrame = ns.Style.CreateWindow("ForeverQuestsDungeonHint", 360, 128, ns.L("HINT_TITLE"))
@@ -2523,9 +2600,12 @@ local function ShowDungeonHint(dungeon, inLog, missing)
     end
     hintFrame.dungeon = dungeon
     hintFrame.inLog = inLog
+    hintFrame.missing = missing
     hintFrame.shareButton:SetAlpha((IsInGroup() and inLog > 0) and 1 or 0.45)
     hintFrame.titleText:SetText(ns.L("HINT_TITLE"))
-    hintFrame.text:SetText(ns.L("HINT_TEXT", Localized(dungeon, "name"), inLog, missing))
+    ns.RefreshDungeonHint()
+    -- Stand der Mitspieler erfragen (Antworten füllen den Hinweis nach)
+    RequestGroupStatus(dungeon)
     hintFrame:Show()
     -- Nach einer Weile von selbst ausblenden (nur, wenn es noch derselbe Hinweis ist)
     local shownAt = GetTime()
