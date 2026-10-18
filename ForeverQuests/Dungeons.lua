@@ -1223,6 +1223,10 @@ end
 -- Die Karte zeigt die nächste noch offene Quest der Reihe (sonst die letzte); die ganze Reihe steht darunter.
 local function BuildCards(dungeon)
     local cards, byKey = {}, {}
+    local dungeonQuestIDs = {} -- alle Quests des Dungeons (eine fehlende Vorquest darunter ist keine "Vorquest außerhalb")
+    for _, quest in ipairs(dungeon.quests or {}) do
+        if quest.id then dungeonQuestIDs[quest.id] = true end
+    end
     for _, quest in ipairs(dungeon.quests or {}) do
         if IsQuestVisible(quest) then
             local chain = quest.id and ns.GetQuestChain and ns.GetQuestChain(quest.id)
@@ -1264,20 +1268,33 @@ local function BuildCards(dungeon)
         end
         card.quest = card.quest or card.members[#card.members]
 
-        -- Vorquest: Ist der nächste offene Teil der Reihe eine Quest außerhalb des Dungeons, die vor der
-        -- Dungeonquest kommt, zeigt die Karte diese Vorquest (mit Questgeber und Kartenpunkt aus Questie)
-        if card.chain and card.quest and position[card.quest.id] then
-            local isMember = {}
-            for _, member in ipairs(card.members) do isMember[member.id] = true end
-            for i, entry in ipairs(card.chain) do
-                if i >= position[card.quest.id] then break end
-                if not isMember[entry.questID] and GetQuestStatus(entry.questID) ~= "DONE" then
-                    local prequest = ns.BuildQuestieQuest and ns.BuildQuestieQuest(entry.questID, dungeon)
-                    if prequest then
-                        prequest.isPrequest = true
-                        card.quest = prequest
+        -- Vorquest: Nur wenn man die Dungeonquest noch gar nicht annehmen kann (nicht im Log, nicht erledigt und
+        -- laut Questie fehlt eine Vorquest außerhalb des Dungeons), zeigt die Karte die Vorquest, die man zuerst
+        -- in der offenen Welt erledigen muss (mit Questgeber und Kartenpunkt). Sie gehört dann auch in die Reihe.
+        local quest = card.quest
+        if quest and quest.id and GetQuestStatus(quest.id) == "OPEN" and ns.GetMissingPrequest then
+            local missingID = ns.GetMissingPrequest(quest.id)
+            if missingID and not dungeonQuestIDs[missingID] then
+                local prequest = ns.BuildQuestieQuest and ns.BuildQuestieQuest(missingID, dungeon)
+                if prequest then
+                    prequest.isPrequest = true
+                    card.quest = prequest
+                    local inChain = false
+                    for _, entry in ipairs(card.chain or {}) do
+                        if entry.questID == missingID then inChain = true break end
                     end
-                    break
+                    if not inChain then
+                        local entry = { questID = missingID, name = prequest.name, level = tonumber(prequest.level),
+                            requiredLevel = prequest.minLevel }
+                        if card.chain then
+                            local copy = { entry }
+                            for _, e in ipairs(card.chain) do copy[#copy + 1] = e end
+                            card.chain = copy
+                        else
+                            card.chain = { entry, { questID = quest.id, name = QuestName(quest),
+                                level = tonumber(quest.level), requiredLevel = quest.minLevel } }
+                        end
+                    end
                 end
             end
         end
@@ -1478,7 +1495,8 @@ RefreshDetail = function()
             -- Questreihe aus Questie: als eigene Zeilen mit Tooltip (LayoutCardChain); sonst kurze Kette im Text
             local questieChain = card.chain -- aus Questie bzw. gleichnamige Quests (siehe BuildCards)
             local chainText = (not questieChain) and ChainText(quest) or nil
-            local prequest = PrequestText(quest)
+            -- "Vorquest: …" nur ohne Questreihe – mit Reihe steht die Vorquest schon darin
+            local prequest = (not questieChain) and PrequestText(quest) or nil
             if chainText then
                 table.insert(extraParts, chainText)
             elseif prequest then

@@ -367,10 +367,17 @@ function ns.BuildQuestChain(questID)
                 requiredLevel = db.QueryQuestSingle(id, "requiredLevel"),
                 objectives = db.QueryQuestSingle(id, "objectivesText") }
         end
+        -- Vorgänger: bei "eine von mehreren" (preQuestSingle, oft verschiedene Zubringerquests) bevorzugt die,
+        -- die man schon erledigt hat
         local function Previous(id)
             for _, key in ipairs({ "preQuestSingle", "preQuestGroup" }) do
                 local list = db.QueryQuestSingle(id, key)
-                if type(list) == "table" and list[1] then return list[1] end
+                if type(list) == "table" and list[1] then
+                    for _, pre in ipairs(list) do
+                        if C_QuestLog.IsQuestFlaggedCompleted(pre) then return pre end
+                    end
+                    return list[1]
+                end
             end
         end
         local list, seen = { Entry(questID) }, { [questID] = true }
@@ -389,6 +396,36 @@ function ns.BuildQuestChain(questID)
         return list
     end)
     if ok and chain and #chain > 1 then return chain end
+end
+
+-- Fehlende Vorquest: Kann man die Quest noch nicht annehmen, weil eine Vorquest fehlt, die Quest-ID der Vorquest,
+-- die man als Nächstes machen kann (bei Ketten von Vorquests die früheste offene). nil = Quest ist annehmbar.
+-- Questie: preQuestSingle = eine davon reicht, preQuestGroup = alle nötig.
+function ns.GetMissingPrequest(questID)
+    if not ns.HasQuestie() or not questID then return nil end
+    local db = Module("QuestieDB")
+    local function Done(id) return C_QuestLog.IsQuestFlaggedCompleted(id) end
+    local function Missing(id, depth)
+        if depth > 10 then return nil end
+        local candidate
+        local single = db.QueryQuestSingle(id, "preQuestSingle")
+        if type(single) == "table" and single[1] then
+            local anyDone = false
+            for _, pre in ipairs(single) do if Done(pre) then anyDone = true break end end
+            if not anyDone then candidate = single[1] end
+        end
+        local group = db.QueryQuestSingle(id, "preQuestGroup")
+        if not candidate and type(group) == "table" then
+            for _, pre in ipairs(group) do
+                if not Done(pre) then candidate = pre break end
+            end
+        end
+        if not candidate then return nil end
+        -- steht die Vorquest schon im Log, ist sie der nächste Schritt; sonst ggf. deren Vorquest
+        if C_QuestLog.GetLogIndexForQuestID(candidate) then return candidate end
+        return Missing(candidate, depth + 1) or candidate
+    end
+    return Missing(questID, 0)
 end
 
 -- Einzelheiten einer Quest, die (noch) nicht im Questlog steht – das Spiel liefert dafür nichts, Questies Datenbank
@@ -526,7 +563,7 @@ end
 
 for _, key in ipairs({ "GetQuestieActions", "AddQuestieMenuItems", "QuestieHover", "QuestieFocusDetails",
     "GetQuestChain", "BuildQuestChain", "GetQuestieQuestDetails", "GetQuestieRewardItems",
-    "GetQuestieReputation", "GetQuestieMapToggles", "ShowQuestieWowhead" }) do
+    "GetQuestieReputation", "GetQuestieMapToggles", "ShowQuestieWowhead", "GetMissingPrequest" }) do
     local fn = ns[key]
     local function Finish(ok, ...)
         if ok then return ... end
