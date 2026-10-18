@@ -4,6 +4,10 @@ Dieses Dokument gilt für alle, die an diesem Repository arbeiten (Menschen und 
 Philosophie, Regeln, Design und Abläufe. Wenn etwas hier nicht steht: am bestehenden Code orientieren und nachfragen.
 Änderungen an diesen Regeln immer hier eintragen (nicht nur lokal), damit alle denselben Stand haben.
 
+**Bekannte Fehler:** [KNOWN-BUGS.md](KNOWN-BUGS.md). Wird gerade nichts Bestimmtes entwickelt oder gefragt, was es
+noch zu tun gibt: zuerst dort nachsehen und einen offenen Fehler vorschlagen. Neue, nicht sofort behobene Fehler dort
+eintragen; behobene mit Datum und Ursache nach „Erledigt“ verschieben.
+
 ## 1. Projekt und Philosophie
 - **Forever Core**: schlanke, modulare Addons für *World of Warcraft: Forever*
 - Leitsatz: **"Less clutter. More control. Just the essentials."**

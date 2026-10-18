@@ -17,6 +17,7 @@ Autoren: Patzlinger, flowfy · CurseForge-Projekt 1743753
 | ForeverCore (Hauptaddon: Hub + Stil-Bibliothek, Abhängigkeit aller Addons) | gemeinsam | im Release (seit 0.41b) |
 
 **Regeln, Design und Abläufe stehen in [CLAUDE.md](CLAUDE.md)** – bitte vor dem ersten Arbeiten lesen.
+**Bekannte, noch offene Fehler:** [KNOWN-BUGS.md](KNOWN-BUGS.md) – wer gerade nichts vorhat, findet dort Arbeit.
 Im Spiel: `/forever` zeigt alle Forever-Addons, `/fmove` verschiebt alle Rahmen.
 
 ## Aufbau
