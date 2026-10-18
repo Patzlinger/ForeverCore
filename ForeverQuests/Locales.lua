@@ -93,9 +93,9 @@ local STRINGS = {
         TIP_DETAIL_MENU = "Weitere Befehle (wie Rechtsklick im Tracker)",
 
         -- Filter
-        FILTER_TITLE = "Quests filtern (mehrere möglich)",
-        FILTER_DEFAULT = "Standard (laut Menü)",
-        FILTER_ALL = "Alle Quests im Questlog",
+        FILTER_TITLE = "Quests ein- und ausblenden",
+        FILTER_EVERYTHING = "Alles",
+        FILTER_HIDDEN = "Ausgeblendet: %s",
         FILTER_ZONE = "Aktuelles Gebiet",
         FILTER_DUNGEON = "Dungeon",
         FILTER_RAID = "Schlachtzug",
@@ -300,9 +300,9 @@ local STRINGS = {
         DETAIL_REPUTATION = "%s reputation with %s", DETAIL_HONOR = "%d honor", DETAIL_TITLE = "Title: %s",
         TIP_DETAIL_MENU = "More commands (like right-click in the tracker)",
 
-        FILTER_TITLE = "Filter quests (several possible)",
-        FILTER_DEFAULT = "Default (as in menu)",
-        FILTER_ALL = "All quests in quest log",
+        FILTER_TITLE = "Show or hide quests",
+        FILTER_EVERYTHING = "Everything",
+        FILTER_HIDDEN = "Hidden: %s",
         FILTER_ZONE = "Current zone",
         FILTER_DUNGEON = "Dungeon",
         FILTER_RAID = "Raid",

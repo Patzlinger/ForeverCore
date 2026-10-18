@@ -22,7 +22,7 @@ local panel, scrollFrame, content, searchBox, searchHint, countText, filterButto
 local logView
 local updateQueued = false
 
-local FILTER_KEY = "logFilters"
+local FILTER_KEY = "logHiddenFilters" -- im Questlog ausgeblendete Gruppen (unabhängig vom Tracker)
 local HEADER_HEIGHT = 28
 local MIN_SCALE, MAX_SCALE = 0.5, 1.6
 

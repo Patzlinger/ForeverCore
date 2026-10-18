@@ -44,13 +44,13 @@ ns.defaults = {
     backgroundTransparency = 65, -- in Prozent: 0 = undurchsichtig, 100 = unsichtbar
     -- Belohnungen markieren ab Seltenheit: 0 = aus, 2 = grün, 3 = blau, 4 = episch
     rewardHighlight = 2,
-    -- Gewählte Filter im Tracker, mehrere möglich: [Filter-Schlüssel] = true (leer = Standard)
-    filters = {},
+    -- Im Tracker ausgeblendete Gruppen (Filter-Menü): [Filter-Schlüssel] = true; leer = "Alles" (Standard)
+    hiddenFilters = {},
     -- In Instanzen automatisch nur die Quests der Instanz zeigen
     instanceFilter = true,
     -- Questlog an der Weltkarte im Forever-Stil (QuestLog.lua; gilt nach /reload)
     questLogSkin = true,
-    logFilters = {},         -- Filter des Questlogs (eigene Auswahl, unabhängig vom Tracker)
+    logHiddenFilters = {},   -- im Questlog ausgeblendete Gruppen (eigene Auswahl, unabhängig vom Tracker)
     -- Sprache: "AUTO" (wie der WoW-Client), "deDE" oder "enUS"
     language = "AUTO",
 }

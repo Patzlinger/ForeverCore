@@ -1057,10 +1057,10 @@ local function HasTag(questID, ...)
     return false
 end
 
--- Jeder Filter prüft eine Quest (info = Questlog-Eintrag, header = Gebiet/Kategorie)
+-- Jeder Filter prüft eine Quest (info = Questlog-Eintrag, header = Gebiet/Kategorie).
+-- Im Filter-Menü steht jede Gruppe mit Häkchen: an = Quests dieser Art werden gezeigt, aus = ausgeblendet.
+-- Ganz oben "Alles": an, solange nichts ausgeblendet ist; Klick darauf zeigt wieder alles.
 ns.FILTERS = {
-    { key = "DEFAULT", textKey = "FILTER_DEFAULT", test = function() return true end },
-    { key = "ALL", textKey = "FILTER_ALL", test = function() return true end },
     { key = "ZONE", textKey = "FILTER_ZONE", test = function(info, header)
         return header ~= nil and (header == GetRealZoneText() or header == GetZoneText())
     end },
@@ -1118,26 +1118,25 @@ local INSTANCE_FILTER = {
     end,
 }
 
--- Gespeicherte Filterauswahl: dbKey "filters" (Tracker) oder "logFilters" (Questlog)
+-- Ausgeblendete Gruppen: dbKey "hiddenFilters" (Tracker) oder "logHiddenFilters" (Questlog); [Schlüssel] = true
 local function FilterTable(dbKey)
-    dbKey = dbKey or "filters"
+    dbKey = dbKey or "hiddenFilters"
     if type(ns.db[dbKey]) ~= "table" then ns.db[dbKey] = {} end
     return ns.db[dbKey]
 end
 
--- Gewählte Filter (mehrere möglich) in der Reihenfolge der Liste; leer = Standard
+-- Ausgeblendete Gruppen in der Reihenfolge der Liste; leer = alles sichtbar
 local function GetSelectedFilters(dbKey)
-    local selected = FilterTable(dbKey)
+    local hidden = FilterTable(dbKey)
     local list = {}
     for _, filter in ipairs(ns.FILTERS) do
-        if filter.key ~= "DEFAULT" and selected[filter.key] then
-            table.insert(list, filter)
-        end
+        if hidden[filter.key] then table.insert(list, filter) end
     end
     return list
 end
 
--- Aktive Filter und Art: "INSTANCE" (automatisch im Dungeon), "CUSTOM" (selbst gewählt) oder "DEFAULT"
+-- Aktive Filter und Art: "INSTANCE" (automatisch im Dungeon: nur die Quests der Instanz),
+-- "CUSTOM" (Gruppen ausgeblendet) oder "DEFAULT" (alles)
 local function GetActiveFilters()
     if ns.db.instanceFilter and GetCurrentInstanceName() then
         return { INSTANCE_FILTER }, "INSTANCE"
@@ -1146,33 +1145,41 @@ local function GetActiveFilters()
     return list, #list > 0 and "CUSTOM" or "DEFAULT"
 end
 
--- Eine Quest wird gezeigt, wenn sie zu mindestens einem der gewählten Filter passt
-local function PassesFilters(filters, info, header)
+-- Im Dungeon: Quest wird gezeigt, wenn sie zur Instanz gehört. Sonst: Quest wird ausgeblendet, sobald sie zu einer
+-- ausgeblendeten Gruppe gehört (z. B. "Dungeon" aus = alle Dungeonquests weg)
+local function PassesFilters(filters, info, header, mode)
     if #filters == 0 then return true end
-    for _, filter in ipairs(filters) do
-        if filter.test(info, header) then return true end
+    if mode == "INSTANCE" then
+        for _, filter in ipairs(filters) do
+            if filter.test(info, header) then return true end
+        end
+        return false
     end
-    return false
+    for _, filter in ipairs(filters) do
+        if filter.test(info, header) then return false end
+    end
+    return true
 end
 
--- Namen der aktiven Filter für den Tooltip, z. B. "Dungeon, Gruppe"
+-- Text für den Tooltip des Filter-Knopfs: "Alles", "Instanz" oder "Ausgeblendet: Dungeon, Gruppe"
 local function GetActiveFilterText()
     local filters, mode = GetActiveFilters()
-    if mode == "DEFAULT" then return ns.L("FILTER_DEFAULT") end
+    if mode == "DEFAULT" then return ns.L("FILTER_EVERYTHING") end
     local names = {}
     for _, filter in ipairs(filters) do
         table.insert(names, ns.L(filter.textKey))
     end
-    return table.concat(names, ", ")
+    if mode == "INSTANCE" then return table.concat(names, ", ") end
+    return ns.L("FILTER_HIDDEN", table.concat(names, ", "))
 end
 
--- "Standard" hebt alle Filter auf, jeder andere Eintrag wird an- bzw. abgehakt
+-- "Alles" zeigt wieder alles, jeder andere Eintrag blendet seine Gruppe ein bzw. aus
 local function ToggleFilter(key, dbKey, redraw)
-    local selected = FilterTable(dbKey)
-    if key == "DEFAULT" then
-        wipe(selected)
+    local hidden = FilterTable(dbKey)
+    if key == "EVERYTHING" then
+        wipe(hidden)
     else
-        selected[key] = not selected[key] or nil
+        hidden[key] = not hidden[key] or nil
     end
     if redraw then redraw() else ns.UpdateTracker() end
 end
@@ -1180,21 +1187,24 @@ end
 -- Filter-Liste im eigenen flachen Stil (siehe Style.ShowMenu); bleibt beim Anhaken offen.
 -- Ohne Angaben: Filter des Trackers; dbKey/redraw: eigene Auswahl (Questlog, ohne Instanz-Filter)
 local function OpenFilterMenu(owner, dbKey, redraw)
-    local selected = FilterTable(dbKey)
-    local items = { { title = ns.L("FILTER_TITLE") } }
+    local hidden = FilterTable(dbKey)
+    local items = {
+        { title = ns.L("FILTER_TITLE") },
+        {
+            checkbox = true,
+            text = ns.L("FILTER_EVERYTHING"),
+            checked = function() return next(hidden) == nil end,
+            onClick = function() ToggleFilter("EVERYTHING", dbKey, redraw) end,
+        },
+        { divider = true },
+    }
     for _, filter in ipairs(ns.FILTERS) do
-        -- "Alle" bedeutet im Tracker "auch nicht verfolgte"; der Questlog zeigt ohnehin alle
-        if not (dbKey and filter.key == "ALL") then
-            table.insert(items, {
-                checkbox = true,
-                text = ns.L(filter.textKey),
-                checked = function()
-                    if filter.key == "DEFAULT" then return next(selected) == nil end
-                    return selected[filter.key] == true
-                end,
-                onClick = function() ToggleFilter(filter.key, dbKey, redraw) end,
-            })
-        end
+        table.insert(items, {
+            checkbox = true,
+            text = ns.L(filter.textKey),
+            checked = function() return not hidden[filter.key] end,
+            onClick = function() ToggleFilter(filter.key, dbKey, redraw) end,
+        })
     end
     if dbKey then
         ns.Style.ShowMenu(owner, items)
@@ -1239,13 +1249,13 @@ local function CollectGroups(opts)
     local currentHeader
     local filters, filterMode, useTrackedOnly, showZones, search
     if opts then
-        filters = GetSelectedFilters(opts.filterKey)
+        filters, filterMode = GetSelectedFilters(opts.filterKey), "CUSTOM"
         useTrackedOnly, showZones = false, true
         search = opts.search and opts.search:lower() or nil
     else
         filters, filterMode = GetActiveFilters()
-        -- Ein gesetzter Filter durchsucht das ganze Questlog, nicht nur verfolgte Quests
-        useTrackedOnly = db.onlyTracked and filterMode == "DEFAULT"
+        -- Im Dungeon (Instanz-Filter) wird das ganze Questlog durchsucht, nicht nur verfolgte Quests
+        useTrackedOnly = db.onlyTracked and filterMode ~= "INSTANCE"
         showZones = db.showZones
     end
     for i = 1, C_QuestLog.GetNumQuestLogEntries() do
@@ -1255,7 +1265,7 @@ local function CollectGroups(opts)
                 currentHeader = info.title
             elseif not info.isHidden and info.questID and info.questID > 0
                 and not (ns.IsGroupQuest and ns.IsGroupQuest(info.questID)) -- steht schon oben unter "Gemeinsam"
-                and PassesFilters(filters, info, currentHeader)
+                and PassesFilters(filters, info, currentHeader, filterMode)
                 and MatchesSearch(search, info, currentHeader) then
                 info.zoneHeader = currentHeader
                 if db.pinned[info.questID] then
