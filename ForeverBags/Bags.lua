@@ -738,7 +738,8 @@ local function PlaceOnOpen()
         return
     end
     local x, y = GetCursorPosition()
-    At("CENTER", nil, x, y)
+    -- untere rechte Ecke am Mauszeiger (das Fenster öffnet sich nach links oben vom Zeiger weg)
+    At("BOTTOMRIGHT", nil, x, y)
 end
 
 function ns.ResetPosition()
