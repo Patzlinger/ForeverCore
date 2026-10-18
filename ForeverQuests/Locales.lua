@@ -70,6 +70,13 @@ local STRINGS = {
         TIP_WATCH_OFF = "Nicht mehr verfolgen",
         TIP_LOG_FILTER = "Eigene Filter für den Questlog (unabhängig vom Tracker)",
         TIP_LOG_COUNT = "Quests im Questlog / höchstens möglich",
+        TIP_MAP_MOVE = "Ziehen: Karte verschieben\nRechtsklick: Position und Größe zurücksetzen",
+        TIP_MAP_SCALE = "Ziehen: Karte größer oder kleiner",
+        DETAIL_OBJECTIVES = "Ziele", DETAIL_DESCRIPTION = "Beschreibung",
+        BTN_TRACK = "Verfolgen", BTN_UNTRACK = "Nicht verfolgen",
+        BTN_PIN = "Anheften", BTN_UNPIN = "Lösen", BTN_ABANDON = "Abbrechen",
+        TIP_BACK = "Zurück zur Questliste",
+        TIP_DETAIL_MENU = "Weitere Befehle (wie Rechtsklick im Tracker)",
 
         -- Filter
         FILTER_TITLE = "Quests filtern (mehrere möglich)",
@@ -257,6 +264,13 @@ local STRINGS = {
         TIP_WATCH_OFF = "Stop tracking",
         TIP_LOG_FILTER = "Separate filters for the quest log (independent of the tracker)",
         TIP_LOG_COUNT = "Quests in your log / maximum",
+        TIP_MAP_MOVE = "Drag: move the map\nRight-click: reset position and size",
+        TIP_MAP_SCALE = "Drag: make the map bigger or smaller",
+        DETAIL_OBJECTIVES = "Objectives", DETAIL_DESCRIPTION = "Description",
+        BTN_TRACK = "Track", BTN_UNTRACK = "Untrack",
+        BTN_PIN = "Pin", BTN_UNPIN = "Unpin", BTN_ABANDON = "Abandon",
+        TIP_BACK = "Back to the quest list",
+        TIP_DETAIL_MENU = "More commands (like right-click in the tracker)",
 
         FILTER_TITLE = "Filter quests (several possible)",
         FILTER_DEFAULT = "Default (as in menu)",

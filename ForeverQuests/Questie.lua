@@ -42,6 +42,47 @@ local function ApplyBlizzardMapMarkers()
     end
 end
 
+-- Zusätzlich: Blizzards Quest-Symbole auf der Weltkarte direkt ausblenden (die Spieleinstellung questPOI wirkt im
+-- Forever-Client nicht auf alle Symbole, z. B. die gelben "!" der Questgeber). Betrifft nur Blizzards Symbole mit
+-- "Quest" in der Vorlage – nicht Questies Symbole (HereBeDragons), Weltquests und Bonusziele. Gleiche Bedingung wie
+-- oben: Questie läuft und "Blizzard-Questtracker ausblenden" ist an. /fq karte zeigt die Vorlagen.
+local function IsBlizzardQuestPin(template)
+    template = tostring(template)
+    return template:find("Quest") ~= nil and not template:find("WorldQuest") and not template:find("HereBeDragons")
+        and not template:find("Questie") and not template:find("Bonus")
+end
+
+local function HideQuestPins(map, template)
+    if not (ns.db and ns.db.hideBlizzard and type(_G.Questie) == "table") then return end
+    if not map.EnumeratePinsByTemplate then return end
+    for pin in map:EnumeratePinsByTemplate(template) do pin:Hide() end
+end
+
+local function HookMapPins()
+    local map = _G.WorldMapFrame
+    if not map or map.fqQuestPinHook or type(map.AcquirePin) ~= "function" then return end
+    map.fqQuestPinHook = true
+    hooksecurefunc(map, "AcquirePin", function(self, template)
+        if IsBlizzardQuestPin(template) then HideQuestPins(self, template) end
+    end)
+    for template in pairs(map.pinPools or {}) do
+        if IsBlizzardQuestPin(template) then HideQuestPins(map, template) end
+    end
+end
+
+local pinStarter = CreateFrame("Frame")
+pinStarter:RegisterEvent("PLAYER_LOGIN")
+pinStarter:RegisterEvent("ADDON_LOADED")
+pinStarter:SetScript("OnEvent", function(self, event, name)
+    if event == "ADDON_LOADED" and name ~= "Blizzard_WorldMap" then return end
+    if type(_G.Questie) ~= "table" then
+        if event == "PLAYER_LOGIN" then self:UnregisterAllEvents() end
+        return
+    end
+    pcall(HookMapPins)
+    if _G.WorldMapFrame and _G.WorldMapFrame.fqQuestPinHook then self:UnregisterAllEvents() end
+end)
+
 local guard = CreateFrame("Frame")
 guard:RegisterEvent("ADDON_LOADED")
 guard:RegisterEvent("PLAYER_LOGIN")

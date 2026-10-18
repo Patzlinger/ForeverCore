@@ -1,17 +1,19 @@
 local addonName, ns = ...
 
 ---------------------------------------------------------------------------
--- Questlog an der Weltkarte im Forever-Stil (Schritt 1)
+-- Questlog an der Weltkarte im Forever-Stil
 --
 -- Die Karte selbst bleibt Blizzards Karte (Questie-Symbole, Kartenklicks usw. unverändert). Neu:
---  * Rahmen, Titelleiste und Navigationsleiste der Karte im flachen Forever-Stil
+--  * Rahmen, Titelleiste und Navigationsleiste der Karte im flachen Forever-Stil; das Fenster lässt sich an der
+--    Titelleiste verschieben und an der Ecke unten rechts größer/kleiner ziehen (Rechtsklick Titel = zurücksetzen)
 --  * rechts statt Blizzards Questliste unsere eigene: alle Quests nach Gebiet, mit denselben Zeilen,
 --    Tooltips, Rechtsklick-Menü (inkl. Questie), Angeheftet, "Gemeinsam" und Filtern wie der Tracker,
---    dazu Suche, Anzahl und ein Häkchen "verfolgen" je Quest
---  * Klick auf eine Quest öffnet Blizzards Detailansicht (eigene Detailansicht folgt in Schritt 2)
+--    dazu Suche, Anzahl, Dungeon-Knopf und ein Häkchen "verfolgen" je Quest
+--  * Klick auf eine Quest: eigene Detailansicht (Ziele, Beschreibung, Belohnungen, Knöpfe)
 --
--- Blizzard-Funktionen werden nicht ersetzt: unsere Liste liegt nur über Blizzards Liste, Blizzards Rahmen
--- werden nur unsichtbar gemacht (Deckkraft 0). So bleiben Karte und Questlog auch im Kampf fehlerfrei.
+-- Blizzard-Funktionen werden nicht ersetzt: unsere Fenster liegen nur über Blizzards Liste bzw. Detailansicht,
+-- Blizzards Rahmen werden nur unsichtbar gemacht (Deckkraft 0). Blizzards Detailansicht läuft unsichtbar weiter,
+-- unsere folgt ihr (öffnen/zurück) – so bleiben Karte und Questlog auch im Kampf fehlerfrei.
 -- Abschaltbar im Menü ("Questlog im Forever-Stil", gilt nach /reload).
 ---------------------------------------------------------------------------
 
@@ -22,6 +24,7 @@ local updateQueued = false
 
 local FILTER_KEY = "logFilters"
 local HEADER_HEIGHT = 28
+local MIN_SCALE, MAX_SCALE = 0.5, 1.6
 
 -- Region nur unsichtbar machen (nicht verstecken/umbauen: Blizzard-Code bleibt unberührt)
 local function Fade(region)
@@ -45,6 +48,23 @@ local function AddEdges(frame, color, layer)
     return edges
 end
 
+-- Titelleiste im Forever-Stil (dunkel, goldene Linie unten)
+local function HeaderBar(parent, height)
+    local color = Style.COLOR
+    local header = CreateFrame("Frame", nil, parent, "BackdropTemplate")
+    header:SetPoint("TOPLEFT", 1, -1)
+    header:SetPoint("TOPRIGHT", -1, -1)
+    header:SetHeight(height)
+    header:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8" })
+    header:SetBackdropColor(unpack(color.header))
+    local accentLine = header:CreateTexture(nil, "ARTWORK")
+    accentLine:SetPoint("BOTTOMLEFT")
+    accentLine:SetPoint("BOTTOMRIGHT")
+    accentLine:SetHeight(1)
+    accentLine:SetColorTexture(color.accent[1], color.accent[2], color.accent[3], 0.6)
+    return header
+end
+
 ---------------------------------------------------------------------------
 -- Weltkarte: Rahmen, Titel, Navigationsleiste
 ---------------------------------------------------------------------------
@@ -64,7 +84,6 @@ local function SkinNavButton(button)
     bg:SetPoint("TOPLEFT", 1, -2)
     bg:SetPoint("BOTTOMRIGHT", -1, 2)
     bg:SetColorTexture(unpack(Style.COLOR.button))
-    button.fqBg = bg
     local edgeHost = CreateFrame("Frame", nil, button)
     edgeHost:SetPoint("TOPLEFT", 1, -2)
     edgeHost:SetPoint("BOTTOMRIGHT", -1, 2)
@@ -99,6 +118,120 @@ local function SkinNavBar(navBar)
     for _, button in ipairs(navBar.navList or {}) do SkinNavButton(button) end
 end
 
+-- Position und Größe der Karte (gespeichert in Bildschirm-Einheiten, damit die Ecke oben links beim
+-- Größerziehen stehen bleibt). Im Vollbild ("maximiert") bestimmt Blizzard selbst.
+local grip
+local function IsMaximized(map)
+    return map.IsMaximized and map:IsMaximized() or false
+end
+
+local function ApplyMapPlacement()
+    local map = _G.WorldMapFrame
+    if not map or not ns.db then return end
+    local maximized = IsMaximized(map)
+    if grip then grip:SetShown(not maximized) end
+    if maximized then return end
+    local scale = ns.db.mapScale or 1
+    if math.abs(map:GetScale() - scale) > 0.001 then map:SetScale(scale) end
+    local pos = ns.db.mapPos
+    if pos then
+        map:ClearAllPoints()
+        map:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", pos.x / scale, pos.y / scale)
+    end
+end
+
+local function SaveMapPlacement()
+    local map = _G.WorldMapFrame
+    local left, top = map:GetLeft(), map:GetTop()
+    if not (left and top) then return end
+    local scale = map:GetScale()
+    ns.db.mapPos = { x = left * scale, y = top * scale }
+    ns.db.mapScale = scale
+end
+
+local function ResetMapPlacement()
+    local map = _G.WorldMapFrame
+    ns.db.mapPos, ns.db.mapScale = nil, nil
+    if IsMaximized(map) then return end
+    map:SetScale(1)
+    -- Blizzard setzt die Karte an ihren Standardplatz
+    if type(_G.UpdateUIPanelPositions) == "function" then pcall(_G.UpdateUIPanelPositions, map) end
+end
+
+local function SetupMapMoving(map, top)
+    map:SetMovable(true)
+    map:SetClampedToScreen(true)
+    top:EnableMouse(true)
+    top:RegisterForDrag("LeftButton")
+    top:SetScript("OnDragStart", function()
+        if IsMaximized(map) then return end
+        map:StartMoving()
+    end)
+    top:SetScript("OnDragStop", function()
+        map:StopMovingOrSizing()
+        if not IsMaximized(map) then SaveMapPlacement() end
+    end)
+    top:SetScript("OnMouseUp", function(_, button)
+        if button == "RightButton" then ResetMapPlacement() end
+    end)
+    top:SetScript("OnEnter", function(self)
+        local tip = Style.GetTooltip()
+        tip:SetOwner(self, "ANCHOR_TOP")
+        tip:AddLine(ns.L("TIP_MAP_MOVE"), 1, 1, 1, true)
+        tip:Show()
+    end)
+    top:SetScript("OnLeave", function() Style.GetTooltip():Hide() end)
+
+    -- Griff unten rechts: ziehen = größer/kleiner (Ecke oben links bleibt stehen)
+    grip = CreateFrame("Button", "ForeverQuestsMapGrip", map)
+    grip:SetSize(16, 16)
+    grip:SetPoint("BOTTOMRIGHT", map, "BOTTOMRIGHT", -2, 2)
+    grip:SetFrameLevel(map:GetFrameLevel() + 200)
+    grip:SetNormalTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up")
+    grip:SetHighlightTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Highlight")
+    grip:SetPushedTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Down")
+    grip:SetScript("OnMouseDown", function(self)
+        local cursorX = GetCursorPosition() / UIParent:GetEffectiveScale()
+        local scale = map:GetScale()
+        self.start = { x = cursorX, scale = scale, left = map:GetLeft() * scale, top = map:GetTop() * scale,
+            width = map:GetWidth() * scale }
+        self:SetScript("OnUpdate", function()
+            local s = self.start
+            local x = GetCursorPosition() / UIParent:GetEffectiveScale()
+            local newScale = s.scale * (s.width + (x - s.x)) / s.width
+            newScale = math.max(MIN_SCALE, math.min(MAX_SCALE, newScale))
+            map:SetScale(newScale)
+            map:ClearAllPoints()
+            map:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", s.left / newScale, s.top / newScale)
+        end)
+    end)
+    grip:SetScript("OnMouseUp", function(self)
+        self:SetScript("OnUpdate", nil)
+        SaveMapPlacement()
+    end)
+    grip:SetScript("OnEnter", function(self)
+        local tip = Style.GetTooltip()
+        tip:SetOwner(self, "ANCHOR_RIGHT")
+        tip:AddLine(ns.L("TIP_MAP_SCALE"), 1, 1, 1, true)
+        tip:Show()
+    end)
+    grip:SetScript("OnLeave", function() Style.GetTooltip():Hide() end)
+
+    -- Blizzard setzt die Karte beim Öffnen und beim Wechsel Vollbild/Fenster neu: danach unsere Werte
+    map:HookScript("OnShow", function() C_Timer.After(0, ApplyMapPlacement) end)
+    if type(_G.UpdateUIPanelPositions) == "function" then
+        hooksecurefunc("UpdateUIPanelPositions", function(frame)
+            if frame == nil or frame == map then ApplyMapPlacement() end
+        end)
+    end
+    for _, method in ipairs({ "Maximize", "Minimize" }) do
+        if type(map[method]) == "function" then
+            hooksecurefunc(map, method, function() C_Timer.After(0, ApplyMapPlacement) end)
+        end
+    end
+    ApplyMapPlacement()
+end
+
 local function SkinWorldMap()
     local map = _G.WorldMapFrame
     if not map or map.fqSkinned then return end
@@ -112,7 +245,8 @@ local function SkinWorldMap()
     skin:SetFrameLevel(math.max(0, map:GetFrameLevel()))
     Style.SetFlat(skin, color.background)
 
-    -- Titelleiste mit goldener Linie wie bei allen Forever-Fenstern; liegt über Blizzards (unsichtbarem) Rahmen
+    -- Titelleiste mit goldener Linie wie bei allen Forever-Fenstern; liegt über Blizzards (unsichtbarem) Rahmen,
+    -- unter dessen Knöpfen (Schließen, Vollbild); zum Verschieben der Karte
     local top = CreateFrame("Frame", nil, border or map)
     top:SetPoint("TOPLEFT", map, "TOPLEFT", 1, -1)
     top:SetPoint("TOPRIGHT", map, "TOPRIGHT", -1, -1)
@@ -137,7 +271,6 @@ local function SkinWorldMap()
         if border.TitleContainer and border.TitleContainer.TitleText then
             border.TitleContainer.TitleText:SetTextColor(1, 1, 1)
         end
-        -- loser Rahmen innen um die Karte
         Fade(border.InsetBorderTop)
     end
     Fade(map.NineSlice)
@@ -151,6 +284,8 @@ local function SkinWorldMap()
             if self == map.NavBar then SkinNavBar(self) end
         end)
     end
+
+    SetupMapMoving(map, top)
 end
 
 ---------------------------------------------------------------------------
@@ -178,8 +313,11 @@ local function UpdateCount()
     countText:SetText((full and "|cffff4040" or "|cffbbbbbb") .. numQuests .. "/" .. max .. "|r")
 end
 
+local RenderDetails, details -- Detailansicht (weiter unten)
+
 function ns.UpdateQuestLog()
     updateQueued = false
+    if details and details:IsVisible() then RenderDetails() end
     if not panel or not panel:IsVisible() then return end
     local width = scrollFrame:GetWidth()
     if not width or width < 10 then
@@ -221,6 +359,20 @@ local function HighlightOnMap(questID)
     end
 end
 
+-- Scrollbereich mit Mausrad; gibt ScrollFrame und Inhalt zurück
+local function CreateScroll(parent)
+    local scroll = CreateFrame("ScrollFrame", nil, parent)
+    scroll:EnableMouseWheel(true)
+    local child = CreateFrame("Frame", nil, scroll)
+    child:SetSize(1, 1)
+    scroll:SetScrollChild(child)
+    scroll:SetScript("OnMouseWheel", function(self, delta)
+        local maxScroll = math.max(0, child:GetHeight() - self:GetHeight())
+        self:SetVerticalScroll(math.min(maxScroll, math.max(0, self:GetVerticalScroll() - delta * 30)))
+    end)
+    return scroll, child
+end
+
 local function CreatePanel(area)
     local color = Style.COLOR
     panel = CreateFrame("Frame", "ForeverQuestsLog", area, "BackdropTemplate")
@@ -230,18 +382,13 @@ local function CreatePanel(area)
     panel:EnableMouse(true)
     Style.SetFlat(panel, color.background)
 
-    -- Kopfzeile: Suche | Anzahl | Filter
-    local header = CreateFrame("Frame", nil, panel, "BackdropTemplate")
-    header:SetPoint("TOPLEFT", 1, -1)
-    header:SetPoint("TOPRIGHT", -1, -1)
-    header:SetHeight(HEADER_HEIGHT)
-    header:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8" })
-    header:SetBackdropColor(unpack(color.header))
-    local accentLine = header:CreateTexture(nil, "ARTWORK")
-    accentLine:SetPoint("BOTTOMLEFT")
-    accentLine:SetPoint("BOTTOMRIGHT")
-    accentLine:SetHeight(1)
-    accentLine:SetColorTexture(color.accent[1], color.accent[2], color.accent[3], 0.6)
+    -- Kopfzeile: Suche | Anzahl | Filter | Dungeons
+    local header = HeaderBar(panel, HEADER_HEIGHT)
+
+    local dungeonButton = Style.CreateButton(header, ns.L("BTN_DUNGEONS"), 62, 18,
+        function() if ns.ToggleDungeons then ns.ToggleDungeons() end end,
+        function(tooltip) tooltip:AddLine(ns.L("TIP_DUNGEONS")) end)
+    dungeonButton:SetPoint("RIGHT", -5, 0)
 
     filterButton = Style.CreateButton(header, ns.L("BTN_FILTER"), 42, 18, function(self)
         ns.QuestList.OpenFilterMenu(self, FILTER_KEY, ns.UpdateQuestLog)
@@ -249,11 +396,11 @@ local function CreatePanel(area)
         tooltip:AddLine(ns.L("FILTER_TITLE"))
         tooltip:AddLine(ns.L("TIP_LOG_FILTER"), 1, 1, 1, true)
     end)
-    filterButton:SetPoint("RIGHT", -5, 0)
+    filterButton:SetPoint("RIGHT", dungeonButton, "LEFT", -4, 0)
 
     -- Anzahl der Quests im Log (rot, wenn voll), mit Tooltip
     local count = CreateFrame("Frame", nil, header)
-    count:SetSize(44, 18)
+    count:SetSize(40, 18)
     count:SetPoint("RIGHT", filterButton, "LEFT", -4, 0)
     count:EnableMouse(true)
     countText = count:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
@@ -271,6 +418,9 @@ local function CreatePanel(area)
     searchBox:SetPoint("RIGHT", count, "LEFT", -6, 0)
     searchHint = searchBox:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     searchHint:SetPoint("LEFT", 7, 0)
+    searchHint:SetPoint("RIGHT", -4, 0)
+    searchHint:SetJustifyH("LEFT")
+    searchHint:SetWordWrap(false)
     searchHint:SetText(ns.L("LOG_SEARCH"))
     local function UpdateHint()
         searchHint:SetShown(searchBox:GetText() == "" and not searchBox:HasFocus())
@@ -288,18 +438,9 @@ local function CreatePanel(area)
     end)
     searchBox:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
 
-    -- Liste mit Mausrad
-    scrollFrame = CreateFrame("ScrollFrame", nil, panel)
+    scrollFrame, content = CreateScroll(panel)
     scrollFrame:SetPoint("TOPLEFT", 6, -(HEADER_HEIGHT + 6))
     scrollFrame:SetPoint("BOTTOMRIGHT", -6, 6)
-    scrollFrame:EnableMouseWheel(true)
-    content = CreateFrame("Frame", nil, scrollFrame)
-    content:SetSize(1, 1)
-    scrollFrame:SetScrollChild(content)
-    scrollFrame:SetScript("OnMouseWheel", function(self, delta)
-        local maxScroll = math.max(0, content:GetHeight() - self:GetHeight())
-        self:SetVerticalScroll(math.min(maxScroll, math.max(0, self:GetVerticalScroll() - delta * 30)))
-    end)
 
     logView = ns.QuestList.NewView(content, "ForeverQuestsLog")
     logView.onHover = HighlightOnMap
@@ -307,14 +448,384 @@ local function CreatePanel(area)
     panel:SetScript("OnShow", RequestLogUpdate)
     panel:SetScript("OnHide", function() HighlightOnMap(nil) end)
     scrollFrame:SetScript("OnSizeChanged", RequestLogUpdate)
+end
 
-    -- Blizzards Detailansicht (Klick auf eine Quest) liegt an derselben Stelle: solange sie offen ist, ist
-    -- unsere Liste weg, danach wieder da
-    local details = _G.QuestMapFrame and _G.QuestMapFrame.DetailsFrame
-    if details and details.HookScript then
-        details:HookScript("OnShow", function() panel:Hide() end)
-        details:HookScript("OnHide", function() panel:Show() end)
-        if details:IsShown() then panel:Hide() end
+---------------------------------------------------------------------------
+-- Detailansicht einer Quest
+---------------------------------------------------------------------------
+
+local detailScroll, detailContent, detailTitle, detailID, detailButtons
+local detailQuestID
+local detailTexts, rewardButtons = {}, {}
+local blizzardDetails, detailBlocker
+
+-- Fließtext / Überschriften der Detailansicht (werden bei jedem Aufbau wiederverwendet)
+local function DetailText(index)
+    local text = detailTexts[index]
+    if not text then
+        text = detailContent:CreateFontString(nil, "OVERLAY")
+        text:SetJustifyH("LEFT")
+        text:SetWordWrap(true)
+        text.line = detailContent:CreateTexture(nil, "ARTWORK")
+        text.line:SetHeight(1)
+        detailTexts[index] = text
+    end
+    text.line:Hide()
+    return text
+end
+
+local function RewardTooltip(self)
+    local tip = Style.GetTooltip()
+    tip:SetOwner(self, "ANCHOR_RIGHT")
+    local shown = false
+    if self.kind == "currency" then
+        if self.currencyID and tip.SetCurrencyByID then
+            shown = pcall(tip.SetCurrencyByID, tip, self.currencyID) and tip:NumLines() > 0
+        end
+    else
+        C_QuestLog.SetSelectedQuest(detailQuestID)
+        if tip.SetQuestLogItem then
+            shown = pcall(tip.SetQuestLogItem, tip, self.kind, self.index, detailQuestID) and tip:NumLines() > 0
+        end
+        if not shown and self.itemID and tip.SetItemByID then
+            shown = pcall(tip.SetItemByID, tip, self.itemID) and tip:NumLines() > 0
+        end
+    end
+    if not shown then tip:AddLine(self.name:GetText() or "?", 1, 1, 1) end
+    tip:Show()
+end
+
+-- Belohnungs-Feld: Symbol mit Anzahl, Name in Seltenheitsfarbe; Shift-Klick verlinkt, Strg-Klick = Anprobe
+local function RewardButton(index)
+    local button = rewardButtons[index]
+    if button then return button end
+    button = CreateFrame("Button", nil, detailContent, "BackdropTemplate")
+    Style.SetFlat(button, Style.COLOR.panel)
+    button:SetHeight(32)
+    button.icon = button:CreateTexture(nil, "ARTWORK")
+    button.icon:SetSize(26, 26)
+    button.icon:SetPoint("LEFT", 3, 0)
+    button.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    button.count = button:CreateFontString(nil, "OVERLAY", "NumberFontNormalSmall")
+    button.count:SetPoint("BOTTOMRIGHT", button.icon, "BOTTOMRIGHT", 1, 0)
+    button.name = button:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    button.name:SetPoint("LEFT", button.icon, "RIGHT", 5, 0)
+    button.name:SetPoint("RIGHT", -3, 0)
+    button.name:SetJustifyH("LEFT")
+    button.name:SetMaxLines(2)
+    button:SetScript("OnEnter", function(self)
+        local a = Style.COLOR.accent
+        self:SetBackdropBorderColor(a[1], a[2], a[3], 0.9)
+        RewardTooltip(self)
+    end)
+    button:SetScript("OnLeave", function(self)
+        self:SetBackdropBorderColor(unpack(Style.COLOR.border))
+        Style.GetTooltip():Hide()
+    end)
+    button:SetScript("OnClick", function(self)
+        if self.kind == "currency" or not IsModifiedClick() then return end
+        C_QuestLog.SetSelectedQuest(detailQuestID)
+        local link = GetQuestLogItemLink and GetQuestLogItemLink(self.kind, self.index)
+        if link then HandleModifiedItemClick(link) end
+    end)
+    rewardButtons[index] = button
+    return button
+end
+
+local function QualityColor(quality)
+    local color = quality and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[quality]
+    if color then return color.r, color.g, color.b end
+    return 1, 1, 1
+end
+
+-- Blizzards Detailansicht verlassen (unsere folgt ihr und schließt mit)
+local function BackToList()
+    if type(_G.QuestMapFrame_ReturnFromQuestDetails) == "function" then
+        _G.QuestMapFrame_ReturnFromQuestDetails()
+    elseif blizzardDetails then
+        blizzardDetails:Hide()
+    end
+    if details then details:Hide() end
+    if panel then panel:Show() end
+end
+
+local function UpdateDetailButtons()
+    local questID = detailQuestID
+    if not questID then return end
+    local watched = C_QuestLog.GetQuestWatchType(questID) ~= nil
+    detailButtons.track:SetText(ns.L(watched and "BTN_UNTRACK" or "BTN_TRACK"))
+    detailButtons.pin:SetText(ns.L(ns.db.pinned[questID] and "BTN_UNPIN" or "BTN_PIN"))
+    local canShare = IsInGroup() and C_QuestLog.IsPushableQuest(questID)
+    detailButtons.share:SetEnabled(canShare)
+    detailButtons.share:SetAlpha(canShare and 1 or 0.45)
+end
+
+RenderDetails = function()
+    local questID = detailQuestID
+    local logIndex = questID and C_QuestLog.GetLogIndexForQuestID(questID)
+    if not logIndex then
+        -- Quest nicht (mehr) im Log (abgegeben/abgebrochen): zurück zur Liste
+        BackToList()
+        return
+    end
+    local fonts = ns.QuestList.Fonts()
+    local info = C_QuestLog.GetInfo(logIndex) or {}
+    local width = math.max(50, detailScroll:GetWidth() - 4)
+    detailContent:SetWidth(width)
+
+    -- Kopf: Name in Schwierigkeitsfarbe mit Stufe und Typ
+    local r, g, b = 1, 0.82, 0
+    local levelColor = ns.QuestList.LevelColor(info.level)
+    if levelColor then r, g, b = levelColor.r, levelColor.g, levelColor.b end
+    local titleText = info.title or C_QuestLog.GetTitleForQuestID(questID) or ("Quest " .. questID)
+    if info.level and info.level > 0 then titleText = titleText .. " (" .. info.level .. ")" end
+    detailTitle:SetText(titleText)
+    detailTitle:SetTextColor(r, g, b)
+    detailID:SetText("#" .. questID)
+
+    -- Text der Quest steht bei der "ausgewählten" Quest (Blizzards Detailansicht hat sie schon ausgewählt)
+    C_QuestLog.SetSelectedQuest(questID)
+    local description, objectiveText
+    if GetQuestLogQuestText then description, objectiveText = GetQuestLogQuestText(logIndex) end
+
+    local y, n = 4, 0
+    local accent = Style.COLOR.accent
+    local function Section(label)
+        n = n + 1
+        local text = DetailText(n)
+        text:SetFontObject(fonts.header)
+        text:SetTextColor(accent[1], accent[2], accent[3])
+        text:SetWidth(width - 4)
+        text:SetText(label)
+        text:ClearAllPoints()
+        text:SetPoint("TOPLEFT", detailContent, "TOPLEFT", 2, -y)
+        text:Show()
+        y = y + text:GetStringHeight() + 3
+        text.line:SetColorTexture(accent[1], accent[2], accent[3], 0.35)
+        text.line:ClearAllPoints()
+        text.line:SetPoint("TOPLEFT", detailContent, "TOPLEFT", 2, -y)
+        text.line:SetWidth(width - 4)
+        text.line:Show()
+        y = y + 5
+    end
+    local function Paragraph(value, font, cr, cg, cb, indent)
+        if not value or value == "" then return end
+        n = n + 1
+        local text = DetailText(n)
+        text:SetFontObject(font)
+        text:SetTextColor(cr, cg, cb)
+        text:SetWidth(width - 4 - (indent or 0))
+        text:SetText(value)
+        text:ClearAllPoints()
+        text:SetPoint("TOPLEFT", detailContent, "TOPLEFT", 2 + (indent or 0), -y)
+        text:Show()
+        y = y + text:GetStringHeight() + 4
+    end
+
+    -- Typ (Klasse, Ruf, Gruppe …) und "Fertig"
+    local typeText = ns.QuestList.QuestTypeText(questID, nil)
+    local isComplete = C_QuestLog.IsComplete(questID)
+    if typeText ~= "" or isComplete then
+        Paragraph(((typeText ~= "" and ("|cff88ccff" .. typeText .. "|r  ")) or "")
+            .. (isComplete and ("|cff00ff00" .. ns.L("READY_TO_TURN_IN") .. "|r") or ""), fonts.objective, 1, 1, 1)
+    end
+
+    -- Ziele: Kurztext und Fortschritt
+    Section(ns.L("DETAIL_OBJECTIVES"))
+    Paragraph(objectiveText, fonts.quest, 1, 1, 1)
+    for _, objective in ipairs(C_QuestLog.GetQuestObjectives(questID) or {}) do
+        if objective.text and objective.text ~= "" then
+            if objective.finished then
+                Paragraph("- " .. objective.text, fonts.objective, 0.45, 0.85, 0.45, 6)
+            else
+                Paragraph("- " .. objective.text, fonts.objective, 0.85, 0.85, 0.85, 6)
+            end
+        end
+    end
+    y = y + 4
+
+    -- Beschreibung
+    if description and description ~= "" then
+        Section(ns.L("DETAIL_DESCRIPTION"))
+        Paragraph(description, fonts.objective, 0.75, 0.75, 0.75)
+        y = y + 4
+    end
+
+    -- Belohnungen: feste Gegenstände, Auswahl, Währungen, Geld, Erfahrung
+    local rewards, choices, currencies = {}, {}, {}
+    for i = 1, (GetNumQuestLogRewards and GetNumQuestLogRewards(questID) or 0) do
+        local name, texture, count, quality, _, itemID = GetQuestLogRewardInfo(i, questID)
+        if name then rewards[#rewards + 1] = { kind = "reward", index = i, name = name, texture = texture,
+            count = count, quality = quality, itemID = itemID } end
+    end
+    for i = 1, (GetNumQuestLogChoices and GetNumQuestLogChoices(questID) or 0) do
+        local name, texture, count, quality, _, itemID = GetQuestLogChoiceInfo(i)
+        if name then choices[#choices + 1] = { kind = "choice", index = i, name = name, texture = texture,
+            count = count, quality = quality, itemID = itemID } end
+    end
+    if C_QuestLog.GetQuestRewardCurrencies then
+        local ok, list = pcall(C_QuestLog.GetQuestRewardCurrencies, questID)
+        for _, currency in ipairs(ok and list or {}) do
+            currencies[#currencies + 1] = { kind = "currency", name = currency.name, texture = currency.texture,
+                count = currency.totalRewardAmount or currency.baseRewardAmount, quality = currency.quality,
+                currencyID = currency.currencyID }
+        end
+    end
+    local money = GetQuestLogRewardMoney and GetQuestLogRewardMoney(questID) or 0
+    local xp = GetQuestLogRewardXP and GetQuestLogRewardXP(questID) or 0
+
+    local used = 0
+    local function Grid(list)
+        local columnWidth = math.floor((width - 4 - 4) / 2)
+        for i, entry in ipairs(list) do
+            used = used + 1
+            local button = RewardButton(used)
+            button.kind, button.index, button.itemID, button.currencyID = entry.kind, entry.index, entry.itemID,
+                entry.currencyID
+            button.icon:SetTexture(entry.texture or 134400)
+            button.count:SetText((entry.count and entry.count > 1) and entry.count or "")
+            button.name:SetText(entry.name)
+            button.name:SetTextColor(QualityColor(entry.quality))
+            button:SetWidth(columnWidth)
+            button:ClearAllPoints()
+            local column = (i - 1) % 2
+            button:SetPoint("TOPLEFT", detailContent, "TOPLEFT", 2 + column * (columnWidth + 4), -y)
+            button:Show()
+            if column == 1 or i == #list then y = y + 36 end
+        end
+    end
+    if #rewards + #choices + #currencies > 0 or money > 0 or xp > 0 then
+        Section(ns.L("TIP_REWARDS"))
+        Grid(rewards)
+        Grid(currencies)
+        if #choices > 0 then
+            Paragraph(ns.L("TIP_CHOICES"), fonts.objective, 0.75, 0.75, 0.75)
+            Grid(choices)
+        end
+        if money > 0 then
+            Paragraph(GetMoneyString and GetMoneyString(money) or GetCoinTextureString(money), fonts.quest, 1, 1, 1)
+        end
+        if xp > 0 then
+            Paragraph(ns.L("TIP_XP", BreakUpLargeNumbers and BreakUpLargeNumbers(xp) or xp), fonts.quest, 0.6, 0.6, 1)
+        end
+    end
+
+    for i = n + 1, #detailTexts do
+        detailTexts[i]:Hide()
+        detailTexts[i].line:Hide()
+    end
+    for i = used + 1, #rewardButtons do rewardButtons[i]:Hide() end
+    detailContent:SetHeight(math.max(1, y + 6))
+    UpdateDetailButtons()
+end
+
+local function ShowDetails(questID)
+    if not details or not questID or questID == 0 then return end
+    if detailQuestID ~= questID then detailScroll:SetVerticalScroll(0) end
+    detailQuestID = questID
+    if panel then panel:Hide() end
+    if blizzardDetails then blizzardDetails:SetAlpha(0) end
+    details:Show()
+    if detailScroll:GetWidth() < 10 then
+        C_Timer.After(0, function() if details:IsShown() then RenderDetails() end end)
+    else
+        RenderDetails()
+    end
+end
+
+local function CreateDetails(area)
+    local color = Style.COLOR
+    blizzardDetails = _G.QuestMapFrame and _G.QuestMapFrame.DetailsFrame
+    details = CreateFrame("Frame", "ForeverQuestsLogDetails", _G.QuestMapFrame or area, "BackdropTemplate")
+    details:SetAllPoints(area)
+    details:SetFrameLevel(area:GetFrameLevel() + 80)
+    details:EnableMouse(true)
+    Style.SetFlat(details, color.background)
+    details:Hide()
+
+    -- Kopf: Zurück | Name | Quest-ID; Rechtsklick auf den Kopf = dasselbe Menü wie im Tracker
+    local header = HeaderBar(details, HEADER_HEIGHT)
+    header:EnableMouse(true)
+    header:SetScript("OnMouseUp", function(self, button)
+        if button == "RightButton" and detailQuestID then ns.QuestList.OpenMenu(self, detailQuestID) end
+    end)
+    local back = Style.CreateButton(header, "<", 22, 18, BackToList, ns.L("TIP_BACK"))
+    back:SetPoint("LEFT", 5, 0)
+    detailID = header:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    detailID:SetPoint("RIGHT", -8, 0)
+    detailTitle = header:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    detailTitle:SetPoint("LEFT", back, "RIGHT", 6, 0)
+    detailTitle:SetPoint("RIGHT", detailID, "LEFT", -6, 0)
+    detailTitle:SetJustifyH("LEFT")
+    detailTitle:SetWordWrap(false)
+
+    -- Knöpfe unten: Verfolgen | Anheften | Teilen | Abbrechen | Menü
+    local footer = CreateFrame("Frame", nil, details)
+    footer:SetPoint("BOTTOMLEFT", 6, 6)
+    footer:SetPoint("BOTTOMRIGHT", -6, 6)
+    footer:SetHeight(20)
+    detailButtons = {}
+    local function Act(fn) return function() if detailQuestID then fn(detailQuestID) end end end
+    detailButtons.track = Style.CreateButton(footer, "", 10, 20, Act(function(questID)
+        if C_QuestLog.GetQuestWatchType(questID) then
+            C_QuestLog.RemoveQuestWatch(questID)
+        elseif C_QuestLog.AddQuestWatch then
+            C_QuestLog.AddQuestWatch(questID)
+        end
+        ns.RequestUpdate()
+        C_Timer.After(0.1, UpdateDetailButtons)
+    end))
+    detailButtons.pin = Style.CreateButton(footer, "", 10, 20, Act(function(questID)
+        ns.QuestList.TogglePinned(questID)
+        UpdateDetailButtons()
+    end))
+    detailButtons.share = Style.CreateButton(footer, ns.L("MENU_SHARE"), 10, 20, Act(ns.QuestList.Share))
+    detailButtons.abandon = Style.CreateButton(footer, "|cffff5555" .. ns.L("BTN_ABANDON") .. "|r", 10, 20,
+        Act(ns.QuestList.Abandon))
+    detailButtons.menu = Style.CreateButton(footer, "…", 22, 20, function(self)
+        if detailQuestID then ns.QuestList.OpenMenu(self, detailQuestID) end
+    end, ns.L("TIP_DETAIL_MENU"))
+    local order = { detailButtons.track, detailButtons.pin, detailButtons.share, detailButtons.abandon }
+    local function Layout()
+        local total = footer:GetWidth()
+        if not total or total < 50 then return end
+        local w = (total - 22 - 4 * 4) / 4
+        for i, button in ipairs(order) do
+            button:SetWidth(w)
+            button:ClearAllPoints()
+            button:SetPoint("LEFT", footer, "LEFT", (i - 1) * (w + 4), 0)
+        end
+        detailButtons.menu:ClearAllPoints()
+        detailButtons.menu:SetPoint("RIGHT", footer, "RIGHT", 0, 0)
+    end
+    footer:SetScript("OnSizeChanged", Layout)
+
+    detailScroll, detailContent = CreateScroll(details)
+    detailScroll:SetPoint("TOPLEFT", 8, -(HEADER_HEIGHT + 6))
+    detailScroll:SetPoint("BOTTOMRIGHT", footer, "TOPRIGHT", -2, 6)
+    detailScroll:SetScript("OnSizeChanged", function() if details:IsShown() then RenderDetails() end end)
+
+    -- Blizzards (unsichtbare) Detailansicht: unsere zeigt sich mit ihr und schließt mit ihr.
+    -- Ein Blocker über ihr fängt die Maus ab, falls sie größer ist als unser Fenster.
+    if blizzardDetails then
+        blizzardDetails:SetAlpha(0)
+        detailBlocker = CreateFrame("Frame", nil, details)
+        detailBlocker:SetAllPoints(blizzardDetails)
+        detailBlocker:SetFrameLevel(details:GetFrameLevel() - 1)
+        detailBlocker:EnableMouse(true)
+        blizzardDetails:HookScript("OnShow", function(self)
+            ShowDetails(self.questID or C_QuestLog.GetSelectedQuest())
+        end)
+        blizzardDetails:HookScript("OnHide", function()
+            details:Hide()
+            if panel then panel:Show() end
+        end)
+    end
+    if type(_G.QuestMapFrame_ShowQuestDetails) == "function" then
+        hooksecurefunc("QuestMapFrame_ShowQuestDetails", function(questID) ShowDetails(questID) end)
+    end
+    if blizzardDetails and blizzardDetails:IsShown() then
+        ShowDetails(blizzardDetails.questID or C_QuestLog.GetSelectedQuest())
     end
 end
 
@@ -331,6 +842,8 @@ local function Setup()
     local ok, err = pcall(SkinWorldMap)
     if not ok then print(ns.ChatPrefix() .. ": Weltkarte - " .. tostring(err)) end
     CreatePanel(area)
+    ok, err = pcall(CreateDetails, area)
+    if not ok then print(ns.ChatPrefix() .. ": Questdetails - " .. tostring(err)) end
     if panel:IsVisible() then RequestLogUpdate() end
 end
 
@@ -369,4 +882,15 @@ function ns.DebugMap()
     Dump("NavBar", map and map.NavBar)
     Dump("QuestMapFrame", _G.QuestMapFrame)
     Dump("QuestsFrame", QuestsArea())
+    -- Kartensymbole nach Vorlage (welche Symbole von wem kommen)
+    if map and map.pinPools then
+        local templates = {}
+        for template, pool in pairs(map.pinPools) do
+            local shown = 0
+            if pool.EnumerateActive then for _ in pool:EnumerateActive() do shown = shown + 1 end end
+            templates[#templates + 1] = tostring(template) .. "=" .. shown
+        end
+        table.sort(templates)
+        print(prefix .. "Kartensymbole: " .. table.concat(templates, ", "))
+    end
 end

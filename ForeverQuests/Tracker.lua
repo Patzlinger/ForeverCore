@@ -1601,7 +1601,8 @@ local function RenderQuestList(v, groups, contentWidth, alpha, emptyText)
                 arrow = arrowState,
                 reward = rewardQuality,
                 questItem = questItem,
-                watch = v.watchToggle and (C_QuestLog.GetQuestWatchType(questID) ~= nil) or nil,
+                -- Questlog: true = verfolgt (gold), false = leeres Kästchen; Tracker: nil = kein Kästchen
+                watch = v.watchToggle and (C_QuestLog.GetQuestWatchType(questID) ~= nil),
             })
 
             if expanded then
@@ -1697,6 +1698,17 @@ ns.QuestList = {
     end,
     OpenFilterMenu = OpenFilterMenu,
     HasFilters = function(dbKey) return #GetSelectedFilters(dbKey) > 0 end,
+    -- für die Detailansicht im Questlog: dieselben Befehle wie im Rechtsklick-Menü
+    OpenMenu = OpenQuestMenu,
+    Abandon = AbandonQuest,
+    Share = ShareQuest,
+    TogglePinned = TogglePinned,
+    LevelColor = function(level)
+        local fn = LevelColor()
+        return fn and level and fn(level) or nil
+    end,
+    QuestTypeText = GetQuestTypeText,
+    Fonts = function() ns.UpdateFonts() return fonts end,
 }
 
 -- Mehrere Ereignisse kurz hintereinander werden zu einer Aktualisierung zusammengefasst
