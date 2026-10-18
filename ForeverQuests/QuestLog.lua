@@ -564,6 +564,9 @@ function OpenLogMenu(owner)
     table.insert(items, { divider = true })
     table.insert(items, { text = ns.L("LOG_MENU_TRACK_ALL"), onClick = function() WatchAll(true) end })
     table.insert(items, { text = ns.L("LOG_MENU_TRACK_NONE"), onClick = function() WatchAll(false) end })
+    table.insert(items, { divider = true })
+    -- Einstellungen von ForeverQuests (gleiches Fenster wie /fq bzw. das Zahnrad am Tracker)
+    table.insert(items, { text = ns.L("LOG_MENU_OPTIONS"), onClick = function() if ns.ToggleOptions then ns.ToggleOptions() end end })
     ns.Style.ShowMenu(owner, items)
 end
 
