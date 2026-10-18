@@ -76,6 +76,11 @@ local STRINGS = {
         BTN_TRACK = "Verfolgen", BTN_UNTRACK = "Nicht verfolgen",
         BTN_PIN = "Anheften", BTN_UNPIN = "Lösen", BTN_ABANDON = "Abbrechen",
         TIP_BACK = "Zurück zur Questliste",
+        TIP_LOG_MENU = "Questmarker auf der Karte, alle oder keine Quest verfolgen",
+        LOG_MENU_TITLE = "Questlog",
+        LOG_MENU_MARKERS = "Blizzard-Questmarker auf der Karte",
+        LOG_MENU_TRACK_ALL = "Alle Quests verfolgen",
+        LOG_MENU_TRACK_NONE = "Keine Quest verfolgen",
         TIP_DETAIL_MENU = "Weitere Befehle (wie Rechtsklick im Tracker)",
 
         -- Filter
@@ -270,6 +275,11 @@ local STRINGS = {
         BTN_TRACK = "Track", BTN_UNTRACK = "Untrack",
         BTN_PIN = "Pin", BTN_UNPIN = "Unpin", BTN_ABANDON = "Abandon",
         TIP_BACK = "Back to the quest list",
+        TIP_LOG_MENU = "Quest markers on the map, track all or no quests",
+        LOG_MENU_TITLE = "Quest log",
+        LOG_MENU_MARKERS = "Blizzard quest markers on the map",
+        LOG_MENU_TRACK_ALL = "Track all quests",
+        LOG_MENU_TRACK_NONE = "Track no quests",
         TIP_DETAIL_MENU = "More commands (like right-click in the tracker)",
 
         FILTER_TITLE = "Filter quests (several possible)",

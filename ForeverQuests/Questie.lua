@@ -26,10 +26,17 @@ end
 -- war Blizzards Verfolgungsliste leer, mit unserem Tracker nicht mehr, so lagen plötzlich beide Marker auf der Karte.
 -- Hängt an "Blizzard-Questtracker ausblenden"; schaltet man das aus, kommen Blizzards Marker zurück (nur wenn wir
 -- sie abgeschaltet hatten).
+-- Blizzards Questmarker aus? (Questie läuft, "Blizzard-Questtracker ausblenden" an und im Questlog-Rädchen nicht
+-- ausdrücklich "Blizzard-Questmarker anzeigen" gewählt)
+local function HideBlizzardMarkers()
+    local db = ns.db
+    return db and db.hideBlizzard and not db.showBlizzardMarkers and type(_G.Questie) == "table" or false
+end
+
 local function ApplyBlizzardMapMarkers()
     local db = ns.db
     if not db or type(_G.Questie) ~= "table" or not (GetCVar and SetCVar) then return end
-    if db.hideBlizzard then
+    if HideBlizzardMarkers() then
         if GetCVar("questPOI") ~= "0" then
             db.questieHidPOI = true
             SetCVar("questPOI", "0")
@@ -53,7 +60,7 @@ local function IsBlizzardQuestPin(template)
 end
 
 local function HideQuestPins(map, template)
-    if not (ns.db and ns.db.hideBlizzard and type(_G.Questie) == "table") then return end
+    if not HideBlizzardMarkers() then return end
     if not map.EnumeratePinsByTemplate then return end
     for pin in map:EnumeratePinsByTemplate(template) do pin:Hide() end
 end
@@ -68,6 +75,31 @@ local function HookMapPins()
     for template in pairs(map.pinPools or {}) do
         if IsBlizzardQuestPin(template) then HideQuestPins(map, template) end
     end
+end
+
+-- Schalter im Rädchen des Questlogs: Blizzards Questmarker (Ziele/Questgeber) auf der Karte an/aus.
+-- Mit Questie: eigene Einstellung (Standard aus, sonst doppelte Marker); ohne Questie: Blizzards Spieleinstellung.
+function ns.BlizzardQuestMarkersShown()
+    if type(_G.Questie) == "table" then return not HideBlizzardMarkers() end
+    return GetCVar and GetCVar("questPOI") ~= "0"
+end
+
+function ns.SetBlizzardQuestMarkers(show)
+    if type(_G.Questie) == "table" then
+        ns.db.showBlizzardMarkers = show or nil
+        if show and ns.db.questieHidPOI then
+            ns.db.questieHidPOI = nil
+            SetCVar("questPOI", "1")
+        elseif show and GetCVar("questPOI") == "0" then
+            SetCVar("questPOI", "1")
+        end
+        pcall(ApplyBlizzardMapMarkers)
+    elseif SetCVar then
+        SetCVar("questPOI", show and "1" or "0")
+    end
+    -- Karte neu zeichnen, damit die Marker sofort kommen bzw. gehen
+    local map = _G.WorldMapFrame
+    if map and map.RefreshAllDataProviders then pcall(map.RefreshAllDataProviders, map) end
 end
 
 local pinStarter = CreateFrame("Frame")

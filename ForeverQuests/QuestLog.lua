@@ -314,6 +314,7 @@ local function UpdateCount()
 end
 
 local RenderDetails, details -- Detailansicht (weiter unten)
+local OpenLogMenu -- Rädchen-Menü (weiter unten)
 
 function ns.UpdateQuestLog()
     updateQueued = false
@@ -373,8 +374,53 @@ local function CreateScroll(parent)
     return scroll, child
 end
 
+-- Alle Quests im Log verfolgen bzw. keine (Blizzard begrenzt die Zahl verfolgter Quests, darüber hinaus passiert nichts)
+local function WatchAll(watch)
+    for i = 1, C_QuestLog.GetNumQuestLogEntries() do
+        local info = C_QuestLog.GetInfo(i)
+        if info and not info.isHeader and not info.isHidden and info.questID and info.questID > 0 then
+            local watched = C_QuestLog.GetQuestWatchType(info.questID) ~= nil
+            if watch and not watched and C_QuestLog.AddQuestWatch then
+                C_QuestLog.AddQuestWatch(info.questID)
+            elseif not watch and watched then
+                C_QuestLog.RemoveQuestWatch(info.questID)
+            end
+        end
+    end
+    ns.RequestUpdate()
+end
+
+function OpenLogMenu(owner)
+    ns.Style.ShowMenu(owner, {
+        { title = ns.L("LOG_MENU_TITLE") },
+        {
+            checkbox = true,
+            text = ns.L("LOG_MENU_MARKERS"),
+            checked = function() return ns.BlizzardQuestMarkersShown and ns.BlizzardQuestMarkersShown() or false end,
+            onClick = function()
+                if ns.SetBlizzardQuestMarkers then ns.SetBlizzardQuestMarkers(not ns.BlizzardQuestMarkersShown()) end
+            end,
+        },
+        { divider = true },
+        { text = ns.L("LOG_MENU_TRACK_ALL"), onClick = function() WatchAll(true) end },
+        { text = ns.L("LOG_MENU_TRACK_NONE"), onClick = function() WatchAll(false) end },
+    })
+end
+
+-- Blizzards Rädchen (Questlog-Einstellungen) unsichtbar und ohne Maus – ersetzt durch unseres
+local function FadeBlizzardSettings(area)
+    for _, holder in ipairs({ area, _G.QuestScrollFrame, _G.QuestMapFrame }) do
+        local dropdown = holder and (holder.SettingsDropdown or holder.SettingsButton)
+        if dropdown then
+            Fade(dropdown)
+            if dropdown.EnableMouse then dropdown:EnableMouse(false) end
+        end
+    end
+end
+
 local function CreatePanel(area)
     local color = Style.COLOR
+    FadeBlizzardSettings(area)
     panel = CreateFrame("Frame", "ForeverQuestsLog", area, "BackdropTemplate")
     panel:SetAllPoints(area)
     -- über allen Teilen von Blizzards Liste; fängt deren Maus ab (Blizzards Liste darunter bleibt unberührt)
@@ -382,13 +428,22 @@ local function CreatePanel(area)
     panel:EnableMouse(true)
     Style.SetFlat(panel, color.background)
 
-    -- Kopfzeile: Suche | Anzahl | Filter | Dungeons
+    -- Kopfzeile: Suche | Anzahl | Filter | Dungeons | Rädchen
     local header = HeaderBar(panel, HEADER_HEIGHT)
+
+    -- Rädchen (statt Blizzards, dessen "Questziele anzeigen" mit Questie nichts bewirkt): Questmarker, alle/keine verfolgen
+    local gearButton = Style.CreateButton(header, "", 18, 18, OpenLogMenu, ns.L("TIP_LOG_MENU"))
+    gearButton:SetPoint("RIGHT", -5, 0)
+    local gear = gearButton:CreateTexture(nil, "ARTWORK")
+    gear:SetPoint("TOPLEFT", 2, -2)
+    gear:SetPoint("BOTTOMRIGHT", -2, 2)
+    gear:SetTexture("Interface\\Icons\\INV_Misc_Gear_01")
+    gear:SetTexCoord(0.08, 0.92, 0.08, 0.92)
 
     local dungeonButton = Style.CreateButton(header, ns.L("BTN_DUNGEONS"), 62, 18,
         function() if ns.ToggleDungeons then ns.ToggleDungeons() end end,
         function(tooltip) tooltip:AddLine(ns.L("TIP_DUNGEONS")) end)
-    dungeonButton:SetPoint("RIGHT", -5, 0)
+    dungeonButton:SetPoint("RIGHT", gearButton, "LEFT", -4, 0)
 
     filterButton = Style.CreateButton(header, ns.L("BTN_FILTER"), 42, 18, function(self)
         ns.QuestList.OpenFilterMenu(self, FILTER_KEY, ns.UpdateQuestLog)
@@ -552,8 +607,12 @@ end
 local function UpdateDetailButtons()
     local questID = detailQuestID
     if not questID then return end
-    local watched = C_QuestLog.GetQuestWatchType(questID) ~= nil
-    detailButtons.track:SetText(ns.L(watched and "BTN_UNTRACK" or "BTN_TRACK"))
+    -- schon gemeinsam: "Nicht mehr gemeinsam machen", sonst "Der Gruppe vorschlagen" (nur in einer Gruppe)
+    local isGroupQuest = ns.IsGroupQuest and ns.IsGroupQuest(questID)
+    detailButtons.suggest:SetText(ns.L(isGroupQuest and "GQ_LEAVE" or "MENU_SUGGEST"))
+    local canSuggest = isGroupQuest or IsInGroup()
+    detailButtons.suggest:SetEnabled(canSuggest and true or false)
+    detailButtons.suggest:SetAlpha(canSuggest and 1 or 0.45)
     detailButtons.pin:SetText(ns.L(ns.db.pinned[questID] and "BTN_UNPIN" or "BTN_PIN"))
     local canShare = IsInGroup() and C_QuestLog.IsPushableQuest(questID)
     detailButtons.share:SetEnabled(canShare)
@@ -759,44 +818,49 @@ local function CreateDetails(area)
     detailTitle:SetJustifyH("LEFT")
     detailTitle:SetWordWrap(false)
 
-    -- Knöpfe unten: Verfolgen | Anheften | Teilen | Abbrechen | Menü
+    -- Knöpfe unten in zwei Reihen:
+    --   oben:  Der Gruppe vorschlagen (bzw. Nicht mehr gemeinsam) | Teilen
+    --   unten: Anheften | Abbrechen | … (ganzes Menü)
     local footer = CreateFrame("Frame", nil, details)
     footer:SetPoint("BOTTOMLEFT", 6, 6)
     footer:SetPoint("BOTTOMRIGHT", -6, 6)
-    footer:SetHeight(20)
+    footer:SetHeight(44)
     detailButtons = {}
     local function Act(fn) return function() if detailQuestID then fn(detailQuestID) end end end
-    detailButtons.track = Style.CreateButton(footer, "", 10, 20, Act(function(questID)
-        if C_QuestLog.GetQuestWatchType(questID) then
-            C_QuestLog.RemoveQuestWatch(questID)
-        elseif C_QuestLog.AddQuestWatch then
-            C_QuestLog.AddQuestWatch(questID)
+    detailButtons.suggest = Style.CreateButton(footer, "", 10, 20, Act(function(questID)
+        if ns.IsGroupQuest and ns.IsGroupQuest(questID) then
+            ns.RemoveGroupQuest(questID, true)
+        elseif ns.SuggestQuest then
+            ns.SuggestQuest(questID)
         end
-        ns.RequestUpdate()
-        C_Timer.After(0.1, UpdateDetailButtons)
+        C_Timer.After(0.2, UpdateDetailButtons)
     end))
+    detailButtons.share = Style.CreateButton(footer, ns.L("MENU_SHARE"), 10, 20, Act(ns.QuestList.Share))
     detailButtons.pin = Style.CreateButton(footer, "", 10, 20, Act(function(questID)
         ns.QuestList.TogglePinned(questID)
         UpdateDetailButtons()
     end))
-    detailButtons.share = Style.CreateButton(footer, ns.L("MENU_SHARE"), 10, 20, Act(ns.QuestList.Share))
     detailButtons.abandon = Style.CreateButton(footer, "|cffff5555" .. ns.L("BTN_ABANDON") .. "|r", 10, 20,
         Act(ns.QuestList.Abandon))
     detailButtons.menu = Style.CreateButton(footer, "…", 22, 20, function(self)
         if detailQuestID then ns.QuestList.OpenMenu(self, detailQuestID) end
     end, ns.L("TIP_DETAIL_MENU"))
-    local order = { detailButtons.track, detailButtons.pin, detailButtons.share, detailButtons.abandon }
+    local function Row(buttons, y, reserve)
+        local total = footer:GetWidth()
+        local w = (total - reserve - 4 * (#buttons - 1)) / #buttons
+        for i, button in ipairs(buttons) do
+            button:SetWidth(w)
+            button:ClearAllPoints()
+            button:SetPoint("TOPLEFT", footer, "TOPLEFT", (i - 1) * (w + 4), y)
+        end
+    end
     local function Layout()
         local total = footer:GetWidth()
         if not total or total < 50 then return end
-        local w = (total - 22 - 4 * 4) / 4
-        for i, button in ipairs(order) do
-            button:SetWidth(w)
-            button:ClearAllPoints()
-            button:SetPoint("LEFT", footer, "LEFT", (i - 1) * (w + 4), 0)
-        end
+        Row({ detailButtons.suggest, detailButtons.share }, 0, 0)
+        Row({ detailButtons.pin, detailButtons.abandon }, -24, 22 + 4)
         detailButtons.menu:ClearAllPoints()
-        detailButtons.menu:SetPoint("RIGHT", footer, "RIGHT", 0, 0)
+        detailButtons.menu:SetPoint("TOPRIGHT", footer, "TOPRIGHT", 0, -24)
     end
     footer:SetScript("OnSizeChanged", Layout)
 
