@@ -655,6 +655,7 @@ local function RewardButton(index)
 end
 
 -- Zeilen der Questreihe (Pool): nicht anklickbar, Tooltip mit Name, ID, Stufen und Stand
+local FactionName, ReputationRewards -- (weiter unten)
 local chainRows = {}
 -- Tooltip wie im Tracker: Quest im Log = genau der Tracker-Tooltip (Ziel, Beschreibung, Fortschritt, Belohnungen);
 -- sonst derselbe Aufbau aus Questies Daten (Name in Schwierigkeitsfarbe mit Stufe, Questziel, Stand)
@@ -673,8 +674,44 @@ local function ChainTooltip(self)
     local title = entry.name or ("Quest #" .. entry.questID)
     if entry.level and entry.level > 0 then title = title .. " (" .. entry.level .. ")" end
     tip:AddLine(title, r, g, b)
+    -- Kurzziel (wie oben im Tracker-Tooltip)
     for _, line in ipairs(entry.objectives or {}) do
         if type(line) == "string" and line ~= "" then tip:AddLine(line, 1, 1, 1, true) end
+    end
+    local info = ns.GetQuestieQuestDetails and ns.GetQuestieQuestDetails(entry.questID)
+    if info then
+        -- Questziele mit Anzahl (bei erledigten Quests ohne Fortschritt)
+        if #info.objectives > 0 then
+            tip:AddLine(" ")
+            for _, line in ipairs(info.objectives) do
+                local text = self.done and line:gsub(": 0/(%d+)$", ": %1/%1") or line
+                local shade = self.done and 0.5 or 1
+                tip:AddLine("- " .. text, shade, shade, shade, true)
+            end
+        end
+        -- Questgeber und Abgabe
+        if info.starter or info.finisher then
+            tip:AddLine(" ")
+            if info.starter then tip:AddLine(ns.L("TIP_CHAIN_STARTER", info.starter), 0.75, 0.75, 0.75, true) end
+            if info.finisher then tip:AddLine(ns.L("TIP_CHAIN_FINISHER", info.finisher), 0.75, 0.75, 0.75, true) end
+        end
+        -- Belohnungen (soweit bekannt): Geld, Erfahrung, Ruf
+        local reps = ReputationRewards(entry.questID)
+        local money = info.money or 0
+        if (info.xp and info.xp > 0) or money > 0 or #reps > 0 then
+            tip:AddLine(" ")
+            tip:AddLine(ns.L("TIP_REWARDS"), 1, 0.82, 0)
+            if money > 0 then
+                tip:AddLine(GetMoneyString and GetMoneyString(money) or GetCoinTextureString(money), 1, 1, 1)
+            end
+            if info.xp and info.xp > 0 then
+                tip:AddLine(ns.L("TIP_XP", BreakUpLargeNumbers and BreakUpLargeNumbers(info.xp) or info.xp), 0.6, 0.6, 1)
+            end
+            for _, rep in ipairs(reps) do
+                tip:AddLine(ns.L("DETAIL_REPUTATION", (rep.amount > 0 and "+" or "") .. rep.amount,
+                    FactionName(rep.factionID)), 0.25, 0.55, 1)
+            end
+        end
     end
     tip:AddLine(" ")
     if self.done then
@@ -709,7 +746,7 @@ local function ChainRow(index)
 end
 
 -- Name einer Fraktion (für Rufbelohnungen)
-local function FactionName(factionID)
+function FactionName(factionID)
     if C_Reputation and C_Reputation.GetFactionDataByID then
         local data = C_Reputation.GetFactionDataByID(factionID)
         if data and data.name then return data.name end
@@ -722,7 +759,7 @@ local function FactionName(factionID)
 end
 
 -- Ruf-Belohnungen: aus Questies Datenbank (genaue Werte), sonst vom Spiel
-local function ReputationRewards(questID)
+function ReputationRewards(questID)
     local list = {}
     local fromQuestie = ns.GetQuestieReputation and ns.GetQuestieReputation(questID)
     if fromQuestie then

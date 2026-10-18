@@ -370,6 +370,57 @@ function ns.GetQuestChain(questID)
     if ok and chain and #chain > 1 then return chain end
 end
 
+-- Einzelheiten einer Quest, die (noch) nicht im Questlog steht – das Spiel liefert dafür nichts, Questies Datenbank
+-- schon: Questziele mit Anzahl, Questgeber, Abgabe, Erfahrung, Geld. (Beschreibung und Gegenstände kennt sie nicht.)
+function ns.GetQuestieQuestDetails(questID)
+    if not ns.HasQuestie() then return nil end
+    local ok, details = pcall(function()
+        local db = Module("QuestieDB")
+        local function Name(kind, id)
+            local query = (kind == "npc" and db.QueryNPCSingle) or (kind == "object" and db.QueryObjectSingle)
+                or db.QueryItemSingle
+            return query and query(id, "name")
+        end
+        local result = { objectives = {} }
+        -- Ziele: [1] Gegner, [2] Objekte, [3] Gegenstände (je { id, text, anzahl })
+        local objectives = db.QueryQuestSingle(questID, "objectives")
+        if type(objectives) == "table" then
+            for index, kind in ipairs({ "npc", "object", "item" }) do
+                for _, entry in ipairs(objectives[index] or {}) do
+                    local name = entry[2] or Name(kind, entry[1])
+                    if name then
+                        local count = tonumber(entry[3]) or 1
+                        table.insert(result.objectives, name .. ": 0/" .. count)
+                    end
+                end
+            end
+        end
+        -- Questgeber und Abgabe: erste bekannte Person (sonst Objekt/Gegenstand)
+        local function FirstName(list)
+            if type(list) ~= "table" then return nil end
+            for index, kind in ipairs({ "npc", "object", "item" }) do
+                local ids = list[index]
+                if type(ids) == "table" and ids[1] then
+                    local name = Name(kind, ids[1])
+                    if name then return name end
+                end
+            end
+        end
+        result.starter = FirstName(db.QueryQuestSingle(questID, "startedBy"))
+        result.finisher = FirstName(db.QueryQuestSingle(questID, "finishedBy"))
+        local questXP = Module("QuestXP")
+        if questXP and questXP.db and questXP.GetQuestLogRewardXP then
+            result.xp = questXP:GetQuestLogRewardXP(questID)
+        end
+        if GetQuestLogRewardMoney then
+            local okMoney, money = pcall(GetQuestLogRewardMoney, questID)
+            if okMoney then result.money = money end
+        end
+        return result
+    end)
+    return ok and details or nil
+end
+
 -- Rufbelohnungen aus Questies Datenbank: Liste { factionID, amount }
 function ns.GetQuestieReputation(questID)
     if not ns.HasQuestie() then return nil end
