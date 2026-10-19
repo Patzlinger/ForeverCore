@@ -419,6 +419,11 @@ Damit alle Einstellungsfenster gleich aussehen, gelten diese Maße. Quelle: `For
 - Nach jeder Änderung kurz notieren, was der Mitarbeiter im Spiel prüfen soll
 
 ## 14. Bekannte Wechselwirkungen
+- **Blizzard-Vorlagen mit fester Ebene** (z. B. `ContainerFrameItemButtonTemplate`: `frameLevel="10"`): der Hub
+  (`UI.BringToFront`) hebt Forever-Fenster beim Nach-vorne-Holen auf Ebenen weit über 10 – solche Knöpfe bleiben
+  stehen und liegen dann HINTER der eigenen Fensterfläche (dunkel, nicht anklickbar; trat 2026-10-20 in ForeverBags
+  auf). Abhilfe: `SetFixedFrameLevel(false)` und Ebene knapp über den Rahmen setzen (`ns.FollowParentLevel`).
+  Zur Fehlersuche: `GetMouseFoci()` zeigt, welcher Rahmen die Maus wirklich hat (z. B. `/fbags bankcheck`).
 - **Zugriff auf andere Addons nur mit Erlaubnis (verbindlich):** Bevor eine Funktion auf ein anderes Addon zugreift
   (dessen Datenbank, Funktionen, Fenster oder Einstellungen), immer zuerst prüfen, ob der Ersteller das erlaubt:
   Lizenz (CurseForge-Seite, LICENSE-Datei, .toc `X-License`), README/API-Doku und ausdrückliche Hinweise des Autors.
