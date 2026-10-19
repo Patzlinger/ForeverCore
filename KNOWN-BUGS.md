@@ -12,7 +12,6 @@ Ablauf:
 
 ## Offen
 
-
 ### ForeverQuests: Filter „Aktuelle Zone“ zeigt alles
 - **Was passiert:** Mit dem Filter „nur aktuelle Zone“ zeigt der Tracker trotzdem alle Quests. Die meisten anderen
   Filter funktionieren.
