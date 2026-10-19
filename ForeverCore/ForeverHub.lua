@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 56
+local VERSION = 57
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -2059,20 +2059,27 @@ local function BuildHubWindow()
         end
     end
 
-    -- Fussbereich: Sprache (nur deutscher Client), Ein-/Ausschalten, Verschieben/Minimap, Hinweis
-    local bottomH = 224 -- (+34: Zeile "Andere Addons …"; Zeile Sprache/Spielernamen)
-    -- Startseite des zentralen Einstellungsfensters (v56): ganz oben unter "Forever Core", davor ein eigenes Fenster.
-    -- Verhält sich weiter wie das alte Fenster (:Show/:Hide/:IsShown öffnen bzw. schließen das große Fenster hier).
-    local f = UI.SettingsPanel("ForeverHubWindow", UI.NAME, 460,
-        26 + HUB_INTRO_H + 8 + math.max(#list, 1) * HUB_ROW_H + bottomH,
+    -- Aufbau (v57): oben die Addons als Kacheln in zwei Spalten – Klick auf die Kachel schaltet das Addon an/aus
+    -- (gilt nach dem Neuladen; "Öffnen" gibt es nicht mehr, dafür steht jedes Addon links in der Liste). Darunter
+    -- zwei Kästen: "Allgemein" (Sprache, Spielernamen, Einrasten, Minimap-Knopf) und "Werkzeuge".
+    local W = 700
+    local COLS, TILE_H, TILE_GAP = 2, 40, 6
+    local tileW = math.floor((W - 24 - TILE_GAP) / COLS)
+    local rowsN = math.max(1, math.ceil(#list / COLS))
+    local listTop = 26 + HUB_INTRO_H + 24                 -- unter Einleitung und Überschrift "Addons"
+    local tilesEnd = listTop + rowsN * (TILE_H + TILE_GAP)
+    local generalY = tilesEnd + 56                        -- Überschrift "Allgemein"
+    local toolsY = generalY + 104                         -- Überschrift "Werkzeuge" (mind. ~24 px Luft zum Kasten davor)
+    local H = toolsY + 96
+    local f = UI.SettingsPanel("ForeverHubWindow", UI.NAME, W, H,
         { key = "ForeverCore", group = UI.SETTINGS_GROUPS.core, label = T("Übersicht", "Overview") })
     hubWindow = f
     f.rows = {}
 
-    local intro = UI.Hint(f, 16, -34, 428, "")
+    local intro = UI.Hint(f, 16, -34, W - 32, "")
     intro:SetWordWrap(true)
 
-    local reload -- Knopf "Neu laden" (weiter unten), erscheint, sobald etwas erst nach dem Neuladen gilt
+    local reload -- Knopf "Neu laden", erscheint, sobald etwas erst nach dem Neuladen gilt
     local langChanged = false
     local function Refresh()
         local pending = langChanged
@@ -2084,97 +2091,110 @@ local function BuildHubWindow()
     end
     f.Refresh = Refresh
 
-    local top = -26 - HUB_INTRO_H - 4
+    ---------------------------------------------------------------------------
+    -- Addons
+    ---------------------------------------------------------------------------
+    UI.Header(f, 16, -(listTop - 22), T("Addons", "Addons"), W - 24)
     for i, name in ipairs(list) do
-        local row = CreateFrame("Frame", nil, f)
-        row.name = name
-        row:SetHeight(HUB_ROW_H)
-        row:SetPoint("TOPLEFT", 10, top - (i - 1) * HUB_ROW_H)
-        row:SetPoint("TOPRIGHT", -10, top - (i - 1) * HUB_ROW_H)
-        if i > 1 then
-            local sep = row:CreateTexture(nil, "ARTWORK")
-            sep:SetColorTexture(1, 1, 1, 0.06)
-            sep:SetHeight(1)
-            sep:SetPoint("TOPLEFT", 4, 0)
-            sep:SetPoint("TOPRIGHT", -4, 0)
-        end
+        local col, rowIndex = (i - 1) % COLS, math.floor((i - 1) / COLS)
+        local tile = CreateFrame("Button", nil, f)
+        tile.name = name
+        tile:SetSize(tileW, TILE_H)
+        tile:SetPoint("TOPLEFT", 12 + col * (tileW + TILE_GAP), -(listTop + rowIndex * (TILE_H + TILE_GAP)))
+        local hl = tile:CreateTexture(nil, "HIGHLIGHT")
+        hl:SetAllPoints()
+        hl:SetColorTexture(1, 1, 1, 0.05)
 
-        -- Haekchen = Addon aktiv
-        row.check = UI.Check(row, nil, nil, "", function(checked)
+        -- Häkchen = Addon aktiv; Klick irgendwo auf die Kachel schaltet um
+        tile.check = UI.Check(tile, nil, nil, "", function(checked)
             SetEnabled(name, checked)
             Refresh()
         end)
-        row.check:SetPoint("LEFT", 6, 0)
-        row.check:SetHitRectInsets(-4, -4, -4, -4)
-        row.check:HookScript("OnEnter", function(self)
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-            GameTooltip:AddLine(name)
-            GameTooltip:AddLine(T("Häkchen = aktiv. Gilt nach dem Neuladen.", "Checked = active. Applies after reloading."), 1, 1, 1, true)
-            GameTooltip:Show()
+        tile.check:SetPoint("LEFT", 8, 0)
+        tile:SetScript("OnClick", function()
+            SetEnabled(name, not IsEnabled(name))
+            Refresh()
         end)
-        row.check:HookScript("OnLeave", GameTooltip_Hide)
-
-        row.icon = row:CreateTexture(nil, "ARTWORK")
-        row.icon:SetSize(22, 22)
-        row.icon:SetPoint("LEFT", 32, 0)
-        row.label = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        row.label:SetPoint("TOPLEFT", row.icon, "TOPRIGHT", 10, 2)
-        row.label:SetText(name)
-        -- Chatbefehl des Addons als Info neben dem Namen
+        tile.icon = tile:CreateTexture(nil, "ARTWORK")
+        tile.icon:SetSize(24, 24)
+        tile.icon:SetPoint("LEFT", 32, 0)
+        tile.label = tile:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        tile.label:SetPoint("TOPLEFT", tile.icon, "TOPRIGHT", 8, 2)
+        tile.label:SetText(name)
         if cmdOf[name] then
-            row.cmd = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-            row.cmd:SetPoint("LEFT", row.label, "RIGHT", 8, 0)
-            row.cmd:SetTextColor(0.6, 0.6, 0.6)
-            row.cmd:SetText(cmdOf[name])
+            tile.cmd = tile:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+            tile.cmd:SetPoint("LEFT", tile.label, "RIGHT", 6, 0)
+            tile.cmd:SetTextColor(0.55, 0.55, 0.55)
+            tile.cmd:SetText(cmdOf[name])
         end
-        row.note = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-        row.note:SetPoint("TOPLEFT", row.label, "BOTTOMLEFT", 0, -2)
-        row.note:SetPoint("RIGHT", row, "RIGHT", -100, 0)
-        row.note:SetJustifyH("LEFT")
-        row.note:SetWordWrap(false)
+        tile.note = tile:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+        tile.note:SetPoint("TOPLEFT", tile.label, "BOTTOMLEFT", 0, -2)
+        tile.note:SetPoint("RIGHT", tile, "RIGHT", -8, 0)
+        tile.note:SetJustifyH("LEFT")
+        tile.note:SetWordWrap(false)
         local ok, _, _, notes = pcall(C_AddOns.GetAddOnInfo, name)
-        row.note:SetText(ok and notes or "")
-
-        row.open = UI.Button(row, T("Öffnen", "Open"), 84, function()
-            OpenAddon(EntryOf(name)) -- Hub bleibt im Hintergrund offen
+        tile.notes = ok and notes or ""
+        tile.note:SetText(tile.notes)
+        -- statt der Beschreibung: "an/aus nach Neuladen", solange die Änderung noch nicht gilt
+        tile.status = tile:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        tile.status:SetPoint("TOPLEFT", tile.label, "BOTTOMLEFT", 0, -2)
+        tile:SetScript("OnEnter", function(self)
+            local tip = UI.GetTooltip()
+            tip:SetOwner(self, "ANCHOR_RIGHT")
+            tip:AddLine(name, C.accent[1], C.accent[2], C.accent[3])
+            if self.notes ~= "" then tip:AddLine(self.notes, 1, 1, 1, true) end
+            tip:AddLine(T("Klick: an/aus – gilt nach dem Neuladen.", "Click: on/off – applies after reloading."), 0.6, 0.6, 0.6)
+            tip:Show()
         end)
-        row.open:SetPoint("RIGHT", -4, 0)
-        row.status = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-        row.status:SetPoint("RIGHT", -8, 0)
+        tile:SetScript("OnLeave", function() UI.GetTooltip():Hide() end)
 
-        function row.Update()
+        function tile.Update()
             local e = EntryOf(name)
             local enabled = IsEnabled(name)
             local pending = IsPending(name)
-            row.check:SetChecked(enabled)
-            row.icon:SetTexture(e and e.icon or UI.LOGO)
-            row.icon:SetDesaturated(not e)
-            row.label:SetTextColor(e and 1 or 0.5, e and 0.82 or 0.5, e and 0 or 0.5)
-            row.open:SetShown(e ~= nil and not pending)
-            row.status:SetShown(not row.open:IsShown())
+            tile.check:SetChecked(enabled)
+            tile.icon:SetTexture(e and e.icon or UI.LOGO)
+            tile.icon:SetDesaturated(not enabled)
+            tile.label:SetTextColor(enabled and C.accent[1] or 0.5, enabled and C.accent[2] or 0.5, enabled and C.accent[3] or 0.5)
+            tile.note:SetShown(not pending)
+            tile.status:SetShown(pending)
             if pending then
-                row.status:SetText(enabled and T("an nach Neuladen", "on after reload") or T("aus nach Neuladen", "off after reload"))
-                row.status:SetTextColor(C.accent[1], C.accent[2], C.accent[3])
-            else
-                row.status:SetText(IsLoaded(name) and T("ohne Menü", "no menu") or T("aus", "off"))
-                row.status:SetTextColor(0.5, 0.5, 0.5)
+                tile.status:SetText(enabled and T("an nach dem Neuladen", "on after reloading")
+                    or T("aus nach dem Neuladen", "off after reloading"))
             end
         end
-        f.rows[i] = row
+        f.rows[i] = tile
     end
-
     if #list == 0 then
-        UI.Hint(f, 16, top - 6, nil, T("Keine Forever-Addons gefunden.", "No Forever addons found."))
+        UI.Hint(f, 16, -listTop, nil, T("Keine Forever-Addons gefunden.", "No Forever addons found."))
     end
 
-    -- unten: Trennlinie
-    local line = f:CreateTexture(nil, "ARTWORK")
-    line:SetColorTexture(C.border[1], C.border[2], C.border[3], 1)
-    line:SetHeight(1)
-    line:SetPoint("BOTTOMLEFT", 10, bottomH - 10)
-    line:SetPoint("BOTTOMRIGHT", -10, bottomH - 10)
+    -- unter den Kacheln: alle an/aus, nur dieser Charakter, Neu laden
+    local function SetAll(on)
+        for _, name in ipairs(list) do SetEnabled(name, on) end
+        Refresh()
+        if not on and not IsInstalled(CORE) then
+            UI.Chat("Forever", T("Ohne Forever-Addons gibt es auch kein Hub-Fenster mehr – wieder einschalten dann über die Addon-Liste (Charakterauswahl).",
+                "Without Forever addons there is no hub window either – turn them back on via the addon list (character selection)."))
+        end
+    end
+    local allOn = UI.Button(f, T("Alle an", "All on"), 90, function() SetAll(true) end)
+    allOn:SetPoint("TOPLEFT", 16, -(tilesEnd + 4))
+    local allOff = UI.Button(f, T("Alle aus", "All off"), 90, function() SetAll(false) end)
+    allOff:SetPoint("LEFT", allOn, "RIGHT", 6, 0)
+    local perChar = UI.Check(f, nil, nil, T("nur dieser Charakter", "this character only"), function(checked)
+        GetDB().perCharacter = checked or nil
+    end)
+    perChar:SetPoint("LEFT", allOff, "RIGHT", 16, 0)
+    reload = UI.Button(f, T("Neu laden", "Reload"), 110, function() ReloadUI() end)
+    reload:SetPoint("TOPRIGHT", -16, -(tilesEnd + 4))
+    reload:GetFontString():SetTextColor(C.accent[1], C.accent[2], C.accent[3])
+    reload:Hide()
 
-    -- Sprache fuer alle Forever-Addons (wirkt nach dem Neuladen)
+    ---------------------------------------------------------------------------
+    -- Allgemein: Sprache, Spielernamen, Einrasten, Minimap-Knopf
+    ---------------------------------------------------------------------------
+    UI.Header(f, 16, -generalY, T("Allgemein", "General"), W - 24)
     local lang
     if UI.GERMAN_CLIENT then
         local LANGS = {
@@ -2188,9 +2208,9 @@ local function BuildHubWindow()
             return key
         end
         local langLabel = UI.Text(f, "label", T("Sprache", "Language"))
-        langLabel:SetPoint("BOTTOMLEFT", 16, 152)
-        lang = UI.AddArrow(UI.Button(f, "", 170))
-        lang:SetPoint("LEFT", langLabel, "RIGHT", 10, 0)
+        langLabel:SetPoint("TOPLEFT", 20, -(generalY + 26))
+        lang = UI.AddArrow(UI.Button(f, "", 180))
+        lang:SetPoint("TOPLEFT", 110, -(generalY + 22))
         lang:SetScript("OnClick", function(self)
             UI.ChoiceMenu(self, LANGS, Current, function(key)
                 GetDB().language = key ~= "AUTO" and key or nil
@@ -2204,7 +2224,6 @@ local function BuildHubWindow()
         function lang.Load() lang:SetText(LabelOf(Current())) end
     end
 
-    -- Spielernamen in Rahmen, Plaketten, Würfen … (sofort wirksam bei der nächsten Anzeige)
     local NAME_CHOICES = {
         { key = "first", label = T("Nur Vorname", "First name only") },
         { key = "initial", label = T("Vorname + Initiale", "First name + initial") },
@@ -2215,13 +2234,9 @@ local function BuildHubWindow()
         return key
     end
     local namesLabel = UI.Text(f, "label", T("Spielernamen", "Player names"))
-    if lang then
-        namesLabel:SetPoint("LEFT", lang, "RIGHT", 18, 0)
-    else
-        namesLabel:SetPoint("BOTTOMLEFT", 16, 152)
-    end
-    local names = UI.AddArrow(UI.Button(f, "", 150))
-    names:SetPoint("LEFT", namesLabel, "RIGHT", 10, 0)
+    namesLabel:SetPoint("TOPLEFT", 360, -(generalY + 26))
+    local names = UI.AddArrow(UI.Button(f, "", 180))
+    names:SetPoint("TOPLEFT", 470, -(generalY + 22))
     names:SetScript("OnClick", function(self)
         UI.ChoiceMenu(self, NAME_CHOICES, UI.NameStyle, function(key)
             GetDB().nameStyle = key ~= "initial" and key or nil
@@ -2230,64 +2245,68 @@ local function BuildHubWindow()
         end)
     end)
     names:SetScript("OnEnter", function(self)
-        local tip = UI.GetTooltip and UI.GetTooltip() or GameTooltip
+        local tip = UI.GetTooltip()
         tip:SetOwner(self, "ANCHOR_RIGHT")
         tip:AddLine(T("Spielernamen", "Player names"))
         tip:AddLine(T("Für Einheiten- und Gruppenrahmen, Namensplaketten, Würfe und Flüster-Fenster. Charakter-Übersicht, Tooltip und Chat zeigen immer den vollen Namen.",
             "For unit and group frames, nameplates, loot rolls and whisper windows. Character overview, tooltip and chat always show the full name."), 1, 1, 1, true)
         tip:Show()
     end)
-    names:SetScript("OnLeave", function() (UI.GetTooltip and UI.GetTooltip() or GameTooltip):Hide() end)
+    names:SetScript("OnLeave", function() UI.GetTooltip():Hide() end)
     function names.Load() names:SetText(NameLabel(UI.NameStyle())) end
 
-    -- Ein-/Ausschalten: alle an, alle aus, nur dieser Charakter, Neu laden
-    local function SetAll(on)
-        for _, name in ipairs(list) do SetEnabled(name, on) end
-        Refresh()
-        if not on and not IsInstalled(CORE) then
-            UI.Chat("Forever", T("Ohne Forever-Addons gibt es auch kein Hub-Fenster mehr – wieder einschalten dann über die Addon-Liste (Charakterauswahl).",
-                "Without Forever addons there is no hub window either – turn them back on via the addon list (character selection)."))
-        end
-    end
-    local allOn = UI.Button(f, T("Alle an", "All on"), 80, function() SetAll(true) end)
-    allOn:SetPoint("BOTTOMLEFT", 14, 116)
-    local allOff = UI.Button(f, T("Alle aus", "All off"), 80, function() SetAll(false) end)
-    allOff:SetPoint("LEFT", allOn, "RIGHT", 6, 0)
-    local perChar = UI.Check(f, nil, nil, T("nur dieser Charakter", "this character only"), function(checked)
-        GetDB().perCharacter = checked or nil
+    local snapCheck = UI.Check(f, 16, -(generalY + 58), T("Einrasten beim Verschieben", "Snap while moving"), function(checked)
+        UI.SetSnapEnabled(checked)
     end)
-    perChar:SetPoint("LEFT", allOff, "RIGHT", 14, 0)
-    reload = UI.Button(f, T("Neu laden", "Reload"), 100, function() ReloadUI() end)
-    reload:SetPoint("BOTTOMRIGHT", -14, 116)
-    reload:GetFontString():SetTextColor(C.accent[1], C.accent[2], C.accent[3])
-    reload:Hide()
-
-    -- Profile (je Charakter) und Austausch (Export/Import der ganzen Oberflaeche)
-    local profilesBtn = UI.Button(f, T("Profile und Austausch …", "Profiles and transfer …"), 200, function()
-        if UI.ShowProfiles then UI.ShowProfiles() end
+    snapCheck:HookScript("OnEnter", function(self)
+        local tip = UI.GetTooltip()
+        tip:SetOwner(self, "ANCHOR_TOP")
+        tip:AddLine(T("Einrasten", "Snapping"))
+        tip:AddLine(T("Entsperrte Rahmen rasten an anderen Rahmen, der Bildschirmmitte und dem Raster ein. Umschalt beim Ziehen = kurz nicht einrasten. Auch: /fmove snap",
+            "Unlocked frames snap to other frames, the screen center and the grid. Hold Shift while dragging to skip it. Also: /fmove snap"), 1, 1, 1, true)
+        tip:Show()
     end)
-    profilesBtn:SetPoint("BOTTOMLEFT", 14, 82)
+    snapCheck:HookScript("OnLeave", function() UI.GetTooltip():Hide() end)
+    local mm = UI.Check(f, 356, -(generalY + 58), T("Minimap-Knopf anzeigen", "Show minimap button"), function(checked)
+        GetDB().hideButton = not checked or nil
+        ApplyMode()
+    end)
 
-    -- Andere Addons für dieselben Aufgaben (Bartender4, Bagnon, Cell …): wählen, welches laufen soll
-    local conflictsBtn = UI.Button(f, T("Andere Addons …", "Other addons …"), 200, function()
+    ---------------------------------------------------------------------------
+    -- Werkzeuge: andere Addons, Profile, Details, alle verschieben
+    ---------------------------------------------------------------------------
+    UI.Header(f, 16, -toolsY, T("Werkzeuge", "Tools"), W - 24)
+    local conflictsBtn = UI.Button(f, T("Andere Addons …", "Other addons …"), 150, function()
         if UI.ShowConflicts then UI.ShowConflicts(true) end
     end)
-    conflictsBtn:SetPoint("BOTTOMLEFT", 14, bottomH - 40)
+    conflictsBtn:SetPoint("TOPLEFT", 16, -(toolsY + 22))
     conflictsBtn:HookScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        GameTooltip:AddLine(T("Andere Addons", "Other addons"))
-        GameTooltip:AddLine(T("Hast du für Leisten, Taschen, Rahmen, Chat … schon ein anderes Addon (z. B. Bartender4, Bagnon, Cell), wählst du hier, welches laufen soll.",
+        local tip = UI.GetTooltip()
+        tip:SetOwner(self, "ANCHOR_TOP")
+        tip:AddLine(T("Andere Addons", "Other addons"))
+        tip:AddLine(T("Hast du für Leisten, Taschen, Rahmen, Chat … schon ein anderes Addon (z. B. Bartender4, Bagnon, Cell), wählst du hier, welches laufen soll.",
             "If you already use another addon for bars, bags, frames, chat … (e.g. Bartender4, Bagnon, Cell), choose here which one should run."), 1, 1, 1, true)
-        GameTooltip:Show()
+        tip:Show()
     end)
-    conflictsBtn:HookScript("OnLeave", GameTooltip_Hide)
+    conflictsBtn:HookScript("OnLeave", function() UI.GetTooltip():Hide() end)
 
-    -- Details! (falls aktiv): eigenes Profil im Forever-Look bzw. zurueck zum vorherigen
-    local detailsBtn = UI.Button(f, "", 200, function(self)
+    local profilesBtn = UI.Button(f, T("Profile und Austausch …", "Profiles and transfer …"), 180, function()
+        if UI.ShowProfiles then UI.ShowProfiles() end
+    end)
+    profilesBtn:SetPoint("LEFT", conflictsBtn, "RIGHT", 8, 0)
+
+    local move = UI.Button(f, "", 150, function()
+        UI.CloseSettings()
+        UI.MoveAll()
+    end)
+    move:SetPoint("LEFT", profilesBtn, "RIGHT", 8, 0)
+
+    -- Details! (falls aktiv): eigenes Profil im Forever-Look bzw. zurück zum vorherigen
+    local detailsBtn = UI.Button(f, "", 170, function(self)
         if UI.DetailsForeverActive and UI.DetailsForeverActive() then UI.DetailsRestore() else UI.DetailsApplyForever() end
         if self.Update then self.Update() end
     end)
-    detailsBtn:SetPoint("BOTTOMRIGHT", -14, 82)
+    detailsBtn:SetPoint("LEFT", move, "RIGHT", 8, 0)
     function detailsBtn.Update()
         local available = UI.DetailsAvailable and UI.DetailsAvailable()
         detailsBtn:SetShown(available)
@@ -2296,57 +2315,31 @@ local function BuildHubWindow()
             or T("Details im Forever-Look", "Details in the Forever look"))
     end
     detailsBtn:HookScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        GameTooltip:AddLine("Details!")
-        GameTooltip:AddLine(T("Legt eine Kopie deines Details-Profils namens „Forever Core“ an und gibt dort allen Fenstern den Forever-Look. Dein bisheriges Profil bleibt unverändert; ein zweiter Klick wechselt zurück.",
+        local tip = UI.GetTooltip()
+        tip:SetOwner(self, "ANCHOR_TOP")
+        tip:AddLine("Details!")
+        tip:AddLine(T("Legt eine Kopie deines Details-Profils namens „Forever Core“ an und gibt dort allen Fenstern den Forever-Look. Dein bisheriges Profil bleibt unverändert; ein zweiter Klick wechselt zurück.",
             "Creates a copy of your Details profile named \"Forever Core\" and gives all windows the Forever look there. Your previous profile stays unchanged; a second click switches back."), 1, 1, 1, true)
-        GameTooltip:Show()
+        tip:Show()
     end)
-    detailsBtn:HookScript("OnLeave", GameTooltip_Hide)
+    detailsBtn:HookScript("OnLeave", function() UI.GetTooltip():Hide() end)
 
-    local move = UI.Button(f, "", 150, function()
-        f:Hide()
-        UI.MoveAll()
-    end)
-    move:SetPoint("BOTTOMLEFT", 14, 48)
-
-    local mm = UI.Check(f, nil, nil, T("Minimap-Knopf anzeigen", "Show minimap button"), function(checked)
-        GetDB().hideButton = not checked or nil
-        ApplyMode()
-    end)
-    mm:SetPoint("LEFT", move, "RIGHT", 18, 0)
-
-    local snapCheck = UI.Check(f, nil, nil, T("Einrasten beim Verschieben", "Snap while moving"), function(checked)
-        UI.SetSnapEnabled(checked)
-    end)
-    snapCheck:SetPoint("BOTTOMLEFT", 270, 148)
-    snapCheck:HookScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        GameTooltip:AddLine(T("Einrasten", "Snapping"))
-        GameTooltip:AddLine(T("Entsperrte Rahmen rasten an anderen Rahmen, der Bildschirmmitte und dem Raster ein. Umschalt beim Ziehen = kurz nicht einrasten. Auch: /fmove snap",
-            "Unlocked frames snap to other frames, the screen center and the grid. Hold Shift while dragging to skip it. Also: /fmove snap"), 1, 1, 1, true)
-        GameTooltip:Show()
-    end)
-    snapCheck:HookScript("OnLeave", GameTooltip_Hide)
-
-    local hint = UI.Hint(f, nil, nil, nil, T("/forever öffnet dieses Fenster · /fmove verschiebt alle Rahmen · /forever reset holt die Knöpfe zurück",
-        "/forever opens this window · /fmove moves all frames · /forever reset brings the buttons back"))
-    hint:SetPoint("BOTTOMLEFT", 16, 14)
-    hint:SetPoint("RIGHT", f, "RIGHT", -16, 0)
+    local hint = UI.Hint(f, 20, -(toolsY + 54), W - 40, T("/forever öffnet diese Seite · /fmove verschiebt alle Rahmen · /forever reset holt die Knöpfe zurück",
+        "/forever opens this page · /fmove moves all frames · /forever reset brings the buttons back"))
     hint:SetWordWrap(true)
 
     f:SetScript("OnShow", function()
         SafeSetup() -- falls seit dem Login Addons/Knoepfe dazugekommen sind
         if f.welcome then
             f.TitleText:SetText(T("Willkommen bei Forever Core", "Welcome to Forever Core"))
-            intro:SetText("|cffffd100" .. T("Wähle, welche Addons du nutzen möchtest (Häkchen) – danach „Neu laden“. ",
-                "Choose which addons you want to use (checkbox) – then \"Reload\". ") .. "|r"
-                .. T("Dieses Fenster öffnet sich nur dieses eine Mal; später findest du es mit /forever, im Addon-Menü an der Minimap oder unter Esc » Optionen » AddOns.",
-                "This window only opens this once; later you'll find it via /forever, the addon menu at the minimap or Esc » Options » AddOns."))
+            intro:SetText("|cffffd100" .. T("Wähle, welche Addons du nutzen möchtest (Klick auf die Kachel) – danach „Neu laden“. ",
+                "Choose which addons you want to use (click a tile) – then \"Reload\". ") .. "|r"
+                .. T("Diese Seite öffnet sich nur dieses eine Mal von selbst; später findest du sie mit /forever, über den Forever-Core-Knopf an der Minimap oder unter Esc » Optionen » AddOns.",
+                "This page only opens by itself this once; later you'll find it via /forever, the Forever Core minimap button or Esc » Options » AddOns."))
         else
             f.TitleText:SetText(UI.NAME)
-            intro:SetText(T("Häkchen = Addon aktiv. Ein- und Ausschalten gilt nach dem Neuladen. „Öffnen“ führt ins Menü des Addons.",
-                "Checked = addon active. Turning addons on or off applies after reloading. \"Open\" takes you to the addon's settings."))
+            intro:SetText(T("Klick auf eine Kachel schaltet das Addon an oder aus (gilt nach dem Neuladen). Die Einstellungen jedes Addons findest du links in der Liste.",
+                "Click a tile to turn the addon on or off (applies after reloading). Each addon's settings are in the list on the left."))
         end
         Refresh()
         move:SetText(UI.AnyUnlocked() and T("Alle sperren", "Lock all") or T("Alle verschieben", "Move all"))
