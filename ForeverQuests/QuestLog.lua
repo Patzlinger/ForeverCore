@@ -562,6 +562,7 @@ function ns.UpdateQuestLog()
     UpdateReadyFooter()
     local maxScroll = math.max(0, height - scrollFrame:GetHeight())
     if scrollFrame:GetVerticalScroll() > maxScroll then scrollFrame:SetVerticalScroll(maxScroll) end
+    if scrollFrame.UpdateBar then scrollFrame.UpdateBar() end
 end
 
 local function RequestLogUpdate()
@@ -583,17 +584,78 @@ local function HighlightOnMap(questID)
     end
 end
 
--- Scrollbereich mit Mausrad; gibt ScrollFrame und Inhalt zurück
+-- Scrollbereich mit Mausrad und schlankem Rollbalken (rechts, nur wenn der Inhalt länger ist);
+-- Balken und Mausrad bleiben gekoppelt. Gibt ScrollFrame und Inhalt zurück
 local function CreateScroll(parent)
     local scroll = CreateFrame("ScrollFrame", nil, parent)
     scroll:EnableMouseWheel(true)
     local child = CreateFrame("Frame", nil, scroll)
     child:SetSize(1, 1)
     scroll:SetScrollChild(child)
-    scroll:SetScript("OnMouseWheel", function(self, delta)
-        local maxScroll = math.max(0, child:GetHeight() - self:GetHeight())
-        self:SetVerticalScroll(math.min(maxScroll, math.max(0, self:GetVerticalScroll() - delta * 30)))
+
+    local color = Style.COLOR
+    local bar = CreateFrame("Slider", nil, parent)
+    bar:SetOrientation("VERTICAL")
+    bar:SetWidth(5)
+    bar:SetPoint("TOPLEFT", scroll, "TOPRIGHT", 0, 0)
+    bar:SetPoint("BOTTOMLEFT", scroll, "BOTTOMRIGHT", 0, 0)
+    bar:SetFrameLevel(scroll:GetFrameLevel() + 5)
+    bar:SetMinMaxValues(0, 0)
+    bar:SetValueStep(1)
+    local track = bar:CreateTexture(nil, "BACKGROUND")
+    track:SetAllPoints()
+    track:SetColorTexture(0, 0, 0, 0.35)
+    local thumb = bar:CreateTexture(nil, "OVERLAY")
+    thumb:SetSize(5, 40)
+    thumb:SetColorTexture(color.border[1] + 0.2, color.border[2] + 0.2, color.border[3] + 0.2, 1)
+    bar:SetThumbTexture(thumb)
+    -- Maus darüber: Griff in Gold (wie Knöpfe und Regler der Forever-Fenster)
+    bar:SetScript("OnEnter", function() thumb:SetColorTexture(color.accent[1], color.accent[2], color.accent[3], 0.9) end)
+    bar:SetScript("OnLeave", function()
+        thumb:SetColorTexture(color.border[1] + 0.2, color.border[2] + 0.2, color.border[3] + 0.2, 1)
     end)
+    bar:Hide()
+
+    local syncing = false
+    local function MaxScroll() return math.max(0, child:GetHeight() - scroll:GetHeight()) end
+    -- Bereich und Griffgröße an den Inhalt anpassen (nach jedem Neuaufbau und bei Größenänderung)
+    function scroll.UpdateBar()
+        local maxScroll = MaxScroll()
+        if maxScroll < 1 then
+            bar:Hide()
+            if scroll:GetVerticalScroll() > 0 then scroll:SetVerticalScroll(0) end
+            return
+        end
+        local h, total = scroll:GetHeight(), child:GetHeight()
+        thumb:SetHeight(math.max(20, h * h / math.max(total, 1)))
+        syncing = true
+        bar:SetMinMaxValues(0, maxScroll)
+        bar:SetValue(math.min(scroll:GetVerticalScroll(), maxScroll))
+        syncing = false
+        bar:Show()
+    end
+    -- Balken gezogen -> Liste folgt
+    bar:SetScript("OnValueChanged", function(_, value)
+        if syncing then return end
+        scroll:SetVerticalScroll(math.min(MaxScroll(), math.max(0, value)))
+    end)
+    -- Liste gerollt (Mausrad, Code) -> Balken folgt
+    scroll:SetScript("OnVerticalScroll", function(self, offset)
+        if not bar:IsShown() then return end
+        syncing = true
+        bar:SetValue(offset)
+        syncing = false
+    end)
+    scroll:SetScript("OnMouseWheel", function(self, delta)
+        self:SetVerticalScroll(math.min(MaxScroll(), math.max(0, self:GetVerticalScroll() - delta * 30)))
+    end)
+    bar:EnableMouseWheel(true)
+    bar:SetScript("OnMouseWheel", function(_, delta)
+        scroll:SetVerticalScroll(math.min(MaxScroll(), math.max(0, scroll:GetVerticalScroll() - delta * 30)))
+    end)
+    child:SetScript("OnSizeChanged", function() scroll.UpdateBar() end)
+    scroll:HookScript("OnSizeChanged", function() scroll.UpdateBar() end)
+    scroll.bar = bar
     return scroll, child
 end
 
@@ -667,6 +729,18 @@ local function FadeBlizzardSettings(area)
         if dropdown then
             Fade(dropdown)
             if dropdown.EnableMouse then dropdown:EnableMouse(false) end
+        end
+    end
+    -- Blizzards Rollbalken der Questliste: gehört zu Blizzards Liste unter unserer und bewegt nichts
+    local blizzScroll = _G.QuestScrollFrame
+    local blizzBar = blizzScroll and (blizzScroll.ScrollBar or (blizzScroll.GetName and blizzScroll:GetName()
+        and _G[blizzScroll:GetName() .. "ScrollBar"]))
+    if blizzBar then
+        Fade(blizzBar)
+        if blizzBar.EnableMouse then blizzBar:EnableMouse(false) end
+        if blizzBar.HookScript and not blizzBar.fqFaded then
+            blizzBar.fqFaded = true
+            blizzBar:HookScript("OnShow", function(self) self:SetAlpha(0) end)
         end
     end
 end
