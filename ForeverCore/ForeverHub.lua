@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 59
+local VERSION = 60
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -859,6 +859,7 @@ function UI.AddArrow(b)
         fs:SetJustifyH("LEFT")
         fs:SetWordWrap(false)
     end
+    b.fcArrow = true -- Auswahlliste: ihr Text ist ein Wert, kein Name (die Einstellungssuche überspringt ihn)
     local arrow = b:CreateTexture(nil, "OVERLAY")
     arrow:SetSize(10, 10)
     arrow:SetPoint("RIGHT", -8, 0)
@@ -2435,6 +2436,223 @@ local GROUP_LABEL = {
 }
 UI.SETTINGS_GROUPS = { core = "core", frames = "frames", bars = "bars", nav = "nav", comfort = "comfort", helpers = "helpers" }
 
+---------------------------------------------------------------------------
+-- Einstellungssuche (v60, nach dem Vorbild von ForeverBars) oben rechts in der Titelleiste jeder Seite: findet
+-- Einstellungen aller Addons nach Namen, öffnet die passende Seite (und den Reiter) und lässt die Einstellung kurz
+-- golden aufleuchten. Gesucht wird in allen Texten der Seiten (Haken, Regler, Knöpfe, Überschriften), noch nicht
+-- gebaute Seiten werden dafür einmal still gebaut. Ein Addon mit eigener Suche meldet stattdessen seine Einträge:
+-- UI.RegisterSearch(key, function() return { { label, path, go = function() … end }, … } end).
+-- Reiter: ein Reiter-Bereich mit .fcReveal = function() … end wird vor dem Aufleuchten geöffnet.
+---------------------------------------------------------------------------
+local searchProviders = {}
+local searchBuilding      -- true, solange Seiten nur für die Suche gebaut werden (sie sollen sich nicht öffnen)
+local searchIndex         -- zwischengespeichert, bis das Fenster schließt oder eine Seite dazukommt
+
+function UI.RegisterSearch(key, provider)
+    searchProviders[key] = provider
+    searchIndex = nil
+end
+
+local function SearchText(s)
+    s = s:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|T.-|t", ""):gsub("|A.-|a", ""):gsub("\n", " ")
+    return strtrim(s)
+end
+
+-- alle Texte einer Seite einsammeln (graue Erklärtexte, Eingabefelder und Werte in Auswahllisten nicht)
+local function CrawlPage(frame, page, path, list, depth)
+    if depth > 10 or frame:IsObjectType("EditBox") then return end
+    local isControl = frame ~= page.frame and (frame:IsObjectType("Button") or frame:IsObjectType("Slider"))
+    if not (isControl and frame.fcArrow) then
+        for _, r in ipairs({ frame:GetRegions() }) do
+            if r:IsObjectType("FontString") and r ~= page.frame.TitleText and r ~= page.frame.SubText then
+                local text = r:GetText()
+                local font = r:GetFontObject()
+                local fname = font and font.GetName and font:GetName() or ""
+                if text and text ~= "" and not fname:find("Disable") then
+                    text = SearchText(text)
+                    if #text >= 3 and #text <= 60 and text:find("%a%a") then
+                        list[#list + 1] = { label = text, path = path, page = page, control = isControl and frame or r }
+                    end
+                end
+            end
+        end
+    end
+    for _, child in ipairs({ frame:GetChildren() }) do CrawlPage(child, page, path, list, depth + 1) end
+end
+
+local function BuildSearchIndex()
+    if searchIndex then return searchIndex end
+    -- noch nicht gebaute Seiten einmal still bauen (ohne sie zu öffnen)
+    searchBuilding = true
+    for _, page in ipairs(settingsPages) do
+        if not page.frame and page.open and not page.opening then
+            page.opening = true
+            local ok, err = pcall(page.open)
+            page.opening = nil
+            if not ok then UI.ReportError("ForeverCore", "Search " .. tostring(page.key), err) end
+        end
+    end
+    searchBuilding = nil
+    local list = {}
+    for _, page in ipairs(settingsPages) do
+        -- die Seite selbst ist auch ein Treffer
+        local group = GROUP_LABEL[page.group] and GROUP_LABEL[page.group]() or tostring(page.group)
+        list[#list + 1] = { label = page.label, path = group, page = page }
+        local provider = searchProviders[page.key]
+        if provider then
+            local ok, entries = pcall(provider)
+            if ok and type(entries) == "table" then
+                for _, e in ipairs(entries) do
+                    if e.label and e.label ~= "" then
+                        list[#list + 1] = { label = e.label, page = page, go = e.go,
+                            path = e.path and (page.label .. " » " .. e.path) or page.label }
+                    end
+                end
+            end
+        elseif page.frame then
+            CrawlPage(page.frame, page, page.label, list, 1)
+        end
+    end
+    searchIndex = list
+    return list
+end
+
+local function BuildSearch(f)
+    local search = UI.EditBox(f, 200, 22)
+    search:SetPoint("TOPRIGHT", f.content, "TOPRIGHT", -40, -3) -- mittig in der Titelleiste der Seite, vor dem Kreuz
+    local placeholder = search:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    placeholder:SetPoint("LEFT", 7, 0)
+    placeholder:SetText(T("Einstellung suchen …", "Search settings …"))
+    f.search = search
+
+    -- goldener Rahmen, der kurz um die gefundene Einstellung aufleuchtet
+    local flash = CreateFrame("Frame", nil, f, "BackdropTemplate")
+    flash:SetBackdrop({ edgeFile = WHITE, edgeSize = 2 })
+    flash:SetBackdropBorderColor(C.accent[1], C.accent[2], C.accent[3], 1)
+    flash:SetFrameStrata("FULLSCREEN")
+    flash:EnableMouse(false)
+    flash:Hide()
+    local function Flash(control)
+        if not control or not control:IsVisible() then return end
+        flash:ClearAllPoints()
+        flash:SetPoint("TOPLEFT", control, "TOPLEFT", -4, 4)
+        local label = control.GetObjectType and control:GetObjectType() == "CheckButton" and control.label
+        if type(label) == "table" and label.GetRight then
+            flash:SetPoint("BOTTOMRIGHT", label, "BOTTOMRIGHT", 4, -4)
+            flash:SetPoint("BOTTOM", control, "BOTTOM", 0, -4)
+        else
+            flash:SetPoint("BOTTOMRIGHT", control, "BOTTOMRIGHT", 4, -4)
+        end
+        flash:Show()
+        flash.token = (flash.token or 0) + 1
+        local token = flash.token
+        C_Timer.After(1.5, function() if flash.token == token then flash:Hide() end end)
+    end
+
+    local function GoTo(entry)
+        UI.OpenSettings(entry.page.key)
+        if entry.go then
+            local ok, err = pcall(entry.go)
+            if not ok then UI.ReportError("ForeverCore", "Search " .. tostring(entry.page.key), err) end
+            return
+        end
+        local control = entry.control
+        if not control then return end
+        -- Reiter öffnen, in denen die Einstellung liegt (von außen nach innen)
+        local chain, p = {}, control:GetParent()
+        while p and p ~= entry.page.frame do
+            if p.fcReveal then table.insert(chain, 1, p) end
+            p = p:GetParent()
+        end
+        for _, tab in ipairs(chain) do
+            if not tab:IsShown() then pcall(tab.fcReveal) end
+        end
+        C_Timer.After(0, function() Flash(control) end) -- nach dem Anordnen der Seite
+    end
+
+    -- Trefferliste unter dem Suchfeld
+    local results = CreateFrame("Frame", nil, f, "BackdropTemplate")
+    UI.SetFlat(results, C.background)
+    results:SetFrameStrata("FULLSCREEN_DIALOG")
+    results:SetPoint("TOPRIGHT", search, "BOTTOMRIGHT", 0, -4)
+    results:SetWidth(360)
+    results:EnableMouse(true)
+    results:Hide()
+    local MAX_RESULTS = 14
+    local rows = {}
+    for i = 1, MAX_RESULTS do
+        local row = CreateFrame("Button", nil, results)
+        row:SetHeight(20)
+        row:SetPoint("TOPLEFT", 1, -4 - (i - 1) * 20)
+        row:SetPoint("RIGHT", -1, 0)
+        local hl = row:CreateTexture(nil, "HIGHLIGHT")
+        hl:SetAllPoints()
+        hl:SetColorTexture(1, 1, 1, 0.06)
+        row.text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        row.text:SetPoint("LEFT", 10, 0)
+        row.text:SetPoint("RIGHT", -10, 0)
+        row.text:SetJustifyH("LEFT")
+        row.text:SetWordWrap(false)
+        -- Eintrag "Nichts gefunden" (ohne entry) ist nicht anklickbar
+        row:SetScript("OnClick", function(self)
+            if not self.entry then return end
+            results:Hide()
+            search:ClearFocus()
+            GoTo(self.entry)
+        end)
+        rows[i] = row
+    end
+
+    local function UpdateResults()
+        local text = strtrim(search:GetText() or ""):lower()
+        placeholder:SetShown(text == "" and not search:HasFocus())
+        if text == "" then results:Hide() return end
+        local count, seen = 0, {}
+        for _, entry in ipairs(BuildSearchIndex()) do
+            local key = (entry.path or "") .. entry.label
+            if count < MAX_RESULTS and not seen[key] and entry.label:lower():find(text, 1, true) then
+                seen[key] = true
+                count = count + 1
+                local row = rows[count]
+                row.entry = entry
+                row.text:SetText((entry.path and ("|cff8a8a8a" .. entry.path .. " »|r ") or "") .. entry.label)
+                row:Show()
+            end
+        end
+        for i = count + 1, MAX_RESULTS do rows[i]:Hide() end
+        if count == 0 then
+            rows[1].entry = nil
+            rows[1].text:SetText("|cff8a8a8a" .. T("Nichts gefunden", "Nothing found") .. "|r")
+            rows[1]:Show()
+            count = 1
+        end
+        results:SetHeight(count * 20 + 8)
+        results:Show()
+    end
+    search:SetScript("OnTextChanged", UpdateResults)
+    search:HookScript("OnEditFocusGained", function() placeholder:Hide() end)
+    search:HookScript("OnEditFocusLost", function() placeholder:SetShown(strtrim(search:GetText() or "") == "") end)
+    search:SetScript("OnEscapePressed", function(self)
+        self:SetText("")
+        self:ClearFocus()
+        results:Hide()
+    end)
+    search:SetScript("OnEnterPressed", function(self)
+        local first = rows[1]
+        if results:IsShown() and first:IsShown() and first.entry then
+            results:Hide()
+            self:ClearFocus()
+            GoTo(first.entry)
+        end
+    end)
+    f:HookScript("OnHide", function()
+        results:Hide()
+        search:SetText("")
+        search:ClearFocus()
+        searchIndex = nil -- Texte (z. B. Sprache) beim nächsten Mal neu einlesen
+    end)
+end
+
 local function SettingsWindow()
     if settingsWin then return settingsWin end
     local f = UI.Window("ForeverSettingsWindow", UI.NAME, NAV_W + 2 + PAGE_W, PAGE_H)
@@ -2476,7 +2694,9 @@ local function SettingsWindow()
         content:SetFrameLevel(base + 2)
         KeepAbove(content, 1)
         if f.CloseButton then f.CloseButton:SetFrameLevel(base + 60) end -- Schließen-Kreuz über der Titelleiste der Seite
+        if f.search then f.search:SetFrameLevel(base + 60) end -- Suchfeld ebenso
     end
+    BuildSearch(f)
     hooksecurefunc(f, "SetFrameLevel", Levels)
     f.fcLevels = Levels
     Levels()
@@ -2584,6 +2804,7 @@ local function PageEntry(key, group, label)
 end
 
 function UI.OpenSettings(which)
+    if searchBuilding then return end -- Seite wird nur für die Suche gebaut, nicht öffnen
     local f = SettingsWindow()
     -- ohne bestimmte Seite: bei offenem Fenster die aktuelle, sonst die Startseite "Forever Core » Übersicht" (v56)
     local page = FindPage(which) or (f:IsShown() and settingsCurrent) or FindPage("ForeverCore") or settingsCurrent
@@ -2602,7 +2823,8 @@ function UI.OpenSettings(which)
     if settingsCurrent and settingsCurrent ~= page and settingsCurrent.frame then settingsCurrent.frame:fcRawHide() end
     settingsCurrent = page
     page.frame:ClearAllPoints()
-    page.frame:SetPoint("TOPLEFT", f.content, "TOPLEFT", 0, page.frame.fcShift or 0)
+    page.frame:SetPoint("TOPLEFT", f.content, "TOPLEFT", page.frame.fcInsetX or 0,
+        (page.frame.fcShift or 0) - (page.frame.fcInsetY or 0))
     LayoutNav()
     if f:IsShown() then page.frame:fcRawShow() else f:Show() end
     if f.fcLevels then f.fcLevels() end -- neue Seite (evtl. eben erst gebaut) über den Fensterhintergrund
@@ -2679,8 +2901,12 @@ function UI.SettingsPanel(name, title, width, height, info)
     local menu = info.kind == "menu"
     local shift = (menu and UI.MENU.headerHeight or 26) - 26
     p.fcShift = shift
+    -- Seiten mit automatischen Kästen (UI.Header) rücken etwas nach rechts unten, damit rundherum – vor allem unter
+    -- der Titelleiste – so viel Luft ist wie im Menü von ForeverBars (v60). Die Titelleiste bleibt oben (hängt am
+    -- Seitenbereich, nicht an der Seite). Menü-Seiten (ForeverBars, ForeverQuests, ForeverMinimap) haben ihre Maße schon.
+    p.fcInsetX, p.fcInsetY = menu and 0 or 4, menu and 0 or 16
     local header = CreateFrame("Frame", nil, p, "BackdropTemplate")
-    header:SetPoint("TOPLEFT", p, "TOPLEFT", 0, -1 - shift)
+    header:SetPoint("TOPLEFT", f.content, "TOPLEFT", 0, -1)
     header:SetPoint("RIGHT", f.content, "RIGHT", -1, 0)
     header:SetHeight(26)
     header:SetBackdrop({ bgFile = WHITE })
@@ -2715,6 +2941,7 @@ function UI.SettingsPanel(name, title, width, height, info)
 
     local page = PageEntry(info.key or name, info.group, info.label or title)
     page.frame = p
+    if not searchBuilding then searchIndex = nil end -- neue Seite: Suche neu einlesen
     if settingsWin:IsShown() then LayoutNav() end
     return p
 end

@@ -26,6 +26,7 @@ do
         p:SetPoint("TOPLEFT", 0, -38) -- etwas Luft zwischen Reiter-Knöpfen und den Kästen
         p:SetPoint("BOTTOMRIGHT", 0, 40)
         p:Hide()
+        p.fcReveal = function() SelectTab(index) end -- Einstellungssuche des Hubs springt in diesen Reiter
         panels[index] = p
         local t = UI.Button(options, title, 110, function() SelectTab(index) end)
         t:SetPoint("TOPLEFT", 14 + (index - 1) * 114, -32)

@@ -270,6 +270,7 @@ local function AddTab(title)
     p:SetPoint("TOPLEFT", 10, -92)
     p:SetPoint("BOTTOMRIGHT", -10, 44)
     p:Hide()
+    p.fcReveal = function() SelectTab(index) end -- Einstellungssuche des Hubs springt in diesen Reiter
     -- kein eigener Rahmen um den Reiter: die Abschnitte haben ihre eigenen Kaesten (ForeverHub)
     panels[index] = p
     local t = W.Button(options, title, 90, function() SelectTab(index) end)

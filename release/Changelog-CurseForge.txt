@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Settings window: new "Search settings …" field at the top right of every page (like the one in ForeverBars) – finds settings of all Forever addons by name, opens the right page and tab and briefly highlights the setting. More space around the content of every page, especially below the title bar.
+
 - Settings window: all pages now use the same box layout as the ForeverBars menu – 12 px between boxes, boxes across the full width, boxes in a row equally tall and the last boxes of each column ending at the same height.
 
 - Settings window: more even spacing on the pages of ForeverLoot, ForeverBuffs, ForeverVendor, ForeverPlates and ForeverAlts (boxes no longer touch or overlap). German names: "Twink-Übersicht" (ForeverAlts) and "Würfel-Fenster" (ForeverLoot).

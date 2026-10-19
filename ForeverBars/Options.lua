@@ -1025,6 +1025,21 @@ local function CreateOptions()
         end
     end)
 
+    -- Im zentralen Einstellungsfenster gibt es eine gemeinsame Suche für alle Addons (ForeverCore v60): dort meldet
+    -- ForeverBars seine Einträge samt Sprung an, das eigene Suchfeld entfällt dann
+    local HUB = _G.ForeverHub and _G.ForeverHub.UI
+    if HUB and HUB.RegisterSearch then
+        search:Hide()
+        HUB.RegisterSearch("ForeverBars", function()
+            local list = {}
+            for _, entry in ipairs(searchIndex) do
+                local e = entry
+                list[#list + 1] = { label = e.label, path = InfoFor(e).path, go = function() GoTo(e) end }
+            end
+            return list
+        end)
+    end
+
     options:SetScript("OnShow", function() ns.RefreshOptions() end)
     options:HookScript("OnHide", function() results:Hide() end)
     options:Hide()
