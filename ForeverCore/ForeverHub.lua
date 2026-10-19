@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 58
+local VERSION = 59
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -710,45 +710,77 @@ function UI.LayoutSections(parent)
         if r:IsObjectType("FontString") then Add(r) end
     end
 
+    -- Kasten-Regeln wie im Menü von ForeverBars (v59): 12 px zwischen den Kästen (neben- und untereinander), Kästen
+    -- über die volle Breite (rechts 12 px vor dem Rand des Seitenbereichs bzw. des Fensters), Kästen einer Reihe
+    -- gleich hoch. Ein Kasten reicht bis kurz vor den nächsten Kasten darunter, die letzten Kästen jeder Spalte enden
+    -- auf gleicher Höhe. Die Lage der Bedienelemente bestimmt weiter die Seite selbst.
+    local GAP, MARGIN = 12, 12
+    local maxRight = pw - MARGIN
+    local win = _G.ForeverSettingsWindow
+    local area = win and win.content
+    if area and area:GetRight() then
+        local p = parent
+        for _ = 1, 8 do
+            if not p then break end
+            if p == area then maxRight = area:GetRight() - pl - MARGIN break end
+            p = p:GetParent()
+        end
+    end
+
     local headerBottom = parent.header and parent.header:GetBottom() and (parent.header:GetBottom() - pt)
+    local boxes = {}
     for _, s in ipairs(secs) do
         local hl = s.x - 8
-        -- rechte Grenze: schmale Ueberschriften (Spalten) enden vor der naechsten Spalte rechts davon;
-        -- breite Ueberschriften (ueber beide Spalten) duerfen so breit sein wie angegeben
-        local cap = pw - 6
+        -- rechte Grenze: schmale Überschriften (Spalten) enden 12 px vor dem Kasten der nächsten Spalte rechts davon,
+        -- sonst (und bei breiten Überschriften) am rechten Rand
+        local cap = maxRight
         if s.width < 400 then
             for _, o in ipairs(secs) do
-                if o.x > s.x + 20 then cap = math.min(cap, o.x - 14) end
+                if o.x > s.x + 20 then cap = math.min(cap, o.x - 8 - GAP) end
             end
         end
-        -- naechste Ueberschrift darunter, die in diese Spalte faellt
+        -- nächste Überschrift darunter, die in diese Spalte fällt (breite Überschriften gelten für alle Spalten)
         local nextY
         for _, o in ipairs(secs) do
-            if o ~= s and o.y < s.y and o.x < cap and o.x + 8 > hl then
+            if o ~= s and o.y < s.y and ((o.x < cap and o.x + 8 > hl) or o.width >= 400) then
                 if not nextY or o.y > nextY then nextY = o.y end
             end
         end
-        -- Inhalt des Abschnitts: unter der Ueberschrift, ueber der naechsten, links in dieser Spalte
-        local bottom, right = s.y - 18, math.min(cap, s.x - 2 + s.width)
+        -- Inhalt des Abschnitts: unter der Überschrift, über der nächsten, links in dieser Spalte
+        local bottom = s.y - 18
         for _, it in ipairs(items) do
             if it.l >= hl - 4 and it.l < cap and it.t <= s.y + 2 and (not nextY or it.t > nextY + 2) then
                 bottom = math.min(bottom, it.b)
-                right = math.max(right, it.r + 8)
             end
         end
-        right = math.min(right, cap)
         local top = s.y + 9
         if headerBottom then top = math.min(top, headerBottom - 2) end
-        local boxBottom = bottom - 9
-        if nextY then boxBottom = math.max(boxBottom, nextY + 14) end
+        local boxBottom
+        if nextY then
+            -- bis 12 px vor den nächsten Kasten; reicht der Inhalt tiefer, mindestens 6 px unter den Inhalt
+            -- (der Abstand zum nächsten Kasten bleibt dann trotzdem mindestens 4 px)
+            boxBottom = math.max(math.min(nextY + 9 + GAP, bottom - 6), nextY + 13)
+        else
+            boxBottom = bottom - 10
+        end
+        boxes[#boxes + 1] = { s = s, hl = hl, right = cap, top = top, bottom = boxBottom, last = nextY == nil }
+    end
+    -- die letzten Kästen der Spalten enden auf gleicher Höhe (wie die unteren Kästen bei ForeverBars)
+    local lowest
+    for _, b in ipairs(boxes) do
+        if b.last and (not lowest or b.bottom < lowest) then lowest = b.bottom end
+    end
+    for _, b in ipairs(boxes) do
+        if b.last and lowest then b.bottom = lowest end
+        local s = b.s
         s.box = s.box or NewSectionBox(parent)
         s.box.fill:ClearAllPoints()
-        s.box.fill:SetPoint("TOPLEFT", parent, "TOPLEFT", hl, top)
-        s.box.fill:SetSize(right - hl, math.max(24, top - boxBottom))
-        -- Linie unter der Ueberschrift ueber die ganze Kastenbreite
+        s.box.fill:SetPoint("TOPLEFT", parent, "TOPLEFT", b.hl, b.top)
+        s.box.fill:SetSize(math.max(24, b.right - b.hl), math.max(24, b.top - b.bottom))
+        -- Linie unter der Überschrift über die ganze Kastenbreite
         s.line:ClearAllPoints()
-        s.line:SetPoint("TOPLEFT", parent, "TOPLEFT", hl + 6, s.y - 17)
-        s.line:SetWidth(right - hl - 12)
+        s.line:SetPoint("TOPLEFT", parent, "TOPLEFT", b.hl + 6, s.y - 17)
+        s.line:SetWidth(math.max(1, b.right - b.hl - 12))
     end
 end
 

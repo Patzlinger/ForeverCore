@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Settings window: all pages now use the same box layout as the ForeverBars menu – 12 px between boxes, boxes across the full width, boxes in a row equally tall and the last boxes of each column ending at the same height.
+
 - Settings window: more even spacing on the pages of ForeverLoot, ForeverBuffs, ForeverVendor, ForeverPlates and ForeverAlts (boxes no longer touch or overlap). German names: "Twink-Übersicht" (ForeverAlts) and "Würfel-Fenster" (ForeverLoot).
 - ForeverAlts: new icon, and its button stays visible next to the Forever Core button – in ForeverMinimap's button bar right below it.
 
