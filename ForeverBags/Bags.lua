@@ -127,7 +127,18 @@ local function MasqueActive()
     return masqueGroup ~= nil and not (masqueGroup.db and masqueGroup.db.Disabled)
 end
 
+-- Blizzards Platz-Vorlage hat eine FESTE Ebene (frameLevel="10"). Holt der Hub unser Fenster nach vorne (Ebene steigt),
+-- bleiben die Plätze auf 10 stehen und landen hinter der eigenen Fensterfläche (alles dunkel, nicht anklickbar).
+-- Darum: Festlegung aufheben und knapp über den eigenen Rahmen setzen – danach wandern sie mit dem Fenster mit.
+function ns.FollowParentLevel(button)
+    if InCombatLockdown() and button.IsProtected and button:IsProtected() then return end
+    if button.SetFixedFrameLevel then pcall(button.SetFixedFrameLevel, button, false) end
+    local parent = button:GetParent()
+    if parent then pcall(button.SetFrameLevel, button, parent:GetFrameLevel() + 2) end
+end
+
 function ns.StyleSlot(button, bag)
+    ns.FollowParentLevel(button)
     NoItemContext(button)
     local masque = MasqueActive()
     if masqueGroup and not button.fbagsMasque then
@@ -173,6 +184,11 @@ end
 -- Anzeige eines Platzes aus den Taschendaten (geht auch im Kampf: keine geschützten Änderungen).
 -- Auch für das Bankfenster (Bank.lua).
 function ns.UpdateSlot(button, bag, slot)
+    -- liegt der Platz (noch) nicht über seinem Rahmen: nachziehen (siehe ns.FollowParentLevel)
+    local parent = button:GetParent()
+    if parent and button:GetFrameLevel() <= parent:GetFrameLevel() and ns.FollowParentLevel then
+        ns.FollowParentLevel(button)
+    end
     local info = C_Container.GetContainerItemInfo(bag, slot)
     local texture = info and info.iconFileID
     SetItemButtonTexture(button, texture)
