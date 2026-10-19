@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Settings window: more even spacing on the pages of ForeverLoot, ForeverBuffs, ForeverVendor, ForeverPlates and ForeverAlts (boxes no longer touch or overlap). German names: "Twink-Übersicht" (ForeverAlts) and "Würfel-Fenster" (ForeverLoot).
+- ForeverAlts: new icon, and its button stays visible next to the Forever Core button – in ForeverMinimap's button bar right below it.
+
 - ForeverQuests: quests in the quest log are expanded by default, a little more space between the zone boxes; right-click a quest of the chain in the details for the Wowhead link (with Questie); tooltips in tracker and quest log get the gold border all around like the other Forever tooltips (follows ForeverTooltip's "Gold border all around").
 - Forever Core: the overview of all Forever addons (/forever, the Forever Core minimap button) is now the start page of the settings window – first entry "Forever Core » Overview". The addons are shown as tiles in two columns – click a tile to turn the addon on or off; below, tidy "General" and "Tools" boxes (no more overlapping text, no "Open" buttons – every addon is in the list on the left).
 - ForeverAlts: open the alts overview by clicking your gold in the ForeverBags window, or with its own key binding (Key Bindings » AddOns » ForeverAlts).

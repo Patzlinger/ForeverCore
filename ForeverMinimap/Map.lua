@@ -809,12 +809,20 @@ local function PlaceForeign(b)
     b.fmmPlacing = false
 end
 
+-- Reihenfolge in der Knopfleiste: zuerst der Forever-Core-Knopf, direkt darunter die Twink-Übersicht (ForeverAlts),
+-- danach alle anderen alphabetisch
+local FIRST = { ForeverHubMinimapButton = 1, ForeverAltsMinimapButton = 2 }
 local function SortedForeign()
     local list = {}
     for b in pairs(edgeButtons) do
         if b:IsShown() then list[#list + 1] = b end
     end
-    table.sort(list, function(a, b) return (a:GetName() or "") < (b:GetName() or "") end)
+    table.sort(list, function(a, b)
+        local na, nb = a:GetName() or "", b:GetName() or ""
+        local pa, pb = FIRST[na] or 99, FIRST[nb] or 99
+        if pa ~= pb then return pa < pb end
+        return na < nb
+    end)
     return list
 end
 

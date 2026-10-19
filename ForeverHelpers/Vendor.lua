@@ -1121,7 +1121,7 @@ UI.Hint(options, R + 2, -352, 296, T("Name (oder Teil davon), Gegenstands-ID ode
     "Name (or part of it), item ID or link (shift-click an item). One per line or comma-separated, amount after a colon: " ..
     "Healing Potion:5. Or drag an item onto +. Grey = only applies at a higher level."))
 
-Check(R - 4, -420, T("Auch die eigene Liste aus ForeverBuffs nachkaufen", "Also restock the own list from ForeverBuffs"), "useBuffsList")
+Check(R - 4, -420, T("Auch eigene Liste aus ForeverBuffs", "Also ForeverBuffs' own list"), "useBuffsList")
 local resetList = UI.Button(options, T("Klassen-Vorschläge wiederherstellen", "Restore class suggestions"), 240, function()
     for _, e in ipairs(ClassList()) do
         local found = false

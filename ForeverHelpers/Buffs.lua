@@ -715,17 +715,17 @@ Check(options, L - 4, -78, T("Höchsten Rang prüfen", "Check for highest rank")
 Check(options, L - 4, -102, T("Gruppen-Buffs (bei anderen und bei mir)", "Group buffs (others and me)"), "groupBuffs")
 Check(options, L - 4, -126, T("Auch Dornen / Schattenschutz", "Also Thorns / Shadow Protection"), "optionalBuffs")
 
-UI.Header(options, L, -166, T("Essen und Trinken", "Food and drink"), 280)
-Check(options, L - 4, -188, T("Essen dabei", "Carry food"), "food")
-Check(options, L - 4, -212, T("Trinken dabei (Klassen mit Mana)", "Carry drink (mana users)"), "drink")
-Check(options, L - 4, -236, T("Bestes für meine Stufe", "Best for my level"), "tierCheck")
+UI.Header(options, L, -170, T("Essen und Trinken", "Food and drink"), 280)
+Check(options, L - 4, -192, T("Essen dabei", "Carry food"), "food")
+Check(options, L - 4, -216, T("Trinken dabei (Klassen mit Mana)", "Carry drink (mana users)"), "drink")
+Check(options, L - 4, -240, T("Bestes für meine Stufe", "Best for my level"), "tierCheck")
 
-UI.Header(options, L, -276, T("Klasse", "Class"), 280)
-Check(options, L - 4, -298, T("Waffe: Gift/Öl/Stein bzw. Verzauberung (Schamane)", "Weapon: poison/oil/stone or imbue (shaman)"), "weapon")
-Check(options, L - 4, -322, T("Munition (Jäger)", "Ammo (hunter)"), "ammo")
-Slider(options, L + 2, -350, T("Munition ab", "Ammo below"), "ammoMin", 0, 1000, 50)
-Check(options, L - 4, -392, T("Seelensplitter (Hexenmeister)", "Soul shards (warlock)"), "shards")
-Slider(options, L + 2, -420, T("Splitter ab", "Shards below"), "shardMin", 0, 10, 1)
+UI.Header(options, L, -284, T("Klasse", "Class"), 280)
+Check(options, L - 4, -306, T("Waffe: Gift/Öl/Stein/Verzauberung", "Weapon: poison/oil/stone/imbue"), "weapon")
+Check(options, L - 4, -330, T("Munition (Jäger)", "Ammo (hunter)"), "ammo")
+Slider(options, L + 2, -358, T("Munition ab", "Ammo below"), "ammoMin", 0, 1000, 50)
+Check(options, L - 4, -400, T("Seelensplitter (Hexenmeister)", "Soul shards (warlock)"), "shards")
+Slider(options, L + 2, -428, T("Splitter ab", "Shards below"), "shardMin", 0, 10, 1)
 
 UI.Header(options, R, -32, T("Eigene Liste", "Own list"), 280)
 UI.Hint(options, R + 4, -52, 280, T("Je Zeile: Name (oder Teil davon) oder Gegenstands-ID, optional mit Mindestanzahl. Beispiel:\nHeiltrank:3\nManatrank:2\nLeinenverband",
@@ -749,17 +749,17 @@ box:EnableMouse(true)
 box:SetScript("OnMouseDown", function() edit:SetFocus() end)
 controls[#controls + 1] = function() edit:SetText(GetDB().custom or "") end
 
-UI.Header(options, R, -258, T("Anzeige", "Display"), 280)
-Check(options, R - 4, -280, T("Gasthaus/Hauptstadt: keine Buff-Hinweise", "Inns/capitals: no buff reminders"), "hideResting")
-Check(options, R - 4, -304, T("Im Kampf ausblenden", "Hide in combat"), "hideInCombat")
-Slider(options, R + 2, -332, T("Symbolgröße", "Icon size"), "iconSize", 14, 40, 1, { unit = " px" })
-local lockCheck = Check(options, R - 4, -374, T("Leiste sperren (entsperrt: ziehen)", "Lock bar (unlocked: drag)"), "locked")
+UI.Header(options, R, -264, T("Anzeige", "Display"), 280)
+Check(options, R - 4, -286, T("Gasthaus/Hauptstadt: keine Buff-Hinweise", "Inns/capitals: no buff reminders"), "hideResting")
+Check(options, R - 4, -310, T("Im Kampf ausblenden", "Hide in combat"), "hideInCombat")
+Slider(options, R + 2, -338, T("Symbolgröße", "Icon size"), "iconSize", 14, 40, 1, { unit = " px" })
+local lockCheck = Check(options, R - 4, -380, T("Leiste sperren (entsperrt: ziehen)", "Lock bar (unlocked: drag)"), "locked")
 local testBtn = UI.Button(options, T("Beispiel zeigen", "Show example"), 130, function()
     testMode = not testMode
     Refresh()
 end)
-testBtn:SetPoint("TOPLEFT", R + 2, -406)
-UI.Hint(options, R + 4, -436, 280, T("Die Leiste erscheint nur, wenn etwas fehlt. Kommt ein fehlender Buff im Kampf dazu, wird das Symbol grün mit Haken; nach dem Kampf wird neu geprüft.",
+testBtn:SetPoint("TOPLEFT", R + 2, -412)
+UI.Hint(options, R + 4, -442, 280, T("Die Leiste erscheint nur, wenn etwas fehlt. Kommt ein fehlender Buff im Kampf dazu, wird das Symbol grün mit Haken; nach dem Kampf wird neu geprüft.",
     "The bar only appears when something is missing. If a missing buff arrives in combat, its icon turns green with a check; everything is checked again after combat."))
 
 options:SetScript("OnShow", function() for _, load in ipairs(controls) do load() end end)

@@ -798,8 +798,8 @@ end
 ---------------------------------------------------------------------------
 local ToggleOptions
 do
-    local options = UI.SettingsPanel("ForeverLootOptions", T("ForeverLoot – Würfel-Drops", "ForeverLoot – Loot rolls"), 340, 400,
-        { key = "ForeverHelpers.loot", group = UI.SETTINGS_GROUPS.helpers, label = T("Würfel-Drops", "Loot rolls") })
+    local options = UI.SettingsPanel("ForeverLootOptions", T("ForeverLoot – Würfel-Fenster", "ForeverLoot – Loot rolls"), 340, 420,
+        { key = "ForeverHelpers.loot", group = UI.SETTINGS_GROUPS.helpers, label = T("Würfel-Fenster", "Loot rolls") })
     local W = 308 -- Breite der Ueberschriften
 
     local function Button(text, width, onClick)
@@ -830,7 +830,7 @@ do
     resetBtn:SetPoint("TOPLEFT", 16, -108)
 
     -- Anzeige: Schieberegler mit – / +
-    UI.Header(options, 18, -144, T("Anzeige", "Display"), W)
+    UI.Header(options, 18, -156, T("Anzeige", "Display"), W)
     local sliders = {}
     local function Slider(label, key, minV, maxV, step, y, toValue, fromValue, unit)
         local s = UI.Slider(options, 18, y, label, minV, maxV, step, Safe(T("Einstellungen", "Settings"), function(value)
@@ -843,23 +843,23 @@ do
     end
 
     local function Same(v) return v end
-    Slider(T("Größe", "Size"), "scale", 50, 200, 5, -168,
+    Slider(T("Größe", "Size"), "scale", 50, 200, 5, -180,
         function(v) return v / 100 end, function(v) return math.floor(v * 100 + 0.5) end, " %")
-    Slider(T("Nach dem Ergebnis ausblenden nach", "Hide after result"), "keep", 1, 60, 1, -208, Same, Same, " s")
-    Slider(T("Liste einklappen ab mehr als", "Collapse list above"), "maxRows", 1, 40, 1, -248, Same, Same,
+    Slider(T("Nach dem Ergebnis ausblenden nach", "Hide after result"), "keep", 1, 60, 1, -220, Same, Same, " s")
+    Slider(T("Liste einklappen ab mehr als", "Collapse list above"), "maxRows", 1, 40, 1, -260, Same, Same,
         T(" Spielern", " players"))
 
     -- Test und Liste
-    UI.Header(options, 18, -294, T("Testmodus", "Test mode"), W)
+    UI.Header(options, 18, -316, T("Testmodus", "Test mode"), W)
     local test5 = Button(T("Test: 5 Spieler", "Test: 5 players"), 140, function() RunTest(5) end)
-    test5:SetPoint("TOPLEFT", 16, -318)
+    test5:SetPoint("TOPLEFT", 16, -340)
     local test20 = Button(T("Test: 20 Spieler", "Test: 20 players"), 140, function() RunTest(20) end)
     test20:SetPoint("LEFT", test5, "RIGHT", 6, 0)
     local clear = Button(T("Liste leeren", "Clear list"), 140, function()
         wipe(items)
         Refresh()
     end)
-    clear:SetPoint("TOPLEFT", 16, -344)
+    clear:SetPoint("TOPLEFT", 16, -366)
 
     options:SetScript("OnShow", function()
         lock:SetChecked(GetDB().locked)

@@ -486,7 +486,7 @@ end
 -- Fenster
 ---------------------------------------------------------------------------
 local function Build()
-    window = UI.Window("ForeverAltsWindow", T("Twinks", "Alts"), math.max(MIN_WIDTH, VisibleWidth() + PAD * 2), 460)
+    window = UI.Window("ForeverAltsWindow", T("Twink-Übersicht", "Alts"), math.max(MIN_WIDTH, VisibleWidth() + PAD * 2), 460)
 
     -- Spaltenüberschriften (Klick: danach sortieren, nochmal: umdrehen); Lage setzt RefreshWindow
     headerButtons = {}

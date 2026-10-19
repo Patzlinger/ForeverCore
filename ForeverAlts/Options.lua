@@ -7,7 +7,7 @@ local checks = {}
 
 local function Build()
     options = UI.SettingsPanel("ForeverAltsOptions", T("ForeverAlts – Einstellungen", "ForeverAlts – Settings"), 460, 350,
-        { key = "ForeverAlts", group = UI.SETTINGS_GROUPS.comfort, label = T("Twinks", "Alts") })
+        { key = "ForeverAlts", group = UI.SETTINGS_GROUPS.comfort, label = T("Twink-Übersicht", "Alts") })
     local W = 420
     local function Check(y, label, key)
         local cb = UI.Check(options, 14, y, label, ns.Safe(T("Einstellungen", "Settings"), function(checked)
@@ -24,10 +24,10 @@ local function Build()
         "Charakteren ist geschätzt (≈) – seit ihrem letzten Login.",
         "A character shows up once it has logged in. Rested XP of other characters is estimated (≈) since their last login."))
 
-    UI.Header(options, 18, -170, T("Mit anderen Forever-Addons", "With other Forever addons"), W)
-    Check(-192, T("Twinks bei Quests zeigen (ForeverQuests)", "Show alts on quests (ForeverQuests)"), "questInfo")
-    Check(-216, T("\"Herstellbar von\" im Gegenstands-Tooltip", "\"Can be made by\" in item tooltips"), "recipeTooltip")
-    UI.Hint(options, 22, -244, W - 12, T("Im Quest-Tooltip und im Hinweis \"Dungeon betreten\": welche Twinks die Quest " ..
+    UI.Header(options, 18, -178, T("Mit anderen Forever-Addons", "With other Forever addons"), W)
+    Check(-200, T("Twinks bei Quests zeigen (ForeverQuests)", "Show alts on quests (ForeverQuests)"), "questInfo")
+    Check(-224, T("\"Herstellbar von\" im Gegenstands-Tooltip", "\"Can be made by\" in item tooltips"), "recipeTooltip")
+    UI.Hint(options, 22, -252, W - 12, T("Im Quest-Tooltip und im Hinweis \"Dungeon betreten\": welche Twinks die Quest " ..
         "auch haben. Taschen und Bank der Twinks: Rechtsklick in der Übersicht (ForeverBags).",
         "In the quest tooltip and the \"Entering dungeon\" hint: which alts have the quest too. Bags and bank of your " ..
         "alts: right-click in the overview (ForeverBags)."))
@@ -48,7 +48,7 @@ end
 
 -- Eintrag im zentralen Einstellungsfenster schon beim Laden (die Seite entsteht erst beim ersten Öffnen)
 if UI.RegisterSettingsLink then
-    UI.RegisterSettingsLink({ key = "ForeverAlts", group = UI.SETTINGS_GROUPS.comfort, label = T("Twinks", "Alts"),
+    UI.RegisterSettingsLink({ key = "ForeverAlts", group = UI.SETTINGS_GROUPS.comfort, label = T("Twink-Übersicht", "Alts"),
         open = function() ns.ToggleOptions() end })
 end
 
@@ -57,7 +57,7 @@ end
 ---------------------------------------------------------------------------
 local mm = UI.MinimapButton({
     name = "ForeverAltsMinimapButton",
-    icon = "Interface\\Icons\\INV_Misc_GroupNeedMore",
+    icon = "Interface\\Icons\\INV_Misc_Head_Human_01", -- Kopf: steht für "deine Charaktere"
     title = "ForeverAlts",
     angle = function() return ns.GetDB().minimapAngle end,
     setAngle = function(a) ns.GetDB().minimapAngle = a end,

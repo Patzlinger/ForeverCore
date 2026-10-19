@@ -1,4 +1,4 @@
--- ForeverHelpers: die kleinen Helfer von Forever Core in einem Addon – Würfel-Drops (ForeverLoot), Buff-Erinnerung
+-- ForeverHelpers: die kleinen Helfer von Forever Core in einem Addon – Würfel-Fenster (ForeverLoot), Buff-Erinnerung
 -- (ForeverBuffs) und Händler (ForeverVendor). Jedes Modul bleibt für sich (eigene Einstellungen ForeverLootDB/
 -- ForeverBuffsDB/ForeverVendorDB, eigene Befehle /floot /fbuffs /fvendor, eigene Anmeldung bei /fmove), nur Ordner,
 -- Minimap-Knopf und Einstellungsfenster sind gemeinsam: die Einstellungen liegen im gemeinsamen Fenster von
@@ -74,7 +74,7 @@ local button = UI.MinimapButton({
     end,
     lines = function()
         return {
-            T("Würfel-Drops, Buff-Erinnerung, Händler", "Loot rolls, buff reminder, vendor"),
+            T("Würfel-Fenster, Buff-Erinnerung, Händler", "Loot rolls, buff reminder, vendor"),
             T("Linksklick: Einstellungen", "Left-click: settings"),
             T("Rechtsklick: Anzeigen entsperren/sperren", "Right-click: unlock/lock displays"),
         }

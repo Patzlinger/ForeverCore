@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 57
+local VERSION = 58
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -1845,7 +1845,9 @@ local KNOWN = {
     { name = "ForeverBags",   button = "ForeverBagsMinimapButton", cmd = "/fbags" },
     { name = "ForeverTooltip", button = "ForeverTooltipMinimapButton", cmd = "/ftip" },
     { name = "ForeverPlates", button = "ForeverPlatesMinimapButton", cmd = "/fplates" },
-    { name = "ForeverAlts",   button = "ForeverAltsMinimapButton", cmd = "/falts" },
+    -- ownButton: eigener Knopf bleibt neben dem Forever-Core-Knopf sichtbar (in ForeverMinimaps Knopfleiste gleich
+    -- darunter) – die Twink-Übersicht ist ein Fenster zum schnellen Nachsehen, keine Einstellung (v58)
+    { name = "ForeverAlts",   button = "ForeverAltsMinimapButton", cmd = "/falts", ownButton = true },
     { name = "ForeverQuestmob", button = "ForeverQuestmobMinimapButton" },
     { name = "ForeverBoard",  button = "ForeverBoardMinimapButton" },
     { name = "ForeverNotes",  button = "ForeverNotesMinimapButton" },
@@ -1947,7 +1949,7 @@ local function ApplyMode()
     if active and not hubButton then BuildHubButton() end
     if hubButton then hubButton:SetShown(active and not hidden) end
     for _, e in ipairs(entries) do
-        e.button:SetShown(not active and not hidden)
+        e.button:SetShown((e.ownButton or not active) and not hidden)
     end
 end
 
@@ -1961,12 +1963,19 @@ local function Setup()
     for _, k in ipairs(KNOWN) do
         local button = _G[k.button]
         if button then
-            entries[#entries + 1] = { name = k.name, button = button, icon = IconOf(button), cmd = k.cmd }
+            entries[#entries + 1] = { name = k.name, button = button, icon = IconOf(button), cmd = k.cmd, ownButton = k.ownButton }
             -- falls ein Addon seinen Knopf spaeter wieder einblendet: im Sammelmodus versteckt lassen
+            -- (ausser Knoepfen, die sichtbar bleiben sollen – dann nur, wenn alle Forever-Knoepfe aus sind)
             if not button.ffHubHooked then
                 button.ffHubHooked = true
+                button.ffOwnButton = k.ownButton
                 button:HookScript("OnShow", function(self)
-                    if _G.ForeverHub and _G.ForeverHub.IsCollecting and _G.ForeverHub.IsCollecting() then self:Hide() end
+                    local h = _G.ForeverHub
+                    if self.ffOwnButton then
+                        if GetDB().hideButton then self:Hide() end
+                    elseif h and h.IsCollecting and h.IsCollecting() then
+                        self:Hide()
+                    end
                 end)
             end
         end

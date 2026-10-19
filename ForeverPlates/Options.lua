@@ -23,7 +23,7 @@ do
     local function AddTab(title)
         local index = #panels + 1
         local p = CreateFrame("Frame", nil, options)
-        p:SetPoint("TOPLEFT", 0, -30)
+        p:SetPoint("TOPLEFT", 0, -38) -- etwas Luft zwischen Reiter-Knöpfen und den Kästen
         p:SetPoint("BOTTOMRIGHT", 0, 40)
         p:Hide()
         panels[index] = p
@@ -62,7 +62,9 @@ do
         col.y = col.y - 42
         return s
     end
-    local function Gap() col.y = col.y - 12 end
+    -- Abstand zum nächsten Abschnitt: mind. ~22 px, sonst überdecken sich die Kästen (der Hub zeichnet sie bis zur
+    -- nächsten Überschrift)
+    local function Gap() col.y = col.y - 22 end
     local function Hint(text, height)
         UI.Hint(parent, col.x + 18, col.y - 2, W - 24, text)
         col.y = col.y - height
