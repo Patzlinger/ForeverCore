@@ -15,6 +15,7 @@ local WHITE = "Interface\\Buttons\\WHITE8x8"
 local DEFAULTS = {
     skin = true,          -- Forever-Stil
     colorBorder = true,   -- Rahmen in Qualitäts- bzw. Klassen-/Reaktionsfarbe
+    goldEdge = true,      -- Test: Rahmen rundum im Gold der Oberkante (aus = grau mit Goldlinie oben)
     classNames = true,    -- Spielernamen in Klassenfarbe
     itemLevel = true,     -- Gegenstandsstufe bei Ausrüstung
     showTarget = true,    -- "Ziel: …" bei Einheiten
@@ -73,6 +74,13 @@ local function SetEdgeColor(tip, r, g, b, a, topToo)
 end
 
 local function ResetColors(tip)
+    if GetDB().goldEdge then
+        -- rundum dieselbe Farbe wie die Goldlinie oben
+        local s = tip.ftSkin
+        if not s then return end
+        for i = 1, 4 do s.edges[i]:SetVertexColor(C.accent[1], C.accent[2], C.accent[3], 0.7) end
+        return
+    end
     SetEdgeColor(tip, C.border[1], C.border[2], C.border[3], 1, false)
 end
 
@@ -368,6 +376,7 @@ do
     Check(-78, T("Rahmen in Qualitäts-/Klassenfarbe", "Border in quality/class color"), "colorBorder")
     Check(-102, T("Spielernamen in Klassenfarbe", "Player names in class color"), "classNames")
     Check(-126, T("Lebensbalken flach in Klassenfarbe", "Flat health bar in class color"), "flatHealth")
+    Check(-150, T("Rahmen rundum gold (sonst grau mit Goldlinie)", "Gold border all around (else grey with gold line)"), "goldEdge")
 
     UI.Header(options, 18, -172, T("Mehr Infos", "More info"), W)
     Check(-194, T("Gegenstandsstufe bei Ausrüstung", "Item level on gear"), "itemLevel")
