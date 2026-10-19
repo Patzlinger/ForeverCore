@@ -12,11 +12,6 @@ Ablauf:
 
 ## Offen
 
-### ForeverBags: Bank zeigt zu viele Taschenplätze
-- **Was passiert:** Im Bankfenster erscheinen deutlich mehr Plätze, als das Bankfach laut Blizzards eigener
-  Oberfläche hat.
-- **Erwartet:** genau die Plätze von Bankfach und gekauften Bankfächern/-taschen wie bei Blizzard.
-- **Gemeldet:** 2026-10-19, Patzlinger
 
 ### ForeverQuests: Filter „Aktuelle Zone“ zeigt alles
 - **Was passiert:** Mit dem Filter „nur aktuelle Zone“ zeigt der Tracker trotzdem alle Quests. Die meisten anderen
@@ -26,4 +21,8 @@ Ablauf:
 
 ## Erledigt
 
-(noch nichts)
+### ForeverBags: Bank zeigt zu viele Taschenplätze (behoben 2026-10-20)
+- **Ursache:** In diesem Client ist Behälter -1 der Schlüsselbund (nicht mehr das Bankfach), und ForeverBags las
+  pauschal die Bankfächer 1–6 – auch nicht gekaufte, die trotzdem eine Größe melden.
+- **Lösung:** nur die gekauften Fächer aus `C_Bank.FetchPurchasedBankTabData` (wie Blizzards Bankfenster); -1 nur
+  noch, wenn es `Enum.BagIndex.Bank` gibt (klassische Bank).

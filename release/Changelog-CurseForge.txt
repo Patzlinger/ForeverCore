@@ -37,6 +37,7 @@
 - ForeverQuests, quest together: the "Together" box now shows the quest just like the rest of the tracker (level color, quest type, ready to turn in, reward chest, quest item, tooltip on hover) plus its quest ID. All shared quests now sit together in one "Together" window, separated by a fine line; right-click a quest there to stop doing it together.
 
 ### Fixed
+- ForeverBags: the bank shows exactly the bank slots you really have again (only purchased bank tabs, like Blizzard's bank window) – before, it also counted the keyring and tabs you had not bought.
 - ForeverQuests, quest log at the map: the scroll bar works again – a slim bar in the Forever style moves along with the mouse wheel and can be dragged. The old Blizzard bar underneath (which did nothing) is hidden.
 - ForeverVendor: grey items are sold again on the first visit to a merchant – before, nothing was sold if the game had not loaded the item data yet (it only worked after reopening the merchant).
 - The "Forever Hub" button at the game menu (Escape) no longer causes "blocked action" errors: it is now its own button right below the menu instead of being added to Blizzard's list of buttons.

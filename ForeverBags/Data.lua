@@ -42,19 +42,33 @@ function ns.BagIDs()
     return list
 end
 
--- Bank: neuere Blizzard-Bank mit Bankfächern (CharacterBankTab_1 …), sonst die klassische Bank (Bankfach -1,
--- Bank-Taschen) und Reagenzienbank, falls es sie gibt. Leere Nummern stören nicht (Größe 0 = übersprungen).
+-- Bank: neuere Blizzard-Bank mit Bankfächern (CharacterBankTab_1 …) – genau die GEKAUFTEN Fächer, wie Blizzards
+-- Bankfenster (C_Bank.FetchPurchasedBankTabData); nicht gekaufte Fächer melden trotzdem eine Größe. Achtung: in diesem
+-- Client ist -1 der Schlüsselbund, nicht das Bankfach – es kommt nur dazu, wenn es Enum.BagIndex.Bank gibt.
+-- Sonst die klassische Bank (Bankfach -1, Bank-Taschen) und Reagenzienbank. Leere Nummern stören nicht.
 function ns.BankIDs()
     local bi = Enum and Enum.BagIndex or {}
     local list = {}
     if bi.CharacterBankTab_1 then
-        for i = 1, 6 do
-            local id = bi["CharacterBankTab_" .. i]
-            if id then list[#list + 1] = id end
+        local tabs
+        if C_Bank and C_Bank.FetchPurchasedBankTabData and Enum.BankType then
+            local ok, data = pcall(C_Bank.FetchPurchasedBankTabData, Enum.BankType.Character)
+            if ok and type(data) == "table" then tabs = data end
         end
+        if tabs then
+            for _, tab in ipairs(tabs) do
+                if type(tab) == "table" and tab.ID then list[#list + 1] = tab.ID end
+            end
+        else
+            -- ohne Abfrage: nur das erste Fach (das hat jeder)
+            list[#list + 1] = bi.CharacterBankTab_1
+        end
+        if bi.Bank then list[#list + 1] = bi.Bank end
+        if bi.Reagentbank then list[#list + 1] = bi.Reagentbank end
+        return list
     end
     list[#list + 1] = bi.Bank or -1
-    if not bi.CharacterBankTab_1 then
+    do
         local first = bi.BankBag_1 or ((NUM_BAG_SLOTS or 4) + 1)
         for i = 0, (NUM_BANKBAGSLOTS or 7) - 1 do list[#list + 1] = first + i end
     end
