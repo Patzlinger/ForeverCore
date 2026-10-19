@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 55
+local VERSION = 56
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -2061,10 +2061,11 @@ local function BuildHubWindow()
 
     -- Fussbereich: Sprache (nur deutscher Client), Ein-/Ausschalten, Verschieben/Minimap, Hinweis
     local bottomH = 224 -- (+34: Zeile "Andere Addons …"; Zeile Sprache/Spielernamen)
-    local f = UI.Window("ForeverHubWindow", UI.NAME, 460,
-        26 + HUB_INTRO_H + 8 + math.max(#list, 1) * HUB_ROW_H + bottomH)
-    -- eine Ebene unter den Addon-Fenstern (DIALOG): "Öffnen" laesst den Hub offen, das Addon-Fenster liegt darueber
-    f:SetFrameStrata("HIGH")
+    -- Startseite des zentralen Einstellungsfensters (v56): ganz oben unter "Forever Core", davor ein eigenes Fenster.
+    -- Verhält sich weiter wie das alte Fenster (:Show/:Hide/:IsShown öffnen bzw. schließen das große Fenster hier).
+    local f = UI.SettingsPanel("ForeverHubWindow", UI.NAME, 460,
+        26 + HUB_INTRO_H + 8 + math.max(#list, 1) * HUB_ROW_H + bottomH,
+        { key = "ForeverCore", group = UI.SETTINGS_GROUPS.core, label = T("Übersicht", "Overview") })
     hubWindow = f
     f.rows = {}
 
@@ -2389,15 +2390,16 @@ local settingsPages = {}      -- { key, group, label, frame?, open? }
 local settingsCurrent
 -- feste Reihenfolge der Bereiche (unbekannte kommen ans Ende); Namen erst beim Anzeigen übersetzen
 -- (beim Laden von ForeverCore ist die gewählte Sprache noch nicht bekannt)
-local GROUP_ORDER = { "frames", "bars", "nav", "comfort", "helpers" }
+local GROUP_ORDER = { "core", "frames", "bars", "nav", "comfort", "helpers" }
 local GROUP_LABEL = {
+    core = function() return UI.NAME end, -- Startseite: Übersicht aller Forever-Addons (früheres Hub-Fenster)
     frames = function() return T("Rahmen", "Frames") end,
     bars = function() return T("Leisten", "Bars") end,
     nav = function() return T("Orientierung", "Navigation") end,
     comfort = function() return T("Komfort", "Comfort") end,
     helpers = function() return T("Helfer", "Helpers") end,
 }
-UI.SETTINGS_GROUPS = { frames = "frames", bars = "bars", nav = "nav", comfort = "comfort", helpers = "helpers" }
+UI.SETTINGS_GROUPS = { core = "core", frames = "frames", bars = "bars", nav = "nav", comfort = "comfort", helpers = "helpers" }
 
 local function SettingsWindow()
     if settingsWin then return settingsWin end
@@ -2549,7 +2551,9 @@ end
 
 function UI.OpenSettings(which)
     local f = SettingsWindow()
-    local page = FindPage(which) or settingsCurrent or settingsPages[1]
+    -- ohne bestimmte Seite: bei offenem Fenster die aktuelle, sonst die Startseite "Forever Core » Übersicht" (v56)
+    local page = FindPage(which) or (f:IsShown() and settingsCurrent) or FindPage("ForeverCore") or settingsCurrent
+        or settingsPages[1]
     if not page then return end
     if not page.frame then
         -- Seite wird erst jetzt gebaut (Addon baut sein Fenster beim ersten Öffnen): dessen Öffnen landet wieder hier
@@ -2588,6 +2592,11 @@ function UI.RegisterSettingsLink(info)
     page.open = info.open
     if settingsWin and settingsWin:IsShown() then LayoutNav() end
 end
+
+-- Startseite: die Übersicht aller Forever-Addons (früher eigenes Hub-Fenster) steht als erster Eintrag ganz oben;
+-- die Seite selbst entsteht beim ersten Öffnen (BuildHubWindow)
+UI.RegisterSettingsLink({ key = "ForeverCore", group = UI.SETTINGS_GROUPS.core, label = T("Übersicht", "Overview"),
+    open = function() hub.ToggleWindow() end })
 
 -- Seite anlegen (statt eines eigenen Fensters).
 -- info = { key, group, label, kind } – kind: nil (wie UI.Window, Titelleiste 26), "menu" (wie UI.MenuWindow bzw.

@@ -621,6 +621,9 @@ local function MoneyTooltip(owner)
     end
     tip:AddLine(" ")
     tip:AddDoubleLine(L("MONEY_TOTAL"), GetMoneyString(sum, true), C.accent[1], C.accent[2], C.accent[3], 1, 1, 1)
+    -- mit ForeverAlts: Klick aufs Gold öffnet die Übersicht aller Charaktere
+    local alts = UI.API and UI.API.ForeverAlts
+    if alts and alts.Toggle then tip:AddLine(L("TIP_MONEY_ALTS"), 0.6, 0.6, 0.6) end
     tip:Show()
 end
 
@@ -921,7 +924,12 @@ local function CreateWindow()
     footer:EnableMouse(true)
     local function FooterClick(_, button) if button == "RightButton" then ns.CurrencyMenu() end end
     footer:SetScript("OnMouseUp", FooterClick)
-    moneyArea:SetScript("OnMouseUp", FooterClick)
+    -- Gold: Linksklick öffnet (mit ForeverAlts) die Twinks-Übersicht, Rechtsklick wie die Fußzeile
+    moneyArea:SetScript("OnMouseUp", function(self, button)
+        local alts = UI.API and UI.API.ForeverAlts
+        if button == "LeftButton" and alts and alts.Toggle then alts.Toggle() return end
+        FooterClick(self, button)
+    end)
     currencyRow:EnableMouse(true)
     currencyRow:SetScript("OnMouseUp", FooterClick)
     footer:SetScript("OnEnter", function(self) SimpleTip(self, L("TIP_CURRENCY")) end)

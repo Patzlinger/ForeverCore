@@ -1,0 +1,5 @@
+<Bindings>
+    <Binding name="FOREVERALTS_TOGGLE" header="FOREVERALTS">
+        SlashCmdList["FOREVERALTS"]("")
+    </Binding>
+</Bindings>

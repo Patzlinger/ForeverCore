@@ -72,6 +72,10 @@ local mm = UI.MinimapButton({
     end,
 })
 
+-- Tastenkürzel (Bindings.xml): Spielmenü » Tastaturbelegung » AddOns » ForeverAlts
+BINDING_HEADER_FOREVERALTS = "ForeverAlts"
+BINDING_NAME_FOREVERALTS_TOGGLE = T("Twinks-Übersicht ein/aus", "Toggle alts overview")
+
 SLASH_FOREVERALTS1 = "/falts"
 SLASH_FOREVERALTS2 = "/foreveralts"
 SlashCmdList["FOREVERALTS"] = ns.Safe(T("Befehl", "Command"), function(msg)
