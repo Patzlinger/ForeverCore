@@ -165,6 +165,11 @@ local function OnBankOpened()
     if not bank then CreateBank() end
     ns.HideBlizzardPanel(_G.BankFrame)
     C_Timer.After(0.2, function() if atBank then ns.HideBlizzardPanel(_G.BankFrame) end end) -- Fächer laden nach
+    -- einmalig: neue Standardlage (Mitte, Taschen rechts daneben) – alte gespeicherte Lage verwerfen
+    if not ns.db.bankPosV2 then
+        ns.db.bankPos = nil
+        ns.db.bankPosV2 = true
+    end
     bank.RestorePosition()
     bank:Show()
     if ns.OpenBags then ns.OpenBags() end
