@@ -936,11 +936,25 @@ local function PlaceMail(side, bottomRef)
                 side == "RIGHT" and -3 or 3, 3)
         end
     end
-    -- Symbol quadratisch in der Mitte der Kachel
-    local s = math.max(8, math.min(w, h) - 4)
+    -- Symbol: Blizzards freigestellter Briefumschlag der Minimap (ohne eigenen dunklen Kasten, Seitenverhältnis 4:3),
+    -- mittig in der Kachel; fehlt er im Client, bleibt das alte Briefsymbol (quadratisch)
+    if b.fmmEnvelope == nil then
+        b.fmmEnvelope = b.icon:SetAtlas("ui-hud-minimap-mail-icon") ~= false
+            and (not b.icon.GetAtlas or b.icon:GetAtlas() ~= nil)
+        if not b.fmmEnvelope then
+            b.icon:SetTexture(MAIL_DEF.icon)
+            b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+        end
+    end
     b.icon:ClearAllPoints()
     b.icon:SetPoint("CENTER")
-    b.icon:SetSize(s, s)
+    if b.fmmEnvelope then
+        local ih = math.max(8, math.min(h - 6, (w - 6) * 0.75))
+        b.icon:SetSize(ih * 4 / 3, ih)
+    else
+        local s = math.max(8, math.min(w, h) - 4)
+        b.icon:SetSize(s, s)
+    end
     -- ohne Post: grau und halb durchsichtig, mit Post: farbig, goldener Rand
     local has = HasMail() and true or false
     b.icon:SetDesaturated(not has)
