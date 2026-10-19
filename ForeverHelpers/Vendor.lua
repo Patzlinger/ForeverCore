@@ -17,12 +17,12 @@ local T = UI.T
 ---------------------------------------------------------------------------
 local GOLD = 10000 -- Kupfer pro Gold
 local DEFAULTS = {
-    enabled = false,         -- Automatik beim Haendler (standardmaessig aus: erst einschalten, dann passiert etwas)
+    enabled = false,         -- automatisch nachkaufen (standardmaessig aus); Verkaufen/Reparieren haben eigene Schalter
     sellGrey = true,
     repair = true,
     guildRepair = false,     -- zuerst aus der Gildenkasse
     restock = true,
-    askBuy = false,          -- an: nicht automatisch kaufen, nur per Knopf im Fenster am Haendler
+    askBuy = false,          -- (alt, nicht mehr genutzt: "nur per Knopf" = enabled aus)
     summary = true,          -- Zusammenfassung im Chat
     maxSpend = 1,            -- hoechstens so viel Gold pro Haendlerbesuch
     reserve = 0,             -- nie unter diesen Goldbetrag kaufen
@@ -456,7 +456,8 @@ local function OnMerchant()
             if id then pcall(C_Item.RequestLoadItemDataByID, id) end
         end
     end
-    if not d.enabled then return end
+    -- Graues verkaufen und Reparieren laufen, sobald sie an sind; "Automatik" gilt nur fuers Nachkaufen
+    if not (d.sellGrey or d.repair or (d.enabled and d.restock)) then return end
     if IsShiftKeyDown() then
         Chat(T("Umschalt gedrückt – diesmal nichts automatisch.", "Shift held – nothing automatic this time."))
         return
@@ -469,7 +470,7 @@ local function OnMerchant()
         Repair(result, function()
             -- automatisch kaufen nur, wenn "Nachkaufen" an ist und nicht gefragt werden soll;
             -- sonst zeigt das Fenster am Haendler die Einkaufsliste mit "Kaufen"-Knopf
-            if merchantOpen and d.restock and not d.askBuy then
+            if merchantOpen and d.enabled and d.restock then
                 local ok, list = pcall(Purchases, result)
                 if ok and list and #list > 0 then
                     BuyList(list, result)
@@ -554,11 +555,11 @@ function UpdateMerchantPanel()
     local d = GetDB()
     -- Erinnerung: was passiert automatisch?
     local restockMode = not d.restock and OnOff(false)
-        or d.askBuy and ("|cffffd100" .. T("auf Knopfdruck", "on click") .. "|r") or OnOff(true)
-    mpanel.status:SetText(string.format(T("Automatik: %s\nGraues verkaufen: %s · Reparieren: %s\nNachkaufen: %s",
-        "Auto: %s\nSell junk: %s · Repair: %s\nRestock: %s"),
-        OnOff(d.enabled), OnOff(d.sellGrey), OnOff(d.repair), restockMode))
-    autoToggle:SetText(d.enabled and T("Automatik aus", "Auto off") or T("Automatik an", "Auto on"))
+        or not d.enabled and ("|cffffd100" .. T("auf Knopfdruck", "on click") .. "|r") or OnOff(true)
+    mpanel.status:SetText(string.format(T("Graues verkaufen: %s · Reparieren: %s\nAutomatisch nachkaufen: %s",
+        "Sell junk: %s · Repair: %s\nAuto restock: %s"),
+        OnOff(d.sellGrey), OnOff(d.repair), restockMode))
+    autoToggle:SetText(d.enabled and T("Nachkauf aus", "Restock off") or T("Nachkauf an", "Restock on"))
 
     -- Einkaufsliste (mit Grenzen pro Besuch und Ruecklage)
     local probe = { bought = {} }
@@ -718,9 +719,9 @@ end)
 
 local function FillPanel()
     local d = GetDB()
-    panel.state:SetText(d.enabled and ("|cff33ff33" .. T("Automatik an", "Auto on") .. "|r")
-        or ("|cff999999" .. T("Automatik aus", "Auto off") .. "|r"))
-    autoBtn:SetText(d.enabled and T("Automatik aus", "Turn auto off") or T("Automatik an", "Turn auto on"))
+    panel.state:SetText(d.enabled and ("|cff33ff33" .. T("Nachkauf an", "Restock on") .. "|r")
+        or ("|cff999999" .. T("Nachkauf aus", "Restock off") .. "|r"))
+    autoBtn:SetText(d.enabled and T("Nachkauf aus", "Restock off") or T("Nachkauf an", "Restock on"))
     local status = Status()
     for _, r in ipairs(panel.rows) do r:Hide() end
     local y = -28
@@ -752,7 +753,7 @@ local function FillPanel()
     panel.last:ClearAllPoints()
     panel.last:SetPoint("TOPLEFT", 8, y - 6)
     panel.last:SetText(lastVisit and (T("Letzter Händler: ", "Last merchant: ") .. lastVisit)
-        or T("Klick: auf/zu · Rechtsklick: Einstellungen · Umschalt-Klick: Automatik an/aus",
+        or T("Klick: auf/zu · Rechtsklick: Einstellungen · Umschalt-Klick: automatisch nachkaufen an/aus",
             "Click: open/close · Right-click: settings · Shift-click: auto on/off"))
     local lastH = panel.last:GetStringHeight() or 12
     y = y - 6 - lastH - 8
@@ -819,7 +820,7 @@ icon:SetScript("OnClick", function(_, button)
     elseif IsShiftKeyDown() then
         local d = GetDB()
         d.enabled = not d.enabled
-        Chat(d.enabled and T("Automatik an.", "Auto on.") or T("Automatik aus.", "Auto off."))
+        Chat(d.enabled and T("Automatisch nachkaufen an.", "Auto restock on.") or T("Automatisch nachkaufen aus.", "Auto restock off."))
         UpdateIcon()
     else
         TogglePanel()
@@ -847,13 +848,13 @@ icon:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_LEFT")
     GameTooltip:AddLine("ForeverVendor")
     local d = GetDB()
-    GameTooltip:AddLine(d.enabled and T("Automatik beim Händler: an", "Auto at merchants: on")
-        or T("Automatik beim Händler: aus", "Auto at merchants: off"), 1, 1, 1)
+    GameTooltip:AddLine(d.enabled and T("Automatisch nachkaufen: an", "Auto restock: on")
+        or T("Automatisch nachkaufen: aus", "Auto restock: off"), 1, 1, 1)
     if self.dot:IsShown() then
         GameTooltip:AddLine(T("Beim nächsten Händler wird nachgekauft.", "Will restock at the next merchant."), 1, 0.4, 0.4)
     end
     GameTooltip:AddLine(T("Klick: Übersicht · Rechtsklick: Einstellungen", "Click: overview · Right-click: settings"), 0.7, 0.7, 0.7)
-    GameTooltip:AddLine(T("Umschalt-Klick: Automatik an/aus", "Shift-click: auto on/off"), 0.7, 0.7, 0.7)
+    GameTooltip:AddLine(T("Umschalt-Klick: automatisch nachkaufen an/aus", "Shift-click: auto restock on/off"), 0.7, 0.7, 0.7)
     if not d.locked then GameTooltip:AddLine(T("Entsperrt: ziehen zum Verschieben", "Unlocked: drag to move"), 0.4, 0.7, 1) end
     GameTooltip:Show()
 end)
@@ -895,13 +896,16 @@ local L, R = 18, 398
 local LW = R - L - 30 -- Breite der linken Abschnitte
 -- linke Spalte: Verhalten
 UI.Header(options, L, -32, T("Beim Händler", "At the merchant"), LW)
-Check(L - 4, -54, T("Automatisch (Umschalt beim Öffnen = diesmal nicht)", "Automatic (Shift when opening = skip once)"), "enabled")
-Check(L - 4, -78, T("Graue Gegenstände verkaufen", "Sell grey items"), "sellGrey")
-Check(L - 4, -102, T("Reparieren", "Repair"), "repair")
-Check(L + 16, -126, T("zuerst aus der Gildenkasse", "use guild bank first"), "guildRepair")
-Check(L - 4, -150, T("Nachkaufen (Liste, Essen, Trinken, Munition)", "Restock (list, food, drink, ammo)"), "restock")
-Check(L + 16, -174, T("nicht automatisch – nur per Knopf am Händler", "not automatic – only via button at the merchant"), "askBuy")
-Check(L - 4, -198, T("Zusammenfassung im Chat", "Summary in chat"), "summary")
+-- jede Funktion mit eigenem Schalter: Verkaufen und Reparieren laufen, sobald sie an sind; Nachkaufen automatisch nur
+-- mit "automatisch beim Händler" (sonst Einkaufsliste mit "Kaufen"-Knopf im Fenster am Händler)
+Check(L - 4, -54, T("Graue Gegenstände automatisch verkaufen", "Sell grey items automatically"), "sellGrey")
+Check(L - 4, -78, T("Automatisch reparieren", "Repair automatically"), "repair")
+Check(L + 16, -102, T("zuerst aus der Gildenkasse", "use guild bank first"), "guildRepair")
+Check(L - 4, -126, T("Nachkaufen (Liste, Essen, Trinken, Munition)", "Restock (list, food, drink, ammo)"), "restock")
+Check(L + 16, -150, T("automatisch beim Händler (sonst per Knopf)", "automatically at the merchant (else via button)"), "enabled")
+Check(L - 4, -174, T("Zusammenfassung im Chat", "Summary in chat"), "summary")
+UI.Hint(options, L, -202, LW, T("Umschalt beim Öffnen des Händlers: diesmal nichts automatisch.",
+    "Shift when opening the merchant: nothing automatic this time."))
 
 UI.Header(options, L, -240, T("Grenzen beim Nachkaufen", "Restock limits"), LW)
 Slider(L + 2, -264, T("Höchstens pro Händlerbesuch", "At most per merchant visit"), "maxSpend", 0, 20, 0.5, goldFormat)
@@ -1226,7 +1230,7 @@ SlashCmdList["FOREVERVENDOR"] = function(msg)
     elseif msg == "auto" then
         local d = GetDB()
         d.enabled = not d.enabled
-        Chat(d.enabled and T("Automatik an.", "Auto on.") or T("Automatik aus.", "Auto off."))
+        Chat(d.enabled and T("Automatisch nachkaufen an.", "Auto restock on.") or T("Automatisch nachkaufen aus.", "Auto restock off."))
         UpdateIcon()
     elseif msg == "reset" then
         GetDB().pos = nil

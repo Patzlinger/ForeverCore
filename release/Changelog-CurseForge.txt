@@ -21,6 +21,7 @@
 - The game menu (Escape) has a new "Forever Hub" button right below "Macros" that opens the Forever hub.
 
 ### Improved
+- ForeverVendor: selling junk and repairing now work on their own – whenever they are switched on, they run at every merchant. The old "Automatic" switch now only decides whether restocking happens automatically or via the "Buy" button (Shift when opening the merchant still skips everything once).
 - **One minimap button:** the Forever Core button at the minimap now opens the shared settings window directly (Shift-click: the overview, right-click: move all frames). The small buttons of the single addons are gone for good – one button for everything.
 - **Lighter in the background:** all Forever Core addons now share one timer instead of more than a dozen separate ones, and each task only runs when it is needed – e.g. range checks only in a group, bar fading only if a bar actually fades, the target-of-target frame only when there is one.
 - ForeverBars: the experience bar uses its original colors again – purple experience, blue rested bonus, gold for completed quests on a dark background.
