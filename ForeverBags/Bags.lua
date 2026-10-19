@@ -183,8 +183,11 @@ function ns.UpdateSlot(button, bag, slot)
         pcall(button.SetItemButtonQuality, button, info and info.quality, info and info.hyperlink)
     end
     if button.IconBorder and not ns.db.qualityBorder then button.IconBorder:Hide() end
-    -- Suchtreffer: Blizzards Suche markiert nicht passende Gegenstände (isFiltered)
-    local filtered = info and info.isFiltered
+    -- Suchtreffer: Blizzards Suche markiert nicht passende Gegenstände (isFiltered) – aber nur, wenn in UNSEREM Suchfeld
+    -- etwas steht. Bei geöffneter neuer Bank meldet das Spiel "gefiltert" auch ohne Suche (Blizzards Bankfenster im
+    -- Hintergrund) – das hat Bank und Taschen komplett abgedunkelt.
+    local searching = searchBox and strtrim(searchBox:GetText() or "") ~= ""
+    local filtered = searching and info and info.isFiltered
     if button.SetMatchesSearch then
         button:SetMatchesSearch(not filtered)
     else
