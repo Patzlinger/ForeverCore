@@ -1813,7 +1813,7 @@ local function UpdateBarFrame(def, cfg, holder)
         frame.title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         frame.title:SetPoint("LEFT", frame.header, "LEFT", 6, 0)
         -- endet vor dem Zahnrad (Berufe/Verbrauchbar) und wird bei schmaler Leiste gekürzt statt überzulaufen
-        frame.title:SetPoint("RIGHT", frame.header, "RIGHT", -20, 0)
+        frame.title:SetPoint("RIGHT", frame.header, "RIGHT", -4, 0)
         frame.title:SetJustifyH("LEFT")
         frame.title:SetWordWrap(false)
         holder.fbFrame = frame
@@ -2431,7 +2431,6 @@ local MARKERS = {
 }
 local MARK_ICON = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_"
 local CLEAR_ICON = "Interface\\Buttons\\UI-GroupLoot-Pass-Up"
-local GEAR_ICON = "Interface\\Icons\\INV_Misc_Gear_01"
 local MARK_SEP = 7 -- zusätzlicher Abstand vor der 4. Spalte (Bereitschaftscheck usw.) für die Trennlinie
 local FOOD_VIEWS = { unit = true, ground = true } -- "Verbrauchbares" gibt es als Ansicht nicht mehr
 
@@ -2678,80 +2677,108 @@ function ns.FoodViewTitle(cfg)
     if view == "ground" then return L("MARK_TITLE_GROUND") end
 end
 
-local function DisableBar(key)
-    ns.db.bars[key].enabled = false
-    ns.Print(L("BAR_DISABLED_HINT"))
-    ns.RequestLayout()
-    if ns.RefreshOptions then ns.RefreshOptions() end
-end
-
-local function GearMenu(key, gear)
-    local items = {}
-    if key == "food" then
-        local cfg = ns.db.bars.food
-        table.insert(items, { title = L("GEAR_VIEW") })
-        for _, v in ipairs({ { "unit", "MARK_TITLE_UNIT" }, { "ground", "MARK_TITLE_GROUND" } }) do
-            table.insert(items, { radio = true, text = L(v[2]),
-                checked = function() return ns.FoodView(cfg) == v[1] end,
-                onClick = function()
-                    cfg.foodView = v[1]
-                    if InCombatLockdown() then ns.Print(L("COMBAT_QUEUED")) end
-                    ns.RequestLayout()
-                end })
-        end
-        local pings = PingChoices()
-        if pings then
-            table.insert(items, { divider = true })
-            table.insert(items, { title = L("PING_RESTRICT") })
-            for _, c in ipairs(pings) do
-                table.insert(items, { radio = true, text = c.text,
-                    checked = function() return C_PartyInfo.GetRestrictPings and C_PartyInfo.GetRestrictPings() == c.value end,
-                    onClick = function() pcall(C_PartyInfo.SetRestrictPings, c.value) end })
-            end
-        end
-        table.insert(items, { divider = true })
+-- Pfeil neben "Pings": nur "Pings beschränken auf" (wie früher im Zahnrad-Menü)
+local function PingMenu(owner)
+    local pings = PingChoices()
+    if not pings then return end
+    local items = { { title = L("PING_RESTRICT") } }
+    for _, c in ipairs(pings) do
+        table.insert(items, { radio = true, text = c.text,
+            checked = function() return C_PartyInfo.GetRestrictPings and C_PartyInfo.GetRestrictPings() == c.value end,
+            onClick = function() pcall(C_PartyInfo.SetRestrictPings, c.value) end })
     end
-    table.insert(items, { text = L("OPT_DISABLE_BAR"), onClick = function() DisableBar(key) end })
-    ns.Style.ShowMenu(gear, items)
+    ns.Style.ShowMenu(owner, items)
 end
 
--- Zahnrad in der Ecke der Leiste (ausgeklappt sichtbar; eingeklappt ist die Leiste samt Zahnrad ausgeblendet)
-function ns.UpdateBarGear(def, cfg, holder)
-    local gear = holder.fbGear
-    if not gear then
-        gear = CreateFrame("Button", nil, holder, "BackdropTemplate")
-        gear:SetSize(14, 14)
-        gear.icon = gear:CreateTexture(nil, "ARTWORK")
-        gear.icon:SetAllPoints()
-        gear.icon:SetTexture(GEAR_ICON)
-        gear.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-        gear.icon:SetAlpha(0.8)
-        gear:SetScript("OnClick", function(self) GearMenu(def.key, self) end)
-        gear:SetScript("OnEnter", function(self)
-            self.icon:SetAlpha(1)
+-- Kopfzeile der Markierungs-Leiste: "Marks / Pings" – Klick auf ein Wort wechselt die Ansicht (Marks =
+-- Zielmarkierungen, Pings = Bodenmarkierungen; die aktive ist gold), der kleine Pfeil öffnet "Pings beschränken auf".
+-- Ohne Kopfzeile stehen die Wörter direkt über der Leiste.
+local function UpdateMarkTabs(cfg, holder)
+    local frame = holder.fbFrame
+    local parent = (cfg.frame and frame) or holder
+    local tabs = holder.fbMarkTabs
+    if not tabs then
+        tabs = CreateFrame("Frame", nil, holder)
+        tabs:SetSize(120, 16)
+        local function Word(text, view, tipKey)
+            local b = CreateFrame("Button", nil, tabs)
+            b.text = b:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+            b.text:SetPoint("LEFT")
+            b.text:SetText(text)
+            b:SetSize(b.text:GetStringWidth() + 2, 16)
+            b:SetScript("OnClick", function()
+                local barCfg = ns.db.bars.food
+                if ns.FoodView(barCfg) == view then return end
+                barCfg.foodView = view
+                if InCombatLockdown() then ns.Print(L("COMBAT_QUEUED")) end
+                ns.RequestLayout()
+            end)
+            b:SetScript("OnEnter", function(self)
+                self.text:SetTextColor(1, 1, 1)
+                local tip = ns.Style.GetTooltip()
+                tip:SetOwner(self, "ANCHOR_TOP")
+                tip:AddLine(L(tipKey))
+                tip:Show()
+            end)
+            b:SetScript("OnLeave", function()
+                ns.Style.GetTooltip():Hide()
+                tabs.Color()
+            end)
+            return b
+        end
+        tabs.marks = Word("Marks", "unit", "MARK_TITLE_UNIT")
+        tabs.marks:SetPoint("LEFT")
+        tabs.sep = tabs:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+        tabs.sep:SetText("/")
+        tabs.sep:SetPoint("LEFT", tabs.marks, "RIGHT", 3, 0)
+        tabs.pings = Word("Pings", "ground", "MARK_TITLE_GROUND")
+        tabs.pings:SetPoint("LEFT", tabs.sep, "RIGHT", 3, 0)
+        tabs.arrow = CreateFrame("Button", nil, tabs)
+        tabs.arrow:SetSize(12, 12)
+        tabs.arrow:SetPoint("LEFT", tabs.pings, "RIGHT", 2, 0)
+        tabs.arrow.icon = tabs.arrow:CreateTexture(nil, "ARTWORK")
+        tabs.arrow.icon:SetAllPoints()
+        tabs.arrow.icon:SetTexture("Interface\\ChatFrame\\ChatFrameExpandArrow")
+        tabs.arrow.icon:SetRotation(-math.pi / 2) -- nach unten
+        tabs.arrow.icon:SetVertexColor(0.8, 0.8, 0.8)
+        tabs.arrow:SetScript("OnClick", function(self) PingMenu(self) end)
+        tabs.arrow:SetScript("OnEnter", function(self)
+            self.icon:SetVertexColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3])
             local tip = ns.Style.GetTooltip()
             tip:SetOwner(self, "ANCHOR_TOP")
-            tip:AddLine(L("GEAR_TIP"))
+            tip:AddLine(L("PING_RESTRICT"))
             tip:Show()
         end)
-        gear:SetScript("OnLeave", function(self)
-            self.icon:SetAlpha(0.8)
+        tabs.arrow:SetScript("OnLeave", function(self)
+            self.icon:SetVertexColor(0.8, 0.8, 0.8)
             ns.Style.GetTooltip():Hide()
         end)
-        holder.fbGear = gear
+        function tabs.Color()
+            local view = ns.FoodView(ns.db.bars.food)
+            for _, b in ipairs({ { tabs.marks, "unit" }, { tabs.pings, "ground" } }) do
+                local on = view == b[2]
+                b[1].text:SetTextColor(on and COLOR.accent[1] or 0.55, on and COLOR.accent[2] or 0.55, on and COLOR.accent[3] or 0.55)
+            end
+        end
+        holder.fbMarkTabs = tabs
     end
-    -- in der Kopfzeile des Rahmens (falls an), sonst an der oberen rechten Ecke der Leiste
-    local frame = cfg.frame and holder.fbFrame
-    gear:ClearAllPoints()
-    if frame and frame.header and frame.header:IsShown() then
-        gear:SetPoint("RIGHT", frame.header, "RIGHT", -2, 0)
-    elseif frame then
-        gear:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -2, -2)
+    tabs.arrow:SetShown(PingChoices() ~= nil)
+    tabs:ClearAllPoints()
+    if cfg.frame and frame and frame.header and frame.header:IsShown() then
+        tabs:SetPoint("LEFT", frame.header, "LEFT", 6, 0)
+        if frame.title then frame.title:Hide() end -- statt "Zielmarkierungen"/"Bodenmarkierungen"
     else
-        gear:SetPoint("BOTTOMRIGHT", holder, "TOPRIGHT", 0, 2)
+        tabs:SetPoint("BOTTOMLEFT", parent, "TOPLEFT", 2, 2)
     end
-    gear:SetFrameLevel(holder:GetFrameLevel() + 10)
-    gear:SetShown(cfg.enabled)
+    tabs:SetFrameLevel(holder:GetFrameLevel() + 10)
+    tabs.Color()
+    tabs:SetShown(cfg.enabled)
+end
+
+-- Früher: Zahnrad in der Ecke der Berufe- und Markierungs-Leiste. Entfernt (Wunsch 2026-10-19) – die Markierungs-
+-- Leiste schaltet ihre Ansicht über "Marks / Pings" in der Kopfzeile, ausschalten geht über das Menü (/fb).
+function ns.UpdateBarGear(def, cfg, holder)
+    if def.key == "food" then UpdateMarkTabs(cfg, holder) end
 end
 
 local ARROW_WIDTH = 20
