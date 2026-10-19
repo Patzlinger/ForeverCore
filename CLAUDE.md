@@ -438,6 +438,11 @@ Damit alle Einstellungsfenster gleich aussehen, gelten diese Maße. Quelle: `For
   Interna (`QuestieLoader:ImportModule`) – erlaubt, aber nicht stabil, darum alles mit pcall abgesichert.
   Questie-Einstellungen, die Forever umstellt: `trackerEnabled`, `hideUntrackedQuestsMapIcons` (ForeverQuests),
   `nameplateEnabled` (ForeverPlates zeigt Questies Plaketten-Symbol selbst vor dem Namen; aus = wieder an).
+- **Dungeondaten von ForeverQuests nur aus Spiel und Questie (seit 2026-10-18, verbindlich):** Das Dungeonfenster
+  baut Dungeons, Quests, Questreihen, Vorquests und Belohnungen zur Laufzeit aus dem Spiel und aus Questies Datenbank
+  (`QuestieDungeons.lua`); `Data/Dungeons.lua` bleibt leer. Die frühere selbst gepflegte Excel-Tabelle samt Kopien
+  wurde auf Wunsch von flowfy gelöscht – keine eigene Tabelle oder Datensammlung dafür mehr vorschlagen oder anlegen.
+  Fehlen Daten (z. B. Questreihen neuer Forever-Quests), lieber aus vorhandenen Daten ableiten (gleichnamige Quests).
 - **Andere Addons für dieselbe Aufgabe** (Hub v41, Abschnitt 3b "ConflictDefs" in ForeverHub.lua): je Paar (z. B.
   ForeverBars ↔ Bartender4) wählt der Spieler, welches läuft; das andere wird über C_AddOns ausgeschaltet. Fenster
   ForeverHubConflicts erscheint beim ersten Start neben der Begrüßung und bei neuen Paaren einmal (ForeverHubDB:
