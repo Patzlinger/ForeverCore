@@ -25,6 +25,7 @@ local function FrameDefaults(o)
         portrait = "class",       -- "none" | "class" (Klassensymbol, NPCs: 2D-Porträt) | "portrait" (2D-Porträt)
         portraitSide = "LEFT",    -- "LEFT" | "RIGHT"
         nameShow = true, levelShow = false,
+        classIcon = true,         -- Symbol für Elite/Rar/Boss (Blizzards Drache bzw. Stern) oben rechts am Rahmen
         hpFormat = "curpercent",  -- "none" | "percent" | "cur" | "curmax" | "curpercent" | "deficit"
         powerText = true,
         buffs = false, debuffs = false, onlyMine = true, auraSize = 20, auraNum = 8,

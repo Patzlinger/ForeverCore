@@ -156,7 +156,11 @@ local function CreateUnitFrame(info)
     v.leader:SetTexture("Interface\\GroupFrame\\UI-Group-LeaderIcon")
     v.mark = v.top:CreateTexture(nil, "OVERLAY")
     v.mark:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcons")
-    for _, t in ipairs({ v.pvp, v.leader, v.mark }) do t:Hide() end
+    -- Elite/Rar/Boss: Blizzards Symbol (wie an Blizzards Namensplaketten) an der oberen rechten Ecke
+    v.classIcon = v.top:CreateTexture(nil, "OVERLAY", nil, 2)
+    v.classIcon:SetSize(20, 20)
+    v.classIcon:SetPoint("CENTER", c, "TOPRIGHT", -3, -3)
+    for _, t in ipairs({ v.pvp, v.leader, v.mark, v.classIcon }) do t:Hide() end
     v.resting = v.top:CreateTexture(nil, "OVERLAY")
     v.resting:SetTexture("Interface\\CharacterFrame\\UI-StateIcon")
     v.resting:SetTexCoord(0, 0.5, 0, 0.421875)
@@ -661,16 +665,24 @@ local function UpdateColor(b)
 end
 
 local CLASSIFICATION = { elite = "+", rareelite = "R+", rare = "R", worldboss = "B" }
+-- Blizzards Symbole (dieselben wie an den Namensplaketten dieses Clients)
+local CLASS_ATLAS = {
+    elite = "nameplates-icon-elite-gold", worldboss = "nameplates-icon-elite-gold",
+    rareelite = "nameplates-icon-elite-silver", rare = "UI-HUD-UnitFrame-Target-PortraitOn-Boss-Rare-Star",
+}
+ns.CLASS_ATLAS = CLASS_ATLAS
 
 local function UpdateName(b)
     local v, f, unit = b.v, FrameDB(b.key), b.unit
     local name = UnitName(unit)
     v.name:SetText(name)
     -- Skin: Eckklammern für Elite/Rare (unabhängig davon, ob die Stufe angezeigt wird)
-    if ns.SkinClassification then
-        local cls = UnitClassification(unit)
-        ns.SkinClassification(b, (not IsSecret(cls)) and cls or nil)
-    end
+    local cls0 = UnitClassification(unit)
+    if IsSecret(cls0) then cls0 = nil end
+    if ns.SkinClassification then ns.SkinClassification(b, cls0) end
+    -- Symbol für Elite/Rar/Boss (an Spielern nie: die sind "normal")
+    local atlas = f.classIcon and cls0 and CLASS_ATLAS[cls0]
+    if atlas and v.classIcon:SetAtlas(atlas) ~= false then v.classIcon:Show() else v.classIcon:Hide() end
     if not f.levelShow then v.level:SetText("") return end
     local level = UnitLevel(unit)
     if IsSecret(level) then v.level:SetText(level) v.level:SetTextColor(1, 0.82, 0) return end
@@ -910,7 +922,11 @@ local function ShowPlaceholder(b)
     v.portrait:SetTexture(134400) -- Fragezeichen
     v.portrait:SetTexCoord(0.08, 0.92, 0.08, 0.92)
     v.heal:SetValue(0) v.shield:SetValue(0) v.absorb:SetValue(0)
-    for _, t in ipairs({ v.pvp, v.leader, v.mark }) do t:Hide() end
+    -- Elite/Rar/Boss: Blizzards Symbol (wie an Blizzards Namensplaketten) an der oberen rechten Ecke
+    v.classIcon = v.top:CreateTexture(nil, "OVERLAY", nil, 2)
+    v.classIcon:SetSize(20, 20)
+    v.classIcon:SetPoint("CENTER", c, "TOPRIGHT", -3, -3)
+    for _, t in ipairs({ v.pvp, v.leader, v.mark, v.classIcon }) do t:Hide() end
 end
 
 function ns.UpdateAll(b)

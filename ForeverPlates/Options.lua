@@ -188,6 +188,7 @@ do
         function(v) return (v > 0 and "+" or "") .. v end)
     Check(T("Forever-Rahmen (dunkler Grund, feiner Rand)", "Forever frame (dark background, fine border)"), "skin")
     Check(T("Stufe neben dem Namen", "Level next to the name"), "showLevel")
+    Check(T("Symbol für Elite, Rar und Boss", "Icon for elite, rare and boss"), "classIcon")
     Check(T("Andere dämpfen, solange ein Ziel gewählt ist", "Dim the others while you have a target"), "dimOthers")
     Gap()
     Header(T("Verbündete", "Allies"))

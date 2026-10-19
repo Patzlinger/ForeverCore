@@ -31,6 +31,7 @@ ns.DEFAULTS = {
     targetScale = 110,        -- Ziel etwas größer (Prozent)
     dimOthers = true,         -- übrige Plaketten leicht gedämpft, solange ein Ziel gewählt ist
     showLevel = true,         -- Stufe neben dem Namen
+    classIcon = true,         -- Symbol für Elite/Rar/Boss vor der Stufe
     healthText = true,        -- Leben auf der Leiste
     healthValue = true,       --   als Zahl (links)
     healthPercent = true,     --   in Prozent (rechts)
@@ -479,6 +480,10 @@ local function Setup(plate, frame)
     fp.level = NewText(o)
     Font(fp.level, 9)
     fp.level:SetJustifyH("RIGHT")
+    -- Elite/Rar/Boss: Blizzards Symbol direkt vor der Stufe
+    fp.classIcon = o:CreateTexture(nil, "OVERLAY")
+    fp.classIcon:SetSize(1, 12)
+    fp.classIcon:Hide()
 
     -- Finishing-Farbe über der Füllung (Deckkraft per Kurve: nur unter der Schwelle sichtbar)
     fp.exec = o:CreateTexture(nil, "ARTWORK", nil, 1)
@@ -706,9 +711,11 @@ local function PlaceTop(fp)
     local y = TopOffset(fp)
     fp.name:ClearAllPoints()
     fp.name:SetPoint("BOTTOMLEFT", o, "TOPLEFT", 1, y)
-    fp.name:SetPoint("RIGHT", fp.level, "LEFT", -3, 0)
+    fp.name:SetPoint("RIGHT", fp.classIcon, "LEFT", -2, 0)
     fp.level:ClearAllPoints()
     fp.level:SetPoint("BOTTOMRIGHT", o, "TOPRIGHT", -1, y)
+    fp.classIcon:ClearAllPoints()
+    fp.classIcon:SetPoint("RIGHT", fp.level, "LEFT", -1, 0)
     local top = y + 11
     local deb = fp.auras.debuffs
     if deb then
@@ -877,6 +884,10 @@ end
 ---------------------------------------------------------------------------
 -- Name und Stufe
 ---------------------------------------------------------------------------
+local CLASS_ATLAS = {
+    elite = "nameplates-icon-elite-gold", worldboss = "nameplates-icon-elite-gold",
+    rareelite = "nameplates-icon-elite-silver", rare = "UI-HUD-UnitFrame-Target-PortraitOn-Boss-Rare-Star",
+}
 local function UpdateName(fp)
     local unit = fp.unit
     fp.name:SetText(UnitName(unit))
@@ -887,18 +898,32 @@ local function UpdateName(fp)
         if col then r, g, b = col.r, col.g, col.b end
     end
     fp.name:SetTextColor(r, g, b)
+    local cls = UnitClassification and UnitClassification(unit)
+    if IsSecret(cls) then cls = nil end
+    -- Symbol für Elite/Rar/Boss (Blizzards Drache bzw. Stern); ohne Symbol bleibt nur ein schmaler Platzhalter
+    local atlas = db.classIcon and cls and CLASS_ATLAS[cls]
+    if atlas and fp.classIcon:SetAtlas(atlas) ~= false then
+        fp.classIcon:SetSize(12, 12)
+        fp.classIcon:Show()
+    else
+        fp.classIcon:SetSize(1, 12)
+        fp.classIcon:Hide()
+        atlas = nil
+    end
     if not db.showLevel then fp.level:SetText("") return end
     local level = UnitLevel(unit)
     if IsSecret(level) then fp.level:SetText("") return end
-    local cls = UnitClassification and UnitClassification(unit)
-    if IsSecret(cls) then cls = nil end
     if not level or level <= 0 then
         fp.level:SetText("??")
         fp.level:SetTextColor(1, 0.2, 0.2)
         return
     end
-    local mark = (cls == "elite" or cls == "rareelite" or cls == "worldboss") and "+" or ""
-    if cls == "rare" or cls == "rareelite" then mark = mark .. "R" end
+    -- mit Symbol kein "+"/"R" an der Zahl
+    local mark = ""
+    if not atlas then
+        mark = (cls == "elite" or cls == "rareelite" or cls == "worldboss") and "+" or ""
+        if cls == "rare" or cls == "rareelite" then mark = mark .. "R" end
+    end
     fp.level:SetText(level .. mark)
     local col = GetCreatureDifficultyColor and GetCreatureDifficultyColor(level)
     if col then fp.level:SetTextColor(col.r, col.g, col.b) else fp.level:SetTextColor(1, 0.82, 0) end

@@ -303,6 +303,7 @@ do
     }, F("textLayout"))
     Check(p, R, -88, T("Name", "Name"), F("nameShow"))
     Check(p, R, -112, T("Stufe + Elite/Rar", "Level + elite/rare"), F("levelShow"))
+    Check(p, R + 160, -112, T("Elite/Rar-Symbol", "Elite/rare icon"), F("classIcon"))
     Choice(p, R, -138, T("Lebenspunkte", "Health"), 170, {
         { key = "none", label = T("Aus", "Off") },
         { key = "percent", label = "80%" },
