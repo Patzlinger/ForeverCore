@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 53
+local VERSION = 54
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -51,6 +51,31 @@ end
 UI.IS_DE = UI.GetLanguage() == "deDE"
 function UI.T(de, en) return UI.GetLanguage() == "deDE" and de or en end
 local T = UI.T
+
+-- Spielernamen (gemeinsam für alle Forever-Addons): In Forever heißen Spieler "Vorname Nachname" – je nach Quelle kommt
+-- der volle Name (Chat, Würfe, Addon-Nachrichten, teils Einheiten) oder nur der Vorname. Für Rahmen, Plaketten, Würfe
+-- usw. reicht meist weniger. ForeverHubDB.nameStyle: "first" (Hexeron) | "initial" (Hexeron S., Standard) | "full".
+-- NUR für Spieler aufrufen – auch NPC-Namen haben Leerzeichen. Realm ("-Server") fällt immer weg; geheime Namen
+-- kommen unverändert zurück (dürfen nicht zerlegt werden). Volle Namen bleiben dort, wo sie gebraucht werden
+-- (Charakter-Übersicht, Tooltip, Chat).
+UI.NAME_STYLES = { "first", "initial", "full" }
+function UI.NameStyle()
+    local db = _G.ForeverHubDB
+    local style = type(db) == "table" and db.nameStyle
+    return (style == "first" or style == "full") and style or "initial"
+end
+function UI.PlayerName(name, style)
+    if type(name) ~= "string" or (issecretvalue and issecretvalue(name)) then return name end
+    name = name:match("^([^%-]+)") or name
+    style = style or UI.NameStyle()
+    if style == "full" then return name end
+    local first, rest = name:match("^(%S+)%s+(%S.*)$")
+    if not first then return name end
+    if style == "first" then return first end
+    -- erster Buchstabe des Nachnamens (UTF-8: auch Umlaute)
+    local initial = rest:match("^[%z\1-\127\194-\244][\128-\191]*") or rest:sub(1, 1)
+    return first .. " " .. initial .. "."
+end
 -- ForeverHubDB kommt erst mit dem ersten geladenen Forever-Addon: IS_DE danach nachziehen
 do
     local f = CreateFrame("Frame")
@@ -2025,7 +2050,7 @@ local function BuildHubWindow()
     end
 
     -- Fussbereich: Sprache (nur deutscher Client), Ein-/Ausschalten, Verschieben/Minimap, Hinweis
-    local bottomH = UI.GERMAN_CLIENT and 224 or 192 -- (+34: Zeile "Andere Addons …")
+    local bottomH = 224 -- (+34: Zeile "Andere Addons …"; Zeile Sprache/Spielernamen)
     local f = UI.Window("ForeverHubWindow", UI.NAME, 460,
         26 + HUB_INTRO_H + 8 + math.max(#list, 1) * HUB_ROW_H + bottomH)
     -- eine Ebene unter den Addon-Fenstern (DIALOG): "Öffnen" laesst den Hub offen, das Addon-Fenster liegt darueber
@@ -2168,6 +2193,42 @@ local function BuildHubWindow()
         function lang.Load() lang:SetText(LabelOf(Current())) end
     end
 
+    -- Spielernamen in Rahmen, Plaketten, Würfen … (sofort wirksam bei der nächsten Anzeige)
+    local NAME_CHOICES = {
+        { key = "first", label = T("Nur Vorname", "First name only") },
+        { key = "initial", label = T("Vorname + Initiale", "First name + initial") },
+        { key = "full", label = T("Voller Name", "Full name") },
+    }
+    local function NameLabel(key)
+        for _, c in ipairs(NAME_CHOICES) do if c.key == key then return c.label end end
+        return key
+    end
+    local namesLabel = UI.Text(f, "label", T("Spielernamen", "Player names"))
+    if lang then
+        namesLabel:SetPoint("LEFT", lang, "RIGHT", 18, 0)
+    else
+        namesLabel:SetPoint("BOTTOMLEFT", 16, 152)
+    end
+    local names = UI.AddArrow(UI.Button(f, "", 150))
+    names:SetPoint("LEFT", namesLabel, "RIGHT", 10, 0)
+    names:SetScript("OnClick", function(self)
+        UI.ChoiceMenu(self, NAME_CHOICES, UI.NameStyle, function(key)
+            GetDB().nameStyle = key ~= "initial" and key or nil
+            self:SetText(NameLabel(UI.NameStyle()))
+            UI.Fire("NameStyleChanged")
+        end)
+    end)
+    names:SetScript("OnEnter", function(self)
+        local tip = UI.GetTooltip and UI.GetTooltip() or GameTooltip
+        tip:SetOwner(self, "ANCHOR_RIGHT")
+        tip:AddLine(T("Spielernamen", "Player names"))
+        tip:AddLine(T("Für Einheiten- und Gruppenrahmen, Namensplaketten, Würfe und Flüster-Fenster. Charakter-Übersicht, Tooltip und Chat zeigen immer den vollen Namen.",
+            "For unit and group frames, nameplates, loot rolls and whisper windows. Character overview, tooltip and chat always show the full name."), 1, 1, 1, true)
+        tip:Show()
+    end)
+    names:SetScript("OnLeave", function() (UI.GetTooltip and UI.GetTooltip() or GameTooltip):Hide() end)
+    function names.Load() names:SetText(NameLabel(UI.NameStyle())) end
+
     -- Ein-/Ausschalten: alle an, alle aus, nur dieser Charakter, Neu laden
     local function SetAll(on)
         for _, name in ipairs(list) do SetEnabled(name, on) end
@@ -2283,6 +2344,7 @@ local function BuildHubWindow()
         perChar:SetChecked(GetDB().perCharacter and true or false)
         detailsBtn.Update()
         if lang then lang.Load() end
+        names.Load()
     end)
     f:HookScript("OnHide", function() f.welcome = nil end)
 end

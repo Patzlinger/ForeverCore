@@ -136,6 +136,9 @@ eintragen; behobene mit Datum und Ursache nach „Erledigt“ verschieben.
      `AddArrow`, `Check(parent, x, y, label, onClick)`, `Slider(...)`, `StyleSlider`, `EditBox`, `Number` (Zahlenfeld mit –/+),
      `ShowMenu`/`HideMenu`/`ChoiceMenu` (flache Auswahllisten), `MinimapButton(o)`, `Hud`, `Box`, `SetFlat`,
      `Grid`, `AddMover`, `BeginDrag`/`EndDrag` (Raster + Einrasten), `Round`, `CenterOffset`, `COLOR`, `LOGO`, `NAME`
+     **Spielernamen:** `UI.PlayerName(name)` kürzt "Vorname Nachname" nach der Hub-Einstellung (Hub-Fenster » Spielernamen:
+     nur Vorname / Vorname + Initiale = Standard / voll; Realm fällt weg). NUR für Spieler aufrufen (NPC-Namen haben auch
+     Leerzeichen); Signal `NameStyleChanged` (UI.On) zum Neuzeichnen. Voller Name bleibt in Charakter-Übersicht, Tooltip, Chat
   2. **Sammelknopf** (seit v53 ohne Liste): sobald ein Forever-Addon da ist, sind dessen Minimap-Knöpfe ausgeblendet;
      der Forever-Core-Knopf öffnet mit Linksklick das gemeinsame Einstellungsfenster, Umschalt+Linksklick das
      Hub-Fenster, Rechtsklick /fmove. Neue Addons brauchen deshalb eine Einstellungsseite (`UI.SettingsPanel`)

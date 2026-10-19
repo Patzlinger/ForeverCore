@@ -166,7 +166,12 @@ local function GetPlayer(item, name)
     return p
 end
 
-local function DisplayName(p) return p and (p.display or p.name) or "?" end
+-- Anzeige: Vor-/Nachname nach der Hub-Einstellung (gespeichert bleibt der längste bekannte Name – fürs Zuordnen)
+local function DisplayName(p)
+    local name = p and (p.display or p.name)
+    if not name then return "?" end
+    return UI.PlayerName and UI.PlayerName(name) or name
+end
 
 -- passenden (noch offenen) Eintrag fuer eine Chat-Nachricht finden;
 -- filter waehlt bei gleichen Gegenstaenden den, bei dem der Spieler noch nichts gewaehlt hat

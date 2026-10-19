@@ -890,7 +890,9 @@ local CLASS_ATLAS = {
 }
 local function UpdateName(fp)
     local unit = fp.unit
-    fp.name:SetText(UnitName(unit))
+    local nm = UnitName(unit)
+    if fp.isPlayer and UI.PlayerName then nm = UI.PlayerName(nm) end
+    fp.name:SetText(nm)
     local r, g, b = 1, 1, 1
     if fp.isPlayer then
         local _, class = UnitClass(unit)
@@ -997,7 +999,8 @@ local function UpdateCastTarget(fp)
     end
     if not Has(name) then HidePlaque(fp) return end
     local tag = cb.tag
-    tag.text:SetText(name)
+    -- Spieler (mit Klasse) gekürzt nach der Hub-Einstellung
+    tag.text:SetText((Yes(class) and UI.PlayerName) and UI.PlayerName(name) or name)
     local col = Yes(class) and C_ClassColor and C_ClassColor.GetClassColor(class)
     if col then tag.text:SetTextColor(col.r, col.g, col.b) else tag.text:SetTextColor(1, 1, 1) end
     -- auf mich: "Ziel" rot
@@ -1098,6 +1101,7 @@ local function EndCast(fp, interrupted, by)
             whoClass = select(2, UnitClass("player"))
         end
         if who then
+            if whoClass and UI.PlayerName then who = UI.PlayerName(who) end
             local col = whoClass and C_ClassColor and C_ClassColor.GetClassColor(whoClass)
             local shown = col and col:WrapTextInColorCode(who) or who
             cb.text:SetText(T("Unterbrochen von ", "Interrupted by ") .. shown)
@@ -1410,6 +1414,8 @@ local function Detach(unit)
     ReleaseOwn(fp)
     fp.unit = nil
 end
+
+if UI.On then UI.On("NameStyleChanged", function() if ns.ApplyAll then ns.ApplyAll() end end) end
 
 function ns.ApplyAll()
     GetDB()

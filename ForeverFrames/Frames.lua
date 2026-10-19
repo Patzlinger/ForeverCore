@@ -509,6 +509,9 @@ local function UpdateName(b)
     if IsSecret(name) then
         v.name:SetText(name)
     else
+        -- Spieler: Vor-/Nachname nach der Hub-Einstellung; NPC-Begleiter (Gefolge) behalten ihren Namen
+        local isPlayer = UnitIsPlayer(unit)
+        if not IsSecret(isPlayer) and isPlayer and UI.PlayerName then name = UI.PlayerName(name) end
         v.name:SetText(ns.Utf8Sub(name or "", db.nameMaxChars))
     end
     v.name:SetTextColor(TextColor(db.nameColorMode, "nameColor", unit))
@@ -866,6 +869,15 @@ local function ForEachShown(fn)
     end
 end
 ns.ForEachShown = ForEachShown
+
+-- Hub: Einstellung "Spielernamen" geändert -> Namen neu
+if UI.On then
+    UI.On("NameStyleChanged", function()
+        for _, b in ipairs(ns.buttons or {}) do
+            if b.ffUnit and UnitExists(b.ffUnit) then pcall(ns.UpdateAll, b) end
+        end
+    end)
+end
 
 function ns.UpdateAllButtons()
     for _, b in ipairs(ns.buttons) do

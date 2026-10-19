@@ -675,6 +675,9 @@ ns.CLASS_ATLAS = CLASS_ATLAS
 local function UpdateName(b)
     local v, f, unit = b.v, FrameDB(b.key), b.unit
     local name = UnitName(unit)
+    -- Spieler: Vor-/Nachname nach der Hub-Einstellung (Standard "Hexeron S."); NPC-Namen bleiben (haben auch Leerzeichen)
+    local isPlayer = UnitIsPlayer(unit)
+    if not IsSecret(isPlayer) and isPlayer and UI.PlayerName then name = UI.PlayerName(name) end
     v.name:SetText(name)
     -- Skin: Eckklammern für Elite/Rare (unabhängig davon, ob die Stufe angezeigt wird)
     local cls0 = UnitClassification(unit)
@@ -1346,6 +1349,16 @@ function ns.HideBlizzard()
 end
 
 -- Alles neu aufbauen (nach Aenderungen in den Einstellungen oder an der ForeverFrames-Optik)
+-- Hub: Einstellung "Spielernamen" geändert -> Namen neu
+if UI.On then
+    UI.On("NameStyleChanged", function()
+        for _, info in ipairs(ns.UNITS) do
+            local b = ns.frames[info.key]
+            if b and b.unit and UnitExists(b.unit) then pcall(ns.UpdateAll, b) end
+        end
+    end)
+end
+
 function ns.ApplyAll()
     ns.currentLook = ns.Look()
     for _, info in ipairs(ns.UNITS) do

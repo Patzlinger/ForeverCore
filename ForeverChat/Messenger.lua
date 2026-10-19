@@ -466,7 +466,9 @@ events:SetScript("OnEvent", ns.Safe(T("Messenger", "Messenger"), function(_, eve
     local key = info.kind .. ":" .. (info.kind == "BN" and tostring(bnID) or sender:lower())
     local c = convs[key]
     if not c then
-        c = { kind = info.kind, target = sender, bnID = bnID, name = ShortName(sender), lines = {}, unread = 0 }
+        local shown = ShortName(sender)
+        if info.kind ~= "BN" and UI.PlayerName then shown = UI.PlayerName(shown) end
+        c = { kind = info.kind, target = sender, bnID = bnID, name = shown, lines = {}, unread = 0 }
         convs[key] = c
     end
     if info.incoming and guid and ns.CanRead(guid) then c.guid = guid end
