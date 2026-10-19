@@ -179,7 +179,13 @@ local function ShowConversation(key)
     if c then
         c.unread = 0
         for _, line in ipairs(c.lines) do view:AddMessage(line.text, line.r, line.g, line.b) end
-        placeholder:SetText(string.format(T("Antwort an %s … (Enter sendet)", "Reply to %s … (Enter sends)"), c.name))
+        -- vorne in der Eingabezeile immer sichtbar, an wen man schreibt (wie Blizzards "Flüstern an …:"), auch beim
+        -- Tippen; der Text beginnt dahinter
+        local r, g, b = ColorOf(c.kind == "BN" and "BN_WHISPER_INFORM" or "WHISPER_INFORM")
+        input.prefix:SetText(string.format(T("An %s:", "To %s:"), c.name))
+        input.prefix:SetTextColor(r, g, b)
+        input:SetTextInsets(8 + input.prefix:GetStringWidth() + 6, 8, 0, 0)
+        placeholder:SetText(T("Nachricht … (Enter sendet)", "Message … (Enter sends)"))
     end
     emptyHint:SetShown(c == nil)
     input:SetShown(c ~= nil and ns.imActive)
@@ -327,8 +333,10 @@ local function BuildPanel()
     input:SetTextInsets(8, 8, 0, 0)
     input:SetAutoFocus(false)
     input:SetMaxLetters(255)
+    input.prefix = input:CreateFontString(nil, "OVERLAY", "ChatFontNormal")
+    input.prefix:SetPoint("LEFT", 8, 0)
     placeholder = input:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    placeholder:SetPoint("LEFT", 8, 0)
+    placeholder:SetPoint("LEFT", input.prefix, "RIGHT", 6, 0)
     local function UpdatePlaceholder(self) placeholder:SetShown((self:GetText() or "") == "" and not self:HasFocus()) end
     -- wie die normale Eingabezeile: nur beim Schreiben bzw. mit der Maus darueber sichtbar (Einstellung)
     local function UpdateInputAlpha(self)

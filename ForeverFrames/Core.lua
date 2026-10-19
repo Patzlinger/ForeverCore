@@ -31,7 +31,7 @@ ns.DEFAULTS = {
     showPlayer = true,
     hideBlizzParty = true,
     hideBlizzRaid = true,
-    hideBlizzManager = false,
+    hideBlizzManager = true,          -- Standard seit Einstellungsversion 2 (vorher aus)
     rangeFade = true,
     rangeAlpha = 0.35,
     tooltip = true,
@@ -443,5 +443,9 @@ end)
 ---------------------------------------------------------------------------
 -- Gemeinsame Einstellungs-Verwaltung (ForeverCore): Profile je Charakter, Zuruecksetzen, Export/Import
 ---------------------------------------------------------------------------
-ns.UI.RegisterSettings({ addon = "ForeverFrames", sv = "ForeverFramesDB", defaults = ns.DEFAULTS, version = 1,
-    keepOnReset = { "clicks", "buffCustom" } })
+ns.UI.RegisterSettings({ addon = "ForeverFrames", sv = "ForeverFramesDB", defaults = ns.DEFAULTS, version = 2,
+    keepOnReset = { "clicks", "buffCustom" },
+    -- Version 2: Blizzards Raid-Manager standardmäßig ausgeblendet – bestehende Profile einmalig umstellen
+    migrate = function(data, oldVersion)
+        if (oldVersion or 1) < 2 then data.hideBlizzManager = true end
+    end })

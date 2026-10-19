@@ -1146,6 +1146,15 @@ local function ChainRow(dv, index)
     highlight:SetColorTexture(1, 1, 1, 0.06)
     row:SetScript("OnEnter", ChainTooltip)
     row:SetScript("OnLeave", function() Style.GetTooltip():Hide() end)
+    -- Rechtsklick: Wowhead-Link (wie im Dungeonfenster; Questies Fenster zum Kopieren, darum nur mit Questie)
+    row:SetScript("OnMouseUp", function(self, button)
+        local questID = button == "RightButton" and self.entry and self.entry.questID
+        if not questID or not (ns.HasQuestie and ns.HasQuestie() and ns.ShowQuestieWowhead) then return end
+        Style.ShowMenu(self, {
+            { title = C_QuestLog.GetTitleForQuestID(questID) or self.entry.name or ("Quest " .. questID) },
+            { text = ns.L("QUESTIE_WOWHEAD"), disabled = InCombatLockdown(), onClick = function() ns.ShowQuestieWowhead(questID) end },
+        })
+    end)
     dv.chain[index] = row
     return row
 end

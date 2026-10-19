@@ -467,9 +467,13 @@ local function ToggleGroup(v, groupKey)
     Redraw(v)
 end
 
--- Aufgeklappt in dieser Ansicht? (Questlog: eigener Stand, Standard eingeklappt)
+-- Aufgeklappt in dieser Ansicht? (Questlog: eigener Stand, Standard aufgeklappt)
 local function IsExpandedIn(v, questID)
-    if v and v.expanded then return v.expanded[questID] == true end
+    if v and v.expanded then
+        local value = v.expanded[questID]
+        if value == nil then return v.expandedDefault == true end
+        return value
+    end
     return ns.IsExpanded(questID)
 end
 
@@ -695,7 +699,7 @@ local function OnArrowClick(self)
     if not questID then return end
     if v and v.expanded then
         -- Questlog: eigener Stand, der Tracker bleibt unverändert
-        v.expanded[questID] = not v.expanded[questID] or nil
+        v.expanded[questID] = not IsExpandedIn(v, questID)
         Redraw(v)
         return
     end
@@ -1692,7 +1696,7 @@ local function RenderQuestList(v, groups, contentWidth, alpha, emptyText)
         box:SetPoint("TOPLEFT", v.content, "TOPLEFT", 0, -boxTop)
         box:SetSize(contentWidth, y - boxTop)
         box:Show()
-        y = y + BOX_GAP
+        y = y + (v.boxGap or BOX_GAP) -- Questlog: etwas mehr Luft zwischen den Kategorien
     end
 
     if count == 0 then
@@ -1760,8 +1764,9 @@ end
 ns.QuestList = {
     -- neue Ansicht in einem Inhaltsrahmen (content) anlegen
     NewView = function(content, prefix)
+        -- Questlog: Quests standardmäßig aufgeklappt (expandedDefault), etwas mehr Abstand zwischen den Kategorien
         return { content = content, lines = {}, boxes = {}, prefix = prefix, collapsed = {}, expanded = {},
-            anchor = "ANCHOR_RIGHT", watchToggle = true }
+            expandedDefault = true, boxGap = 14, anchor = "ANCHOR_RIGHT", watchToggle = true }
     end,
     Render = function(v, opts, contentWidth, emptyText)
         ns.UpdateFonts()

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- ForeverQuests: quests in the quest log are expanded by default, a little more space between the zone boxes; right-click a quest of the chain in the details for the Wowhead link (with Questie); tooltips in tracker and quest log get the gold border all around like the other Forever tooltips (follows ForeverTooltip's "Gold border all around").
+- ForeverFrames: Blizzard's raid manager is now hidden by default (switched once for existing profiles).
+- ForeverChat: whispers also show in the normal chat by default (switched once for existing profiles); the whisper window's input line always shows who you are writing to ("To Name:").
+
 ### New
 - **ForeverHelpers – three small helpers in one addon:** ForeverLoot (loot rolls), ForeverBuffs (buff reminder) and ForeverVendor (vendor helper) are now one addon. Everything works as before – same settings, same commands (/floot, /fbuffs, /fvendor), one minimap entry (/fhelp). If you still have the old folders, they are turned off automatically – please delete them.
 - **One settings window for everything:** all Forever Core addons now share one settings window with a fixed size – a list on the left, grouped by area (Frames, Bars, Navigation, Comfort, Helpers) and showing only what you have installed, and one addon at a time on the right with exactly the same settings as before. Minimap buttons, commands (/fu, /ff, /fb …) and the hub take you straight to the right entry.

@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 54
+local VERSION = 55
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -1134,17 +1134,27 @@ function UI.GetTooltip()
     local bg = tip:CreateTexture(nil, "BACKGROUND", nil, -8)
     bg:SetAllPoints()
     bg:SetColorTexture(C.background[1], C.background[2], C.background[3], 0.97)
-    local function Edge(p1, p2, horizontal, color)
+    local edges = {}
+    local function Edge(p1, p2, horizontal)
         local e = tip:CreateTexture(nil, "BACKGROUND", nil, -7)
-        e:SetColorTexture(color[1], color[2], color[3], color[4] or 1)
+        e:SetColorTexture(1, 1, 1, 1)
         e:SetPoint(p1)
         e:SetPoint(p2)
         if horizontal then e:SetHeight(1) else e:SetWidth(1) end
+        edges[#edges + 1] = e
     end
-    Edge("TOPLEFT", "TOPRIGHT", true, { C.accent[1], C.accent[2], C.accent[3], 0.7 })
-    Edge("BOTTOMLEFT", "BOTTOMRIGHT", true, C.border)
-    Edge("TOPLEFT", "BOTTOMLEFT", false, C.border)
-    Edge("TOPRIGHT", "BOTTOMRIGHT", false, C.border)
+    Edge("TOPLEFT", "TOPRIGHT", true)
+    Edge("BOTTOMLEFT", "BOTTOMRIGHT", true)
+    Edge("TOPLEFT", "BOTTOMLEFT", false)
+    Edge("TOPRIGHT", "BOTTOMRIGHT", false)
+    -- Rand rundum gold wie ForeverTooltip (dort abschaltbar: "Rahmen rundum gold" aus = grau mit Goldlinie oben) (v55)
+    tip:HookScript("OnShow", function()
+        local grey = _G.ForeverTooltipDB and _G.ForeverTooltipDB.goldEdge == false
+        for i, e in ipairs(edges) do
+            if grey and i > 1 then e:SetVertexColor(C.border[1], C.border[2], C.border[3], C.border[4] or 1)
+            else e:SetVertexColor(C.accent[1], C.accent[2], C.accent[3], 0.7) end
+        end
+    end)
     local function HideNineSlice(self) if self.NineSlice then self.NineSlice:Hide() end end
     HideNineSlice(tip)
     tip:HookScript("OnShow", HideNineSlice)

@@ -54,21 +54,36 @@ function Style.GetTooltip()
     local background = tip:CreateTexture(nil, "BACKGROUND", nil, -8)
     background:SetAllPoints()
     background:SetColorTexture(COLOR.background[1], COLOR.background[2], COLOR.background[3], 0.97)
-    local function Edge(point1, point2, horizontal, color)
+    local edges = {}
+    local function Edge(point1, point2, horizontal)
         local edge = tip:CreateTexture(nil, "BACKGROUND", nil, -7)
-        edge:SetColorTexture(unpack(color))
+        edge:SetColorTexture(1, 1, 1, 1)
         edge:SetPoint(point1)
         edge:SetPoint(point2)
         if horizontal then edge:SetHeight(1) else edge:SetWidth(1) end
+        edges[#edges + 1] = edge
     end
-    Edge("TOPLEFT", "TOPRIGHT", true, { COLOR.accent[1], COLOR.accent[2], COLOR.accent[3], 0.7 })
-    Edge("BOTTOMLEFT", "BOTTOMRIGHT", true, COLOR.border)
-    Edge("TOPLEFT", "BOTTOMLEFT", false, COLOR.border)
-    Edge("TOPRIGHT", "BOTTOMRIGHT", false, COLOR.border)
+    Edge("TOPLEFT", "TOPRIGHT", true)
+    Edge("BOTTOMLEFT", "BOTTOMRIGHT", true)
+    Edge("TOPLEFT", "BOTTOMLEFT", false)
+    Edge("TOPRIGHT", "BOTTOMRIGHT", false)
+    -- Rahmen rundum gold wie die Tooltips der anderen Forever-Addons (ForeverTooltip: Option "Rahmen rundum gold";
+    -- ist sie dort aus, grau mit Goldlinie oben)
+    local function ColorEdges()
+        local grey = _G.ForeverTooltipDB and _G.ForeverTooltipDB.goldEdge == false
+        for i, edge in ipairs(edges) do
+            if grey and i > 1 then
+                edge:SetVertexColor(COLOR.border[1], COLOR.border[2], COLOR.border[3], COLOR.border[4] or 1)
+            else
+                edge:SetVertexColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3], 0.7)
+            end
+        end
+    end
 
     -- Den normalen verzierten Rand des Spiel-Tooltips ausblenden (auch, wenn das Spiel ihn wieder einschaltet)
     local function HideDefaultBorder(self)
         if self.NineSlice then self.NineSlice:Hide() end
+        ColorEdges()
     end
     HideDefaultBorder(tip)
     tip:HookScript("OnShow", HideDefaultBorder)

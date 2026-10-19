@@ -39,7 +39,7 @@ ns.DEFAULTS = {
     mentionSound = false,    -- dazu ein leiser Ton
     -- Instant Messaging (Messenger.lua)
     messenger = true,        -- Reiter "IM": Fluestern je Person in eigenem Unterreiter
-    whispersInMain = false,  -- Fluestern zusaetzlich im normalen Chat zeigen
+    whispersInMain = true,   -- Fluestern zusaetzlich im normalen Chat zeigen (Standard seit Einstellungsversion 2)
     -- Eingabe
     arrowHistory = true,     -- Pfeiltasten blaettern im Verlauf (ohne Alt)
     shiftScroll = true,      -- Umschalt + Mausrad = ganz nach oben/unten
@@ -239,5 +239,9 @@ end
 ---------------------------------------------------------------------------
 -- Gemeinsame Einstellungs-Verwaltung (ForeverCore): Profile je Charakter, Zuruecksetzen, Export/Import
 ---------------------------------------------------------------------------
-UI.RegisterSettings({ addon = "ForeverChat", sv = "ForeverChatDB", defaults = ns.DEFAULTS, version = 1,
-    global = { "savedColors" } }) -- gesicherte Blizzard-Chatfarben gelten fuer alle Profile
+UI.RegisterSettings({ addon = "ForeverChat", sv = "ForeverChatDB", defaults = ns.DEFAULTS, version = 2,
+    global = { "savedColors" }, -- gesicherte Blizzard-Chatfarben gelten fuer alle Profile
+    -- Version 2: Fluestern standardmaessig auch im normalen Chat – bestehende Profile einmalig umstellen
+    migrate = function(data, oldVersion)
+        if (oldVersion or 1) < 2 then data.whispersInMain = true end
+    end })
