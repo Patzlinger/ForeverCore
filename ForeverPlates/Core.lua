@@ -1056,8 +1056,14 @@ end
 local function EndCast(fp, interrupted, by)
     local cb = fp.cast
     if not fp.unit then cb:Hide() return end
-    -- gleich der nächste Zauber (z. B. Kanalisieren nach dem Wirken)?
-    if Has((CastInfo(fp.unit))) then UpdateCast(fp) return end
+    if not interrupted then
+        -- "Unterbrochen" wird gerade angezeigt: das gleich folgende "Zauber beendet" nicht drüberzeichnen
+        if cb.fading then return end
+        -- gleich der nächste Zauber (z. B. Kanalisieren nach dem Wirken)?
+        if Has((CastInfo(fp.unit))) then UpdateCast(fp) return end
+    end
+    -- Bei "unterbrochen" meldet das Spiel den Zauber oft noch kurz als laufend – deshalb dort keine Prüfung auf einen
+    -- neuen Zauber (die hat die Anzeige früher sofort überschrieben). Ein wirklich neuer Zauber kommt mit eigenem Start.
     local was = fp.casting or (GetTime() - (cb.ended or 0) < 0.3)
     fp.casting = false
     cb.ended = GetTime()
@@ -1076,6 +1082,17 @@ local function EndCast(fp, interrupted, by)
             local _, class, _, _, _, name = GetPlayerInfoByGUID(by)
             if Yes(name) then who, whoClass = name, Yes(class) and class or nil end
         end
+        -- kein Spieler (Begleiter, NPC) oder Spieler ohne Daten: über eine Einheit in der Nähe (Gruppe, Plakette …)
+        if not who and Yes(by) and UnitTokenFromGUID then
+            local ok, token = pcall(UnitTokenFromGUID, by)
+            if ok and Yes(token) then
+                local name = UnitName(token)
+                if Yes(name) then
+                    who = name
+                    if Yes(UnitIsPlayer(token)) then whoClass = select(2, UnitClass(token)) end
+                end
+            end
+        end
         if not who and GetTime() - (ns.lastKick or 0) < 0.6 then
             who = UnitName("player")
             whoClass = select(2, UnitClass("player"))
@@ -1083,7 +1100,7 @@ local function EndCast(fp, interrupted, by)
         if who then
             local col = whoClass and C_ClassColor and C_ClassColor.GetClassColor(whoClass)
             local shown = col and col:WrapTextInColorCode(who) or who
-            cb.text:SetText(T("Unterbrochen: ", "Interrupted: ") .. shown)
+            cb.text:SetText(T("Unterbrochen von ", "Interrupted by ") .. shown)
         else
             cb.text:SetText(T("Unterbrochen", "Interrupted"))
         end
@@ -1091,7 +1108,7 @@ local function EndCast(fp, interrupted, by)
         cb:Show()
         local token = {}
         cb.fadeToken = token
-        C_Timer.After(0.5, function()
+        C_Timer.After(0.8, function()
             if cb.fadeToken == token and cb.fading then
                 cb.fading = nil
                 cb:Hide()
