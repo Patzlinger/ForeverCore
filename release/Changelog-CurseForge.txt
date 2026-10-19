@@ -3,6 +3,7 @@
 ## Unreleased
 
 - ForeverQuests: quests in the quest log are expanded by default, a little more space between the zone boxes; right-click a quest of the chain in the details for the Wowhead link (with Questie); tooltips in tracker and quest log get the gold border all around like the other Forever tooltips (follows ForeverTooltip's "Gold border all around").
+- ForeverBars: the marker bar shows "Marks / Pings" in its title – click a word to switch between target markers and world markers, the small arrow sets "Restrict pings to"; the gear buttons on the marker and professions bars are gone.
 - ForeverFrames: Blizzard's raid manager is now hidden by default (switched once for existing profiles).
 - ForeverChat: whispers also show in the normal chat by default (switched once for existing profiles); the whisper window's input line always shows who you are writing to ("To Name:").
 
