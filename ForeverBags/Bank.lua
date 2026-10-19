@@ -9,7 +9,7 @@ local L = ns.L
 local UI = ForeverHub.UI
 
 local PAD, HEADER, TOOLBAR, FOOTER = 8, 27, 28, 24
-local DEFAULT_POS = { 40, 700 } -- obere linke Ecke (UIParent-Einheiten ab unten links)
+local DEFAULT_POS = "CENTER" -- noch nie verschoben: Bildschirmmitte; danach die gemerkte Lage (Ziehen speichert sie)
 
 local bank, content, freeText
 local frames, buttons = {}, {}
@@ -148,6 +148,11 @@ local function CreateBank()
     freeText:SetPoint("BOTTOMLEFT", PAD, PAD + 2)
 
     bank:HookScript("OnShow", ns.LayoutBank)
+    -- Taschen bleiben rechts angedockt: nach dem Verschieben und wenn die Bank ihre Größe ändert
+    bank:HookScript("OnSizeChanged", function() if ns.DockBagsToBank then ns.DockBagsToBank() end end)
+    bank.header:HookScript("OnDragStop", function()
+        C_Timer.After(0, function() if ns.DockBagsToBank then ns.DockBagsToBank() end end)
+    end)
     -- Unser Fenster zu = Bankbesuch beenden (wie bei Blizzards Bankfenster)
     bank:HookScript("OnHide", function()
         if atBank and not closing then CloseBank() end
@@ -163,6 +168,11 @@ local function OnBankOpened()
     bank.RestorePosition()
     bank:Show()
     if ns.OpenBags then ns.OpenBags() end
+    -- Taschen rechts an die Bank (auch wenn sie schon offen waren); nach dem ersten Aufbau noch einmal
+    if ns.DockBagsToBank then
+        ns.DockBagsToBank()
+        C_Timer.After(0.05, ns.DockBagsToBank)
+    end
 end
 
 local function OnBankClosed()

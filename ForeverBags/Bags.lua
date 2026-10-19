@@ -762,6 +762,12 @@ local function PlaceOnOpen()
         window:ClearAllPoints()
         window:SetPoint(point, UIParent, "BOTTOMLEFT", x / ws, y / ws)
     end
+    local bankWin = _G.ForeverBagsBank
+    if bankWin and bankWin:IsShown() and bankWin:GetRight() then
+        local bs = bankWin:GetEffectiveScale()
+        At("TOPLEFT", bankWin, bankWin:GetRight() * bs + 4 * ws, bankWin:GetTop() * bs)
+        return
+    end
     local merchant = _G.MerchantFrame
     if merchant and merchant:IsShown() and merchant:GetRight() then
         local vendor = _G.ForeverVendorMerchantPanel
@@ -950,6 +956,11 @@ function ns.OpenBags()
     if not window:IsShown() then window:Show() end
 end
 
+-- Bankfenster verschoben oder in der Größe geändert: Taschen wieder rechts daneben
+function ns.DockBagsToBank()
+    if window and window:IsShown() then PlaceOnOpen() end
+end
+
 function ns.CloseBags()
     if window and window:IsShown() then window:Hide() end
 end
@@ -1101,6 +1112,11 @@ function ns.CreateBagWindow(name, title, posKey, defaultPos)
         local pos = ns.db[posKey] or defaultPos
         local scale = w:GetScale()
         w:ClearAllPoints()
+        if pos == "CENTER" then
+            -- noch nie verschoben: mittig auf dem Bildschirm, etwas über der Mitte (frei von den Aktionsleisten)
+            w:SetPoint("CENTER", UIParent, "CENTER", 0, 80 / scale)
+            return
+        end
         w:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", pos[1] / scale, pos[2] / scale)
     end
     w.header:SetScript("OnDragStart", function()

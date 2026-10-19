@@ -21,6 +21,7 @@
 - The game menu (Escape) has a new "Forever Hub" button right below "Macros" that opens the Forever hub.
 
 ### Improved
+- ForeverBags: the bank now opens in the middle of the screen with your bags docked right next to it. Move the bank once and it remembers the spot; the bags follow it.
 - ForeverMinimap: the mail tile shows Blizzard's clean minimap envelope instead of a boxed icon – same spot, same size, same behaviour (grey without mail, in color with a gold edge when new mail arrives).
 - ForeverUnits: elite, rare and boss enemies are now easy to spot – Blizzard's gold dragon (elite/boss), silver dragon (rare elite) or star (rare) sits at the top right corner of the target and focus frame. Can be turned off per frame ("Elite/rare icon").
 - ForeverVendor: selling junk and repairing now work on their own – whenever they are switched on, they run at every merchant. The old "Automatic" switch now only decides whether restocking happens automatically or via the "Buy" button (Shift when opening the merchant still skips everything once).
