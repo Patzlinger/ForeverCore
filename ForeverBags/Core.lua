@@ -102,6 +102,8 @@ SlashCmdList.FOREVERBAGS = function(msg)
         ns.ToggleBags()
     elseif msg == "reset" then
         ns.ResetPosition()
+    elseif msg == "bankcheck" then
+        if ns.BankCheck then ns.BankCheck() end
     else
         ns.ToggleOptions()
     end

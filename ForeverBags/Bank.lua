@@ -31,6 +31,14 @@ local function CreateSlot(bag, slot)
     button:SetID(slot)
     if button.SetBagID then pcall(button.SetBagID, button, bag) end
     button:SetSize(ns.SLOT, ns.SLOT)
+    -- Blizzards Vorlage dunkelt Gegenstände ab, die nicht zum "aktuellen Zusammenhang" passen – bei der neuen Bank
+    -- hängt der am (unsichtbaren) Blizzard-Bankfenster und traf unsere Bankplätze: alles dunkel und nicht klickbar.
+    -- Wie Blizzards eigene Bankknöpfe: "gilt hier nicht" (nie abdunkeln).
+    local dna = ItemButtonUtil and ItemButtonUtil.ItemContextMatchResult and ItemButtonUtil.ItemContextMatchResult.DoesNotApply
+    if dna ~= nil then
+        button.GetItemContextMatchResult = function() return dna end
+    end
+    if button.ItemContextOverlay then button.ItemContextOverlay:Hide() end
     ns.StyleSlot(button, bag)
     buttons[bag] = buttons[bag] or {}
     buttons[bag][slot] = button
@@ -58,6 +66,7 @@ function ns.LayoutBank()
                     button:SetPoint("TOPLEFT", content, "TOPLEFT", col * (SLOT + gap), -row * (SLOT + gap))
                 end
                 ns.UpdateSlot(button, bag, slot)
+                if button.ItemContextOverlay then button.ItemContextOverlay:Hide() end
                 index = index + 1
                 total = total + 1
                 if C_Container.GetContainerItemID(bag, slot) then used = used + 1 end
@@ -72,6 +81,26 @@ function ns.LayoutBank()
         bank:SetSize(math.max(width + 2 * PAD, 330), HEADER + TOOLBAR + height + FOOTER + 2 * PAD)
     end
     freeText:SetText(L("FREE_SLOTS", total - used, total))
+end
+
+-- /fbags bankcheck: Zustand des ersten Bankplatzes und was unter der Maus liegt (zur Fehlersuche)
+function ns.BankCheck()
+    local function Say(text) print("|cffffcc00ForeverBags|r: " .. tostring(text)) end
+    Say("Fächer: " .. table.concat(ns.BankIDs(), ", ") .. " · Bank offen: " .. tostring(atBank))
+    local bag = ns.BankIDs()[1]
+    local b = bag and buttons[bag] and buttons[bag][1]
+    if not b then Say("kein Bankplatz angelegt") return end
+    local info = C_Container.GetContainerItemInfo(bag, 1)
+    local ctx = b.GetItemContextMatchResult and select(2, pcall(b.GetItemContextMatchResult, b))
+    Say(string.format("Platz 1: sichtbar=%s Deckkraft=%.2f effektiv=%.2f aktiv=%s Maus=%s gefiltert=%s gesperrt=%s Kontext=%s Overlay=%s",
+        tostring(b:IsVisible()), b:GetAlpha(), b:GetEffectiveAlpha(), tostring(b.IsEnabled and b:IsEnabled()),
+        tostring(b:IsMouseEnabled()), tostring(info and info.isFiltered), tostring(info and info.isLocked),
+        tostring(ctx), tostring(b.ItemContextOverlay and b.ItemContextOverlay:IsShown())))
+    if bank then Say(string.format("Bankfenster: Ebene %s/%d", bank:GetFrameStrata(), bank:GetFrameLevel())) end
+    local foci = GetMouseFoci and GetMouseFoci() or { GetMouseFocus and GetMouseFocus() }
+    for _, f in ipairs(foci or {}) do
+        Say("Unter der Maus: " .. tostring(f and f.GetDebugName and f:GetDebugName() or f))
+    end
 end
 
 local function CloseBank()
