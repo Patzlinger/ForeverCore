@@ -97,9 +97,20 @@ function ns.BankCheck()
         tostring(b:IsMouseEnabled()), tostring(info and info.isFiltered), tostring(info and info.isLocked),
         tostring(ctx), tostring(b.ItemContextOverlay and b.ItemContextOverlay:IsShown())))
     if bank then Say(string.format("Bankfenster: Ebene %s/%d", bank:GetFrameStrata(), bank:GetFrameLevel())) end
+    -- Blizzards Fenster: offen, sichtbar, Deckkraft, Ebene
+    for _, name in ipairs({ "BankFrame", "ContainerFrameCombinedBags", "ContainerFrame1" }) do
+        local f = _G[name]
+        if f then
+            Say(string.format("%s: offen=%s Deckkraft=%.2f effektiv=%.2f Ebene %s/%d", name, tostring(f:IsShown()),
+                f:GetAlpha(), f:GetEffectiveAlpha(), f:GetFrameStrata(), f:GetFrameLevel()))
+        end
+    end
+    local bb = _G.ForeverBagsFrame
+    if bb then Say(string.format("Taschenfenster: Ebene %s/%d", bb:GetFrameStrata(), bb:GetFrameLevel())) end
     local foci = GetMouseFoci and GetMouseFoci() or { GetMouseFocus and GetMouseFocus() }
     for _, f in ipairs(foci or {}) do
-        Say("Unter der Maus: " .. tostring(f and f.GetDebugName and f:GetDebugName() or f))
+        local alpha = f and f.GetEffectiveAlpha and string.format(" (effektiv %.2f)", f:GetEffectiveAlpha()) or ""
+        Say("Unter der Maus: " .. tostring(f and f.GetDebugName and f:GetDebugName() or f) .. alpha)
     end
 end
 

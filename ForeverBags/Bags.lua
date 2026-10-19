@@ -1034,10 +1034,24 @@ end
 -- geschützten Rahmen werden verändert (die überspringen wir im Kampf).
 ---------------------------------------------------------------------------
 local hiddenPanels = {}
+-- Deckkraft bleibt 0, auch wenn Blizzard sie später selbst wieder hochsetzt (Nachladen der Fächer, Einblenden):
+-- sonst lag das Fenster halb sichtbar über unseren und fing die Klicks ab
+local function KeepTransparent(frame)
+    if frame.fbagsAlphaHooked then return end
+    frame.fbagsAlphaHooked = true
+    hooksecurefunc(frame, "SetAlpha", function(self)
+        if hiddenPanels[self] and not self.fbagsSettingAlpha then
+            self.fbagsSettingAlpha = true
+            self:SetAlpha(0)
+            self.fbagsSettingAlpha = nil
+        end
+    end)
+end
 function ns.HideBlizzardPanel(frame)
     if not frame then return end
     local parts = hiddenPanels[frame] or {}
     hiddenPanels[frame] = parts
+    KeepTransparent(frame)
     frame:SetAlpha(0)
     local function Walk(f, depth)
         if f.IsMouseEnabled and f:IsMouseEnabled() and not (InCombatLockdown() and f.IsProtected and f:IsProtected()) then
@@ -1053,9 +1067,9 @@ end
 function ns.RestoreBlizzardPanel(frame)
     local parts = frame and hiddenPanels[frame]
     if not parts then return end
+    hiddenPanels[frame] = nil
     frame:SetAlpha(1)
     for part in pairs(parts) do pcall(part.EnableMouse, part, true) end
-    hiddenPanels[frame] = nil
 end
 
 -- Kleines Fenster-Gerüst wie das Taschenfenster: Titelleiste ziehbar (Position wird gespeichert), Zahnrad
