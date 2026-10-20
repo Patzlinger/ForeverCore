@@ -62,10 +62,30 @@ local function SkinTaxi()
             if r ~= largest then r:SetAlpha(0) end
         end
     end
-    -- nur Rahmen, Titel-Hintergrund und Porträt weg (light). KeepOnlyMap (nur die größte Grafik behalten) ist
-    -- abgeschaltet: in Forever war die Karte nicht die größte Grafik und verschwand – erst mit /fskin taxi nachsehen
+    -- nur Rahmen, Titel-Hintergrund und Porträt weg (light), dazu gezielt (laut /fskin taxi in Forever): alle
+    -- Rahmenteile "UI-Frame-…" (Kanten, Ecken, Titel) und Blizzards Stein-Hintergrund (Datei 374155, größer als die
+    -- Karte – darum lag "größte Grafik = Karte" falsch). Die Karte selbst (z. B. 7961420) und die Routen bleiben.
+    local BACKGROUNDS = { [374155] = true }
+    local function HideFrameParts()
+        for _, holder in ipairs({ f, inset }) do
+            if holder and holder.GetRegions then
+                for _, r in ipairs({ holder:GetRegions() }) do
+                    if r:IsObjectType("Texture") and not ns.IsMine(holder, r) then
+                        local atlas = r.GetAtlas and r:GetAtlas()
+                        local tex = r.GetTexture and r:GetTexture()
+                        if (type(atlas) == "string" and atlas:find("UI%-Frame")) or BACKGROUNDS[tex]
+                            or (type(tex) == "string" and tex:find("UI%-Frame")) then
+                            r:SetAlpha(0)
+                        end
+                    end
+                end
+            end
+        end
+    end
     ns.SkinWindow(f, keep, true)
-    ns.KeepOnlyMap = KeepOnlyMap -- (zum Ausprobieren)
+    HideFrameParts()
+    f:HookScript("OnShow", function() pcall(HideFrameParts) end)
+    ns.KeepOnlyMap = KeepOnlyMap -- (alter Versuch, nicht mehr benutzt)
     ns.Watch(f)
 end
 
