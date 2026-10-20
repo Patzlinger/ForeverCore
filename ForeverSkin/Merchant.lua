@@ -13,7 +13,7 @@ local UI = ns.UI
 
 local W, H = 384, 520                 -- Größe (wie das Gesprächsfenster)
 local ROW_H, ICON = 40, 34
-local LIST_TOP, FOOT = 116, 40        -- Liste ab hier (unter Visitenkarte und Reitern), Höhe der unteren Leiste
+local LIST_TOP, FOOT = 140, 40        -- Liste ab hier (unter Visitenkarte, Reitern, Filter), Höhe der unteren Leiste
 local panel, rows, list, scrollBar = nil, {}, nil, nil
 local tab = "buy"                     -- "buy" oder "buyback"
 local offset, filter = 0, ""
@@ -76,9 +76,13 @@ local function Collect()
     wipe(entries)
     local f = filter:lower()
     if tab == "buy" then
+        -- "Nicht benutzbare ausblenden": was Blizzard als für dich nicht benutzbar meldet (auch Waffen/Rüstung, die du
+        -- nicht tragen kannst – die zeigt Blizzard rot)
+        local hideUnusable = ns.GetDB().merchantHideUnusable
         for i = 1, (GetMerchantNumItems and GetMerchantNumItems() or 0) do
             local info = MerchantInfo(i)
-            if info and info.name and (f == "" or info.name:lower():find(f, 1, true)) then
+            if info and info.name and (f == "" or info.name:lower():find(f, 1, true))
+                and not (hideUnusable and info.isUsable == false) then
                 local link = GetMerchantItemLink and GetMerchantItemLink(i)
                 entries[#entries + 1] = {
                     index = i, name = info.name, icon = info.texture, link = link, quality = Quality(link),
@@ -250,19 +254,39 @@ function Refresh()
         t:SetBackdropBorderColor(on and C.accent[1] or C.border[1], on and C.accent[2] or C.border[2], on and C.accent[3] or C.border[3], 1)
         t:GetFontString():SetTextColor(on and C.accent[1] or 0.9, on and C.accent[2] or 0.9, on and C.accent[3] or 0.9)
     end
-    local canRepair = CanMerchantRepair and CanMerchantRepair()
-    panel.repair:SetShown(canRepair and true or false)
+    local canRepair = CanMerchantRepair and CanMerchantRepair() and true or false
+    local cost = canRepair and GetRepairAllCost and GetRepairAllCost() or 0
+    panel.repair:SetShown(canRepair)
+    panel.repairOne:SetShown(canRepair and ShowRepairCursor ~= nil)
     panel.guildRepair:SetShown(canRepair and CanGuildBankRepair and CanGuildBankRepair() and true or false)
     panel.junk:SetShown(C_MerchantFrame and C_MerchantFrame.SellAllJunkItems ~= nil)
+    -- ausgegraut, wenn nichts zu reparieren ist (bzw. bei der Gildenbank: nicht genug in der Gildenkasse)
+    panel.repair:SetUsable(cost > 0 and cost <= GetMoney())
+    panel.repairOne:SetUsable(cost > 0)
+    local guildMoney = GetGuildBankWithdrawMoney and GetGuildBankWithdrawMoney()
+    panel.guildRepair:SetUsable(cost > 0 and (not guildMoney or guildMoney < 0 or guildMoney >= cost))
+    panel.hideUnusable:SetShown(tab == "buy")
+    panel.hideUnusable:SetChecked(ns.GetDB().merchantHideUnusable and true or false)
     local x = 10
-    for _, b in ipairs({ panel.repair, panel.guildRepair, panel.junk }) do
+    for _, b in ipairs({ panel.repair, panel.repairOne, panel.guildRepair, panel.junk }) do
         if b:IsShown() then
             b:ClearAllPoints()
             b:SetPoint("BOTTOMLEFT", panel, "BOTTOMLEFT", x, 6)
             x = x + b:GetWidth() + 6
         end
     end
-    panel.money:SetText(Money(GetMoney()))
+    -- Geld und die Sonderwährungen, die dieser Händler verlangt (Bestand mit Symbol), wie unten bei Blizzard
+    local parts = {}
+    if GetMerchantCurrencies and C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo then
+        for _, id in ipairs({ GetMerchantCurrencies() }) do
+            local info = C_CurrencyInfo.GetCurrencyInfo(id)
+            if info and info.iconFileID then
+                parts[#parts + 1] = (info.quantity or 0) .. " |T" .. info.iconFileID .. ":14:14:0:0|t"
+            end
+        end
+    end
+    parts[#parts + 1] = Money(GetMoney())
+    panel.money:SetText(table.concat(parts, "    "))
 end
 ns.RefreshMerchant = Refresh
 
@@ -288,7 +312,17 @@ local function IconButton(icon, tip, onClick)
         self:SetBackdropBorderColor(C.border[1], C.border[2], C.border[3], 1)
         GameTooltip:Hide()
     end)
-    b:SetScript("OnClick", function() onClick() C_Timer.After(0.3, function() pcall(Refresh) end) end)
+    b:SetScript("OnClick", function(self)
+        if self.usable == false then return end
+        onClick()
+        C_Timer.After(0.3, function() pcall(Refresh) end)
+    end)
+    -- benutzbar oder ausgegraut (Tooltip bleibt, Klick tut dann nichts)
+    function b:SetUsable(on)
+        self.usable = on and true or false
+        self.icon:SetDesaturated(not on)
+        self:SetAlpha(on and 1 or 0.45)
+    end
     return b
 end
 
@@ -358,6 +392,12 @@ local function Build(f)
     search:HookScript("OnEditFocusLost", function() hint:SetShown(filter == "") end)
     search:SetScript("OnEscapePressed", function(self) self:SetText("") self:ClearFocus() end)
     panel.search = search
+    -- Haken "Nicht benutzbare ausblenden" (gemerkt)
+    panel.hideUnusable = UI.Check(panel, 10, -112, T("Nicht benutzbare ausblenden", "Hide unusable"), function(checked)
+        ns.GetDB().merchantHideUnusable = checked
+        offset = 0
+        Refresh()
+    end)
 
     -- Liste mit Mausrad und goldener Bildlauf-Anzeige
     list = CreateFrame("Frame", nil, panel)
@@ -388,6 +428,13 @@ local function Build(f)
         local cost = GetRepairAllCost and GetRepairAllCost()
         if cost and cost > 0 then tip:AddLine(Money(cost), 1, 1, 1) end
     end, function() if RepairAllItems then RepairAllItems() end end)
+    panel.repairOne = IconButton("Interface\\Icons\\INV_Hammer_20", function(tip)
+        tip:AddLine(REPAIR_AN_ITEM or T("Einzelnen Gegenstand reparieren", "Repair an item"))
+        tip:AddLine(T("Danach auf den Gegenstand klicken (Tasche oder Charakter).", "Then click the item (bag or character)."),
+            1, 1, 1, true)
+    end, function()
+        if InRepairMode and InRepairMode() then HideRepairCursor() elseif ShowRepairCursor then ShowRepairCursor() end
+    end)
     panel.guildRepair = IconButton("Interface\\Icons\\INV_Shirt_GuildTabard_01", function(tip)
         tip:AddLine(GUILDBANK_REPAIR or T("Über die Gildenbank reparieren", "Repair with guild funds"))
     end, function() if RepairAllItems then RepairAllItems(true) end end)
