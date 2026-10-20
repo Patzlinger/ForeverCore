@@ -8,6 +8,7 @@
 ## Author: flowfy
 ## X-License: MIT
 ## Dependencies: ForeverCore
+## OptionalDeps: Questie
 ## Group: ForeverCore
 ## SavedVariables: ForeverSkinDB
 

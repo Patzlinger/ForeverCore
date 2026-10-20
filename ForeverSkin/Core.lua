@@ -308,6 +308,7 @@ function ns.NpcCard(frame, unit, label, roleFn)
     -- Rolle: Titel ohne Klammern ("Stoffrüstmeister der Horde", "Schneiderbedarf"); ohne Titel aus den
     -- Gesprächsoptionen abgeleitet (roleFn)
     local sub = exists and ns.UnitTitle(unit) or ""
+    if sub == "" and exists then sub = ns.KnownRole(unit) or "" end
     if sub == "" and exists and roleFn then
         local ok, role = pcall(roleFn)
         if ok and type(role) == "string" then sub = role end
@@ -367,6 +368,52 @@ function ns.UnitTitle(unit)
     scanTip:Hide()
     return found
 end
+
+-- Ohne Titel im Tooltip: Titel aus Questies NPC-Datenbank ("subName", z. B. "Hexenmeisterlehrer"; Questie ist GPL,
+-- die Nutzung seiner Datenbank ist erlaubt – wie in ForeverQuests), sonst, was ForeverSkin beim Öffnen des
+-- Lehrerfensters gemerkt hat (ForeverSkinDB.roles[NPC-Nummer])
+local function NpcID(unit)
+    local ok, guid = pcall(UnitGUID, unit)
+    if not ok or type(guid) ~= "string" or (issecretvalue and issecretvalue(guid)) then return nil end
+    local kind, _, _, _, _, id = strsplit("-", guid)
+    if kind == "Creature" or kind == "Vehicle" then return tonumber(id) end
+end
+ns.NpcID = NpcID
+
+function ns.KnownRole(unit)
+    local id = NpcID(unit)
+    if not id then return nil end
+    local loader = _G.QuestieLoader
+    if loader and loader.ImportModule then
+        local ok, sub = pcall(function() return loader:ImportModule("QuestieDB").QueryNPCSingle(id, "subName") end)
+        if ok and type(sub) == "string" and sub ~= "" then return sub end
+    end
+    local roles = ns.GetDB().roles
+    return roles and roles[id]
+end
+
+-- Lehrerfenster offen: merken, was dieser NPC lehrt (Beruf bzw. Klasse)
+local trainerWatch = CreateFrame("Frame")
+trainerWatch:RegisterEvent("TRAINER_SHOW")
+trainerWatch:SetScript("OnEvent", function()
+    pcall(function()
+        local id = NpcID("npc")
+        if not id then return end
+        local role
+        if IsTradeskillTrainer and IsTradeskillTrainer() then
+            local skill = GetTrainerServiceSkillLine and GetTrainerServiceSkillLine(1)
+            if type(skill) == "string" and skill ~= "" then role = string.format(ns.T("Lehrer für %s", "%s trainer"), skill) end
+        else
+            local className = UnitClass("player")
+            if className then role = string.format(ns.T("Lehrer für %s", "%s trainer"), className) end
+        end
+        if role then
+            local db = ns.GetDB()
+            db.roles = db.roles or {}
+            db.roles[id] = role
+        end
+    end)
+end)
 
 -- Rolle eines NPCs aus seinen Gesprächsoptionen (Symbol der Option) bzw. seinen Quests
 local ROLE_ICONS = {
