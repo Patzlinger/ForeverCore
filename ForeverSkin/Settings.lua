@@ -11,20 +11,42 @@ local C = ns.C
 local WHITE = "Interface\\Buttons\\WHITE8x8"
 local headers = setmetatable({}, { __mode = "k" })
 
--- Bereichsüberschrift links (roter Balken bei Blizzard): Balken weg, Schrift gold, feine Linie darunter
+-- Bereichsüberschrift links (roter Balken bei Blizzard) wie die Bereiche in der Liste des Forever-Einstellungsfensters:
+-- klein, gold, in Großbuchstaben, ohne Balken
 local function SkinCategoryHeader(element)
     local label = element.Label or element.Text or element.Title
     ns.HideTextures(element)
     if element.Background then ns.Hide(element.Background) end
-    if label and label.SetTextColor then label:SetTextColor(C.accent[1], C.accent[2], C.accent[3]) end
-    if headers[element] then return end
-    headers[element] = true
-    local line = element:CreateTexture(nil, "ARTWORK")
-    line:SetTexture(WHITE)
-    line:SetVertexColor(1, 1, 1, 0.08)
-    line:SetPoint("BOTTOMLEFT", 6, 1)
-    line:SetPoint("BOTTOMRIGHT", -6, 1)
-    line:SetHeight(1)
+    if not (label and label.SetTextColor) then return end
+    if not headers[element] then
+        headers[element] = true
+        label:SetFontObject("GameFontNormalSmall")
+        label:SetAlpha(0.85)
+    end
+    label:SetTextColor(C.accent[1], C.accent[2], C.accent[3])
+    local text = label:GetText()
+    if type(text) == "string" and text ~= text:upper() then label:SetText(text:upper()) end
+end
+
+-- Einträge der Liste links: hell wie im Forever-Einstellungsfenster, der gewählte gold. Blizzard färbt sie selbst
+-- (normal gold, gewählt weiß) – wir drehen das um und merken uns, was wir gesetzt haben, damit wir Blizzards eigene
+-- Änderungen (anderer Eintrag gewählt) erkennen
+local ours = setmetatable({}, { __mode = "k" })
+local function SkinCategoryEntry(element)
+    local label = element.Label or element.Text
+    if not (label and label.GetTextColor) then return end
+    local r, g, b = label:GetTextColor()
+    local key = string.format("%.2f%.2f%.2f", r or 0, g or 0, b or 0)
+    if ours[label] == key then return end -- unverändert seit unserem letzten Setzen
+    local gold = r and r > 0.9 and g > 0.7 and b < 0.3
+    local white = r and r > 0.9 and g > 0.9 and b > 0.9
+    if gold then
+        label:SetTextColor(0.9, 0.9, 0.9)       -- normal: hell
+    elseif white then
+        label:SetTextColor(C.accent[1], C.accent[2], C.accent[3]) -- gewählt: gold
+    end
+    r, g, b = label:GetTextColor()
+    ours[label] = string.format("%.2f%.2f%.2f", r or 0, g or 0, b or 0)
 end
 
 -- aufgeklappt? (Blizzards +/−: Atlas bzw. Textur mit "minus"/"expanded" = offen)
@@ -42,13 +64,15 @@ local function SkinCategoryList(list)
     if not (box and box.ForEachFrame) then return end
     box:ForEachFrame(function(element)
         if element.Toggle then ns.SkinToggle(element.Toggle, IsExpanded(element.Toggle)) end
-        if element.Background and not element.Toggle and not element.isCategory then
+        local header = false
+        if headers[element] then
+            header = true
+        elseif element.Background and not element.Toggle and not element.isCategory then
             local data = element.GetElementData and element:GetElementData()
             local isHeader = type(data) == "table" and (data.isHeader or data.header or data.category == nil)
-            if isHeader or element.Background:GetObjectType() == "Texture" and not (element.GetText and element:GetText()) then
-                SkinCategoryHeader(element)
-            end
+            header = isHeader or (element.Background:GetObjectType() == "Texture" and not (element.GetText and element:GetText()))
         end
+        if header then SkinCategoryHeader(element) else SkinCategoryEntry(element) end
     end)
 end
 
@@ -162,12 +186,18 @@ local function SkinSettings()
     -- Titel steht bei diesem Fenster im Rahmen (NineSlice.Text) – der wird unsichtbar, darum eigener Titel
     local blizzTitle = f.NineSlice and f.NineSlice.Text
     ns.SkinWindow(f)
-    if blizzTitle and blizzTitle.GetText then
-        local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        title:SetPoint("TOP", f, "TOP", 0, -6)
-        title:SetText(blizzTitle:GetText() or "")
-        f:HookScript("OnShow", function() title:SetText(blizzTitle:GetText() or "") end)
+    -- Titelleiste wie bei Forever Core: Logo und Titel links
+    local logo = f:CreateTexture(nil, "OVERLAY")
+    logo:SetTexture(ns.UI.LOGO)
+    logo:SetSize(16, 16)
+    logo:SetPoint("TOPLEFT", f, "TOPLEFT", 8, -4)
+    local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    title:SetPoint("LEFT", logo, "RIGHT", 6, 0)
+    local function Title()
+        title:SetText((blizzTitle and blizzTitle.GetText and blizzTitle:GetText()) or _G.SETTINGS_TITLE or "")
     end
+    Title()
+    f:HookScript("OnShow", Title)
     -- Schließen: hier heißt der Text-Knopf unten "CloseButton" und das X oben "ClosePanelButton" – SkinClose macht
     -- aus Knöpfen mit Text flache Text-Knöpfe, aus dem X das feine Kreuz; das X passend zur Titelleiste
     for _, b in ipairs({ f.CloseButton, f.ClosePanelButton }) do
@@ -193,12 +223,16 @@ local function SkinSettings()
     end
     SkinSearchBox(f.SearchBox)
 
-    -- Liste links und Einstellungsbereich rechts als flache Kästen (wie die Seiten im Forever-Einstellungsfenster)
+    -- wie das Forever-Einstellungsfenster: Liste links auf leicht abgesetzter Fläche mit Trennlinie rechts, rechts
+    -- kein Kasten (sonst ragte unten Text über die Kastenkante – die Liste endet einfach an ihrer Unterkante)
     local list = f.CategoryList
     if list then
         ns.HideTextures(list)
         if list.NineSlice then ns.Hide(list.NineSlice) end
-        ns.Flat(list, C.panel)
+        local look = ns.Flat(list, { C.panel[1], C.panel[2], C.panel[3], 0.6 })
+        if look then
+            for i, e in ipairs(look.edges) do e:SetAlpha(i == 4 and 1 or 0) end -- nur die Linie rechts
+        end
         ns.SkinScrollBar(list.ScrollBar)
     end
     local container = f.Container
@@ -206,7 +240,6 @@ local function SkinSettings()
     if container then
         ns.HideTextures(container)
         if container.NineSlice then ns.Hide(container.NineSlice) end
-        ns.Flat(container, C.panel)
     end
     if settingsList then
         ns.HideTextures(settingsList)
