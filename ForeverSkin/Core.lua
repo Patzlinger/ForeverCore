@@ -679,6 +679,113 @@ function ns.SkinIconButton(button)
     ns.Hover(button)
 end
 
+-- Fläche eines umgestalteten Knopfs neu einpassen (z. B. Reiter, die bei Blizzard viel höher sind als ihr Text)
+function ns.Refit(button, inset)
+    local look = looks[button]
+    if not look then return end
+    ns.Flat(button, C.button, inset)
+    if look.hl then
+        look.hl:ClearAllPoints()
+        look.hl:SetAllPoints(look.fill)
+    end
+end
+
+-- nur ein feiner Pfeil (ohne Fläche), z. B. Vor/Zurück neben Reglern und Auswahllisten; dir: "left", "right", "down"
+local ROTATION = { left = math.pi, right = 0, down = -math.pi / 2, up = math.pi / 2 }
+function ns.SkinArrowOnly(button, dir)
+    if not button or hovers[button] then return end
+    ns.HideTextures(button)
+    for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetHighlightTexture", "GetDisabledTexture" }) do
+        if button[get] then ns.Hide(button[get](button)) end
+    end
+    local arrow = button:CreateTexture(nil, "OVERLAY", nil, 7)
+    arrow:SetTexture("Interface\\ChatFrame\\ChatFrameExpandArrow")
+    arrow:SetSize(11, 11)
+    arrow:SetPoint("CENTER")
+    arrow:SetRotation(ROTATION[dir] or 0)
+    arrow:SetVertexColor(0.8, 0.8, 0.82)
+    looks[button] = { mine = { [arrow] = true }, edges = {}, lines = { arrow } }
+    hovers[button] = { close = true } -- grau, beim Überfahren gold
+end
+
+-- Haken (Blizzard-CheckButton): kleines flaches Kästchen, das sich gold füllt – wie UI.Check. Blizzards Grafiken
+-- werden nur umgefärbt bzw. unsichtbar; der Haken selbst bleibt Blizzards (Klick, Wert, Tooltip)
+function ns.SkinCheck(cb)
+    if not cb or hovers[cb] then return end
+    local checked = cb.GetCheckedTexture and cb:GetCheckedTexture()
+    local disabledChecked = cb.GetDisabledCheckedTexture and cb:GetDisabledCheckedTexture()
+    local keep = {}
+    if checked then keep[checked] = true end
+    if disabledChecked then keep[disabledChecked] = true end
+    ns.HideTextures(cb, keep)
+    for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetHighlightTexture", "GetDisabledTexture" }) do
+        if cb[get] then ns.Hide(cb[get](cb)) end
+    end
+    local w = cb:GetWidth() or 20
+    local inset = math.max(0, math.floor((w - 16) / 2))
+    ns.Flat(cb, C.input, inset)
+    for _, t in ipairs({ checked, disabledChecked }) do
+        if t and t.SetTexture then
+            t:SetTexture(WHITE)
+            t:SetTexCoord(0, 1, 0, 1)
+            t:ClearAllPoints()
+            t:SetPoint("TOPLEFT", inset + 3, -(inset + 3))
+            t:SetPoint("BOTTOMRIGHT", -(inset + 3), inset + 3)
+        end
+    end
+    if checked then checked:SetVertexColor(C.accent[1], C.accent[2], C.accent[3], 1) end
+    if disabledChecked then disabledChecked:SetVertexColor(0.5, 0.5, 0.5, 1) end
+    ns.Hover(cb)
+end
+
+-- Regler (Blizzard-Slider): feine dunkle Schiene, goldener Schieber
+function ns.SkinSlider(slider)
+    if not slider or looks[slider] then return end
+    local thumb = slider.GetThumbTexture and slider:GetThumbTexture()
+    ns.HideTextures(slider, thumb and { [thumb] = true } or nil)
+    for _, key in ipairs({ "Left", "Middle", "Right", "Track", "Background" }) do
+        local t = slider[key]
+        if type(t) == "table" and t.SetAlpha then t:SetAlpha(0) end
+    end
+    local look = { mine = {}, edges = {} }
+    looks[slider] = look
+    local track = slider:CreateTexture(nil, "BACKGROUND")
+    track:SetTexture(WHITE)
+    track:SetVertexColor(C.input[1], C.input[2], C.input[3], 1)
+    track:SetPoint("LEFT", 0, 0)
+    track:SetPoint("RIGHT", 0, 0)
+    track:SetHeight(4)
+    look.mine[track] = true
+    if thumb then
+        thumb:SetTexture(WHITE)
+        thumb:SetTexCoord(0, 1, 0, 1)
+        thumb:SetVertexColor(C.accent[1], C.accent[2], C.accent[3], 1)
+        thumb:SetSize(8, 16)
+    end
+end
+
+-- Auswahlliste (Blizzard-Dropdown-Knopf): flacher Knopf mit feinem Pfeil nach unten, Text bleibt
+function ns.SkinDropdown(dropdown)
+    if not dropdown or hovers[dropdown] then return end
+    local text = dropdown.Text
+    ns.HideTextures(dropdown)
+    for _, key in ipairs({ "Background", "Arrow", "NineSlice" }) do ns.Hide(dropdown[key]) end
+    for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetHighlightTexture", "GetDisabledTexture" }) do
+        if dropdown[get] then ns.Hide(dropdown[get](dropdown)) end
+    end
+    ns.Flat(dropdown, C.button)
+    local look = looks[dropdown]
+    local arrow = dropdown:CreateTexture(nil, "OVERLAY", nil, 7)
+    arrow:SetTexture("Interface\\ChatFrame\\ChatFrameExpandArrow")
+    arrow:SetSize(10, 10)
+    arrow:SetPoint("RIGHT", -8, 0)
+    arrow:SetRotation(-math.pi / 2)
+    arrow:SetVertexColor(0.8, 0.8, 0.82)
+    look.mine[arrow] = true
+    if text and text.SetTextColor then text:SetTextColor(0.95, 0.95, 0.95) end
+    ns.Hover(dropdown)
+end
+
 -- Pfeil-Knopf (z. B. Händler "Zurück"/"Weiter"): flach mit feinem Pfeil wie im Hub
 function ns.SkinArrowButton(button, left)
     if not button or hovers[button] then return end

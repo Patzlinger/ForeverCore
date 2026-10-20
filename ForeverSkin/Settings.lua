@@ -2,7 +2,7 @@
 -- dunkles flaches Fenster mit Titelleiste, flache Reiter "Spiel/Addons", flaches Suchfeld, flache Knöpfe
 -- ("Standard", "Schließen"), goldene Laufleisten, Liste links und Einstellungsbereich rechts als flache Kästen,
 -- Bereichsüberschriften (Gameplay, Zugänglichkeit, System) gold mit feiner Linie, Abschnitte rechts ("Maus") gold.
--- Die einzelnen Einstellungen (Haken, Regler, Auswahllisten) bleiben vorerst Blizzards – Stufe 2.
+-- Stufe 2: die einzelnen Einstellungen – Haken als goldene Kästchen, flache Regler, Auswahllisten und Knöpfe flach.
 -- Dieses Fenster ist das empfindlichste im Spiel (Tastenbelegung, Bearbeitungsmodus, Kampf-Einstellungen): darum nur
 -- Grafiken unsichtbar (SetAlpha), eigene Texturen und Schriftfarben – nichts in Blizzards Tabellen, nichts ersetzt.
 local _, ns = ...
@@ -42,16 +42,46 @@ local function SkinCategoryList(list)
     end)
 end
 
--- Abschnitts-Überschriften rechts ("Maus", "Kamera" …): gold
+-- Regler mit Pfeilen links/rechts (MinimalSliderWithSteppers): Schiene, Schieber, feine Pfeile
+local function SkinStepperSlider(s)
+    if type(s) ~= "table" then return end
+    ns.SkinSlider(s.Slider or s)
+    ns.SkinArrowOnly(s.Back or s.BackButton, "left")
+    ns.SkinArrowOnly(s.Forward or s.ForwardButton, "right")
+end
+
+-- Auswahlliste mit Pfeilen links/rechts ("Umschalttaste"): flacher Knopf, feine Pfeile
+local function SkinDropdownControl(control)
+    if type(control) ~= "table" then return end
+    local dd = control.Dropdown or control.DropDown or (control.IsObjectType and control:IsObjectType("Button") and control)
+    if dd then ns.SkinDropdown(dd) end
+    ns.SkinArrowOnly(control.DecrementButton or control.LeftButton, "left")
+    ns.SkinArrowOnly(control.IncrementButton or control.RightButton, "right")
+end
+
+-- Zeilen rechts: Abschnitts-Überschriften ("Maus", "Kamera" …) gold; Bedienelemente im Forever-Stil (Stufe 2)
 local function SkinSettingsList(list)
     local box = list and list.ScrollBox
     if not (box and box.ForEachFrame) then return end
     box:ForEachFrame(function(element)
+        local cb = element.Checkbox or element.CheckBox
+        local slider = element.SliderWithSteppers or element.Slider
+        local control = element.Control or element.DropDown or element.Dropdown
         local title = element.Title
         -- Abschnitt = nur Überschrift, kein Bedienelement
-        if title and title.SetTextColor and not (element.Checkbox or element.CheckBox or element.SliderWithSteppers
-            or element.Slider or element.Control or element.Button or element.DropDown or element.Dropdown) then
+        if title and title.SetTextColor and not (cb or slider or control or element.Button or element.Button1) then
             title:SetTextColor(C.accent[1], C.accent[2], C.accent[3])
+            return
+        end
+        if cb then ns.SkinCheck(cb) end
+        if slider then SkinStepperSlider(slider) end
+        if control then SkinDropdownControl(control) end
+        -- Knöpfe (z. B. Tastenbelegung "Nicht belegt", "Ausführen")
+        for _, key in ipairs({ "Button", "Button1", "Button2" }) do
+            local b = element[key]
+            if type(b) == "table" and b.IsObjectType and b:IsObjectType("Button") and not b:IsObjectType("CheckButton") then
+                ns.SkinButton(b)
+            end
         end
     end)
 end
@@ -88,6 +118,8 @@ local function SkinSettings()
             ns.SkinTab(tab, function(t)
                 return t.isSelected or (t.SelectedTexture and t.SelectedTexture:IsShown()) or (t.IsEnabled and not t:IsEnabled())
             end)
+            -- Blizzards Reiter sind viel höher als ihr Text: Fläche oben kürzen (Text sitzt unten)
+            ns.Refit(tab, { 0, math.max(0, (tab:GetHeight() or 30) - 26), 0, 2 })
         end
     end
     SkinSearchBox(f.SearchBox)
