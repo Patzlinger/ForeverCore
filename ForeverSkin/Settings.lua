@@ -27,11 +27,21 @@ local function SkinCategoryHeader(element)
     line:SetHeight(1)
 end
 
--- Elemente der Liste links: Überschriften erkennen (haben einen Hintergrund-Balken, sind keine Kategorie)
+-- aufgeklappt? (Blizzards +/−: Atlas bzw. Textur mit "minus"/"expanded" = offen)
+local function IsExpanded(toggle)
+    local t = toggle.GetNormalTexture and toggle:GetNormalTexture()
+    local name = t and ((t.GetAtlas and t:GetAtlas()) or (t.GetTexture and t:GetTexture()))
+    name = type(name) == "string" and name:lower() or ""
+    return name:find("minus") ~= nil or name:find("expanded") ~= nil or name:find("collapse") ~= nil
+end
+
+-- Elemente der Liste links: Überschriften erkennen (haben einen Hintergrund-Balken, sind keine Kategorie);
+-- +/− zum Auf-/Zuklappen (Reiter "Addons") als feiner Pfeil
 local function SkinCategoryList(list)
     local box = list and list.ScrollBox
     if not (box and box.ForEachFrame) then return end
     box:ForEachFrame(function(element)
+        if element.Toggle then ns.SkinToggle(element.Toggle, IsExpanded(element.Toggle)) end
         if element.Background and not element.Toggle and not element.isCategory then
             local data = element.GetElementData and element:GetElementData()
             local isHeader = type(data) == "table" and (data.isHeader or data.header or data.category == nil)
@@ -75,7 +85,17 @@ local function SkinSettingsList(list)
         end
         if cb then ns.SkinCheck(cb) end
         if slider then SkinStepperSlider(slider) end
-        if control then SkinDropdownControl(control) end
+        if control then
+            SkinDropdownControl(control)
+            local dd = control.Dropdown or control.DropDown
+            if dd then ns.DropdownColor(dd) end
+        end
+        -- Name der Einstellung hell (Blizzard: gold) – ausgegraute bleiben grau; gold sind nur die Überschriften
+        local label = element.Text or element.Label
+        if label and label.GetTextColor and label.SetTextColor then
+            local r, g, b = label:GetTextColor()
+            if r and r > 0.9 and g > 0.7 and b < 0.3 then label:SetTextColor(0.92, 0.92, 0.92) end
+        end
         -- Knöpfe (z. B. Tastenbelegung "Nicht belegt", "Ausführen")
         for _, key in ipairs({ "Button", "Button1", "Button2" }) do
             local b = element[key]
@@ -84,6 +104,27 @@ local function SkinSettingsList(list)
             end
         end
     end)
+end
+
+-- offene Auswahlliste (Blizzards Menü-System): Hintergrund und Rahmen flach und dunkel mit goldener Linie oben
+local menus = setmetatable({}, { __mode = "k" })
+function ns.SkinOpenMenu()
+    local manager = Menu and Menu.GetManager and Menu.GetManager()
+    local menu = manager and manager.GetOpenMenu and manager:GetOpenMenu()
+    if not menu then return end
+    ns.HideTextures(menu)
+    for _, key in ipairs({ "NineSlice", "Background", "Bg" }) do
+        if type(menu[key]) == "table" then ns.Hide(menu[key]) end
+    end
+    if menus[menu] then return end
+    menus[menu] = true
+    ns.Flat(menu, C.background)
+    local line = menu:CreateTexture(nil, "BORDER", nil, -6)
+    line:SetTexture(WHITE)
+    line:SetVertexColor(C.accent[1], C.accent[2], C.accent[3], 0.8)
+    line:SetPoint("TOPLEFT", 1, -1)
+    line:SetPoint("TOPRIGHT", -1, -1)
+    line:SetHeight(1)
 end
 
 local function SkinSearchBox(box)
@@ -151,15 +192,13 @@ local function SkinSettings()
     ns.Watch(f)
 
     -- Liste und Einstellungen baut Blizzard beim Öffnen einer Seite und beim Scrollen neu: solange das Fenster offen
-    -- ist, fünfmal je Sekunde die sichtbaren Zeilen prüfen
+    -- ist, in JEDEM Bild die sichtbaren Zeilen prüfen (sonst blitzten Blizzards Grafiken kurz auf; schon umgestaltete
+    -- Zeilen kosten fast nichts). Dazu eine gerade offene Auswahlliste flach und dunkel.
     local watch = CreateFrame("Frame", nil, f)
-    local waited = 0
-    watch:SetScript("OnUpdate", function(_, elapsed)
-        waited = waited + elapsed
-        if waited < 0.2 then return end
-        waited = 0
+    watch:SetScript("OnUpdate", function()
         pcall(SkinCategoryList, list)
         pcall(SkinSettingsList, settingsList)
+        pcall(ns.SkinOpenMenu)
     end)
 end
 

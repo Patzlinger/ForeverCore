@@ -597,6 +597,9 @@ end
 -- Schließen-Kreuz: zwei feine Linien wie im Hub, beim Überfahren gold
 function ns.SkinClose(button)
     if not button or looks[button] then return end
+    -- Knopf mit Text (z. B. "Schließen" unten im Optionen-Fenster heißt bei Blizzard auch CloseButton): Text-Knopf
+    local label = button.GetText and button:GetText()
+    if type(label) == "string" and label ~= "" then return ns.SkinButton(button) end
     ns.HideTextures(button)
     for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetHighlightTexture", "GetDisabledTexture" }) do
         if button[get] then ns.Hide(button[get](button)) end
@@ -782,8 +785,38 @@ function ns.SkinDropdown(dropdown)
     arrow:SetRotation(-math.pi / 2)
     arrow:SetVertexColor(0.8, 0.8, 0.82)
     look.mine[arrow] = true
-    if text and text.SetTextColor then text:SetTextColor(0.95, 0.95, 0.95) end
     ns.Hover(dropdown)
+    ns.DropdownColor(dropdown)
+end
+
+-- Text einer Auswahlliste: hell, gesperrt grau (Blizzard färbt je nach Zustand gold, weiß oder grau)
+function ns.DropdownColor(dropdown)
+    local text = dropdown and dropdown.Text
+    if not (text and text.SetTextColor) then return end
+    local on = not dropdown.IsEnabled or dropdown:IsEnabled()
+    if on then text:SetTextColor(0.95, 0.95, 0.95) else text:SetTextColor(0.5, 0.5, 0.5) end
+end
+
+-- Auf-/Zuklappen (+/− in Listen): feiner Pfeil, zugeklappt nach rechts, aufgeklappt nach unten. expanded() sagt,
+-- ob gerade aufgeklappt – bei jedem Durchgang aktualisiert
+function ns.SkinToggle(button, expanded)
+    if not button then return end
+    ns.HideTextures(button)
+    for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetHighlightTexture", "GetDisabledTexture" }) do
+        if button[get] then ns.Hide(button[get](button)) end
+    end
+    local look = looks[button]
+    if not look then
+        local arrow = button:CreateTexture(nil, "OVERLAY", nil, 7)
+        arrow:SetTexture("Interface\\ChatFrame\\ChatFrameExpandArrow")
+        arrow:SetSize(10, 10)
+        arrow:SetPoint("CENTER")
+        arrow:SetVertexColor(0.8, 0.8, 0.82)
+        look = { mine = { [arrow] = true }, edges = {}, lines = { arrow }, arrow = arrow }
+        looks[button] = look
+        hovers[button] = { close = true }
+    end
+    look.arrow:SetRotation(expanded and -math.pi / 2 or 0)
 end
 
 -- Pfeil-Knopf (z. B. Händler "Zurück"/"Weiter"): flach mit feinem Pfeil wie im Hub
