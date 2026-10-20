@@ -11,14 +11,15 @@ local MIN_WIDTH = 560 -- Platz für die Spalten-Schalter unten
 -- Jede andere Spalte lässt sich unten im Fenster ein- und ausschalten (ns.GetDB().hiddenColumns).
 local COLUMNS = {
     { key = "name",   title = function() return T("Charakter", "Character") end, width = 170, sort = "name", fixed = true },
-    { key = "level",  title = function() return T("Stufe", "Level") end,         width = 70,  sort = "level" },
-    { key = "rested", title = function() return T("Erholung", "Rested") end,     width = 80,  sort = "rested" },
-    { key = "money",  title = function() return T("Gold", "Gold") end,           width = 130, sort = "money" },
-    { key = "zone",   title = function() return T("Ort", "Location") end,        width = 140, sort = "zone" },
-    { key = "profs",  title = function() return T("Berufe", "Professions") end,  width = 190 },
+    -- (schmale Spalten eng, damit die Berufe Platz haben – Fensterbreite insgesamt wie vorher)
+    { key = "level",  title = function() return T("Stufe", "Level") end,         width = 56,  sort = "level" },
+    { key = "rested", title = function() return T("Erholung", "Rested") end,     width = 68,  sort = "rested" },
+    { key = "money",  title = function() return T("Gold", "Gold") end,           width = 104, sort = "money" },
+    { key = "zone",   title = function() return T("Ort", "Location") end,        width = 132, sort = "zone" },
+    { key = "profs",  title = function() return T("Berufe", "Professions") end,  width = 296 },
     { key = "played", title = function() return T("Spielzeit", "Played") end,    width = 84,  sort = "played" },
-    { key = "mail",   title = function() return T("Post", "Mail") end,           width = 84,  sort = "mail" },
-    { key = "honor",  title = function() return T("Ehre", "Honor") end,          width = 84,  sort = "honor" },
+    { key = "mail",   title = function() return T("Post", "Mail") end,           width = 60,  sort = "mail" },
+    { key = "honor",  title = function() return T("Ehre", "Honor") end,          width = 64,  sort = "honor" },
     { key = "last",   title = function() return T("Letzter Login", "Last login") end, width = 96, sort = "updated" },
     -- Knöpfe Taschen / Bank / Ausblenden am Zeilenende (mit Trennlinie davor), immer sichtbar
     { key = "actions", title = function() return "" end, width = 82, fixed = true },

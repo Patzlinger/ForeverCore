@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 60
+local VERSION = 61
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -3389,18 +3389,107 @@ end
 -- Knopf "Forever Hub" am Spielmenue (Escape): ein EIGENER Knopf direkt unter dem Menue – nicht in Blizzards
 -- Knopfliste. (Frueher per GameMenuFrame:AddButton eingehaengt: das machte die Knoepfe des Menues "von einem Addon
 -- beruehrt", und Blizzard blockierte danach geschuetzte Aktionen daraus – ADDON_ACTION_FORBIDDEN "callback()".)
+-- Spielmenü im Forever-Stil (v61): Blizzards Rahmen, Kopf und rote Knopfgrafiken werden nur unsichtbar gemacht
+-- (SetAlpha) – Knöpfe, Reihenfolge und Funktionen bleiben Blizzards eigene, nichts wird in ihre Tabellen
+-- geschrieben. Dahinter liegt eine eigene flache Fläche (Titelleiste mit goldener Linie, flache Knöpfe wie im Hub),
+-- unten darin mit Trennlinie der Hub-Knopf. Nicht, wenn ElvUI das Menü schon umgestaltet.
 do
     local menu = _G.GameMenuFrame
     if menu and menu.HookScript then
-        local b
+        local b, skin
+        local backs = setmetatable({}, { __mode = "k" })  -- [Blizzard-Knopf] = unsere flache Fläche dahinter
+        local hooked = setmetatable({}, { __mode = "k" }) -- Knöpfe, deren Maus-Hover schon eingehängt ist
         local function OpenHub()
             if _G.ForeverHub ~= hub then return end
             if PlaySound and SOUNDKIT then PlaySound(SOUNDKIT.IG_MAINMENU_OPTION) end
             HideUIPanel(menu)
             hub.ToggleWindow()
         end
-        menu:HookScript("OnShow", function()
-            if _G.ForeverHub ~= hub then return end
+        local function Skinned()
+            local loaded = C_AddOns and C_AddOns.IsAddOnLoaded
+            return not (loaded and loaded("ElvUI"))
+        end
+        local function Hide(obj) if obj and obj.SetAlpha then obj:SetAlpha(0) end end
+        local function MenuButtons()
+            local list = {}
+            for _, c in ipairs({ menu:GetChildren() }) do
+                if c:IsObjectType("Button") and c:IsShown() and c ~= menu.CloseButton and c:GetText() then
+                    list[#list + 1] = c
+                end
+            end
+            return list
+        end
+        local function Back(button)
+            local back = backs[button]
+            if not back then
+                back = CreateFrame("Frame", nil, skin, "BackdropTemplate")
+                UI.SetFlat(back, C.button)
+                backs[button] = back
+            end
+            back:ClearAllPoints()
+            back:SetAllPoints(button)
+            back:SetBackdropBorderColor(C.border[1], C.border[2], C.border[3], 1)
+            back:Show()
+            if not hooked[button] then
+                hooked[button] = true
+                button:HookScript("OnEnter", function(self)
+                    local bk = skin and skin:IsShown() and backs[self]
+                    if bk then bk:SetBackdropBorderColor(C.accent[1], C.accent[2], C.accent[3], 0.9) end
+                end)
+                button:HookScript("OnLeave", function(self)
+                    local bk = backs[self]
+                    if bk then bk:SetBackdropBorderColor(C.border[1], C.border[2], C.border[3], 1) end
+                end)
+            end
+        end
+        local function BuildSkin()
+            skin = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
+            UI.SetFlat(skin, C.background)
+            skin:EnableMouse(false)
+            local head = skin:CreateTexture(nil, "ARTWORK")
+            head:SetPoint("TOPLEFT", 1, -1)
+            head:SetPoint("TOPRIGHT", -1, -1)
+            head:SetHeight(26)
+            head:SetColorTexture(C.header[1], C.header[2], C.header[3], 1)
+            local line = skin:CreateTexture(nil, "ARTWORK", nil, 2)
+            line:SetPoint("TOPLEFT", head, "BOTTOMLEFT")
+            line:SetPoint("TOPRIGHT", head, "BOTTOMRIGHT")
+            line:SetHeight(1)
+            line:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 0.6)
+            skin.title = skin:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+            skin.title:SetPoint("CENTER", head, "CENTER")
+            skin.divider = skin:CreateTexture(nil, "ARTWORK")
+            skin.divider:SetHeight(1)
+            skin.divider:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 0.35)
+        end
+        local function Layout()
+            local buttons = MenuButtons()
+            local last
+            for _, btn in ipairs(buttons) do
+                if not last or (btn:GetBottom() or 0) < (last:GetBottom() or 0) then last = btn end
+            end
+            local style = Skinned() and last ~= nil
+            if style then
+                if not skin then BuildSkin() end
+                -- Blizzards Rahmen, Kopf und Hintergrund unsichtbar (die Knöpfe selbst bleiben bedienbar)
+                for _, r in ipairs({ menu:GetRegions() }) do if r:IsObjectType("Texture") then Hide(r) end end
+                Hide(menu.Border)
+                Hide(menu.Header)
+                for _, back in pairs(backs) do back:Hide() end
+                for _, btn in ipairs(buttons) do
+                    for _, r in ipairs({ btn:GetRegions() }) do if r:IsObjectType("Texture") then Hide(r) end end
+                    Hide(btn:GetNormalTexture())
+                    Hide(btn:GetPushedTexture())
+                    Hide(btn:GetHighlightTexture())
+                    Hide(btn:GetDisabledTexture())
+                    Back(btn)
+                end
+                local title = menu.Header and menu.Header.Text and menu.Header.Text:GetText()
+                skin.title:SetText(title or _G.MAINMENU_BUTTON or "Menu")
+                skin:SetFrameStrata(menu:GetFrameStrata())
+                skin:SetFrameLevel(math.max(1, menu:GetFrameLevel() - 1)) -- hinter dem Menü
+            end
+            -- Hub-Knopf: im Forever-Stil unter dem letzten Knopf in derselben Fläche, sonst wie bisher unter dem Menü
             if not b then
                 b = UI.Button(UIParent, "Forever Hub", 150, OpenHub)
                 -- Forever-Core-Symbol links vor dem Text (Text dafür etwas nach rechts)
@@ -3413,14 +3502,37 @@ do
                     logo:SetSize(16, 16)
                     logo:SetPoint("RIGHT", label, "LEFT", -6, 0)
                 end
-                b:SetFrameStrata(menu:GetFrameStrata())
-                b:SetFrameLevel(menu:GetFrameLevel() + 5)
             end
+            b:SetFrameStrata(menu:GetFrameStrata())
+            b:SetFrameLevel(menu:GetFrameLevel() + 5)
             b:ClearAllPoints()
-            b:SetPoint("TOP", menu, "BOTTOM", 0, -6)
+            if style then
+                b:SetSize(last:GetWidth(), last:GetHeight())
+                b:SetPoint("TOP", last, "BOTTOM", 0, -17)
+                skin.divider:ClearAllPoints()
+                skin.divider:SetPoint("TOPLEFT", last, "BOTTOMLEFT", 0, -8)
+                skin.divider:SetPoint("TOPRIGHT", last, "BOTTOMRIGHT", 0, -8)
+                skin:ClearAllPoints()
+                skin:SetPoint("TOPLEFT", menu, "TOPLEFT", 0, 26) -- Titelleiste über den Knöpfen
+                skin:SetPoint("RIGHT", menu, "RIGHT", 0, 0)
+                skin:SetPoint("BOTTOM", b, "BOTTOM", 0, -14)
+                skin:Show()
+            else
+                b:SetSize(150, 22)
+                b:SetPoint("TOP", menu, "BOTTOM", 0, -6)
+                if skin then skin:Hide() end
+            end
             b:Show()
+        end
+        menu:HookScript("OnShow", function()
+            if _G.ForeverHub ~= hub then return end
+            Layout()
+            C_Timer.After(0, function() if menu:IsShown() then Layout() end end) -- nach Blizzards Aufbau der Knöpfe
         end)
-        menu:HookScript("OnHide", function() if b then b:Hide() end end)
+        menu:HookScript("OnHide", function()
+            if b then b:Hide() end
+            if skin then skin:Hide() end
+        end)
     end
 end
 
