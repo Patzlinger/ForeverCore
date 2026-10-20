@@ -21,6 +21,7 @@ Data\Dungeons.lua
 Tracker.lua
 GroupQuests.lua
 QuestLog.lua
+QuestDialog.lua
 Options.lua
 Minimap.lua
 Dungeons.lua

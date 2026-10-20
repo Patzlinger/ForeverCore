@@ -34,6 +34,7 @@ ns.defaults = {
     dungeonLevelAbove = 2,   -- Reiter "Mein Level": Dungeons bis so viele Level über dem eigenen (Regler 0–10)
     waypointOpensMap = true, -- Dungeonfenster: "Kartenpunkt" öffnet die Weltkarte an der Stelle
     showQuestIDs = false,    -- Quest-IDs in Tracker, Questlog und Dungeonfenster anzeigen
+    dialogChain = true,      -- Questreihe neben dem Quest-Dialog (Annehmen/Abgeben), mit Questie
     showMinimapButton = true,
     minimapAngle = 220,
     trackerHidden = false,
