@@ -36,9 +36,35 @@ local function SkinTaxi()
     for _, key in ipairs({ "TaxiMap", "Map", "MapTexture" }) do
         if type(f[key]) == "table" and f[key].IsObjectType and f[key]:IsObjectType("Texture") then keep[f[key]] = true end
     end
-    -- nur Rahmen, Titel-Hintergrund und Porträt weg (light) – die Karte ist eine der Hintergrund-Grafiken und
-    -- verschwand sonst mit
+    -- Die Karte ist eine der Grafiken des Fensters (am Namen nicht zu erkennen) – aber mit Abstand die größte. Beim
+    -- ersten Öffnen (dann stimmen die Größen) bleibt darum nur die größte Grafik von Fenster und Innenfläche sichtbar,
+    -- alle übrigen Rahmenteile werden unsichtbar. Flugrouten und Flugpunkte liegen auf eigenen Ebenen und bleiben.
+    local inset = f.Inset or G("TaxiFrameInset")
+    local cleaned = false
+    local function KeepOnlyMap()
+        if cleaned then return end
+        local list, largest, area = {}, nil, 0
+        for _, holder in ipairs({ f, inset }) do
+            if holder and holder.GetRegions then
+                for _, r in ipairs({ holder:GetRegions() }) do
+                    if r:IsObjectType("Texture") and not ns.IsMine(holder, r) then
+                        list[#list + 1] = r
+                        local a = (r:GetWidth() or 0) * (r:GetHeight() or 0)
+                        if a > area then largest, area = r, a end
+                    end
+                end
+            end
+        end
+        if not largest or area < 10000 then return end -- Größen noch nicht bekannt: beim nächsten Öffnen
+        cleaned = true
+        for _, r in ipairs(list) do
+            if r ~= largest and not keep[r] then r:SetAlpha(0) end
+        end
+    end
+    -- nur Rahmen, Titel-Hintergrund und Porträt weg (light), den Rest erledigt KeepOnlyMap
     ns.SkinWindow(f, keep, true)
+    f:HookScript("OnShow", function() C_Timer.After(0, function() pcall(KeepOnlyMap) end) end)
+    if f:IsShown() then pcall(KeepOnlyMap) end
     ns.Watch(f)
 end
 

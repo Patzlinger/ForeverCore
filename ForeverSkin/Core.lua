@@ -123,6 +123,12 @@ function ns.OnePixel(texture, horizontal)
     end
 end
 
+-- eigene Textur von ForeverSkin (nicht Blizzards)?
+function ns.IsMine(frame, texture)
+    local look = looks[frame]
+    return look ~= nil and look.mine[texture] == true
+end
+
 function ns.EdgeColor(frame, c, a)
     local look = looks[frame]
     if not look then return end
