@@ -42,13 +42,26 @@ local function Quality(link)
     return q
 end
 
+-- Geld mit Münz-Symbolen (eigene Fassung: GetCoinTextureString lieferte in Forever nur die nackte Zahl)
+local COIN = "|TInterface\\MoneyFrame\\UI-%sIcon:12:12:2:0|t"
+local function Money(copper, color)
+    copper = math.floor(copper or 0)
+    local g, s, c = math.floor(copper / 10000), math.floor(copper / 100) % 100, copper % 100
+    local parts = {}
+    if g > 0 then parts[#parts + 1] = (BreakUpLargeNumbers and BreakUpLargeNumbers(g) or g) .. COIN:format("Gold") end
+    if s > 0 then parts[#parts + 1] = s .. COIN:format("Silver") end
+    if c > 0 or #parts == 0 then parts[#parts + 1] = c .. COIN:format("Copper") end
+    local text = table.concat(parts, " ")
+    if color then text = color .. text .. "|r" end
+    return text
+end
+ns.Money = Money
+
 -- Preis als Text: Geld (rot, wenn zu teuer) und Sonderwährungen (Symbol + Anzahl)
 local function PriceText(i, price, ext)
     local parts = {}
     if price and price > 0 then
-        local text = GetCoinTextureString and GetCoinTextureString(price) or tostring(price)
-        if price > GetMoney() then text = "|cffff5555" .. text:gsub("|cff%x%x%x%x%x%x", "") .. "|r" end
-        parts[#parts + 1] = text
+        parts[#parts + 1] = Money(price, price > GetMoney() and "|cffff5555" or nil)
     end
     if ext and GetMerchantItemCostInfo then
         for k = 1, (GetMerchantItemCostInfo(i) or 0) do
@@ -249,7 +262,7 @@ function Refresh()
             x = x + b:GetWidth() + 6
         end
     end
-    panel.money:SetText(GetCoinTextureString and GetCoinTextureString(GetMoney()) or "")
+    panel.money:SetText(Money(GetMoney()))
 end
 ns.RefreshMerchant = Refresh
 
@@ -280,9 +293,27 @@ local function IconButton(icon, tip, onClick)
 end
 
 local function Build(f)
+    -- Blizzards Händlerfenster selbst unsichtbar machen (Porträt-Ring, Titelleiste und rotes X ragten sonst über
+    -- unsere Ansicht hinaus); es bleibt offen und bedienbar für Verkaufen aus der Tasche
+    ns.HideTextures(f)
+    for _, key in ipairs({ "NineSlice", "Bg", "Background", "PortraitContainer", "TopTileStreaks", "TitleBg", "Inset",
+        "TitleContainer" }) do
+        local obj = f[key]
+        if type(obj) == "table" and obj.SetAlpha then obj:SetAlpha(0) end
+    end
+    for _, n in ipairs({ "MerchantFramePortrait", "MerchantFrameTitleText", "MerchantFrameInset", "MerchantFrameCloseButton" }) do
+        local obj = G(n)
+        if obj and obj.SetAlpha then obj:SetAlpha(0) end
+    end
+    local blizzClose = f.CloseButton or G("MerchantFrameCloseButton")
+    if blizzClose then
+        blizzClose:SetAlpha(0)
+        blizzClose:EnableMouse(false)
+    end
     panel = CreateFrame("Frame", "ForeverSkinMerchant", f, "BackdropTemplate")
     panel:SetAllPoints(f)
-    panel:SetFrameLevel(f:GetFrameLevel() + 30)
+    panel:SetFrameStrata(f:GetFrameStrata())
+    panel:SetFrameLevel(f:GetFrameLevel() + 100) -- über allen Teilen von Blizzards Fenster
     panel:EnableMouse(true)
     -- Ziehen an der Ansicht = Ziehen am Händlerfenster (dort hängt das Verschieben von ForeverCore samt Merken)
     panel:RegisterForDrag("LeftButton")
@@ -355,7 +386,7 @@ local function Build(f)
     panel.repair = IconButton("Interface\\Icons\\Trade_BlackSmithing", function(tip)
         tip:AddLine(REPAIR_ALL_ITEMS or T("Alles reparieren", "Repair all"))
         local cost = GetRepairAllCost and GetRepairAllCost()
-        if cost and cost > 0 then tip:AddLine(GetCoinTextureString(cost), 1, 1, 1) end
+        if cost and cost > 0 then tip:AddLine(Money(cost), 1, 1, 1) end
     end, function() if RepairAllItems then RepairAllItems() end end)
     panel.guildRepair = IconButton("Interface\\Icons\\INV_Shirt_GuildTabard_01", function(tip)
         tip:AddLine(GUILDBANK_REPAIR or T("Über die Gildenbank reparieren", "Repair with guild funds"))

@@ -9,6 +9,7 @@ local _, ns = ...
 local C = ns.C
 
 local WHITE = "Interface\\Buttons\\WHITE8x8"
+local CONTROL_W = 200 -- einheitliche Breite für Auswahllisten und einzelne Knöpfe in den Zeilen
 local headers = setmetatable({}, { __mode = "k" })
 
 -- Bereichsüberschrift links (roter Balken bei Blizzard) wie die Bereiche in der Liste des Forever-Einstellungsfensters:
@@ -112,7 +113,11 @@ local function SkinSettingsList(list)
         if control then
             SkinDropdownControl(control)
             local dd = control.Dropdown or control.DropDown
-            if dd then ns.DropdownColor(dd) end
+            if dd then
+                ns.DropdownColor(dd)
+                -- alle Auswahllisten gleich breit (Blizzard macht sie je nach Seite verschieden breit)
+                if math.abs((dd:GetWidth() or 0) - CONTROL_W) > 0.5 then dd:SetWidth(CONTROL_W) end
+            end
         end
         -- Name der Einstellung hell (Blizzard: gold) – ausgegraute bleiben grau; gold sind nur die Überschriften
         local label = element.Text or element.Label
@@ -125,6 +130,8 @@ local function SkinSettingsList(list)
             local b = element[key]
             if type(b) == "table" and b.IsObjectType and b:IsObjectType("Button") and not b:IsObjectType("CheckButton") then
                 ns.SkinButton(b)
+                -- einzelne Knöpfe (z. B. "Tutorial-Neustart") so breit wie die Auswahllisten; Tasten-Paare bleiben
+                if key == "Button" and math.abs((b:GetWidth() or 0) - CONTROL_W) > 0.5 then b:SetWidth(CONTROL_W) end
             end
         end
     end)
