@@ -220,7 +220,7 @@ function ns.Fit(frame, region, top, bottom, skip)
     end
     local down = top and math.max(0, top - o.top) or 0
     local up = bottom and math.max(0, bottom - o.bottom) or 0
-    if down == 0 and up == 0 then return end
+    if down == 0 and up == 0 then return 0, 0 end
     -- Punkte, die am mitwandernden Bereich (skip) hängen, bleiben; die übrigen werden versetzt
     local hasTop, hasBottom, moved = false, false, false
     for _, p in ipairs(o.points) do
@@ -230,7 +230,7 @@ function ns.Fit(frame, region, top, bottom, skip)
             moved = true
         end
     end
-    if not moved then return end
+    if not moved then return 0, 0 end
     region:ClearAllPoints()
     for _, p in ipairs(o.points) do
         local point, rel, relPoint, x, y = p[1], p[2], p[3], p[4], p[5] or 0
@@ -246,18 +246,17 @@ function ns.Fit(frame, region, top, bottom, skip)
         region:SetPoint(point, rel, relPoint, x, y)
     end
     -- feste Höhe statt unterem Ankerpunkt: Höhe so verkleinern, dass der Bereich oben UND unten passt
-    if hasTop and not hasBottom then
-        region:SetHeight(math.max(20, o.height - down - up))
-    elseif hasBottom and not hasTop then
+    if (hasTop and not hasBottom) or (hasBottom and not hasTop) then
         region:SetHeight(math.max(20, o.height - down - up))
     end
+    return down, up
 end
 
 -- Visitenkarte des NPCs über dem Inhalt (dort, wo Blizzard sein Porträt hat): großes rundes Porträt mit goldenem
 -- Ring, daneben der Name groß in Gold, darunter sein Titel ("<Metzger>") und Stufe/Art. Blizzards Titel in der
 -- Titelleiste wird dafür unsichtbar, dort steht klein, was für ein Fenster es ist (label).
 local CIRCLE = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
-function ns.NpcCard(frame, unit, label)
+function ns.NpcCard(frame, unit, label, roleFn)
     local look = looks[frame]
     if not look then return end
     if not look.card then
@@ -316,13 +315,18 @@ function ns.NpcCard(frame, unit, label)
             if type(text) == "string" and text:find("^<.+>$") then sub = text break end
         end
     end
+    -- Rolle: Titel ohne Klammern ("Rüstmeister"); ohne Titel aus den Gesprächsoptionen abgeleitet (roleFn)
+    sub = sub:gsub("^<(.+)>$", "%1")
+    if sub == "" and exists and roleFn then
+        local ok, role = pcall(roleFn)
+        if ok and type(role) == "string" then sub = role end
+    end
     card.sub:SetText(sub)
+    card.sub:SetTextColor(0.85, 0.85, 0.85)
     local info = ""
     if exists then
         local level = UnitLevel(unit)
-        local kind = UnitCreatureType and UnitCreatureType(unit)
         if level and level > 0 then info = (LEVEL or "Level") .. " " .. level end
-        if kind and kind ~= "" then info = info ~= "" and (info .. "  ·  " .. kind) or kind end
     end
     card.info:SetText(info)
     card.info:ClearAllPoints()
@@ -333,6 +337,73 @@ function ns.NpcCard(frame, unit, label)
     end
     -- ohne NPC (z. B. Quest aus einem Gegenstand): nur der Titel in der Leiste
     if not exists then card.name:SetText("") card.info:SetText("") end
+end
+
+-- Rolle eines NPCs aus seinen Gesprächsoptionen (Symbol der Option) bzw. seinen Quests
+local ROLE_ICONS = {
+    { "Interface\\GossipFrame\\VendorGossipIcon", function() return ns.T("Händler", "Vendor") end },
+    { "Interface\\GossipFrame\\TrainerGossipIcon", function() return ns.T("Lehrer", "Trainer") end },
+    { "Interface\\GossipFrame\\TaxiGossipIcon", function() return ns.T("Flugmeister", "Flight master") end },
+    { "Interface\\GossipFrame\\BankerGossipIcon", function() return ns.T("Bankier", "Banker") end },
+    { "Interface\\GossipFrame\\BinderGossipIcon", function() return ns.T("Gastwirt", "Innkeeper") end },
+    { "Interface\\GossipFrame\\PetitionGossipIcon", function() return ns.T("Gildenmeister", "Guild master") end },
+    { "Interface\\GossipFrame\\TabardGossipIcon", function() return ns.T("Wappenrock-Händler", "Tabard vendor") end },
+    { "Interface\\GossipFrame\\BattleMasterGossipIcon", function() return ns.T("Kampfmeister", "Battlemaster") end },
+    { "Interface\\Icons\\Ability_Hunter_BeastTraining", function() return ns.T("Stallmeister", "Stable master") end },
+}
+local iconRole
+function ns.GossipRole()
+    if not iconRole then
+        iconRole = {}
+        for _, r in ipairs(ROLE_ICONS) do
+            iconRole[r[1]:lower()] = r[2]
+            local id = GetFileIDFromPath and GetFileIDFromPath(r[1])
+            if id then iconRole[id] = r[2] end
+        end
+    end
+    local G = C_GossipInfo
+    if G and G.GetOptions then
+        for _, o in ipairs(G.GetOptions() or {}) do
+            local icon = o.icon
+            local fn = icon and (iconRole[icon] or (type(icon) == "string" and iconRole[icon:lower()]))
+            if fn then return fn() end
+        end
+    end
+    local quests = G and ((G.GetNumAvailableQuests and G.GetNumAvailableQuests() or 0)
+        + (G.GetNumActiveQuests and G.GetNumActiveQuests() or 0)) or 0
+    if quests > 0 then return ns.T("Questgeber", "Quest giver") end
+end
+
+-- Laufleiste im Gold der Überschriften: Blizzards brauner Schieber unsichtbar, darauf ein flacher goldener; die
+-- Schiene eine feine dunkle Linie (Retail: Track/Thumb, Classic: Schieber-Textur)
+function ns.SkinScrollBar(bar)
+    if not bar or looks[bar] then return end
+    looks[bar] = { mine = {}, edges = {} }
+    local track = bar.Track
+    local thumb = track and (track.Thumb or (track.GetThumb and track:GetThumb()))
+    if thumb then
+        ns.HideTextures(track)
+        ns.HideTextures(thumb)
+        local line = track:CreateTexture(nil, "BACKGROUND")
+        line:SetTexture(WHITE)
+        line:SetVertexColor(C.input[1], C.input[2], C.input[3], 1)
+        line:SetPoint("TOP", 0, 0)
+        line:SetPoint("BOTTOM", 0, 0)
+        line:SetWidth(4)
+        local fill = thumb:CreateTexture(nil, "ARTWORK")
+        fill:SetTexture(WHITE)
+        fill:SetVertexColor(C.accent[1], C.accent[2], C.accent[3], 0.85)
+        fill:SetPoint("TOP", 0, 0)
+        fill:SetPoint("BOTTOM", 0, 0)
+        fill:SetWidth(4)
+        return
+    end
+    local tex = (bar.GetThumbTexture and bar:GetThumbTexture()) or bar.ThumbTexture
+    if tex then
+        tex:SetTexture(WHITE)
+        tex:SetVertexColor(C.accent[1], C.accent[2], C.accent[3], 0.85)
+        tex:SetWidth(4)
+    end
 end
 
 -- Innenfläche (Inset): etwas hellere Fläche statt Blizzards Rahmen

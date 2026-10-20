@@ -104,10 +104,15 @@ local function SkinGossip()
         ns.Fit(f, panel.ScrollBar, 88, 44, panel.ScrollBox)
         ns.Fit(f, G("GossipGreetingScrollFrame"), 88, 44)
     end
+    if panel then ns.SkinScrollBar(panel.ScrollBar) end
+    ns.SkinScrollBar(G("GossipGreetingScrollFrameScrollBar"))
     f:HookScript("OnShow", function()
-        ns.NpcCard(f, "npc", ns.T("Gespräch", "Conversation"))
+        ns.NpcCard(f, "npc", ns.T("Gespräch", "Conversation"), ns.GossipRole)
         Later()
-        C_Timer.After(0, function() pcall(Place) end)
+        C_Timer.After(0, function()
+            pcall(Place)
+            pcall(ns.NpcCard, f, "npc", ns.T("Gespräch", "Conversation"), ns.GossipRole) -- Optionen sind jetzt da
+        end)
     end)
 end
 
@@ -189,12 +194,15 @@ local function SkinQuest()
             if s and s:IsShown() then
                 ns.Fit(f, s, 88, 44)
                 local bar = s.ScrollBar or G(n .. "ScrollBar")
-                if bar then ns.Fit(f, bar, 88, 44, s) end
+                if bar then
+                    ns.Fit(f, bar, 88, 44, s)
+                    ns.SkinScrollBar(bar)
+                end
             end
         end
     end
     f:HookScript("OnShow", function()
-        ns.NpcCard(f, "questnpc", ns.T("Quest", "Quest"))
+        ns.NpcCard(f, "questnpc", ns.T("Quest", "Quest"), function() return ns.T("Questgeber", "Quest giver") end)
         C_Timer.After(0, function() pcall(Place) end)
     end)
     for _, n in ipairs({ "QuestFrameDetailPanel", "QuestFrameProgressPanel", "QuestFrameRewardPanel", "QuestFrameGreetingPanel" }) do
@@ -267,7 +275,26 @@ local function SkinMerchant()
     -- nur die untere Leiste mit dem Geld; kein großer Kasten (die Gegenstände haben eigene, Blizzards Bereiche für
     -- Seiten und Rückkauf passten nicht dazu – Ränder überlagerten sich)
     ns.ContentBox(f, 26, nil, true)
-    f:HookScript("OnShow", function() ns.Portrait(f, "npc") end)
+    -- Visitenkarte wie beim Gespräch: die Gegenstandsliste rückt darunter, das Fenster wird um genau diesen Platz
+    -- höher (Blättern, Rückkauf und Geld hängen unten und wandern mit)
+    local baseHeight
+    local function Place()
+        local first = G("MerchantItem1")
+        if not first then return end
+        baseHeight = baseHeight or f:GetHeight()
+        local down = ns.Fit(f, first, 88) or 0
+        if down > 0 and math.abs(f:GetHeight() - (baseHeight + down)) > 0.5 then f:SetHeight(baseHeight + down) end
+    end
+    local function Card()
+        ns.NpcCard(f, "npc", ns.T("Händler", "Vendor"), function() return ns.T("Händler", "Vendor") end)
+    end
+    f:HookScript("OnShow", function()
+        Card()
+        C_Timer.After(0, function() pcall(Place) end)
+    end)
+    if type(_G.MerchantFrame_Update) == "function" then
+        hooksecurefunc("MerchantFrame_Update", function() pcall(Place) end)
+    end
     ns.Watch(f)
 end
 
