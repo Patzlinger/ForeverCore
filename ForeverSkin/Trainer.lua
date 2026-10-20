@@ -163,12 +163,15 @@ local function SkinTrainer()
     -- Größe wie das Gesprächsfenster; Liste fest zwischen Visitenkarte (bzw. Fertigkeitsstufe) und unterer Leiste.
     -- (Früher relativ zu Blizzards Lage verschoben – Blizzard hängt die Liste aber je nach Lehrer anders auf, dann
     -- blieb unten Platz frei oder es überlappte oben.) Nach jedem Aktualisieren erneut, weil Blizzard neu aufhängt.
-    function Place()
+    function ns.TrainerSize()
         local gossip = G("GossipFrame")
         local w = gossip and gossip:GetWidth() or 384
         local h = gossip and gossip:GetHeight() or 512
         if math.abs(f:GetWidth() - w) > 0.5 then f:SetWidth(w) end
         if math.abs(f:GetHeight() - h) > 0.5 then f:SetHeight(h) end
+    end
+    function Place()
+        ns.TrainerSize()
         -- Berufslehrer: kein Zauberbuch-Knopf (der Fertigkeitsbalken steht dort)
         local tradeskill = IsTradeskillTrainer and IsTradeskillTrainer() and true or false
         book:SetShown(not tradeskill)
@@ -224,6 +227,8 @@ local function SkinTrainer()
         if waited < 0.2 then return end
         waited = 0
         pcall(SkinRows)
+        -- Blizzard setzt die Größe (v. a. beim Klassenlehrer) teils nachträglich zurück: wieder wie das Gespräch
+        if ns.TrainerSize then pcall(ns.TrainerSize) end
     end)
     f:HookScript("OnShow", function()
         Card()
