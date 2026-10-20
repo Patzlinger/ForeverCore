@@ -148,8 +148,12 @@ local function SkinSettingsList(list)
             local b = element[key]
             if type(b) == "table" and b.IsObjectType and b:IsObjectType("Button") and not b:IsObjectType("CheckButton") then
                 ns.SkinButton(b)
-                -- einzelne Knöpfe (z. B. "Tutorial-Neustart") so breit wie die Auswahllisten; Tasten-Paare bleiben
-                if key == "Button" and math.abs((b:GetWidth() or 0) - CONTROL_W) > 0.5 then b:SetWidth(CONTROL_W) end
+                -- einzelne Knöpfe (z. B. "Tutorial-Neustart", "Zurücksetzen") so breit wie die Auswahllisten und in
+                -- derselben Spalte; Tasten-Paare (Tastenbelegung) bleiben, wie sie sind
+                if key == "Button" then
+                    if math.abs((b:GetWidth() or 0) - CONTROL_W) > 0.5 then b:SetWidth(CONTROL_W) end
+                    AlignDropdown(element, b)
+                end
             end
         end
     end)
