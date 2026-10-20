@@ -651,6 +651,51 @@ function ns.Hover(frame, selected)
     hovers[frame] = { selected = selected, row = true }
 end
 
+-- Symbol-Knopf (z. B. Reparieren, Plunder verkaufen): Blizzards Rahmen weg, das Symbol bleibt, flache Fläche dahinter
+function ns.SkinIconButton(button)
+    if not button or hovers[button] then return end
+    local name = button:GetName()
+    local icon = button.Icon or button.icon or (name and (_G[name .. "Icon"] or _G[name .. "IconTexture"]))
+    local keep = {}
+    if icon then keep[icon] = true end
+    ns.HideTextures(button, keep)
+    if not icon then
+        -- Symbol ist die "normale" Grafik des Knopfs: sie bleibt, nur gedrückt/hell weg
+        icon = button.GetNormalTexture and button:GetNormalTexture()
+    else
+        ns.Hide(button.GetNormalTexture and button:GetNormalTexture())
+    end
+    if icon and icon.SetAlpha then
+        icon:SetAlpha(1)
+        icon:ClearAllPoints()
+        icon:SetPoint("TOPLEFT", 3, -3)
+        icon:SetPoint("BOTTOMRIGHT", -3, 3)
+        if icon.SetTexCoord then icon:SetTexCoord(0.08, 0.92, 0.08, 0.92) end
+    end
+    ns.Hide(button.GetPushedTexture and button:GetPushedTexture())
+    ns.Hide(button.GetHighlightTexture and button:GetHighlightTexture())
+    ns.Flat(button, C.button)
+    ns.Hover(button)
+end
+
+-- Pfeil-Knopf (z. B. Händler "Zurück"/"Weiter"): flach mit feinem Pfeil wie im Hub
+function ns.SkinArrowButton(button, left)
+    if not button or hovers[button] then return end
+    ns.HideTextures(button)
+    for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetHighlightTexture", "GetDisabledTexture" }) do
+        if button[get] then ns.Hide(button[get](button)) end
+    end
+    ns.Flat(button, C.button)
+    local arrow = button:CreateTexture(nil, "OVERLAY", nil, 7)
+    arrow:SetTexture("Interface\\ChatFrame\\ChatFrameExpandArrow")
+    arrow:SetSize(12, 12)
+    arrow:SetPoint("CENTER")
+    arrow:SetRotation(left and math.pi or 0)
+    arrow:SetVertexColor(0.85, 0.85, 0.87)
+    looks[button].mine[arrow] = true
+    ns.Hover(button)
+end
+
 -- Reiter (z. B. Händler/Rückkauf): flach, der gewählte mit goldenem Rand und goldener Schrift
 function ns.SkinTab(tab, isSelected)
     if not tab or hovers[tab] then return end

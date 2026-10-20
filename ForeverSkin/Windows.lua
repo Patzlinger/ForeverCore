@@ -256,8 +256,10 @@ local function SkinMerchant()
         ns.HideTextures(item) -- Fach und Namensfeld
         -- Kasten etwas größer als das Feld, damit Name und Preis ganz darin liegen; Namen höchstens zwei Zeilen
         -- (sonst ragten lange Namen wie "Muster: Lavendelfarbenes Magiestoffhemd" oben heraus)
-        -- (Rückkauf-Feld unten ohne Überstand: darunter beginnt die Geldleiste)
-        ns.Flat(item, C.panel, name == "MerchantBuyBackItem" and { -3, -3, -3, 0 } or { -3, -3, -3, -5 })
+        -- wie ein flacher Knopf (Knopf-Farbe, beim Überfahren goldener Rand) – etwas größer als das Feld, damit Name
+        -- und Preis ganz darin liegen (Rückkauf-Feld unten ohne Überstand: darunter beginnt die Geldleiste)
+        ns.Flat(item, C.button, name == "MerchantBuyBackItem" and { -3, -3, -3, 0 } or { -3, -3, -3, -5 })
+        ns.Hover(item)
         local nameText = item.Name or G(name .. "Name")
         if nameText and nameText.SetMaxLines then nameText:SetMaxLines(2) end
         local button = G(name .. "ItemButton")
@@ -268,6 +270,13 @@ local function SkinMerchant()
     end
     for i = 1, 12 do Item("MerchantItem" .. i) end
     Item("MerchantBuyBackItem")
+    -- Blizzards Knöpfe im Forever-Stil: Blättern als flache Pfeil-Knöpfe, Reparieren/Plunder als flache Symbol-Knöpfe
+    ns.SkinArrowButton(G("MerchantPrevPageButton"), true)
+    ns.SkinArrowButton(G("MerchantNextPageButton"), false)
+    for _, n in ipairs({ "MerchantRepairAllButton", "MerchantRepairItemButton", "MerchantGuildBankRepairButton",
+        "MerchantSellAllJunkButton" }) do
+        ns.SkinIconButton(G(n))
+    end
     for i = 1, 2 do
         local tab = G("MerchantFrameTab" .. i)
         if tab then
