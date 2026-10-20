@@ -59,7 +59,8 @@ local function Chat(text) UI.Chat("ForeverTooltip", text) end
 -- Stil: eigene Fläche und Kanten hinter dem Text, Blizzards Rahmen (NineSlice) unsichtbar
 ---------------------------------------------------------------------------
 local TOOLTIPS = { "GameTooltip", "ItemRefTooltip", "ShoppingTooltip1", "ShoppingTooltip2",
-    "ItemRefShoppingTooltip1", "ItemRefShoppingTooltip2", "EmbeddedItemTooltip" }
+    "ItemRefShoppingTooltip1", "ItemRefShoppingTooltip2", "EmbeddedItemTooltip",
+    "SettingsTooltip" } -- (Tooltip im Optionen-Fenster von Blizzard)
 local skinned = {}
 
 local function SetEdgeColor(tip, r, g, b, a, topToo)
