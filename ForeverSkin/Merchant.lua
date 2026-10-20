@@ -13,7 +13,7 @@ local UI = ns.UI
 
 local W, H = 384, 520                 -- Größe (wie das Gesprächsfenster)
 local ROW_H, ICON = 40, 34
-local LIST_TOP, FOOT = 140, 40        -- Liste ab hier (unter Visitenkarte, Reitern, Filter), Höhe der unteren Leiste
+local LIST_TOP, FOOT = 148, 40        -- Liste ab hier (unter Visitenkarte, Reitern, Filter), Höhe der unteren Leiste
 local panel, rows, list, scrollBar = nil, {}, nil, nil
 local tab = "buy"                     -- "buy" oder "buyback"
 local offset, filter = 0, ""
@@ -374,11 +374,11 @@ local function Build(f)
             Refresh()
         end)
         t.key = def[1]
-        t:SetPoint("TOPLEFT", panel, "TOPLEFT", 10 + (i - 1) * 106, -86)
+        t:SetPoint("TOPLEFT", panel, "TOPLEFT", 10 + (i - 1) * 106, -94)
         panel.tabs[i] = t
     end
     local search = UI.EditBox(panel, 140, 22)
-    search:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -10, -86)
+    search:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -10, -94)
     local hint = search:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     hint:SetPoint("LEFT", 7, 0)
     hint:SetText(T("Suchen …", "Search …"))
@@ -393,7 +393,7 @@ local function Build(f)
     search:SetScript("OnEscapePressed", function(self) self:SetText("") self:ClearFocus() end)
     panel.search = search
     -- Haken "Nicht benutzbare ausblenden" (gemerkt)
-    panel.hideUnusable = UI.Check(panel, 10, -112, T("Nicht benutzbare ausblenden", "Hide unusable"), function(checked)
+    panel.hideUnusable = UI.Check(panel, 10, -120, T("Nicht benutzbare ausblenden", "Hide unusable"), function(checked)
         ns.GetDB().merchantHideUnusable = checked
         offset = 0
         Refresh()

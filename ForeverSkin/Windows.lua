@@ -91,7 +91,7 @@ local function SkinGossip()
     local panel = f.GreetingPanel or G("GossipFrameGreetingPanel")
     HidePanel(panel)
     if panel and panel.ScrollBox then ns.HideTextures(panel.ScrollBox) end
-    ns.ContentBox(f, 30, 80)
+    ns.ContentBox(f, 30, 88)
     ns.SkinButton((panel and panel.GoodbyeButton) or G("GossipFrameGreetingGoodbyeButton"))
     ns.Watch(f)
     ns.Scaled(f)
@@ -101,9 +101,9 @@ local function SkinGossip()
     -- die Knopfleiste (Kasten endet 38 über dem Rand)
     local function Place()
         if not panel then return end
-        ns.Fit(f, panel.ScrollBox, 88, 44)
-        ns.Fit(f, panel.ScrollBar, 88, 44, panel.ScrollBox)
-        ns.Fit(f, G("GossipGreetingScrollFrame"), 88, 44)
+        ns.Fit(f, panel.ScrollBox, 96, 44)
+        ns.Fit(f, panel.ScrollBar, 96, 44, panel.ScrollBox)
+        ns.Fit(f, G("GossipGreetingScrollFrame"), 96, 44)
     end
     if panel then ns.SkinScrollBar(panel.ScrollBar) end
     ns.SkinScrollBar(G("GossipGreetingScrollFrameScrollBar"))
@@ -187,16 +187,16 @@ local function SkinQuest()
     ns.SkinWindow(f)
     for _, n in ipairs(QUEST_PANELS) do HidePanel(G(n)) end
     for _, n in ipairs(QUEST_BUTTONS) do ns.SkinButton(G(n)) end
-    ns.ContentBox(f, 30, 80)
+    ns.ContentBox(f, 30, 88)
     local function Place()
         for _, n in ipairs({ "QuestDetailScrollFrame", "QuestProgressScrollFrame", "QuestRewardScrollFrame",
             "QuestGreetingScrollFrame" }) do
             local s = G(n)
             if s and s:IsShown() then
-                ns.Fit(f, s, 88, 44)
+                ns.Fit(f, s, 96, 44)
                 local bar = s.ScrollBar or G(n .. "ScrollBar")
                 if bar then
-                    ns.Fit(f, bar, 88, 44, s)
+                    ns.Fit(f, bar, 96, 44, s)
                     ns.SkinScrollBar(bar)
                 end
             end

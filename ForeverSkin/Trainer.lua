@@ -183,7 +183,7 @@ local function SkinTrainer()
         -- Berufslehrer: kein Zauberbuch-Knopf (der Fertigkeitsbalken steht dort)
         local tradeskill = IsTradeskillTrainer and IsTradeskillTrainer() and true or false
         book:SetShown(not tradeskill)
-        local TOP, BOTTOM, LEFT, RIGHT = -88, FOOTER + 6, 10, -30
+        local TOP, BOTTOM, LEFT, RIGHT = -96, FOOTER + 6, 10, -30 -- (8 px Luft unter dem Porträt)
         if inset then
             inset:ClearAllPoints()
             inset:SetPoint("TOPLEFT", f, "TOPLEFT", 6, TOP + 4)
