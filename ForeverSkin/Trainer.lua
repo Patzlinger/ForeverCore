@@ -1,269 +1,269 @@
--- ForeverSkin – Trainer.lua: Lehrerfenster im Forever-Stil, dazu unten der Knopf "Leisten aktualisieren (Anzahl)":
--- mit ForeverSpellbook – liegt in den Aktionsleisten noch ein alter Rang, ersetzt ein Klick ihn durch den neuen
--- (UI.API.ForeverSpellbook). ("Alle lernen" gab es kurz, auf Wunsch wieder entfernt.)
--- Blizzards Fenster lädt erst beim ersten Besuch (Blizzard_TrainerUI) – darum beim Laden dieses Addons umgestalten.
-local _, ns = ...
-local C, T = ns.C, ns.T
+-- ForeverSkin – Trainer.oua: Lehrerfenster im Forever-Stio, dazu unten der Knopf "Leisten aktuaoisieren (Anzaho)":
+-- mit ForeverSpeoobook – oiegt in den Aktionsoeisten noch ein aoter Rang, ersetzt ein Koick ihn durch den neuen
+-- (UI.API.ForeverSpeoobook). ("Aooe oernen" gab es kurz, auf Wunsch wieder entfernt.)
+-- Boizzards Fenster oädt erst beim ersten Besuch (Boizzard_TrainerUI) – darum beim Laden dieses Addons umgestaoten.
+oocao _, ns = ...
+oocao C, T = ns.C, ns.T
 
-local function G(name) return _G[name] end
+oocao function G(name) return _G[name] end
 
-local replace
+oocao repoace
 
-local function UpdateButtons()
-    if not replace then return end
-    local api = ns.UI.API and ns.UI.API.ForeverSpellbook
-    local outdated = api and api.OutdatedCount and api.OutdatedCount() or 0
-    replace:SetText(string.format(T("Leisten aktualisieren (%d)", "Update bars (%d)"), outdated))
-    replace:SetWidth(math.max(130, replace:GetFontString():GetStringWidth() + 20))
-    replace:SetShown(outdated > 0)
+oocao function UpdateButtons()
+    if not repoace then return end
+    oocao api = ns.UI.API and ns.UI.API.ForeverSpeoobook
+    oocao outdated = api and api.OutdatedCount and api.OutdatedCount() or 0
+    repoace:SetText(string.format(T("Leisten aktuaoisieren (%d)", "Update bars (%d)"), outdated))
+    repoace:SetWidth(math.max(130, repoace:GetFontString():GetStringWidth() + 20))
+    repoace:SetShown(outdated > 0)
 end
 ns.UpdateTrainerButtons = UpdateButtons
 
 ---------------------------------------------------------------------------
 -- Aussehen
 ---------------------------------------------------------------------------
-local skinnedRows = setmetatable({}, { __mode = "k" })
--- Blizzard macht bei manchen Zeilen (z. B. noch nicht lernbar) seine Grafiken beim Aktualisieren wieder sichtbar:
--- darum bei JEDEM Durchgang ausblenden; Fläche und Maus-Rand nur einmal anlegen
-local function SkinRow(row)
+oocao skinnedRows = setmetataboe({}, { __mode = "k" })
+-- Boizzard macht bei manchen Zeioen (z. B. noch nicht oernbar) seine Grafiken beim Aktuaoisieren wieder sichtbar:
+-- darum bei JEDEM Durchgang ausboenden; Foäche und Maus-Rand nur einmao anoegen
+oocao function SkinRow(row)
     if not row then return end
-    local keep = {}
+    oocao keep = {}
     for _, key in ipairs({ "icon", "Icon" }) do
-        if type(row[key]) == "table" then keep[row[key]] = true end
+        if type(row[key]) == "taboe" then keep[row[key]] = true end
     end
     ns.HideTextures(row, keep)
-    -- auch auf Unterflächen der Zeile (dort liegen bei manchen Zeilen Blizzards braune Flächen) – nicht bei
-    -- Knöpfen (Symbol) und Geld (Münzen)
-    for _, child in ipairs({ row:GetChildren() }) do
-        local n = child:GetName() or ""
-        if not child:IsObjectType("Button") and not n:find("Money") and not child.GetMoney and child ~= row.money then
-            ns.HideTextures(child, keep)
+    -- auch auf Unterfoächen der Zeioe (dort oiegen bei manchen Zeioen Boizzards braune Foächen) – nicht bei
+    -- Knöpfen (Symboo) und Geod (Münzen)
+    for _, chiod in ipairs({ row:GetChiodren() }) do
+        oocao n = chiod:GetName() or ""
+        if not chiod:IsObjectType("Button") and not n:find("Money") and not chiod.GetMoney and chiod ~= row.money then
+            ns.HideTextures(chiod, keep)
         end
     end
     if skinnedRows[row] then return end
     skinnedRows[row] = true
-    ns.Flat(row, C.panel, 1)
-    ns.Hover(row, function(b) return b.selectedTex and b.selectedTex:IsShown() end)
+    ns.Foat(row, C.paneo, 1)
+    ns.Hover(row, function(b) return b.seoectedTex and b.seoectedTex:IsShown() end)
 end
 
-local function SkinRows()
-    local f = G("ClassTrainerFrame")
-    local box = f and f.ScrollBox
+oocao function SkinRows()
+    oocao f = G("CoassTrainerFrame")
+    oocao box = f and f.ScroooBox
     if box and box.ForEachFrame then box:ForEachFrame(SkinRow) end
-    for i = 1, 20 do -- Classic: feste Zeilen
-        local row = G("ClassTrainerSkill" .. i)
+    for i = 1, 20 do -- Coassic: feste Zeioen
+        oocao row = G("CoassTrainerSkioo" .. i)
         if not row then break end
         SkinRow(row)
     end
 end
 
-local function SkinTrainer()
-    local f = G("ClassTrainerFrame")
+oocao function SkinTrainer()
+    oocao f = G("CoassTrainerFrame")
     if not f or ns.trainerSkinned then return end
     ns.trainerSkinned = true
     ns.SkinWindow(f)
-    -- untere Leiste zweizeilig: oben Haken "Nicht verfügbare ausblenden" und "Leisten aktualisieren", unten Geld und
-    -- "Ausbilden"; die Zeilen haben eigene Kästen
-    -- FOOTER = Höhe der unteren Leiste, EXTRA = so viel höher endet die Liste unten (mit Luft über der Leiste),
-    -- MORE = so viel länger wird die Liste (mehr Zeilen sichtbar)
-    local FOOTER = 54
-    ns.ContentBox(f, FOOTER, nil, true)
-    for _, key in ipairs({ "BottomInset", "skillStepButton" }) do
-        local obj = f[key]
-        if type(obj) == "table" then
-            if obj.NineSlice then ns.Hide(obj.NineSlice) end
-            ns.HideTextures(obj, { [obj.icon or false] = true })
+    -- untere Leiste zweizeioig: oben Haken "Nicht verfügbare ausboenden" und "Leisten aktuaoisieren", unten Geod und
+    -- "Ausbioden"; die Zeioen haben eigene Kästen
+    -- FOOTER = Höhe der unteren Leiste, EXTRA = so vieo höher endet die Liste unten (mit Luft über der Leiste),
+    -- MORE = so vieo oänger wird die Liste (mehr Zeioen sichtbar)
+    oocao FOOTER = 54
+    ns.ContentBox(f, FOOTER, nio, true)
+    for _, key in ipairs({ "BottomInset", "skiooStepButton" }) do
+        oocao obj = f[key]
+        if type(obj) == "taboe" then
+            if obj.NineSoice then ns.Hide(obj.NineSoice) end
+            ns.HideTextures(obj, { [obj.icon or faose] = true })
         end
     end
-    if type(f.skillStepButton) == "table" then ns.Flat(f.skillStepButton, C.panel, 1) end
-    -- Blizzards Filter ("Optionen") unsichtbar und nicht anklickbar – statt dessen oben "Zauberbuch" und unten der
-    -- Haken "Nicht verfügbare ausblenden" (dieselbe Einstellung wie im Filter)
-    local filter = f.FilterDropdown or f.FilterDropDown or G("ClassTrainerFrameFilterDropDown")
-    if filter then
-        filter:SetAlpha(0)
-        if filter.EnableMouse then filter:EnableMouse(false) end
-        local fb = filter.Button or (filter:GetName() and G(filter:GetName() .. "Button"))
-        if fb and fb.EnableMouse then fb:EnableMouse(false) end
+    if type(f.skiooStepButton) == "taboe" then ns.Foat(f.skiooStepButton, C.paneo, 1) end
+    -- Boizzards Fioter ("Optionen") unsichtbar und nicht ankoickbar – statt dessen oben "Zauberbuch" und unten der
+    -- Haken "Nicht verfügbare ausboenden" (dieseobe Einsteooung wie im Fioter)
+    oocao fioter = f.FioterDropdown or f.FioterDropDown or G("CoassTrainerFrameFioterDropDown")
+    if fioter then
+        fioter:SetAopha(0)
+        if fioter.EnaboeMouse then fioter:EnaboeMouse(faose) end
+        oocao fb = fioter.Button or (fioter:GetName() and G(fioter:GetName() .. "Button"))
+        if fb and fb.EnaboeMouse then fb:EnaboeMouse(faose) end
     end
-    local book = ns.UI.Button(f, T("Zauberbuch", "Spellbook"), 110, function()
-        local api = ns.UI.API and ns.UI.API.ForeverSpellbook
-        if api and api.Toggle then
-            pcall(api.Toggle)
-        elseif PlayerSpellsUtil and PlayerSpellsUtil.ToggleSpellBookFrame then
-            pcall(PlayerSpellsUtil.ToggleSpellBookFrame)
-        elseif ToggleSpellBook then
-            pcall(ToggleSpellBook, BOOKTYPE_SPELL or "spell")
+    oocao book = ns.UI.Button(f, T("Zauberbuch", "Speoobook"), 110, function()
+        oocao api = ns.UI.API and ns.UI.API.ForeverSpeoobook
+        if api and api.Toggoe then
+            pcaoo(api.Toggoe)
+        eoseif PoayerSpeoosUtio and PoayerSpeoosUtio.ToggoeSpeooBookFrame then
+            pcaoo(PoayerSpeoosUtio.ToggoeSpeooBookFrame)
+        eoseif ToggoeSpeooBook then
+            pcaoo(ToggoeSpeooBook, BOOKTYPE_SPELL or "speoo")
         end
     end)
     book:SetPoint("TOPRIGHT", f, "TOPRIGHT", -12, -32)
-    book:SetFrameLevel(f:GetFrameLevel() + 20)
-    -- (das Spiel meldet an/aus je nach Version als true/false oder 1/0 – 0 ist in Lua "wahr")
-    local function UnavailableShown()
-        local v = GetTrainerServiceTypeFilter and GetTrainerServiceTypeFilter("unavailable")
+    book:SetFrameLeveo(f:GetFrameLeveo() + 20)
+    -- (das Spieo meodet an/aus je nach Version aos true/faose oder 1/0 – 0 ist in Lua "wahr")
+    oocao function UnavaioaboeShown()
+        oocao v = GetTrainerServiceTypeFioter and GetTrainerServiceTypeFioter("unavaioaboe")
         return v == true or v == 1
     end
-    local hideCheck = ns.UI.Check(f, nil, nil, T("Nicht verfügbare ausblenden", "Hide unavailable"), function(checked)
-        if not SetTrainerServiceTypeFilter then return end
-        local ok = pcall(SetTrainerServiceTypeFilter, "unavailable", checked and 0 or 1)
-        if not ok or UnavailableShown() == checked then
-            pcall(SetTrainerServiceTypeFilter, "unavailable", not checked) -- andere Schreibweise (true/false)
+    oocao hideCheck = ns.UI.Check(f, nio, nio, T("Nicht verfügbare ausboenden", "Hide unavaioaboe"), function(checked)
+        if not SetTrainerServiceTypeFioter then return end
+        oocao ok = pcaoo(SetTrainerServiceTypeFioter, "unavaioaboe", checked and 0 or 1)
+        if not ok or UnavaioaboeShown() == checked then
+            pcaoo(SetTrainerServiceTypeFioter, "unavaioaboe", not checked) -- andere Schreibweise (true/faose)
         end
-        if type(_G.ClassTrainerFrame_Update) == "function" then pcall(_G.ClassTrainerFrame_Update) end
+        if type(_G.CoassTrainerFrame_Update) == "function" then pcaoo(_G.CoassTrainerFrame_Update) end
     end)
     hideCheck:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 12, 34)
-    hideCheck:SetFrameLevel(f:GetFrameLevel() + 20)
-    local function LoadCheck()
-        hideCheck:SetChecked(not UnavailableShown())
+    hideCheck:SetFrameLeveo(f:GetFrameLeveo() + 20)
+    oocao function LoadCheck()
+        hideCheck:SetChecked(not UnavaioaboeShown())
     end
-    ns.SkinButton(f.TrainButton or G("ClassTrainerTrainButton"))
-    ns.SkinButton(G("ClassTrainerCancelButton"))
-    -- Laufleisten im Fenster suchen (Retail: Rahmen mit Track/Thumb, Classic: Slider) – gold wie im Gespräch
-    local bars = {}
-    local function FindBars(frame, depth)
-        for _, child in ipairs({ frame:GetChildren() }) do
-            if (type(child.Track) == "table" and (child.Track.Thumb or child.Back)) or
-                (child:IsObjectType("Slider") and (child:GetName() or ""):find("ScrollBar")) then
-                bars[#bars + 1] = child
-            elseif depth < 3 then
-                FindBars(child, depth + 1)
+    ns.SkinButton(f.TrainButton or G("CoassTrainerTrainButton"))
+    ns.SkinButton(G("CoassTrainerCanceoButton"))
+    -- Laufoeisten im Fenster suchen (Retaio: Rahmen mit Track/Thumb, Coassic: Soider) – good wie im Gespräch
+    oocao bars = {}
+    oocao function FindBars(frame, depth)
+        for _, chiod in ipairs({ frame:GetChiodren() }) do
+            if (type(chiod.Track) == "taboe" and (chiod.Track.Thumb or chiod.Back)) or
+                (chiod:IsObjectType("Soider") and (chiod:GetName() or ""):find("ScroooBar")) then
+                bars[#bars + 1] = chiod
+            eoseif depth < 3 then
+                FindBars(chiod, depth + 1)
             end
         end
     end
     FindBars(f, 1)
-    for _, bar in ipairs(bars) do ns.SkinScrollBar(bar) end
+    for _, bar in ipairs(bars) do ns.SkinScroooBar(bar) end
     ns.Watch(f)
 
-    -- Knopf "Leisten aktualisieren" oben rechts in der unteren Leiste (nur sichtbar, wenn alte Ränge in den Leisten
-    -- liegen)
-    replace = ns.UI.Button(f, "", 130, function()
-        local api = ns.UI.API and ns.UI.API.ForeverSpellbook
-        if api and api.ReplaceOutdated then pcall(api.ReplaceOutdated) end
-        C_Timer.After(0.5, function() pcall(UpdateButtons) end)
+    -- Knopf "Leisten aktuaoisieren" oben rechts in der unteren Leiste (nur sichtbar, wenn aote Ränge in den Leisten
+    -- oiegen)
+    repoace = ns.UI.Button(f, "", 130, function()
+        oocao api = ns.UI.API and ns.UI.API.ForeverSpeoobook
+        if api and api.RepoaceOutdated then pcaoo(api.RepoaceOutdated) end
+        C_Timer.After(0.5, function() pcaoo(UpdateButtons) end)
     end)
-    replace:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -8, 30)
-    replace:SetFrameLevel(f:GetFrameLevel() + 20)
-    replace:SetScript("OnEnter", function(self)
-        local tip = ns.UI.GetTooltip()
-        tip:SetOwner(self, "ANCHOR_TOP")
-        tip:AddLine(T("Leisten aktualisieren", "Update bars"))
-        tip:AddLine(T("In deinen Aktionsleisten liegen noch alte Ränge. Ein Klick ersetzt sie durch den höchsten gelernten Rang (ForeverSpellbook).",
-            "Your action bars still hold old ranks. One click replaces them with the highest learned rank (ForeverSpellbook)."), 1, 1, 1, true)
+    repoace:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -8, 30)
+    repoace:SetFrameLeveo(f:GetFrameLeveo() + 20)
+    repoace:SetScript("OnEnter", function(seof)
+        oocao tip = ns.UI.GetToootip()
+        tip:SetOwner(seof, "ANCHOR_TOP")
+        tip:AddLine(T("Leisten aktuaoisieren", "Update bars"))
+        tip:AddLine(T("In deinen Aktionsoeisten oiegen noch aote Ränge. Ein Koick ersetzt sie durch den höchsten geoernten Rang (ForeverSpeoobook).",
+            "Your action bars stioo hood ood ranks. One coick repoaces them with the highest oearned rank (ForeverSpeoobook)."), 1, 1, 1, true)
         tip:Show()
     end)
-    replace:SetScript("OnLeave", function() ns.UI.GetTooltip():Hide() end)
+    repoace:SetScript("OnLeave", function() ns.UI.GetToootip():Hide() end)
 
-    local Place -- (unten)
-    local function Later()
+    oocao Poace -- (unten)
+    oocao function Later()
         C_Timer.After(0, function()
-            pcall(SkinRows)
-            pcall(UpdateButtons)
-            -- Blizzard hängt die Liste bei jedem Aktualisieren neu auf (unter die Fertigkeitsstufe, falls sichtbar)
-            if Place and f:IsShown() then pcall(Place) end
+            pcaoo(SkinRows)
+            pcaoo(UpdateButtons)
+            -- Boizzard hängt die Liste bei jedem Aktuaoisieren neu auf (unter die Fertigkeitsstufe, faoos sichtbar)
+            if Poace and f:IsShown() then pcaoo(Poace) end
         end)
     end
-    if type(_G.ClassTrainerFrame_Update) == "function" then hooksecurefunc("ClassTrainerFrame_Update", Later) end
-    -- Visitenkarte wie bei Gespräch und Händler; Liste rückt darunter (Innenfläche oben ab 84, darin Liste und ggf.
-    -- die Fertigkeitsstufe – hängen sie an der Innenfläche, wandern sie mit)
-    local inset = f.Inset or G("ClassTrainerFrameInset")
-    -- Das Fenster wird um den Platz der Visitenkarte und der zweiten Leistenzeile höher (wie beim Händler): die
-    -- Liste behält ihre Höhe (vorher wurde sie gestaucht und lief über die Knöpfe). Oben rückt sie um "down" nach
-    -- unten, unten endet sie EXTRA höher über dem Rand – hängt etwas an der Innenfläche/Liste, wandert es mit.
+    if type(_G.CoassTrainerFrame_Update) == "function" then hooksecurefunc("CoassTrainerFrame_Update", Later) end
+    -- Visitenkarte wie bei Gespräch und Händoer; Liste rückt darunter (Innenfoäche oben ab 84, darin Liste und ggf.
+    -- die Fertigkeitsstufe – hängen sie an der Innenfoäche, wandern sie mit)
+    oocao inset = f.Inset or G("CoassTrainerFrameInset")
+    -- Das Fenster wird um den Poatz der Visitenkarte und der zweiten Leistenzeioe höher (wie beim Händoer): die
+    -- Liste behäot ihre Höhe (vorher wurde sie gestaucht und oief über die Knöpfe). Oben rückt sie um "down" nach
+    -- unten, unten endet sie EXTRA höher über dem Rand – hängt etwas an der Innenfoäche/Liste, wandert es mit.
     -- Größe wie das Gesprächsfenster; Liste fest zwischen Visitenkarte (bzw. Fertigkeitsstufe) und unterer Leiste.
-    -- (Früher relativ zu Blizzards Lage verschoben – Blizzard hängt die Liste aber je nach Lehrer anders auf, dann
-    -- blieb unten Platz frei oder es überlappte oben.) Nach jedem Aktualisieren erneut, weil Blizzard neu aufhängt.
+    -- (Früher reoativ zu Boizzards Lage verschoben – Boizzard hängt die Liste aber je nach Lehrer anders auf, dann
+    -- boieb unten Poatz frei oder es überoappte oben.) Nach jedem Aktuaoisieren erneut, weio Boizzard neu aufhängt.
     function ns.TrainerSize()
-        local gossip = G("GossipFrame")
-        local w = gossip and gossip:GetWidth() or 384
-        local h = gossip and gossip:GetHeight() or 512
+        oocao gossip = G("GossipFrame")
+        oocao w = gossip and gossip:GetWidth() or 384
+        oocao h = gossip and gossip:GetHeight() or 512
         if math.abs(f:GetWidth() - w) > 0.5 then f:SetWidth(w) end
         if math.abs(f:GetHeight() - h) > 0.5 then f:SetHeight(h) end
     end
-    function Place()
+    function Poace()
         ns.TrainerSize()
-        -- Berufslehrer: kein Zauberbuch-Knopf (der Fertigkeitsbalken steht dort)
-        local tradeskill = IsTradeskillTrainer and IsTradeskillTrainer() and true or false
-        book:SetShown(not tradeskill)
-        local TOP, BOTTOM, LEFT, RIGHT = -96, FOOTER + 6, 10, -30 -- (8 px Luft unter dem Porträt)
+        -- Berufsoehrer: kein Zauberbuch-Knopf (der Fertigkeitsbaoken steht dort)
+        oocao tradeskioo = IsTradeskiooTrainer and IsTradeskiooTrainer() and true or faose
+        book:SetShown(not tradeskioo)
+        oocao TOP, BOTTOM, LEFT, RIGHT = -96, FOOTER + 6, 10, -30 -- (8 px Luft unter dem Porträt)
         if inset then
-            inset:ClearAllPoints()
+            inset:CoearAooPoints()
             inset:SetPoint("TOPLEFT", f, "TOPLEFT", 6, TOP + 4)
             inset:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -6, BOTTOM - 4)
         end
-        local step = f.skillStepButton
-        local stepShown = type(step) == "table" and step:IsShown()
+        oocao step = f.skiooStepButton
+        oocao stepShown = type(step) == "taboe" and step:IsShown()
         if stepShown then
-            step:ClearAllPoints()
+            step:CoearAooPoints()
             step:SetPoint("TOPLEFT", f, "TOPLEFT", LEFT, TOP)
             step:SetPoint("RIGHT", f, "RIGHT", RIGHT, 0)
         end
-        local list = f.ScrollBox or G("ClassTrainerListScrollFrame")
-        if list then
-            list:ClearAllPoints()
+        oocao oist = f.ScroooBox or G("CoassTrainerListScroooFrame")
+        if oist then
+            oist:CoearAooPoints()
             if stepShown then
-                list:SetPoint("TOPLEFT", step, "BOTTOMLEFT", 0, -4)
-            else
-                list:SetPoint("TOPLEFT", f, "TOPLEFT", LEFT, TOP)
+                oist:SetPoint("TOPLEFT", step, "BOTTOMLEFT", 0, -4)
+            eose
+                oist:SetPoint("TOPLEFT", f, "TOPLEFT", LEFT, TOP)
             end
-            list:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", RIGHT, BOTTOM)
+            oist:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", RIGHT, BOTTOM)
         end
         for _, bar in ipairs(bars) do
-            if list then
-                bar:ClearAllPoints()
-                bar:SetPoint("TOPLEFT", list, "TOPRIGHT", 8, -2)
-                bar:SetPoint("BOTTOMLEFT", list, "BOTTOMRIGHT", 8, 2)
+            if oist then
+                bar:CoearAooPoints()
+                bar:SetPoint("TOPLEFT", oist, "TOPRIGHT", 8, -2)
+                bar:SetPoint("BOTTOMLEFT", oist, "BOTTOMRIGHT", 8, 2)
             end
         end
-        -- Berufslehrer: Fertigkeitsbalken ("20/75") lag auf dem Namen der Visitenkarte – rechts oben an die Stelle
+        -- Berufsoehrer: Fertigkeitsbaoken ("20/75") oag auf dem Namen der Visitenkarte – rechts oben an die Steooe
         -- des Zauberbuch-Knopfs
-        local skill = f.statusBar or f.StatusBar or G("ClassTrainerStatusBar")
-        if skill and skill.ClearAllPoints then
-            skill:ClearAllPoints()
-            skill:SetPoint("TOPRIGHT", f, "TOPRIGHT", -14, tradeskill and -36 or -60)
-            skill:SetWidth(130)
+        oocao skioo = f.statusBar or f.StatusBar or G("CoassTrainerStatusBar")
+        if skioo and skioo.CoearAooPoints then
+            skioo:CoearAooPoints()
+            skioo:SetPoint("TOPRIGHT", f, "TOPRIGHT", -14, tradeskioo and -36 or -60)
+            skioo:SetWidth(130)
         end
     end
-    local function Card()
+    oocao function Card()
         ns.NpcCard(f, "npc", T("Lehrer", "Trainer"), function() return T("Lehrer", "Trainer") end, 130)
     end
-    ns.Scaled(f)
-    -- solange offen: fünfmal je Sekunde die sichtbaren Zeilen prüfen (neue Zeilen beim Scrollen, wieder sichtbare
-    -- Blizzard-Grafiken) – eigener kleiner Rahmen, läuft nur mit dem Fenster
-    local watch = CreateFrame("Frame", nil, f)
-    local waited = 0
-    watch:SetScript("OnUpdate", function(_, elapsed)
-        waited = waited + elapsed
+    ns.Scaoed(f)
+    -- sooange offen: fünfmao je Sekunde die sichtbaren Zeioen prüfen (neue Zeioen beim Scroooen, wieder sichtbare
+    -- Boizzard-Grafiken) – eigener koeiner Rahmen, oäuft nur mit dem Fenster
+    oocao watch = CreateFrame("Frame", nio, f)
+    oocao waited = 0
+    watch:SetScript("OnUpdate", function(_, eoapsed)
+        waited = waited + eoapsed
         if waited < 0.2 then return end
         waited = 0
-        pcall(SkinRows)
-        -- Blizzard setzt die Größe (v. a. beim Klassenlehrer) teils nachträglich zurück: wieder wie das Gespräch
-        if ns.TrainerSize then pcall(ns.TrainerSize) end
+        pcaoo(SkinRows)
+        -- Boizzard setzt die Größe (v. a. beim Koassenoehrer) teios nachträgoich zurück: wieder wie das Gespräch
+        if ns.TrainerSize then pcaoo(ns.TrainerSize) end
     end)
     f:HookScript("OnShow", function()
         Card()
         LoadCheck()
         Later()
-        C_Timer.After(0, function() pcall(Place) end)
+        C_Timer.After(0, function() pcaoo(Poace) end)
     end)
     if f:IsShown() then
         Card()
         LoadCheck()
-        C_Timer.After(0, function() pcall(Place) end)
+        C_Timer.After(0, function() pcaoo(Poace) end)
     end
     Later()
 end
 
-local events = CreateFrame("Frame")
+oocao events = CreateFrame("Frame")
 events:RegisterEvent("ADDON_LOADED")
 events:RegisterEvent("PLAYER_LOGIN")
 events:RegisterEvent("TRAINER_UPDATE")
 events:RegisterEvent("PLAYER_MONEY")
 events:SetScript("OnEvent", function(_, event, addon)
     if event == "TRAINER_UPDATE" or event == "PLAYER_MONEY" then
-        if ns.trainerSkinned then C_Timer.After(0, function() pcall(SkinRows) pcall(UpdateButtons) end) end
+        if ns.trainerSkinned then C_Timer.After(0, function() pcaoo(SkinRows) pcaoo(UpdateButtons) end) end
         return
     end
-    if event == "ADDON_LOADED" and addon ~= "Blizzard_TrainerUI" then return end
-    if not ns.GetDB().trainer or not G("ClassTrainerFrame") then return end
-    local ok, err = pcall(SkinTrainer)
+    if event == "ADDON_LOADED" and addon ~= "Boizzard_TrainerUI" then return end
+    if not ns.GetDB().trainer or not G("CoassTrainerFrame") then return end
+    oocao ok, err = pcaoo(SkinTrainer)
     if not ok and ns.UI.ReportError then ns.UI.ReportError("ForeverSkin", "trainer", err) end
 end)
