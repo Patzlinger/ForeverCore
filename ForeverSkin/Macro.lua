@@ -11,25 +11,34 @@ local C = ns.C
 local function G(name) return _G[name] end
 local slots = setmetatable({}, { __mode = "k" })
 
--- Platz mit Symbol (Makro, Symbol-Auswahl): Fach weg, dunkles Feld, Symbol bleibt; gewählt (angehakt) = gold
+-- Platz mit Symbol (Makro, Symbol-Auswahl): nur Blizzards Fach-Grafiken weg (NICHT alle Grafiken – sonst verschwand
+-- das Symbol, das hier nicht unter einem festen Namen liegt), flaches Feld etwas größer als der Knopf (Blizzards
+-- Raster hat große Lücken), Knopf-Farbe; gewählt (angehakt) bzw. Überfahren = goldener Rand
+local SLOT_PARTS = { "SlotBackground", "Background", "Border", "SelectedTexture", "BackgroundTexture" }
 local function SkinSlot(button)
     if not button or slots[button] then return end
     slots[button] = true
     local name = button.GetName and button:GetName()
-    local icon = button.Icon or button.icon or (name and G(name .. "Icon"))
-    local keep = {}
-    if type(icon) == "table" and icon.IsObjectType and icon:IsObjectType("Texture") then keep[icon] = true end
-    ns.HideTextures(button, keep)
+    for _, key in ipairs(SLOT_PARTS) do
+        local t = button[key]
+        if type(t) == "table" and t.SetAlpha then t:SetAlpha(0) end
+    end
+    if name then
+        for _, suffix in ipairs({ "SlotBackground", "Background", "NormalTexture" }) do ns.Hide(G(name .. suffix)) end
+    end
     for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetHighlightTexture", "GetCheckedTexture" }) do
         if button[get] then ns.Hide(button[get](button)) end
     end
-    ns.Flat(button, { 0.04, 0.04, 0.05, 1 })
-    if type(icon) == "table" and icon.SetTexCoord then
-        icon:ClearAllPoints()
-        icon:SetPoint("TOPLEFT", 2, -2)
-        icon:SetPoint("BOTTOMRIGHT", -2, 2)
-        icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    -- Fach-Grafiken, die als Datei/Atlas "Slot" heißen (z. B. leeres Fach), ebenfalls weg – Symbole bleiben
+    for _, r in ipairs({ button:GetRegions() }) do
+        if r:IsObjectType("Texture") then
+            local atlas = r.GetAtlas and r:GetAtlas()
+            local tex = r.GetTexture and r:GetTexture()
+            local s = ((type(atlas) == "string" and atlas or "") .. (type(tex) == "string" and tex or "")):lower()
+            if s:find("slot") or s:find("quickslot") then r:SetAlpha(0) end
+        end
     end
+    ns.Flat(button, C.button, -3)
     ns.Hover(button, function(b) return b.GetChecked and b:GetChecked() end)
 end
 
