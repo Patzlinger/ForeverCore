@@ -63,8 +63,11 @@ local function SkinPopup(popup)
         ns.SkinButton(border.OkayButton)
         ns.SkinButton(border.CancelButton)
         -- Flächen 2 px kleiner als Blizzards Knöpfe: etwas Luft zwischen den Knöpfen und zum Rand
-        ns.Refit(border.OkayButton, 4)
-        ns.Refit(border.CancelButton, 4)
+        -- volle Knopfgröße (Beschriftung passt), stattdessen OK mit 10 px Abstand links neben Abbrechen
+        if border.OkayButton and border.CancelButton then
+            border.OkayButton:ClearAllPoints()
+            border.OkayButton:SetPoint("RIGHT", border.CancelButton, "LEFT", -10, 0)
+        end
         local edit = border.IconSelectorEditBox
         if edit then
             ns.HideTextures(edit)
@@ -100,7 +103,7 @@ local function SkinMacro()
                 return (PanelTemplates_GetSelectedTab and PanelTemplates_GetSelectedTab(f) == t:GetID())
                     or (t.IsEnabled and not t:IsEnabled())
             end)
-            ns.Refit(tab, { 3, math.max(0, (tab:GetHeight() or 30) - 24), 3, 6 }) -- (3 px Luft zum Nachbar, 6 px zum Kasten darunter)
+            ns.Refit(tab, { 0, math.max(0, (tab:GetHeight() or 30) - 24), 0, 6 }) -- (volle Breite, 6 px Luft zum Kasten darunter)
         end
     end
     -- gewähltes Makro: Hintergrund weg, großes Symbol als Platz, Name hell
@@ -127,13 +130,33 @@ local function SkinMacro()
     for _, n in ipairs({ "MacroEditButton", "MacroDeleteButton", "MacroNewButton", "MacroExitButton", "MacroSaveButton",
         "MacroCancelButton" }) do
         ns.SkinButton(G(n))
-        ns.Refit(G(n), { 4, 6, 4, 4 }) -- (Luft zwischen den Knöpfen, zum Rand und oben zum Textfeld)
+        ns.Refit(G(n), { 0, 6, 0, 0 }) -- (volle Breite, damit die Beschriftung passt; oben Luft zum Textfeld)
     end
     -- Classic: feste Plätze
     for i = 1, 36 do
         local b = G("MacroButton" .. i)
         if not b then break end
         SkinSlot(b)
+    end
+    -- Abstände durch Verschieben statt durch kleinere Flächen (sonst passte die Beschriftung nicht mehr):
+    -- zweiter Reiter 10 px neben dem ersten; unten Löschen links, Verlassen rechts (je 10 px vom Rand), Neu 10 px daneben
+    local tab1, tab2 = G("MacroFrameTab1"), G("MacroFrameTab2")
+    if tab1 and tab2 then
+        tab2:ClearAllPoints()
+        tab2:SetPoint("LEFT", tab1, "RIGHT", 10, 0)
+    end
+    local del, new, exit = G("MacroDeleteButton"), G("MacroNewButton"), G("MacroExitButton")
+    if exit then
+        exit:ClearAllPoints()
+        exit:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -10, 6)
+    end
+    if new and exit then
+        new:ClearAllPoints()
+        new:SetPoint("RIGHT", exit, "LEFT", -10, 0)
+    end
+    if del then
+        del:ClearAllPoints()
+        del:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 10, 6)
     end
     ns.Watch(f)
     ns.Scaled(f, 1.05) -- als Ganzes größer wie Gespräch, Händler, Lehrer (Regler "Größe"), und 5 % mehr
