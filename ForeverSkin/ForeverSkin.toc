@@ -16,3 +16,4 @@ Core.lua
 Windows.lua
 Popups.lua
 Trainer.lua
+Settings.lua
