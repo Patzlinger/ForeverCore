@@ -98,8 +98,9 @@ end
 local controlX
 local function AlignDropdown(element, dd)
     if not controlX or not (element:GetLeft() and dd:GetLeft()) then return end
-    -- linker Pfeil auf Höhe des Kästchens, die Liste rechts daneben (der Pfeil hängt bei Blizzard an der Liste)
-    local want = controlX + 22
+    -- alle Auswahllisten in EINER Spalte: rechts neben der Haken-Spalte (so passt es auch in Zeilen mit Haken davor);
+    -- der linke Pfeil hängt bei Blizzard an der Liste und wandert mit
+    local want = controlX + 52
     if math.abs((dd:GetLeft() - element:GetLeft()) - want) <= 0.5 then return end
     dd:ClearAllPoints()
     dd:SetPoint("LEFT", element, "LEFT", want, 0)
@@ -132,8 +133,8 @@ local function SkinSettingsList(list)
                 ns.DropdownColor(dd)
                 -- alle Auswahllisten gleich breit (Blizzard macht sie je nach Seite verschieden breit)
                 if math.abs((dd:GetWidth() or 0) - CONTROL_W) > 0.5 then dd:SetWidth(CONTROL_W) end
-                -- und an derselben Stelle (Zeilen mit Haken davor nicht – dort steht die Liste hinter dem Haken)
-                if not cb then AlignDropdown(element, dd) end
+                -- und an derselben Stelle – auch in Zeilen mit Haken davor
+                AlignDropdown(element, dd)
             end
         end
         -- Name der Einstellung hell (Blizzard: gold) – ausgegraute bleiben grau; gold sind nur die Überschriften
