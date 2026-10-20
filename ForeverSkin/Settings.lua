@@ -94,58 +94,54 @@ local function SkinDropdownControl(control)
     ns.SkinArrowOnly(control.IncrementButton or control.RightButton, "right")
 end
 
--- Spalte der Bedienelemente: so weit vom linken Zeilenrand wie die Haken (an einem Haken abgemessen);
--- labelX: Spalte der Namen (an einer Zeile mit Namen abgemessen)
+-- Feste Spalten der Bedienelemente (vom linken Zeilenrand, ab der Haken-Spalte controlX – an einem Haken
+-- abgemessen): linker Pfeil ARROW_GAP hinter dem Haken (gut 10 px Luft zum Kästchen), daneben Liste bzw. Schiene
+-- (CONTROL_W breit), dahinter der rechte Pfeil. Regler und Auswahllisten werden Teil für Teil an diese Stellen gesetzt
+-- (Blizzard baut beide verschieden auf – abmessen und verschieben ergab keine saubere Reihe). labelX: Spalte der Namen.
 local controlX, labelX
+local ARROW_GAP, ARROW_W, PAD = 34, 16, 4
+local function BodyX() return controlX + ARROW_GAP + ARROW_W + PAD end
+
+-- ein Teil an seine Stelle (nur wenn es woanders steht – sonst würde Blizzard in jedem Bild neu anordnen)
+local function Put(region, element, x, width)
+    if not (region and region.GetLeft and region:GetLeft() and element:GetLeft()) then return end
+    local off = region:GetLeft() - element:GetLeft()
+    if math.abs(off - x) > 0.5 or (width and math.abs((region:GetWidth() or 0) - width) > 0.5) then
+        region:ClearAllPoints()
+        region:SetPoint("LEFT", element, "LEFT", x, 0)
+        if width then region:SetWidth(width) end
+    end
+end
+
+-- Pfeil – Mitte – Pfeil in die festen Spalten
+local function PlaceRow(element, left, middle, right)
+    if not controlX then return end
+    local x = controlX + ARROW_GAP
+    Put(left, element, x)
+    Put(middle, element, BodyX(), CONTROL_W)
+    Put(right, element, BodyX() + CONTROL_W + PAD)
+end
+
+-- Knopf oder Liste ohne Pfeile in die Spalte der Listen
 local function AlignDropdown(element, dd)
-    if not controlX or not (element:GetLeft() and dd:GetLeft()) then return end
-    -- alle Auswahllisten in EINER Spalte: rechts neben der Haken-Spalte (so passt es auch in Zeilen mit Haken davor);
-    -- der linke Pfeil hängt bei Blizzard an der Liste und wandert mit
-    local want = controlX + 52
-    if math.abs((dd:GetLeft() - element:GetLeft()) - want) <= 0.5 then return end
-    dd:ClearAllPoints()
-    dd:SetPoint("LEFT", element, "LEFT", want, 0)
+    if not controlX then return end
+    Put(dd, element, BodyX())
 end
 
--- Regler mit Pfeilen (MinimalSliderWithSteppers): die Schiene in dieselbe Spalte wie die Auswahllisten und gleich
--- breit; Pfeile und Zahl hängen am Rahmen des Reglers und wandern mit
--- Lage der Pfeile einer ausgerichteten Auswahlliste (vom linken Zeilenrand): linker Rand des linken Pfeils, rechter
--- Rand des rechten – die Regler-Pfeile kommen genau dorthin, damit alle Pfeile in einer Reihe stehen
-local arrowL, arrowR
-local function MeasureArrows(element, control)
-    if arrowL then return end
-    local dec, inc = control.DecrementButton or control.LeftButton, control.IncrementButton or control.RightButton
-    if dec and inc and dec:GetLeft() and inc:GetRight() and element:GetLeft() then
-        arrowL, arrowR = dec:GetLeft() - element:GetLeft(), inc:GetRight() - element:GetLeft()
-    end
-end
-
-local sliderGaps = setmetatable({}, { __mode = "k" }) -- [Regler] = { links, Pfeile zusammen, Pfeil-Abstände } (einmal)
+-- Regler: Pfeile und Schiene in die festen Spalten, die Zahl (z. B. "5.5") rechts hinter den rechten Pfeil
 local function AlignSlider(element, holder)
-    local slider = holder.Slider
-    if not (controlX and slider and element:GetLeft() and holder:GetLeft() and slider:GetLeft()) then return end
-    -- einmal messen: wächst die Schiene nicht mit dem Rahmen, würde er sonst bei jedem Durchgang breiter
-    local gaps = sliderGaps[holder]
-    if not gaps then
-        local back, fwd = holder.Back or holder.BackButton, holder.Forward or holder.ForwardButton
-        gaps = { slider:GetLeft() - holder:GetLeft(), (holder:GetWidth() or 0) - (slider:GetWidth() or 0),
-            back and back:GetLeft() and (back:GetLeft() - holder:GetLeft()) or nil,
-            fwd and fwd:GetRight() and (holder:GetRight() - fwd:GetRight()) or nil }
-        sliderGaps[holder] = gaps
+    local back, fwd = holder.Back or holder.BackButton, holder.Forward or holder.ForwardButton
+    PlaceRow(element, back, holder.Slider, fwd)
+    if not (controlX and fwd) then return end
+    for _, r in ipairs({ holder:GetRegions() }) do
+        if r:IsObjectType("FontString") and r:IsShown() then Put(r, element, BodyX() + CONTROL_W + PAD + ARROW_W + 8) end
     end
-    local inner, extra = gaps[1], gaps[2] -- Platz links (Pfeil), Pfeile links und rechts zusammen
-    local want = controlX + 52 - inner
-    local width = CONTROL_W + extra
-    -- Pfeile genau unter die Pfeile der Auswahllisten (wenn schon gemessen)
-    if arrowL and gaps[3] and gaps[4] then
-        want = arrowL - gaps[3]
-        width = (arrowR - arrowL) + gaps[3] + gaps[4]
+    for _, key in ipairs({ "RightText", "MaxText", "Label" }) do
+        local t = holder[key]
+        if type(t) == "table" and t.IsObjectType and t:IsObjectType("FontString") then
+            Put(t, element, BodyX() + CONTROL_W + PAD + ARROW_W + 8)
+        end
     end
-    if math.abs((holder:GetLeft() - element:GetLeft()) - want) > 0.5 then
-        holder:ClearAllPoints()
-        holder:SetPoint("LEFT", element, "LEFT", want, 0)
-    end
-    if extra > 0 and math.abs((holder:GetWidth() or 0) - width) > 0.5 then holder:SetWidth(width) end
 end
 
 -- Zeilen rechts: Abschnitts-Überschriften ("Maus", "Kamera" …) gold; Bedienelemente im Forever-Stil (Stufe 2)
@@ -178,11 +174,9 @@ local function SkinSettingsList(list)
             local dd = control.Dropdown or control.DropDown
             if dd then
                 ns.DropdownColor(dd)
-                -- alle Auswahllisten gleich breit (Blizzard macht sie je nach Seite verschieden breit)
-                if math.abs((dd:GetWidth() or 0) - CONTROL_W) > 0.5 then dd:SetWidth(CONTROL_W) end
-                -- und an derselben Stelle – auch in Zeilen mit Haken davor
-                AlignDropdown(element, dd)
-                MeasureArrows(element, control)
+                -- alle Auswahllisten gleich breit und mit ihren Pfeilen in den festen Spalten – auch mit Haken davor
+                PlaceRow(element, control.DecrementButton or control.LeftButton, dd,
+                    control.IncrementButton or control.RightButton)
             end
         end
         -- Name der Einstellung hell (Blizzard: gold) – ausgegraute bleiben grau; gold sind nur die Überschriften
@@ -208,12 +202,11 @@ local function SkinSettingsList(list)
                     local named = label and label.GetText and (label:GetText() or "") ~= "" and label:IsShown()
                     if named or not labelX then
                         -- Knopf mit Namen davor: in die Spalte der Auswahllisten, gleich breit
-                        if math.abs((b:GetWidth() or 0) - CONTROL_W) > 0.5 then b:SetWidth(CONTROL_W) end
-                        AlignDropdown(element, b)
+                        if controlX then Put(b, element, BodyX(), CONTROL_W) end
                     else
                         -- Knopf ohne Namen (Tastaturbelegung: "Klickzauber", "Bewegungstasten" …): linksbündig ab der
                         -- Spalte der Namen bis zum Ende der Auswahllisten-Spalte
-                        local left, right = labelX, (controlX or labelX) + 52 + CONTROL_W
+                        local left, right = labelX, (controlX and BodyX() or labelX) + CONTROL_W
                         if element:GetLeft() and b:GetLeft() and (math.abs((b:GetLeft() - element:GetLeft()) - left) > 0.5
                             or math.abs((b:GetWidth() or 0) - (right - left)) > 0.5) then
                             b:ClearAllPoints()
