@@ -245,8 +245,9 @@ function ns.Fit(frame, region, top, bottom, skip)
         end
         region:SetPoint(point, rel, relPoint, x, y)
     end
-    -- feste Höhe statt unterem Ankerpunkt: Höhe so verkleinern, dass der Bereich oben UND unten passt
-    if (hasTop and not hasBottom) or (hasBottom and not hasTop) then
+    -- feste Höhe statt unterem Ankerpunkt: Höhe so verkleinern, dass der Bereich oben UND unten passt – nur wenn
+    -- auch unten eine Grenze gilt (sonst nur verschieben: z. B. Händlerliste, deren Reihen aneinander hängen)
+    if bottom and ((hasTop and not hasBottom) or (hasBottom and not hasTop)) then
         region:SetHeight(math.max(20, o.height - down - up))
     end
     return down, up
