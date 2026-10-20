@@ -693,6 +693,17 @@ function ns.Refit(button, inset)
     end
 end
 
+-- Text eines umgestalteten Knopfs genau mittig in seine flache Fläche (Blizzard verschiebt ihn z. B. bei Reitern)
+function ns.CenterText(button)
+    local look = looks[button]
+    local fs = button and button.GetFontString and button:GetFontString() or (button and button.Text)
+    if not (look and look.fill and fs) then return end
+    local point, rel, _, x, y = fs:GetPoint(1)
+    if fs:GetNumPoints() == 1 and point == "CENTER" and rel == look.fill and (x or 0) == 0 and (y or 0) == 0 then return end
+    fs:ClearAllPoints()
+    fs:SetPoint("CENTER", look.fill, "CENTER", 0, 0)
+end
+
 -- nur ein feiner Pfeil (ohne Fläche), z. B. Vor/Zurück neben Reglern und Auswahllisten; dir: "left", "right", "down"
 local ROTATION = { left = math.pi, right = 0, down = -math.pi / 2, up = math.pi / 2 }
 function ns.SkinArrowOnly(button, dir)

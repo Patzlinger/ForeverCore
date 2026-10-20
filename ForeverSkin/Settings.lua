@@ -229,10 +229,20 @@ local function SkinSettings()
     if list then
         ns.HideTextures(list)
         if list.NineSlice then ns.Hide(list.NineSlice) end
-        local look = ns.Flat(list, { C.panel[1], C.panel[2], C.panel[3], 0.6 })
-        if look then
-            for i, e in ipairs(look.edges) do e:SetAlpha(i == 4 and 1 or 0) end -- nur die Linie rechts
-        end
+        -- Fläche von der Titelleiste bis ganz unten durchgehend (wie die Liste im Forever-Einstellungsfenster), mit
+        -- Trennlinie rechts; die Reiter "Spiel/Addons" sitzen oben darin
+        local nav = f:CreateTexture(nil, "BACKGROUND", nil, -6)
+        nav:SetTexture(WHITE)
+        nav:SetVertexColor(C.panel[1], C.panel[2], C.panel[3], 0.6)
+        nav:SetPoint("TOPLEFT", f, "TOPLEFT", 1, -24)
+        nav:SetPoint("BOTTOM", f, "BOTTOM", 0, 1)
+        nav:SetPoint("RIGHT", list, "RIGHT", 0, 0)
+        local navLine = f:CreateTexture(nil, "BORDER", nil, -5)
+        navLine:SetTexture(WHITE)
+        navLine:SetVertexColor(C.border[1], C.border[2], C.border[3], 1)
+        navLine:SetPoint("TOPLEFT", nav, "TOPRIGHT", 0, 0)
+        navLine:SetPoint("BOTTOMLEFT", nav, "BOTTOMRIGHT", 0, 0)
+        navLine:SetWidth(1)
         ns.SkinScrollBar(list.ScrollBar)
     end
     local container = f.Container
@@ -248,6 +258,15 @@ local function SkinSettings()
         if head then
             ns.SkinButton(head.DefaultsButton)
             if head.Title then head.Title:SetTextColor(C.accent[1], C.accent[2], C.accent[3]) end
+            -- Blizzards brauner Trennbalken unter dem Seitentitel -> feine goldene Linie
+            ns.HideTextures(head)
+            if head.Divider then ns.Hide(head.Divider) end
+            local line = head:CreateTexture(nil, "ARTWORK")
+            line:SetTexture(WHITE)
+            line:SetVertexColor(C.accent[1], C.accent[2], C.accent[3], 0.6)
+            line:SetPoint("BOTTOMLEFT", head, "BOTTOMLEFT", 0, 0)
+            line:SetPoint("BOTTOMRIGHT", head, "BOTTOMRIGHT", 0, 0)
+            line:SetHeight(1)
         end
     end
     ns.Watch(f)
@@ -258,6 +277,7 @@ local function SkinSettings()
     local watch = CreateFrame("Frame", nil, f)
     watch:SetScript("OnHide", function() if menuBack then menuBack:Hide() end end)
     watch:SetScript("OnUpdate", function()
+        for _, tab in ipairs({ f.GameTab, f.AddOnsTab }) do if tab then pcall(ns.CenterText, tab) end end
         pcall(SkinCategoryList, list)
         pcall(SkinSettingsList, settingsList)
         pcall(ns.SkinOpenMenu)
