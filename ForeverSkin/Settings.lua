@@ -174,9 +174,20 @@ local function SkinSettingsList(list)
             local dd = control.Dropdown or control.DropDown
             if dd then
                 ns.DropdownColor(dd)
-                -- alle Auswahllisten gleich breit und mit ihren Pfeilen in den festen Spalten – auch mit Haken davor
-                PlaceRow(element, control.DecrementButton or control.LeftButton, dd,
-                    control.IncrementButton or control.RightButton)
+                -- Pfeile links/rechts der Liste: unter Blizzards Namen oder allgemein die Knöpfe neben der Liste
+                local dec = control.DecrementButton or control.LeftButton or dd.DecrementButton
+                local inc = control.IncrementButton or control.RightButton or dd.IncrementButton
+                if not (dec and inc) then
+                    local ddLeft = dd:GetLeft()
+                    for _, child in ipairs({ control:GetChildren() }) do
+                        if child ~= dd and child:IsObjectType("Button") and child:GetLeft() and ddLeft then
+                            if child:GetLeft() < ddLeft then dec = dec or child else inc = inc or child end
+                        end
+                    end
+                end
+                -- alle Auswahllisten gleich breit und mit ihren Pfeilen in den festen Spalten (wie die Regler) – auch
+                -- mit Haken davor
+                PlaceRow(element, dec, dd, inc)
             end
         end
         -- Name der Einstellung hell (Blizzard: gold) – ausgegraute bleiben grau; gold sind nur die Überschriften
