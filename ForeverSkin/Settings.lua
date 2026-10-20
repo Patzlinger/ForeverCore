@@ -106,25 +106,42 @@ local function SkinSettingsList(list)
     end)
 end
 
--- offene Auswahlliste (Blizzards Menü-System): Hintergrund und Rahmen flach und dunkel mit goldener Linie oben
-local menus = setmetatable({}, { __mode = "k" })
+-- offene Auswahlliste (Blizzards Menü-System): flach und dunkel mit goldener Linie oben. Blizzards Menüs verbieten
+-- eigene Grafiken (CreateTexture ist dort gesperrt) – darum ein EIGENER Rahmen dahinter, der dem offenen Menü folgt;
+-- am Menü selbst werden nur Blizzards Grafiken unsichtbar gemacht (SetAlpha ist erlaubt)
+local menuBack
 function ns.SkinOpenMenu()
     local manager = Menu and Menu.GetManager and Menu.GetManager()
     local menu = manager and manager.GetOpenMenu and manager:GetOpenMenu()
-    if not menu then return end
-    ns.HideTextures(menu)
-    for _, key in ipairs({ "NineSlice", "Background", "Bg" }) do
-        if type(menu[key]) == "table" then ns.Hide(menu[key]) end
+    if not (menu and menu.IsShown and menu:IsShown()) then
+        if menuBack then menuBack:Hide() end
+        return
     end
-    if menus[menu] then return end
-    menus[menu] = true
-    ns.Flat(menu, C.background)
-    local line = menu:CreateTexture(nil, "BORDER", nil, -6)
-    line:SetTexture(WHITE)
-    line:SetVertexColor(C.accent[1], C.accent[2], C.accent[3], 0.8)
-    line:SetPoint("TOPLEFT", 1, -1)
-    line:SetPoint("TOPRIGHT", -1, -1)
-    line:SetHeight(1)
+    for _, r in ipairs({ menu:GetRegions() }) do
+        if r:IsObjectType("Texture") then r:SetAlpha(0) end
+    end
+    for _, key in ipairs({ "NineSlice", "Background", "Bg" }) do
+        if type(menu[key]) == "table" and menu[key].SetAlpha then menu[key]:SetAlpha(0) end
+    end
+    if not menuBack then
+        menuBack = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
+        ns.UI.SetFlat(menuBack, C.background)
+        local line = menuBack:CreateTexture(nil, "ARTWORK")
+        line:SetTexture(WHITE)
+        line:SetVertexColor(C.accent[1], C.accent[2], C.accent[3], 0.8)
+        line:SetPoint("TOPLEFT", 1, -1)
+        line:SetPoint("TOPRIGHT", -1, -1)
+        line:SetHeight(1)
+        menuBack:EnableMouse(false)
+    end
+    if menuBack.menu ~= menu then
+        menuBack.menu = menu
+        menuBack:ClearAllPoints()
+        menuBack:SetAllPoints(menu)
+    end
+    menuBack:SetFrameStrata(menu:GetFrameStrata())
+    menuBack:SetFrameLevel(math.max(0, menu:GetFrameLevel() - 1))
+    menuBack:Show()
 end
 
 local function SkinSearchBox(box)
