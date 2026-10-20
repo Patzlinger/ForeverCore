@@ -168,8 +168,19 @@ local function SkinSettings()
         title:SetText(blizzTitle:GetText() or "")
         f:HookScript("OnShow", function() title:SetText(blizzTitle:GetText() or "") end)
     end
-    ns.SkinClose(f.CloseButton)
-    ns.SkinButton(f.ClosePanelButton)
+    -- Schließen: hier heißt der Text-Knopf unten "CloseButton" und das X oben "ClosePanelButton" – SkinClose macht
+    -- aus Knöpfen mit Text flache Text-Knöpfe, aus dem X das feine Kreuz; das X passend zur Titelleiste
+    for _, b in ipairs({ f.CloseButton, f.ClosePanelButton }) do
+        if b then
+            local label = b.GetText and b:GetText()
+            ns.SkinClose(b)
+            if not (type(label) == "string" and label ~= "") then
+                b:SetSize(20, 20)
+                b:ClearAllPoints()
+                b:SetPoint("TOPRIGHT", f, "TOPRIGHT", -4, -2)
+            end
+        end
+    end
     ns.SkinButton(f.ApplyButton)
     for _, tab in ipairs({ f.GameTab, f.AddOnsTab }) do
         if tab then
