@@ -8,9 +8,11 @@
 ## Author: flowfy
 ## X-License: MIT
 ## Dependencies: ForeverCore
-## OptionalDeps: Questie
+## OptionalDeps: Questie, ForeverSpellbook
 ## Group: ForeverCore
 ## SavedVariables: ForeverSkinDB
 
 Core.lua
 Windows.lua
+Popups.lua
+Trainer.lua

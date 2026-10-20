@@ -13,6 +13,8 @@ ns.DEFAULTS = {
     gossip = true,   -- NPC-Gespräch
     quest = true,    -- Quest-Dialog (Annehmen, Fortschritt, Abgeben)
     merchant = true, -- Händler
+    popup = true,    -- Rückfrage-Fenster ("Sollen alle Talente verlernt werden?" …)
+    trainer = true,  -- Lehrer (mit "Alle lernen" und "Leisten aktualisieren")
 }
 
 function ns.GetDB()
@@ -570,6 +572,19 @@ function ns.SkinButton(button)
     hovers[button] = {}
 end
 
+-- Zeile mit flacher Fläche (ns.Flat): beim Überfahren und wenn gewählt (selected(frame) = true) goldener Rand
+function ns.Hover(frame, selected)
+    if not frame or hovers[frame] or not looks[frame] then return end
+    local look = looks[frame]
+    look.hl = frame:CreateTexture(nil, "BORDER", nil, -7)
+    look.hl:SetTexture(WHITE)
+    look.hl:SetVertexColor(1, 1, 1, 0.06)
+    look.hl:SetAllPoints(look.fill)
+    look.hl:Hide()
+    look.mine[look.hl] = true
+    hovers[frame] = { selected = selected, row = true }
+end
+
 -- Reiter (z. B. Händler/Rückkauf): flach, der gewählte mit goldenem Rand und goldener Schrift
 function ns.SkinTab(tab, isSelected)
     if not tab or hovers[tab] then return end
@@ -601,7 +616,7 @@ local function UpdateHover()
                 else
                     ns.EdgeColor(button, (over or selected) and C.accent or C.border, (over or selected) and 0.9 or 1)
                     if look.hl then look.hl:SetShown(over) end
-                    local fs = button.GetFontString and button:GetFontString()
+                    local fs = not info.row and button.GetFontString and button:GetFontString()
                     if fs and info.selected then
                         local c = selected and C.accent or { 0.9, 0.9, 0.9 }
                         fs:SetTextColor(c[1], c[2], c[3])
@@ -656,7 +671,7 @@ local options
 local checks = {}
 local function Build()
     options = UI.SettingsPanel("ForeverSkinOptions", T("ForeverSkin – Einstellungen (Prototyp)", "ForeverSkin – Settings (prototype)"),
-        460, 300, { key = "ForeverSkin", group = UI.SETTINGS_GROUPS.comfort, label = T("Fenster-Stil", "Window style") })
+        460, 340, { key = "ForeverSkin", group = UI.SETTINGS_GROUPS.comfort, label = T("Fenster-Stil", "Window style") })
     local W = 420
     UI.Header(options, 18, -40, T("Fenster im Forever-Stil", "Windows in the Forever look"), W)
     local reload
@@ -670,7 +685,9 @@ local function Build()
     Check(-62, T("NPC-Gespräch", "NPC dialog"), "gossip")
     Check(-86, T("Quest-Dialog (Annehmen, Fortschritt, Abgeben)", "Quest dialog (accept, progress, turn in)"), "quest")
     Check(-110, T("Händler", "Vendor"), "merchant")
-    UI.Hint(options, 22, -138, W - 12, T("Änderungen gelten nach dem Neuladen. Gefällt dir der Stil nicht, schalte " ..
+    Check(-134, T("Lehrer (mit „Alle lernen“)", "Trainer (with \"Learn all\")"), "trainer")
+    Check(-158, T("Rückfrage-Fenster", "Confirmation dialogs"), "popup")
+    UI.Hint(options, 22, -186, W - 12, T("Änderungen gelten nach dem Neuladen. Gefällt dir der Stil nicht, schalte " ..
         "ForeverSkin in der Addon-Liste aus – dann ist alles wieder wie vorher.",
         "Changes apply after reloading. If you don't like the look, turn ForeverSkin off in the addon list – " ..
         "everything is back as before."))

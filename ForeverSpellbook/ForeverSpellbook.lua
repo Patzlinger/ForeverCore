@@ -1158,6 +1158,18 @@ events:SetScript("OnEvent", function(_, event)
     end
 end)
 
+-- Schnittstelle für andere Forever-Addons (UI.API, Hub v49): z. B. ForeverSkin bietet im Lehrerfenster an, nach dem
+-- Lernen die Leisten auf den neuen Rang zu bringen
+if UI.API then
+    UI.API.ForeverSpellbook = {
+        OutdatedCount = function()
+            local ok, list = pcall(OutdatedSlots)
+            return ok and #list or 0
+        end,
+        ReplaceOutdated = ReplaceOutdated,
+    }
+end
+
 ---------------------------------------------------------------------------
 -- Gemeinsame Einstellungs-Verwaltung (ForeverCore): Profile je Charakter, Zuruecksetzen, Export/Import
 ---------------------------------------------------------------------------

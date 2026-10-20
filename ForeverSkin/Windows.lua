@@ -305,7 +305,8 @@ events:RegisterEvent("PLAYER_LOGIN")
 events:SetScript("OnEvent", function(self)
     self:UnregisterAllEvents()
     local db = ns.GetDB()
-    for _, w in ipairs({ { "gossip", SkinGossip }, { "quest", SkinQuest }, { "merchant", SkinMerchant } }) do
+    for _, w in ipairs({ { "gossip", SkinGossip }, { "quest", SkinQuest }, { "merchant", SkinMerchant },
+        { "popup", function() if ns.SkinPopups then ns.SkinPopups() end end } }) do
         if db[w[1]] then
             local ok, err = pcall(w[2])
             if not ok and ns.UI.ReportError then ns.UI.ReportError("ForeverSkin", w[1], err) end
