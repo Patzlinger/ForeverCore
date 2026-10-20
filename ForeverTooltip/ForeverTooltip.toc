@@ -1,5 +1,5 @@
 ## Interface: 16001
-## Title: ForeverTooltip |cff8a8a8a(Prototyp)|r
+## Title: ForeverTooltip |cff8a8a8a(Beta)|r
 ## IconTexture: Interface\AddOns\ForeverTooltip\Media\ForeverCore
 ## Category: Forever Core
 ## Notes: Blizzard's tooltip in the Forever Core look: quality and class colored border, item level, target, IDs, movable anchor

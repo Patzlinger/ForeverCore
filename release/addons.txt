@@ -13,5 +13,7 @@ ForeverMinimap
 ForeverBags
 ForeverSpellbook
 ForeverChat
-# seit 2026-10-19 im Gesamtpaket (noch nicht veröffentlicht)
+# seit 2026-10-19 bzw. 2026-10-20 im Gesamtpaket
 ForeverPlates
+ForeverAlts
+ForeverTooltip

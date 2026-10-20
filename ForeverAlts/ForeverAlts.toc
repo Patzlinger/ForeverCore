@@ -1,5 +1,5 @@
 ## Interface: 16001
-## Title: ForeverAlts |cff8a8a8a(Prototyp)|r
+## Title: ForeverAlts |cff8a8a8a(Beta)|r
 ## IconTexture: Interface\AddOns\ForeverAlts\Media\ForeverAlts
 ## Category: Forever Core
 ## Notes: Overview of all your characters: level, rested XP, gold, professions, location and open dungeon quests

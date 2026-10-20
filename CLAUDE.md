@@ -24,14 +24,14 @@ eintragen; behobene mit Datum und Ursache nach „Erledigt“ verschieben.
 | ForeverFrames, ForeverUnits, ForeverCast, ForeverHelpers (Module Loot, Buffs, Vendor) | Patzlinger | im Release |
 | ForeverSpellbook | Patzlinger | im Release (seit 0.32b) |
 | ForeverChat | Patzlinger | im Release (seit 0.32b) |
-| ForeverMinimap | Patzlinger | Prototyp (seit 2026-10-17) |
+| ForeverMinimap | Patzlinger | im Release (seit 0.44b) |
 | ForeverCore (Hauptaddon: `ForeverHub.lua` = Hub und Stil-Bibliothek; Abhängigkeit aller Addons) | gemeinsam | im Release (seit 0.41b) |
-| ForeverQuests | flowfy | im Repository, noch nicht im Release |
-| ForeverBars | flowfy | im Repository, noch nicht im Release |
-| ForeverBags | flowfy | Prototyp (seit 2026-10-17) |
-| ForeverTooltip | Patzlinger | Prototyp (seit 2026-10-18, nicht im Release) |
-| ForeverPlates | Patzlinger | im Gesamtpaket (seit 2026-10-19, `release/addons.txt`; noch nicht veröffentlicht) |
-| ForeverAlts | flowfy | Prototyp (seit 2026-10-18, nicht im Release) |
+| ForeverQuests | flowfy | im Release (seit 0.44b) |
+| ForeverBars | flowfy | im Release (seit 0.44b) |
+| ForeverBags | flowfy | im Release (seit 0.44b) |
+| ForeverTooltip | Patzlinger | im Release (Beta, seit 2026-10-20) |
+| ForeverPlates | Patzlinger | im Release (Beta, seit 2026-10-20) |
+| ForeverAlts | flowfy | im Release (Beta, seit 2026-10-20) |
 | `tools/`, `release/` | gemeinsam | – |
 
 - **Keine Absprachen nötig: jeder arbeitet frei an allen Addons** (Zusammenarbeit auf Augenhöhe). Die Spalte

@@ -1,4 +1,4 @@
-﻿# Baut den Release-Stand: Addon-Ordner, Einzel-Zips und Gesamt-Zip.
+# Baut den Release-Stand: Addon-Ordner, Einzel-Zips und Gesamt-Zip.
 #   .\tools\build-release.ps1                       -> Version aus den .toc, Ziel ..\_Forever-Release-<Version>
 #   .\tools\build-release.ps1 -ReleaseDir D:\irgendwo
 # Fremde Zips im Zielordner (z. B. eigene Sicherungen) werden nie angefasst.
@@ -37,7 +37,8 @@ New-Item -ItemType Directory -Force $addonOut, $singleOut | Out-Null
 
 function Add-FolderToZip($zip, $folder, $name) {
     $base = [IO.Path]::GetFullPath($folder).TrimEnd('\', '/')
-    Get-ChildItem $base -Recurse -File | ForEach-Object {
+    # Zips enthalten nur, was das Spiel braucht: keine Lizenz-, Lies-mich- oder Markdown-Dateien
+    Get-ChildItem $base -Recurse -File | Where-Object { $_.Name -notmatch '^(LICENSE|README)' -and $_.Extension -ne '.md' } | ForEach-Object {
         $full = [IO.Path]::GetFullPath($_.FullName)
         if (!$full.StartsWith($base + '\', [StringComparison]::OrdinalIgnoreCase)) { throw "Datei außerhalb von ${base}: $full" }
         $rel = $name + '/' + $full.Substring($base.Length + 1).Replace('\', '/')

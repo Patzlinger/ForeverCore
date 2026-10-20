@@ -2,76 +2,77 @@
 
 ## Unreleased
 
-- Settings window: new "Search settings …" field at the top right of every page (like the one in ForeverBars) – finds settings of all Forever addons by name, opens the right page and tab and briefly highlights the setting. More space around the content of every page, especially below the title bar.
+## 0.44b update – October 20, 2026
 
-- Settings window: all pages now use the same box layout as the ForeverBars menu – 12 px between boxes, boxes across the full width, boxes in a row equally tall and the last boxes of each column ending at the same height.
+Forever Core is growing from a set of single addons into one interface: one settings window, one minimap button, one look, and Questie, Details!, Masque and TomTom built right in.
 
-- Settings window: more even spacing on the pages of ForeverLoot, ForeverBuffs, ForeverVendor, ForeverPlates and ForeverAlts (boxes no longer touch or overlap). German names: "Twink-Übersicht" (ForeverAlts) and "Würfel-Fenster" (ForeverLoot).
-- ForeverAlts: new icon, and its button stays visible next to the Forever Core button – in ForeverMinimap's button bar right below it.
+### Three new addons (beta)
+- **ForeverPlates – nameplates that tell you what matters.** Replaces the enemy nameplates.
+  - Health in percent and total, an execute color you choose yourself
+  - Threat as a word and in percent ("Aggro 87 %")
+  - A cast bar as wide as the health bar, with the cast's target written small below it ("Target: Name"). Interrupted casts briefly show "Interrupted by Name", whether it was a kick or crowd control.
+  - Your own DoTs above the bar, crowd control at the side, combo points on top of the bar, raid markers and a quest marker for quest mobs (with Questie)
+  - Plates stack neatly and stay sharp at any distance. Can follow the ForeverFrames look.
+  - Simple friendly nameplates, optional
+  - Settings: /fplates
+- **ForeverAlts – all your characters at a glance.**
+  - Level and XP, rested XP (estimated while logged out), gold with a total, location, professions, played time, mail (with expiry), honor and last login – turn every column on or off
+  - The recipes of all your characters with a search, and "Can be made by" in item tooltips
+  - Show the bags and bank of any character (with ForeverBags). Click your gold in ForeverBags or use its own key binding.
+  - With ForeverQuests: quest tooltips and the "Entering dungeon" hint show which of your alts have the quest too
+  - Settings: /falts
+- **ForeverTooltip – Blizzard's tooltip in the Forever look.**
+  - Dark and flat with a fine gold border, the border in item quality or class color if you like
+  - Item level, item and spell IDs, the unit's target, player names in class colors, a flat health bar
+  - At the mouse or at an anchor you can move
+  - Settings: /ftip
 
-- ForeverQuests: quests in the quest log are expanded by default, a little more space between the zone boxes; right-click a quest of the chain in the details for the Wowhead link (with Questie); tooltips in tracker and quest log get the gold border all around like the other Forever tooltips (follows ForeverTooltip's "Gold border all around").
-- Forever Core: the overview of all Forever addons (/forever, the Forever Core minimap button) is now the start page of the settings window – first entry "Forever Core » Overview". The addons are shown as tiles in two columns – click a tile to turn the addon on or off; below, tidy "General" and "Tools" boxes (no more overlapping text, no "Open" buttons – every addon is in the list on the left).
-- ForeverAlts: open the alts overview by clicking your gold in the ForeverBags window, or with its own key binding (Key Bindings » AddOns » ForeverAlts).
-- ForeverBars: the marker bar shows "Marks / Pings" in its title – click a word to switch between target markers and world markers, the small arrow sets "Restrict pings to"; the gear buttons on the marker and professions bars are gone.
-- ForeverFrames: Blizzard's raid manager is now hidden by default (switched once for existing profiles).
-- ForeverChat: whispers also show in the normal chat by default (switched once for existing profiles); the whisper window's input line always shows who you are writing to ("To Name:").
+### One interface instead of many addons
+- **One settings window for everything:** a list on the left, grouped by area (Frames, Bars, Navigation, Comfort, Helpers) and showing only what you have installed, and one addon at a time on the right. The first page, **"Forever Core » Overview"**, shows all addons as tiles: click a tile to turn an addon on or off.
+- **Search all settings:** the "Search settings …" field at the top right finds any setting of any Forever addon, opens the right page and highlights it.
+- **One minimap button:** it opens the settings window (Shift-click: the overview, right-click: move all frames). The small buttons of the single addons are gone.
+- **ForeverHelpers – three helpers in one addon:** ForeverLoot (loot rolls), ForeverBuffs (buff reminder) and ForeverVendor (merchant helper) are now one addon. Same settings, same commands (/floot, /fbuffs, /fvendor). If you still have the old folders, they are turned off automatically – please delete them.
+- **Works with the addons you already use:** Forever Core recognizes other popular addons for the same job (e.g. Bartender4, Dominos, Bagnon, Baganator, AdiBags, Cell, Grid2, VuhDo, Shadowed Unit Frames, Prat, SexyMap, Quartz, Kaliel's Tracker, TipTac, Plater, BetterBlizzPlates). For each pair you choose which one runs; you can switch back any time ("Other addons …" in the overview). **Leatrix Plus** keeps running – only the features a Forever addon takes over are switched off.
+- **Details! in the Forever look by default** (once per character, as a copy "Forever Core" of your profile – your own profile stays untouched; switch back in the overview).
+- **Masque support** for the buttons of ForeverBars and the slots of ForeverBags.
+- **Shorter player names:** Forever players have a first and a last name. Frames, nameplates, loot rolls and whisper windows now show "Hexeron S." – or choose "first name only" or "full name" in the overview (General » Player names). Tooltip, chat and the character overview keep the full name.
+- **Lighter in the background:** all addons share one timer, and every task only runs when it is needed.
+- A "Forever Hub" button in the game menu (Escape), right below "Macros".
 
-### New
-- **ForeverHelpers – three small helpers in one addon:** ForeverLoot (loot rolls), ForeverBuffs (buff reminder) and ForeverVendor (vendor helper) are now one addon. Everything works as before – same settings, same commands (/floot, /fbuffs, /fvendor), one minimap entry (/fhelp). If you still have the old folders, they are turned off automatically – please delete them.
-- **One settings window for everything:** all Forever Core addons now share one settings window with a fixed size – a list on the left, grouped by area (Frames, Bars, Navigation, Comfort, Helpers) and showing only what you have installed, and one addon at a time on the right with exactly the same settings as before. Minimap buttons, commands (/fu, /ff, /fb …) and the hub take you straight to the right entry.
-- **Works with the addons you already use:** Forever Core now recognizes other popular addons for the same job (e.g. Bartender4, Dominos, Bagnon, Baganator, AdiBags, Cell, Grid2, VuhDo, Shadowed Unit Frames, Prat, SexyMap, Quartz, Kaliel's Tracker, TipTac). For each pair you choose which one should run – the other is turned off and you can switch back any time. You are asked once on your first start (right next to the welcome window) and whenever a new pair shows up; otherwise use "Other addons …" in the hub (/forever). **Leatrix Plus** keeps running: only the features a Forever addon takes over (e.g. "Enhance minimap" with ForeverMinimap, "Enhance tooltip" with ForeverTooltip) are switched off – everything else in Leatrix stays as it is.
-- **Masque support:** with Masque installed, the buttons of ForeverBars and the slots of ForeverBags can be skinned by Masque (groups "Forever Core › ForeverBars" and "› ForeverBags"). Turn a group off in Masque to get the Forever look back.
-- ForeverBags: new option "Show bags separately" – every bag starts on its own row, with a little space and a fine gold line in between.
-- ForeverQuests, **Questie support:** if you use Questie, its own tracker is switched off automatically so only the ForeverQuests tracker shows. Questie's map and minimap icons and tooltips keep working and follow the quests you track. Right-click a quest in the tracker for Questie actions: highlight it on the map (other quest icons fade), show the turn-in on the map and set a TomTom waypoint (with TomTom installed).
-- ForeverQuests, **quest log in Forever style:** the world map gets the flat Forever look (frame, title bar, map navigation), and the quest list next to it is now the ForeverQuests list: all your quests by zone with the same lines, tooltips, right-click menu, pinned quests, "Together" and filters as the tracker, plus a search box, your quest count, the Dungeons button and a box per quest to track it. Click a quest for its own Forever-style details page (objectives, description, rewards with tooltips, buttons to suggest the quest to your group, share, pin and abandon). The gear in the quest log turns Blizzard's quest markers on the map on or off and tracks all or no quests with one click. With Questie, the details page also shows the whole quest chain with quest IDs (hover an entry for the same tooltip as in the tracker), shows only the markers of the opened quest on the map (back in the list: the markers of all tracked quests, not of every quest in your log), right-clicking a quest in the log adds the Wowhead link, and the gear holds Questie's map switches (quest givers, objectives, turn-ins, low-level quests). Rewards now also show reputation, spells, honor and titles. Hovering a quest in the log highlights all its markers on the map. The map's maximize button is gone and the close button is smaller. With Questie, its map button now sits as a flat button at the right end of the map navigation bar (left-click: show/hide Questie icons, right-click: Questie menu). Drag the title bar to move the map; drag the bottom-right corner to change its width and height freely, or hold Shift while dragging to scale everything evenly (right-click the title bar to reset). The map itself stays unchanged. Can be turned off in the menu (/fq).
-- ForeverQuests with Questie: Blizzard's own quest markers on the world map are now hidden reliably, so you no longer see Blizzard's and Questie's markers on top of each other (follows "Hide Blizzard quest tracker").
-- ForeverQuests, dungeon window: if a dungeon quest needs a prerequisite outside the dungeon that you haven't done yet, the card shows that prerequisite (marked "do this first", with quest giver and map pin). Right-click a quest card or a line of a quest chain for the Wowhead link (with Questie). "Raids" and "My level range" swapped places. New option "Map pin opens the world map" (on by default): clicking "Map pin" also opens the world map at that spot.
-- ForeverQuests: quest IDs are now hidden by default (tracker, quest log, dungeon window) – turn them back on with "Show quest IDs" in the menu (/fq).
-- ForeverQuests: a slim line at the bottom of the quest log shows how many quests are ready to turn in and how much XP that will give you.
-- ForeverQuests, dungeon window: with Questie installed, the quests of each dungeon now come from Questie's database – complete and up to date, with quest giver, location, required level, faction, class, prerequisite quest and whether it starts inside. Without Questie the built-in list is used as before.
-- ForeverQuests, dungeon window: the "Group" button now shows for every quest of the dungeon who in your group has it, has it ready, has already done it or is still missing it. Group members with ForeverQuests report this automatically; for others only "in their quest log or not" is known (marked with "?").
-- ForeverQuests: the filter menu (tracker and quest log) now works the other way round – "Everything" at the top, and every group below has a check you can switch off to hide those quests (e.g. untick "Dungeon" to hide all dungeon quests). By default everything is shown. "Everything" works as a switch: click it to hide everything and then tick only the groups you want, click it again to show everything. Filters you had set before are reset once.
-- ForeverUnits: the "Forever" skin (Options → Skin) got a full makeover in the style of the Forever windows – a fine edge with a gold line on top like our tooltips, dark seams between portrait and bars, muted bar colors with a soft shine, a name band with a fine gold line, a gently shaded portrait, gold corner brackets for elite and boss enemies (silver for rares), a gold edge on mouse-over and a red top edge on your player frame while in combat.
-- The game menu (Escape) has a new "Forever Hub" button right below "Macros" that opens the Forever hub.
+### ForeverQuests with Questie
+- Questie's own tracker is switched off automatically; its map icons and tooltips keep working and follow the quests you track. Blizzard's own quest markers no longer show up next to Questie's.
+- Right-click a quest for Questie actions: highlight it on the map, show the turn-in, set a TomTom waypoint (with TomTom), copy the Wowhead link.
+- **Quest log in the Forever look:** the world map gets the flat Forever frame, and the quest list next to it uses the ForeverQuests lines, filters, pins and "Together". Click a quest for a details page with objectives, rewards and buttons to share, pin, abandon or suggest it to your group. With Questie it also shows the whole quest chain and only the markers of that quest on the map. The map can be moved and resized freely.
+- **Dungeon window:** with Questie, all quests of every dungeon come from Questie's database – quest giver, location, level, prerequisites (marked "do this first"), rewards and chains. "Group" shows who in your group has which quest, has finished it or is missing it.
+- "Entering dungeon" hint with your group's progress on the dungeon quests.
+- The filter menu works the other way round now: everything is shown, untick what you want to hide.
+- A slim line at the bottom of the quest log shows how many quests are ready to turn in and how much XP they give.
+- Quest IDs are hidden by default ("Show quest IDs" in /fq).
 
 ### Improved
-- **Shorter player names:** Forever players have first and last names. Unit frames, group and raid frames, nameplates, loot rolls and whisper windows now show "Hexeron S." instead of "Hexeron Soulbane". Choose "first name only", "first name + initial" or "full name" in the hub window (/forever » Player names). Tooltip, chat and the character overview keep the full name.
-- ForeverBags: the bank now opens in the middle of the screen with your bags docked right next to it. Move the bank once and it remembers the spot; the bags follow it.
-- ForeverMinimap: the mail tile shows Blizzard's clean minimap envelope instead of a boxed icon – same spot, same size, same behaviour (grey without mail, in color with a gold edge when new mail arrives).
-- ForeverUnits: elite, rare and boss enemies are now easy to spot – Blizzard's gold dragon (elite/boss), silver dragon (rare elite) or star (rare) sits at the top right corner of the target and focus frame. Can be turned off per frame ("Elite/rare icon").
-- ForeverVendor: selling junk and repairing now work on their own – whenever they are switched on, they run at every merchant. The old "Automatic" switch now only decides whether restocking happens automatically or via the "Buy" button (Shift when opening the merchant still skips everything once).
-- **One minimap button:** the Forever Core button at the minimap now opens the shared settings window directly (Shift-click: the overview, right-click: move all frames). The small buttons of the single addons are gone for good – one button for everything.
-- **Lighter in the background:** all Forever Core addons now share one timer instead of more than a dozen separate ones, and each task only runs when it is needed – e.g. range checks only in a group, bar fading only if a bar actually fades, the target-of-target frame only when there is one.
-- ForeverBars: the experience bar uses its original colors again – purple experience, blue rested bonus, gold for completed quests on a dark background.
-- ForeverUnits: DoT bars only show on targets you can attack, so your own debuffs like "Boosted Rest" from camping no longer appear as a timer bar when you target yourself or a group member (option in the General tab).
-- ForeverBags: when the bags open at your mouse, the bottom right corner of the window now sits at the cursor instead of the window being centered on it.
-- ForeverMinimap: the button strip next to the minimap is now always visible by default (before: only with the mouse over the minimap). You can switch back with "Only with the mouse over the minimap" in /fmm.
-- ForeverMinimap: the mail tile is always there now – greyed out with "No new mail" on mouse-over, and in full color with a gold border as soon as you have new mail.
-- ForeverBags: new items now shimmer in a soft gold instead of blue, so they no longer look like rare (blue) items.
-- ForeverBars: the experience and reputation bars got a new look that matches the Forever windows: a crisp thin border with a gold line on top, a calmer, slightly smaller font without outline, subtly engraved tenth marks and a soft sheen on the fill. Rested and quest XP use gentler colors and get a fine end mark, so they stay easy to tell apart.
-- ForeverBags: items that start a quest now show Blizzard's yellow exclamation mark, so you can tell them apart from normal quest items.
-- ForeverQuests, quest together: the "Together" box now shows the quest just like the rest of the tracker (level color, quest type, ready to turn in, reward chest, quest item, tooltip on hover) plus its quest ID. All shared quests now sit together in one "Together" window, separated by a fine line; right-click a quest there to stop doing it together.
+- ForeverUnits: the "Forever" skin got a full makeover – fine edges with a gold line, muted bars with a soft shine, gold corner brackets for elites and bosses (silver for rares). Elite, rare and boss enemies also get Blizzard's dragon or star icon at the target and focus frame.
+- ForeverUnits: DoT bars only show on targets you can attack.
+- ForeverBags: the bank opens in the middle of the screen with your bags docked right next to it; move it once and it remembers the spot. New option "Show bags separately". New items shimmer gold instead of blue, quest starters show the yellow exclamation mark, and the bags open with their corner at your mouse.
+- ForeverVendor: selling junk and repairing work on their own – whenever they are on, they run at every merchant. The "Automatic" switch now only decides whether restocking happens by itself or via the "Buy" button.
+- ForeverBars: new look for the experience and reputation bars, and the bars line up exactly with action bar 1. The marker bar shows "Marks / Pings" in its title (click to switch between target and world markers).
+- ForeverMinimap: the mail tile uses Blizzard's clean envelope, greyed out without mail and in color with a gold edge when mail arrives. The button strip is always visible by default.
+- ForeverChat: whispers also show in the normal chat by default, and the whisper window shows who you are writing to.
+- ForeverFrames: Blizzard's raid manager is hidden by default.
+- ForeverQuests, "Together": shared quests look like the rest of the tracker and sit in one "Together" box.
+- Settings pages: even spacing and tidy boxes on every page, no more overlapping labels.
 
 ### Fixed
-- ForeverBags: bag and bank slots no longer disappear behind the window (everything dark and not clickable after using the windows for a while) – the slots now always stay on top of their window.
-- ForeverBags: the bank shows exactly the bank slots you really have again (only purchased bank tabs, like Blizzard's bank window) – before, it also counted the keyring and tabs you had not bought.
-- ForeverQuests, quest log at the map: the scroll bar works again – a slim bar in the Forever style moves along with the mouse wheel and can be dragged. The old Blizzard bar underneath (which did nothing) is hidden.
-- ForeverVendor: grey items are sold again on the first visit to a merchant – before, nothing was sold if the game had not loaded the item data yet (it only worked after reopening the merchant).
-- The "Forever Hub" button at the game menu (Escape) no longer causes "blocked action" errors: it is now its own button right below the menu instead of being added to Blizzard's list of buttons.
-- ForeverBars: the experience and reputation bars are now exactly as long as action bar 1 (they were a bit longer). The action bars are 5 % bigger by default so everything lines up at a readable size; bars you scaled yourself stay as they are. The reputation and experience bars now sit right below action bar 1 (as if snapped to it) and keep a little more room to the bottom of the screen.
-- ForeverMinimap: map icons of other addons (e.g. Questie's mailbox and flight master icons) no longer end up in the minimap button strip.
-- ForeverQuests with Questie: Blizzard's own quest markers no longer show up on the map next to Questie's (they are turned off while "Hide Blizzard quest tracker" is on, just like Questie's own icon theme does).
-- ForeverQuests, quest together: you no longer show up twice (as "You" and with your full name), so the member count is right.
-- ForeverQuests: quests you haven't picked up yet now show their item rewards in tooltips and on the dungeon cards (taken from Questie's database).
-- ForeverQuests, quest chains: if the last part of a chain gives items, they now show up as real rewards on the dungeon cards and in the quest details (marked with the part they come from), not only in the tooltip.
-- **ForeverAlts (new, prototype):** one overview of all your characters – level and XP, rested XP (estimated for characters that are logged out), gold with a total, location, professions, played time, mail in the mailbox (with expiry), honor and last login; every column can be turned on or off at the bottom. Recipes of every character (saved when it opens its profession window) with search, and "Can be made by" in item tooltips. Hover a row for all details, click a column title to sort, click a profession to see its recipes; the buttons at the end of each row show the bags and bank of that character (ForeverBags) or remove it from the list. /falts. With ForeverQuests, quest tooltips and the "Entering dungeon" hint show which of your alts have the quest too.
-- With Details! installed, Forever Core now switches it to the Forever look by default (once per character, as a copy "Forever Core" of your profile – your own profile stays untouched). "Details: previous profile" in the hub switches back for good.
-- ForeverQuests: the "Entering dungeon" hint now shows your group: how many of the dungeon quests each member has, how far they are, which quests they have that you are missing and which of yours they are missing (full details if they use ForeverQuests too).
-- Settings window: the Cast bar, Chat and Tooltip pages have their section boxes back; the Minimap page fits again (right border).
-- Settings window: sections no longer overlap and long labels no longer run out of their box (ForeverFrames, ForeverUnits, ForeverBags). The quest tracker entry is now called "Quest & dungeon tracker".
-- ForeverQuests, dungeon window: quests with the same name in one dungeon now form one quest chain card when Questie doesn't know the chain (e.g. new Forever quests like "Unending Torment").
-- ForeverQuests, quest chains: finished parts are always green with a check mark; gold marks only the part you are currently working on (in your quest log).
-- ForeverQuests: the dungeon window no longer breaks with an error when Questie or AtlasLoot is missing or outdated – you get one chat message instead and the window keeps working.
+- ForeverBags: bag and bank slots no longer end up behind their window (dark and not clickable), and the bank shows exactly the bank slots you really have.
+- ForeverQuests: the scroll bar in the quest log works again.
+- ForeverVendor: grey items are sold on the first visit to a merchant, even before the game has loaded their prices.
+- The "Forever Hub" button in the game menu no longer causes "blocked action" errors.
+- ForeverMinimap: map icons of other addons (e.g. Questie) no longer end up in the button strip.
+- ForeverQuests, "Together": you no longer show up twice.
+- ForeverQuests: quests you haven't picked up yet show their rewards; the dungeon window no longer breaks when Questie or AtlasLoot is missing or outdated.
+
+### Good to know
+- The release zip now contains only the addon folders – copy them into `Interface\AddOns`.
+- **ForeverLoot, ForeverBuffs and ForeverVendor** are now part of ForeverHelpers. You can delete their old folders.
 
 ## 0.44b – October 18, 2026
 

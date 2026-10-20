@@ -2,134 +2,104 @@
 
 *Less clutter. More control. Just the essentials.*
 
-Forever Core is a small set of lightweight addons for **World of Warcraft: Forever**. They cover the basics, look clean and stay out of your way. Use one, a few or all of them, because each one works on its own.
+Forever Core is a complete user interface for **World of Warcraft: Forever**. You get frames, bars, nameplates, quests, bags, map, chat and tooltips in one calm, consistent look. Install it, log in and play.
 
-All addons share one flat, dark look with gold accents. They're available in English and German.
+Our idea is simple: keep the game straightforward. We improve what's already there, and we build things from scratch where no existing addon did them the way we wanted. You don't have to hunt for a dozen addons and spend an evening making them fit together. Forever Core works out of the box and still lets you change every detail.
+
+Every part is its own addon. Use all of them, or only the ones you need.
 
 ---
 
-## Pick what you need
-Install the package and log in. The **Forever Core Hub** opens once and lets you tick the addons you want, then click "Reload". You can change your choice at any time with **/forever**.
-
-Every addon needs the small base addon **ForeverCore**. It's included in the package and in every single-addon download.
+## Why Forever Core?
+- **One interface, not a pile of addons.** One settings window, one minimap button, one look: flat and dark with gold accents.
+- **Ready to play.** On a fresh install everything starts in a tidy, tested layout.
+- **Built for Forever.** First and last names, the classic rules for levels and experience, and the game's combat restrictions are all handled. There's no rotation help and no automation in combat.
+- **Works with what you already use.** Questie, Details!, Masque and TomTom are built right in. If you already have another addon for the same job, you choose which one should run.
+- **English and German.**
 
 ---
 
 ## The addons
 
-**ForeverFrames – party and raid frames**
+**ForeverFrames – party and raid frames** (/ff)
 - Clean, compact frames with click casting
-- Incoming heals and shields at a glance
-- Debuffs with their dispel type, so you know what you can remove
-- Your HoTs and those of other players
-- Pet frames with an aggro border
-- Icons for incoming resurrections and summons
-- Optional: sort your group by role
-- Settings: /ff
+- Incoming heals, shields, dispellable debuffs and HoTs at a glance
+- Separate settings for party and raid, optional role sorting, pet frames, resurrection and summon icons
 
-**ForeverUnits – player, target, target of target, focus and pet**
-- Class icon or portrait, level and elite/rare marker
-- PvP and resting icons
-- Optional DoT bars for your target and focus, great for Warlocks and Shadow Priests. You can detach them and place them anywhere.
-- Combo points on your target for Rogues and Druids in cat form: a bright column next to the frame, a segmented bar or dots
-- Takes over the ForeverFrames look with a single click
-- Settings: /fu
+**ForeverUnits – player, target, focus, pet and target of target** (/fu)
+- Class icon or portrait, level colors that follow the classic experience rules, and elite/rare/boss markers
+- Optional DoT bars for target and focus, which you can detach and place anywhere
+- Combo points for Rogues and Druids in cat form
 
-**ForeverCast – cast bar**
-- A clean cast bar with your latency, lag zone and spell queue window
-- Shows the global cooldown
-- Settings: /fcast
+**ForeverPlates – nameplates** (/fplates) *(new)*
+- Health in percent and total, plus an execute color you choose yourself
+- Threat as a word and in percent
+- A cast bar that shows who the cast is aimed at, and briefly "Interrupted by …" when a cast gets stopped
+- Your DoTs, crowd control, combo points, raid markers and quest mobs (with Questie)
+- Plates stack neatly and stay sharp at any distance
 
-**ForeverHelpers – three small helpers in one addon** *(new: formerly ForeverLoot, ForeverBuffs and ForeverVendor – your settings are kept)*
+**ForeverCast – cast bar** (/fcast)
+- Latency, lag zone, spell queue window and global cooldown
 
-*Loot rolls*
-- See who picked Need, Greed or Pass, what everyone rolled and who won
-- Disappears on its own a few seconds after the result
-- Settings: /floot
+**ForeverBars – action bars, experience and reputation** (/fb)
+- Flat action bars, plus pet, stance and totem bars, each with its own size, layout, fading and key bindings
+- A slim experience bar with XP per hour, time to level-up, rested XP and the XP from finished quests
+- A reputation bar, a marker bar with target and world markers, a profession bar, a bag bar and a micro menu
 
-*Buffs and consumables*
-- Shows a small icon only when something is missing
-- Your own buffs, and whether the highest rank is active. Click an icon to cast it.
-- Group buffs: who is missing your buffs, and which buffs your group could give you
-- Food and drink in your bags, and whether there is something better for your level
-- Your own list, e.g. "Healing Potion:3", plus ammo, soul shards, poisons/oils and weapon imbues
-- Settings: /fbuffs
+**ForeverQuests – quest tracker, quest log and dungeon quests** (/fq)
+- Quests grouped by zone, with tags, a reward chest, filters and pins
+- The world map's quest log in the Forever look, with a details page for every quest
+- **Quest together:** suggest a quest to your group and follow everyone's progress
+- A dungeon window with all dungeon quests, prerequisites, rewards and chains. It also shows who in your group has which quest.
+- **With Questie:** Questie's tracker makes room for ours, while its map icons follow your tracked quests. Quest chains, Wowhead links and TomTom waypoints are one right-click away.
 
-*Merchant helper*
-- Sells your grey items and repairs if you want (guild bank first, if you like)
-- Restocks class reagents, the best food and drink for your level, fitting ammo and your own list
-- A small window at the merchant shows your shopping list with prices. One click on "Buy" and you're done.
-- A spending limit per visit and a gold reserve keep your wallet safe
-- Settings: /fvendor
+**ForeverBags – all bags in one window** (/fbags)
+- Search, sort, free slots, gold and currencies
+- Its own bank and guild bank windows. The bank opens in the middle of the screen with your bags right next to it.
+- The bags, bank and gold of all your characters. Item tooltips show how many of an item they own.
 
-**ForeverBars – action bars, experience and reputation** *(new)*
-- Clean, flat action bars, plus pet, stance and totem bars, each with its own size, layout, fading and key bindings
-- A slim **experience bar** right below action bar 1: XP per hour, time to level-up, rested XP and the XP your completed quests will give you. Hover over it for more.
-- A slimmer **reputation bar** for your watched faction: standing, progress, reputation per hour and the time to the next rank
-- A **marker bar** with target and world markers, ready check, role poll and countdown
-- Profession bar, bag bar and a micro menu that docks right below the minimap
-- Copy the settings of one bar to another with one click
-- Settings: /fb
+**ForeverAlts – all your characters** (/falts) *(new)*
+- Level, rested XP, gold, location, professions, played time, mail and last login, all in one table
+- The recipes of every character, and "Can be made by" in item tooltips
 
-**ForeverQuests – quest tracker** *(new)*
-- Your quests grouped by zone, with tags for class, reputation and profession quests
-- A small chest marks quests with good item rewards
-- Filters for zone, dungeon, raid, group, class, profession, reputation and more. Inside dungeons it can show only the quests for that dungeon.
-- Pin important quests to the top, and share, untrack or abandon them with a right-click
-- **Quest together:** suggest a quest to your group. Everyone who joins sees it at the top of the tracker with the progress of all members.
-- A searchable dungeon window with all dungeon quests
-- Settings: /fq
+**ForeverMinimap – a simple minimap** (/fmm)
+- Round or square, with zone, clock and coordinates
+- A tidy button strip, a mail tile and the dungeon finder eye right in the map
 
-**ForeverMinimap – a simple minimap** *(new)*
-- Round or square, with a slim bar for zone, clock and coordinates
-- Minimap buttons only show up when you need them
-- A clear tile for new mail and the dungeon finder eye right in the map
-- Settings: /fmm
+**ForeverChat – your chat, just cleaner** (/fchat)
+- A transparent window, flat tabs and names in class colors with their level
+- Short channel names, clickable links and highlighted mentions
+- Instant messaging: one tab per person for your whispers
 
-**ForeverBags – all bags in one window** *(new)*
-- Search, sort, free slots and your gold at a glance
-- Its own bank and guild bank windows
-- Look into the bags, bank and gold of all your characters. Item tooltips show how many of an item all your characters own.
-- Currencies in the footer, quest items marked in yellow
-- Settings: /fbags
+**ForeverTooltip – tooltips** (/ftip) *(new)*
+- The Forever look, with the border in item quality or class color
+- Item level, IDs, the unit's target and a movable anchor
 
-**ForeverChat – your chat, just cleaner**
-- Keeps Blizzard's chat (whispers, channels, links and communities work as usual), with a transparent window and flat tabs
-- A small button bar right in the tab row
-- Player names in class colors with their level
-- Short channel names, clickable web links and highlighted mentions of your name
-- Instant messaging: an "IM" tab with one sub-tab per person, which blinks gold when you have unread messages
-- The input line only shows up while you're typing
-- Custom channels get their own tab, and a "+" button lets you switch or leave them
-- Copy the whole chat with one click
-- Settings: /fchat
-
-**ForeverSpellbook – compact spellbook**
-- All your spells in tabs, with a search
-- Tells you when your bars still have a lower rank of a spell, and fixes it with one click
+**ForeverSpellbook – compact spellbook** (/fsb)
+- All your spells with a search
+- Finds lower spell ranks on your bars and fixes them with one click
 - Shows what your trainer has next and what it costs
-- Can replace the spellbook key (P)
-- Settings: /fsb
+
+**ForeverHelpers – the small things** (/fhelp)
+- **Loot rolls:** who picked Need, Greed or Pass, what everyone rolled and who won
+- **Buffs and consumables:** a small icon only when something is missing. Click it to cast.
+- **Merchant:** sells grey items, repairs and restocks reagents, food, drink and ammo, with a spending limit
 
 ---
 
-## Made to work together
-- **One minimap button:** with two or more Forever Core addons, their buttons are bundled into a single Forever Core button.
-- **Forever Core Hub:** type **/forever** for a list of all your Forever Core addons, with their commands and a button that takes you straight to their settings. You'll also find Forever Core in Blizzard's options (Esc » Options » AddOns) and in the addon menu at the minimap.
-- **A ready-made layout:** on a fresh install, everything starts in a tidy, tested arrangement.
-- **Move everything at once:** type **/fmove** to unlock all frames together, then place them with a grid. Frames snap to each other, to the minimap and to the chat (hold Shift to move freely). Type /fmove again to lock them.
-- **Details! skin:** one click in the hub gives Details! the Forever look, on a copy of your profile.
-- **Plays nice with other addons:** pick per task whether Forever Core or your existing addon (Bartender4, Bagnon, Cell, Prat …) should run, and skin ForeverBars and ForeverBags with Masque.
-- **Exact positions:** X/Y fields for pixel-perfect placement.
-- **Resizable windows:** drag the corner of any settings window, and the window you opened last always stays on top.
-- **Profiles per character:** one shared profile for everyone, or an own profile for any character – for all addons at once (**/forever profile**).
-- **Share your interface:** export all your Forever Core settings as one text and import them on another PC or for a friend (**/forever export**).
+## Everything in one place
+- **/forever** or the Forever Core minimap button opens the settings window. The overview shows every addon as a tile, so one click turns it on or off. You can search all settings at once.
+- **/fmove** unlocks every frame, so you can place them on a grid. Frames snap to each other, and holding Shift lets you move them freely.
+- **Profiles per character**, for all addons at once (**/forever profile**).
+- **Share your setup:** export all settings as one text and import them anywhere (**/forever export**).
+- **Details!** gets the Forever look automatically, on a copy of your profile.
+- **Player names** are shortened to "Hexeron S." on frames and nameplates. You can choose this in the overview.
 
 ---
 
 ## Good to know
+- Every addon needs the small base addon **ForeverCore**. It's included in the package.
 - This is a **beta**. Thanks for helping us test it!
-- Built for World of Warcraft: Forever, and it respects its combat restrictions. There's no rotation help or automation in combat.
 
 ## Found a bug or have an idea?
 We'd love to hear from you! The addon **BugSack** shows the exact error, so please include it in your report.
