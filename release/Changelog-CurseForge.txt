@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverSpellbook: new entry "Macros" at the bottom of the tab list – opens the macro window.
+
 - ForeverPlates, **damage numbers above the nameplate:** Blizzard's damage numbers over your target now start higher, so the nameplate no longer hides them – same style and motion as before ("Damage text" tab in /fplates, with a slider for the height). Extras you can switch on there: size, duration, arc, sideways spread and the classic style.
 - **ForeverCast: cast bars for target and focus** (off by default – turn them on in /fcast): right below the ForeverUnits target and focus frames (auras move down to make room) or placed freely. Spells that can't be interrupted are grey with a shield, and interrupted casts briefly show who interrupted them.
 - **ForeverCast: new Forever look** – the same fine frame as the experience bar (thin grey border all around, gold line on top), muted colors, texture and font like ForeverFrames. The previous look is still there as "Clean" (/fcast » Look).
