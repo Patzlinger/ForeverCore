@@ -411,7 +411,40 @@ trainerWatch:SetScript("OnEvent", function()
             local db = ns.GetDB()
             db.roles = db.roles or {}
             db.roles[id] = role
-        end
+        end    end)
+end)
+
+-- Händler offen: merken, was er hauptsächlich verkauft (die ein, zwei häufigsten Warengruppen) und ob er repariert
+local function SaveRole(id, role)
+    local db = ns.GetDB()
+    db.roles = db.roles or {}
+    db.roles[id] = role
+end
+local merchantWatch = CreateFrame("Frame")
+merchantWatch:RegisterEvent("MERCHANT_SHOW")
+merchantWatch:SetScript("OnEvent", function()
+    -- einen Augenblick später: dann stehen die Waren fest
+    C_Timer.After(0.3, function()
+        pcall(function()
+            local id = NpcID("npc")
+            if not id or not GetMerchantNumItems then return end
+            local count, order = {}, {}
+            for i = 1, GetMerchantNumItems() do
+                local itemID = GetMerchantItemID and GetMerchantItemID(i)
+                local kind = itemID and select(2, (C_Item and C_Item.GetItemInfoInstant or GetItemInfoInstant)(itemID))
+                if type(kind) == "string" and kind ~= "" then
+                    if not count[kind] then order[#order + 1] = kind count[kind] = 0 end
+                    count[kind] = count[kind] + 1
+                end
+            end
+            table.sort(order, function(a, b) return count[a] > count[b] end)
+            local wares = order[1] and (order[2] and count[order[2]] * 3 >= count[order[1]]
+                and (order[1] .. " & " .. order[2]) or order[1])
+            local role = wares and string.format(ns.T("Händler für %s", "%s vendor"), wares) or ns.T("Händler", "Vendor")
+            if CanMerchantRepair and CanMerchantRepair() then role = role .. "  ·  " .. ns.T("Reparatur", "Repairs") end
+            SaveRole(id, role)
+            if ns.RefreshMerchantCard then ns.RefreshMerchantCard() end -- erster Besuch: gleich zeigen
+        end)
     end)
 end)
 

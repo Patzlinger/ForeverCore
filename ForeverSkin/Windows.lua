@@ -288,6 +288,7 @@ local function SkinMerchant()
     local function Card()
         ns.NpcCard(f, "npc", ns.T("Händler", "Vendor"), function() return ns.T("Händler", "Vendor") end)
     end
+    function ns.RefreshMerchantCard() if f:IsShown() then pcall(Card) end end
     f:HookScript("OnShow", function()
         Card()
         C_Timer.After(0, function() pcall(Place) end)
