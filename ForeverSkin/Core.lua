@@ -14,7 +14,7 @@ ns.DEFAULTS = {
     quest = true,    -- Quest-Dialog (Annehmen, Fortschritt, Abgeben)
     merchant = true, -- Händler
     popup = true,    -- Rückfrage-Fenster ("Sollen alle Talente verlernt werden?" …)
-    trainer = true,  -- Lehrer (mit "Alle lernen" und "Leisten aktualisieren")
+    trainer = true,  -- Lehrer (mit "Leisten aktualisieren")
 }
 
 function ns.GetDB()
@@ -685,7 +685,7 @@ local function Build()
     Check(-62, T("NPC-Gespräch", "NPC dialog"), "gossip")
     Check(-86, T("Quest-Dialog (Annehmen, Fortschritt, Abgeben)", "Quest dialog (accept, progress, turn in)"), "quest")
     Check(-110, T("Händler", "Vendor"), "merchant")
-    Check(-134, T("Lehrer (mit „Alle lernen“)", "Trainer (with \"Learn all\")"), "trainer")
+    Check(-134, T("Lehrer (mit „Leisten aktualisieren“)", "Trainer (with \"Update bars\")"), "trainer")
     Check(-158, T("Rückfrage-Fenster", "Confirmation dialogs"), "popup")
     UI.Hint(options, 22, -186, W - 12, T("Änderungen gelten nach dem Neuladen. Gefällt dir der Stil nicht, schalte " ..
         "ForeverSkin in der Addon-Liste aus – dann ist alles wieder wie vorher.",
