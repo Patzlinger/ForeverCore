@@ -169,6 +169,12 @@ local function SkinMacro()
             local tab = G("MacroFrameTab" .. i)
             if tab then pcall(ns.CenterText, tab) end
         end
+        -- Beschriftung mittig in die (oben gekürzte) Fläche der Knöpfe
+        for _, n in ipairs({ "MacroEditButton", "MacroDeleteButton", "MacroNewButton", "MacroExitButton", "MacroSaveButton",
+            "MacroCancelButton" }) do
+            local b = G(n)
+            if b then pcall(ns.CenterText, b) end
+        end
         local popup = G("MacroPopupFrame")
         if popup then pcall(SkinPopup, popup) end
         if ns.SkinOpenMenu then pcall(ns.SkinOpenMenu) end -- aufgeklappte Auswahllisten flach
