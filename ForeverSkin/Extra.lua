@@ -111,18 +111,50 @@ local function SkinLootRow(row, name)
         ns.Hide(row:GetHighlightTexture())
         ns.Hide(row:GetPushedTexture())
     end
-    ns.Flat(row, C.button, 1)
-    ns.Hover(row)
+    ns.Flat(row, C.button, 1) -- (kein Aufhellen beim Überfahren – nur der Rand in Seltenheitsfarbe, siehe LootHover)
+end
+
+-- Beute-Platz einer Zeile (Retail: Element, Classic: LootButton.slot)
+local function Slot(row)
+    if row.GetSlotIndex then
+        local ok, slot = pcall(row.GetSlotIndex, row)
+        if ok and slot then return slot end
+    end
+    return row.slotIndex or row.slot or (row.GetID and row:GetID())
+end
+
+-- Maus über einer Zeile: Rand in der Seltenheitsfarbe des Gegenstands, sonst grau (nichts hellt auf)
+local overState = setmetatable({}, { __mode = "k" }) -- (eigene Tabelle: nichts in Blizzards Zeilen schreiben)
+local function LootHover(row)
+    if not done[row] then return end
+    local over = row:IsMouseOver() and true or false
+    if over == overState[row] then return end
+    overState[row] = over
+    local c = C.border
+    if over then
+        local slot = Slot(row)
+        local quality = slot and GetLootSlotInfo and select(5, GetLootSlotInfo(slot))
+        if type(quality) == "number" and GetItemQualityColor then
+            local r, g, b = GetItemQualityColor(quality)
+            c = { r, g, b }
+        else
+            c = C.accent
+        end
+    end
+    ns.EdgeColor(row, c, 1)
 end
 
 local function SkinLootRows()
     local f = G("LootFrame")
     if not f then return end
     local box = f.ScrollBox
-    if box and box.ForEachFrame then box:ForEachFrame(function(e) SkinLootRow(e) end) end
+    if box and box.ForEachFrame then box:ForEachFrame(function(e) SkinLootRow(e) LootHover(e) end) end
     for i = 1, 4 do
         local b = G("LootButton" .. i)
-        if b then SkinLootRow(b, "LootButton" .. i) end
+        if b then
+            SkinLootRow(b, "LootButton" .. i)
+            LootHover(b)
+        end
     end
 end
 
