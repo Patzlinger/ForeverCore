@@ -53,10 +53,11 @@ do
         col.y = col.y - 24
         return cb
     end
-    local function Slider(label, key, minV, maxV, step, unit, sub, format)
+    local function Slider(label, key, minV, maxV, step, unit, sub, format, after)
         local s = UI.Slider(parent, col.x + (sub and 18 or 0), col.y - 4, label, minV, maxV, step,
             Safe(T("Einstellungen", "Settings"), function(v)
                 ns.GetDB()[key] = v
+                if after then after() end
                 ns.ApplyAll()
             end), { width = 180, unit = unit, format = format })
         controls[#controls + 1] = { slider = s, key = key }
@@ -211,6 +212,39 @@ do
         function() ns.ApplyFriendly() end)
     Check(T("Nicht mit der Entfernung verkleinern", "Don't shrink with distance"), "noShrink", false,
         function() ns.ApplyFriendly() end)
+
+    ---------------------------------------------------------------------------
+    -- Reiter 3: Schadenszahlen (Blizzards eigene Zahlen über dem Gegner, Core.lua ApplyWorldText)
+    ---------------------------------------------------------------------------
+    parent = AddTab(T("Schadenszahlen", "Damage text"))
+    local function WT() ns.ApplyWorldText() end
+    local function Seconds(v) return string.format("%.1f s", v / 10) end
+    local function Hundredths(v) return string.format("%.2f", v / 100) end
+    Column(18)
+    Header(T("Position", "Position"))
+    Check(T("Über der Namensplakette aufsteigen", "Rise above the nameplate"), "dmgRaise", false, WT)
+    Slider(T("Wie viel höher", "How much higher"), "dmgHeight", 0, 15, 1, " %", true, nil, WT)
+    Hint(T("Blizzard zeichnet die Zahlen selbst in der Spielwelt – sie lassen sich nicht an die Plakette hängen, "
+        .. "starten aber so weiter oben (Anteil der Bildschirmhöhe). Stil und Bewegung bleiben Blizzards.",
+        "Blizzard draws the numbers in the game world itself – they can't be attached to the plate, but this "
+        .. "makes them start higher (share of the screen height). Style and motion stay Blizzard's."), 60)
+    Gap()
+    Header(T("Bewegung (Zusatz)", "Motion (extra)"))
+    Check(T("Bewegung selbst einstellen", "Adjust the motion"), "dmgCustom", false, WT)
+    Slider(T("Größe", "Size"), "dmgScale", 50, 200, 10, " %", true, nil, WT)
+    Slider(T("Dauer", "Duration"), "dmgDuration", 5, 30, 1, nil, true, Seconds, WT)
+    Slider(T("Bogen (Schwerkraft)", "Arc (gravity)"), "dmgGravity", 0, 200, 10, nil, true, Hundredths, WT)
+    Slider(T("Seitliche Streuung", "Sideways spread"), "dmgSpread", 0, 100, 5, nil, true, Hundredths, WT)
+    Check(T("Klassischer Stil", "Classic style"), "dmgClassic", true, WT)
+    Hint(T("Aus = wieder Blizzards Werte (deine vorherigen Einstellungen kommen zurück).",
+        "Off = Blizzard's values again (your previous settings come back)."), 34)
+
+    Column(374)
+    Header(T("Symbol des Zaubers", "Spell icon"))
+    Hint(T("Ein Symbol neben der Zahl geht hier nicht: welcher Zauber wie viel Schaden gemacht hat, steht nur im "
+        .. "Kampflog – und das ist in diesem Client für Addons gesperrt.",
+        "An icon next to the number isn't possible here: which spell did how much damage is only in the combat "
+        .. "log – and this client locks it for addons."), 60)
 
     UI.Hint(options, 18, -764, 680, T(
         "Gegner bekommen eigene Plaketten; Blizzards Plakette bleibt unsichtbar "

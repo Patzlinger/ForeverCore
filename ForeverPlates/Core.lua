@@ -67,6 +67,15 @@ ns.DEFAULTS = {
     quest = true,             -- Questgegner-Symbol
     raidMarker = true,        -- großer Raidmarker über der Plakette
     raidMarkerSize = 26,
+    -- Schadenszahlen über dem Gegner (Blizzards eigene, ApplyWorldText): Standard nur höher (über die Plakette)
+    dmgRaise = true,
+    dmgHeight = 5,            -- Bildschirmhöhe in Prozent, um die die Zahlen höher starten
+    dmgCustom = false,        -- Zusatz: Bewegung anpassen (erst zuschalten)
+    dmgScale = 100,           -- Größe in Prozent
+    dmgDuration = 10,         -- Dauer in Zehntelsekunden
+    dmgGravity = 50,          -- Schwerkraft (Bogen) in Hundertstel
+    dmgSpread = 0,            -- seitliche Streuung in Hundertstel
+    dmgClassic = false,       -- klassischer Stil (Blizzard-Schalter)
     minimapAngle = 320,
 }
 
@@ -1467,6 +1476,50 @@ function ns.ApplyFriendly()
 end
 
 ---------------------------------------------------------------------------
+-- Schadenszahlen: Blizzard zeichnet sie selbst in der Spielwelt (kein Rahmen, nicht an die Plakette hängbar).
+-- Über Blizzards eigene Einstellungen starten sie weiter oben – über der Plakette statt dahinter; Stil und
+-- Bewegung bleiben Blizzards. Zusatz (erst zuschalten): Größe, Dauer, Bogen, Streuung, klassischer Stil.
+-- Vorherige Werte werden gemerkt (_savedCVars) und beim Abschalten zurückgesetzt.
+-- Namen im Forever-Client mit "_v2" (per /run geprüft, 2026-10-20).
+---------------------------------------------------------------------------
+local function Num(v) return string.format("%.3f", v) end
+local WORLD_CVARS = {
+    WorldTextScreenY_v2 = function(d) return d.dmgRaise and Num(d.dmgHeight / 100) end,
+    WorldTextCritScreenY_v2 = function(d) return d.dmgRaise and Num(d.dmgHeight / 100) end,
+    WorldTextScale_v2 = function(d) return d.dmgCustom and Num(d.dmgScale / 100) end,
+    WorldTextRampDuration_v2 = function(d) return d.dmgCustom and Num(d.dmgDuration / 10) end,
+    WorldTextGravity_v2 = function(d) return d.dmgCustom and Num(d.dmgGravity / 100) end,
+    WorldTextRandomXY_v2 = function(d) return d.dmgCustom and Num(d.dmgSpread / 100) end,
+    classicStyleWorldText = function(d) return d.dmgCustom and d.dmgClassic and "1" end,
+}
+local function Same(a, b)
+    local x, y = tonumber(a), tonumber(b)
+    if x and y then return math.abs(x - y) < 0.0005 end
+    return a == b
+end
+function ns.ApplyWorldText()
+    UI.AfterCombat("ForeverPlatesWorldText", function()
+        local d = GetDB()
+        d._savedCVars = d._savedCVars or {}
+        for cvar, wantFn in pairs(WORLD_CVARS) do
+            local cur = C_CVar.GetCVar(cvar)
+            if cur ~= nil then -- gibt es die Einstellung in diesem Client?
+                local want = wantFn(d)
+                if want then
+                    if not Same(cur, want) then
+                        if d._savedCVars[cvar] == nil then d._savedCVars[cvar] = cur end
+                        C_CVar.SetCVar(cvar, want)
+                    end
+                elseif d._savedCVars[cvar] ~= nil then
+                    C_CVar.SetCVar(cvar, d._savedCVars[cvar])
+                    d._savedCVars[cvar] = nil
+                end
+            end
+        end
+    end, "ForeverPlates")
+end
+
+---------------------------------------------------------------------------
 -- Ereignisse
 ---------------------------------------------------------------------------
 local function ForAll(fn)
@@ -1586,6 +1639,7 @@ function ns.Start()
     FindKick()
     for event in pairs(H) do pcall(ev.RegisterEvent, ev, event) end
     ns.ApplyFriendly()
+    ns.ApplyWorldText()
     ns.ApplyQuestie()
     C_Timer.After(3, function() pcall(ns.ApplyQuestie) end) -- Questie legt seine Einstellungen evtl. erst später an
     for _, plate in pairs(C_NamePlate.GetNamePlates(issecure and issecure()) or {}) do
