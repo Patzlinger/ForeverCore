@@ -342,6 +342,25 @@ function ns.ShortKey(text)
 end
 
 local CAST_VFX_ALPHA = 0.4 -- Deckkraft von Blizzards Zauber-Rand auf den Knöpfen (siehe UpdateButtonLook)
+local BLIZZARD_BUTTON = 45 -- Kantenlänge, für die Blizzard seine Knopf-Effekte gebaut hat
+
+-- Blizzards Effekte auf dem Knopf (Zauber-Rand, Zielmarkierung, Unterbrechen, Proc-Leuchten) sind für 45-px-Knöpfe
+-- gebaut – unsere Knöpfe sind kleiner, darum lagen die Effekte über den Rahmen hinaus. Auf die Knopfgröße
+-- verkleinern und mittig setzen. keepSize: Blizzard hat die Größe schon passend zum Knopf gesetzt (Proc-Leuchten,
+-- Breite × 1,4) – dann die Größe auf 45 px umrechnen, damit die festen Teile darin mitschrumpfen.
+local function FitEffect(button, effect, keepSize)
+    if not (effect and effect.SetScale and button) then return end
+    if InCombatLockdown() and effect.IsProtected and effect:IsProtected() then return end
+    local w = button:GetWidth()
+    if not w or w < 10 then return end
+    local s = w / BLIZZARD_BUTTON
+    -- (Blizzard setzt die Größe des Leuchtens bei jedem Aufleuchten neu – darum jedes Mal fest auf 45 × 1,4)
+    if keepSize then effect:SetSize(BLIZZARD_BUTTON * 1.4, BLIZZARD_BUTTON * 1.4) end
+    if math.abs((effect:GetScale() or 1) - s) > 0.01 then effect:SetScale(s) end
+    effect:ClearAllPoints()
+    effect:SetPoint("CENTER", button, "CENTER", 0, 0)
+end
+ns.FitEffect = FitEffect
 
 -- Texte (Tastenbelegung, Makroname, Anzahl), Schrift, Rand und Symbol-Zuschnitt eines Knopfes
 local function UpdateButtonLook(button)
@@ -387,10 +406,13 @@ local function UpdateButtonLook(button)
     -- ist für größere Knöpfe gemacht und wirkt auf den flachen Knöpfen dick: dezenter (halb durchsichtig)
     for _, effect in ipairs({ button.SpellCastAnimFrame, button.TargetReticleAnimFrame }) do
         if effect and effect.SetAlpha then effect:SetAlpha(db.castVFX and CAST_VFX_ALPHA or 0) end
+        FitEffect(button, effect)
     end
     if button.InterruptDisplay and button.InterruptDisplay.SetAlpha then
         button.InterruptDisplay:SetAlpha(db.castVFX and 1 or 0)
+        FitEffect(button, button.InterruptDisplay)
     end
+    FitEffect(button, button.CooldownFlash)
 
     -- Masque gestaltet den Knopf (Masque.lua): eigener Rand, Fläche, Zuschnitt und Leuchten aus – Texte bleiben
     if button.fbMasque and ns.MasqueActive and ns.MasqueActive() then
@@ -1691,7 +1713,10 @@ local function OnAlertShown(button)
     button.fbAlertActive = true
     local style = ns.db.procGlow
     local alert = button.SpellActivationAlert or button.overlay
-    if alert then alert:SetAlpha(style == "BLIZZARD" and 1 or 0) end
+    if alert then
+        alert:SetAlpha(style == "BLIZZARD" and 1 or 0)
+        FitEffect(button, alert, true) -- Blizzards Leuchten passend zu unserer Knopfgröße
+    end
     -- Bei "Wie Blizzard" zeigt Blizzard selbst das Leuchten, bei "Aus" nichts
     ShowGlow(button, (style ~= "BLIZZARD" and style ~= "OFF") and style or nil)
 end
