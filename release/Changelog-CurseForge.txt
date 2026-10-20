@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- ForeverBags: at a merchant (and at the bank) your bags now stick to the merchant/ForeverVendor window – move that window and the bags follow right away. Drag the bags yourself and they let go until you close the merchant or the bank.
 - **Details! windows snap like Forever frames:** drag a Details window and the yellow guide lines show where it snaps – to your Forever frames, the screen center and the grid (hold Shift to move freely). Forever frames snap to Details windows too. Uses the same "Snap while moving" switch in the overview.
 - The game menu (Escape) now has the Forever look – flat dark background, title bar with a fine gold line, flat buttons with a gold edge on mouse-over – and the button (now called "Forever Core") sits inside it below a divider. Blizzard's buttons keep working exactly as before; with ElvUI the menu is left alone.
 - Forever Core: fixed "Other addons" (and turning addons on/off in the overview) – choosing which addon should run now really turns the other one off after reloading. The character was passed to the game the wrong way, so the choice didn't stick.

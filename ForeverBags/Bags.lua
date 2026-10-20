@@ -747,8 +747,18 @@ end
 -- Beim Öffnen: beim Händler unter dem ForeverVendor-Fenster (bzw. rechts neben dem Händlerfenster), sonst an
 -- der Mausposition (Einstellung "openAtCursor"; aus = gespeicherte Position). Bildschirmränder hält UI.Window ein.
 local vendorHooked = false
+-- Andocken: an Bank, ForeverVendor-Fenster bzw. Händlerfenster HÄNGT die Tasche (Anker an deren Rahmen) – wird das
+-- Fenster verschoben, wandert sie sofort mit. Zieht man die Tasche selbst, löst sie sich (window.fbagsDetached) und
+-- bleibt, wo man sie hinlegt, bis Bank/Händler zu sind bzw. die Tasche geschlossen wird.
 local function PlaceOnOpen()
     if not window or window.fbagsMoving or not window:IsShown() then return end
+    local bankOpen = _G.ForeverBagsBank and _G.ForeverBagsBank:IsShown()
+    local merchantOpen = _G.MerchantFrame and _G.MerchantFrame:IsShown()
+    if not (bankOpen or merchantOpen) then
+        window.fbagsDetached = nil
+    elseif window.fbagsDetached then
+        return
+    end
     -- ForeverVendor-Fenster ändert Größe/Lage, solange der Händler offen ist: unser Fenster bleibt darunter
     local vendorPanel = _G.ForeverVendorMerchantPanel
     if vendorPanel and not vendorHooked then
@@ -765,21 +775,22 @@ local function PlaceOnOpen()
         window:ClearAllPoints()
         window:SetPoint(point, UIParent, "BOTTOMLEFT", x / ws, y / ws)
     end
+    local function Dock(relative, relPoint, x, y)
+        window:ClearAllPoints()
+        window:SetPoint("TOPLEFT", relative, relPoint, x, y)
+    end
     local bankWin = _G.ForeverBagsBank
-    if bankWin and bankWin:IsShown() and bankWin:GetRight() then
-        local bs = bankWin:GetEffectiveScale()
-        At("TOPLEFT", bankWin, bankWin:GetRight() * bs + 4 * ws, bankWin:GetTop() * bs)
+    if bankWin and bankWin:IsShown() then
+        Dock(bankWin, "TOPRIGHT", 4, 0)
         return
     end
     local merchant = _G.MerchantFrame
-    if merchant and merchant:IsShown() and merchant:GetRight() then
+    if merchant and merchant:IsShown() then
         local vendor = _G.ForeverVendorMerchantPanel
-        if vendor and vendor:IsShown() and vendor:GetLeft() then
-            local vs = vendor:GetEffectiveScale()
-            At("TOPLEFT", vendor, vendor:GetLeft() * vs, vendor:GetBottom() * vs - 4 * ws)
+        if vendor and vendor:IsShown() then
+            Dock(vendor, "BOTTOMLEFT", 0, -4)
         else
-            local ms = merchant:GetEffectiveScale()
-            At("TOPLEFT", merchant, merchant:GetRight() * ms + 4 * ws, merchant:GetTop() * ms)
+            Dock(merchant, "TOPRIGHT", 4, 0)
         end
         return
     end
@@ -808,6 +819,10 @@ local function StopDrag()
     if not window.fbagsMoving then return end
     window.fbagsMoving = nil
     window:StopMovingOrSizing()
+    -- bei Bank/Händler selbst gezogen: abgedockt, bis die wieder zu sind
+    if (_G.ForeverBagsBank and _G.ForeverBagsBank:IsShown()) or (_G.MerchantFrame and _G.MerchantFrame:IsShown()) then
+        window.fbagsDetached = true
+    end
     SavePosition()
 end
 
@@ -950,6 +965,7 @@ local function CreateWindow()
     end)
     window:HookScript("OnHide", function()
         if window.fbagsMoving then StopDrag() end
+        window.fbagsDetached = nil -- beim nächsten Öffnen wieder an Bank/Händler andocken
         searchBox:ClearFocus()
         view = nil -- beim nächsten Öffnen wieder die eigenen Taschen
         -- "neu" gilt als gesehen, sobald man die Taschen einmal offen hatte
