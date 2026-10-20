@@ -246,7 +246,8 @@ local function SkinMerchant()
         ns.HideTextures(item) -- Fach und Namensfeld
         -- Kasten etwas größer als das Feld, damit Name und Preis ganz darin liegen; Namen höchstens zwei Zeilen
         -- (sonst ragten lange Namen wie "Muster: Lavendelfarbenes Magiestoffhemd" oben heraus)
-        ns.Flat(item, C.panel, { -3, -3, -3, -5 })
+        -- (Rückkauf-Feld unten ohne Überstand: darunter beginnt die Geldleiste)
+        ns.Flat(item, C.panel, name == "MerchantBuyBackItem" and { -3, -3, -3, 0 } or { -3, -3, -3, -5 })
         local nameText = item.Name or G(name .. "Name")
         if nameText and nameText.SetMaxLines then nameText:SetMaxLines(2) end
         local button = G(name .. "ItemButton")
@@ -265,7 +266,7 @@ local function SkinMerchant()
     end
     -- nur die untere Leiste mit dem Geld; kein großer Kasten (die Gegenstände haben eigene, Blizzards Bereiche für
     -- Seiten und Rückkauf passten nicht dazu – Ränder überlagerten sich)
-    ns.ContentBox(f, 30, nil, true)
+    ns.ContentBox(f, 26, nil, true)
     f:HookScript("OnShow", function() ns.Portrait(f, "npc") end)
     ns.Watch(f)
 end

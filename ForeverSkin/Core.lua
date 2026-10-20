@@ -213,21 +213,43 @@ function ns.Fit(frame, region, top, bottom, skip)
     if not region or not region.GetNumPoints or not frame:GetTop() or not region:GetTop() then return end
     local o = original[region]
     if not o then
-        o = { points = {}, top = frame:GetTop() - region:GetTop(), bottom = region:GetBottom() - frame:GetBottom() }
+        o = { points = {}, top = frame:GetTop() - region:GetTop(), bottom = region:GetBottom() - frame:GetBottom(),
+            height = region:GetHeight() }
         for i = 1, region:GetNumPoints() do o.points[i] = { region:GetPoint(i) } end
         original[region] = o
-    end
-    for _, p in ipairs(o.points) do
-        if skip and p[2] == skip then return end
     end
     local down = top and math.max(0, top - o.top) or 0
     local up = bottom and math.max(0, bottom - o.bottom) or 0
     if down == 0 and up == 0 then return end
+    -- Punkte, die am mitwandernden Bereich (skip) hängen, bleiben; die übrigen werden versetzt
+    local hasTop, hasBottom, moved = false, false, false
+    for _, p in ipairs(o.points) do
+        if p[2] ~= skip or not skip then
+            if p[1]:find("TOP") then hasTop = true end
+            if p[1]:find("BOTTOM") then hasBottom = true end
+            moved = true
+        end
+    end
+    if not moved then return end
     region:ClearAllPoints()
     for _, p in ipairs(o.points) do
         local point, rel, relPoint, x, y = p[1], p[2], p[3], p[4], p[5] or 0
-        if point:find("TOP") then y = y - down elseif point:find("BOTTOM") then y = y + up end
+        if not (skip and rel == skip) then
+            if point:find("TOP") then
+                -- nur oben aufgehängt (feste Höhe): oben versetzen; die Höhe schrumpft unten (s. u.)
+                y = y - down
+            elseif point:find("BOTTOM") then
+                -- nur unten aufgehängt: nach oben schieben, oben bleibt der Bereich, wo er hin soll
+                y = y + up
+            end
+        end
         region:SetPoint(point, rel, relPoint, x, y)
+    end
+    -- feste Höhe statt unterem Ankerpunkt: Höhe so verkleinern, dass der Bereich oben UND unten passt
+    if hasTop and not hasBottom then
+        region:SetHeight(math.max(20, o.height - down - up))
+    elseif hasBottom and not hasTop then
+        region:SetHeight(math.max(20, o.height - down - up))
     end
 end
 
