@@ -133,7 +133,20 @@ local function SkinTrainer()
     end
     ns.SkinButton(f.TrainButton or G("ClassTrainerTrainButton"))
     ns.SkinButton(G("ClassTrainerCancelButton"))
-    ns.SkinScrollBar(f.ScrollBar or G("ClassTrainerListScrollFrameScrollBar"))
+    -- Laufleisten im Fenster suchen (Retail: Rahmen mit Track/Thumb, Classic: Slider) – gold wie im Gespräch
+    local bars = {}
+    local function FindBars(frame, depth)
+        for _, child in ipairs({ frame:GetChildren() }) do
+            if (type(child.Track) == "table" and (child.Track.Thumb or child.Back)) or
+                (child:IsObjectType("Slider") and (child:GetName() or ""):find("ScrollBar")) then
+                bars[#bars + 1] = child
+            elseif depth < 3 then
+                FindBars(child, depth + 1)
+            end
+        end
+    end
+    FindBars(f, 1)
+    for _, bar in ipairs(bars) do ns.SkinScrollBar(bar) end
     ns.Watch(f)
 
     -- Knöpfe "Alle lernen" und "Leisten aktualisieren" links neben "Ausbilden"
@@ -177,11 +190,13 @@ local function SkinTrainer()
     -- Visitenkarte wie bei Gespräch und Händler; Liste rückt darunter (Innenfläche oben ab 84, darin Liste und ggf.
     -- die Fertigkeitsstufe – hängen sie an der Innenfläche, wandern sie mit)
     local inset = f.Inset or G("ClassTrainerFrameInset")
+    -- unten über der Knopfleiste (30) enden – sonst lag der untere Pfeil der Laufleiste auf "Ausbilden"
     local function Place()
-        if inset then ns.Fit(f, inset, 84) end
+        if inset then ns.Fit(f, inset, 84, 34) end
         ns.Fit(f, f.skillStepButton, 88, nil, inset)
-        ns.Fit(f, f.ScrollBox, 88, nil, inset)
-        ns.Fit(f, G("ClassTrainerListScrollFrame"), 88, nil, inset)
+        ns.Fit(f, f.ScrollBox, 88, 38, inset)
+        ns.Fit(f, G("ClassTrainerListScrollFrame"), 88, 38, inset)
+        for _, bar in ipairs(bars) do ns.Fit(f, bar, 88, 38, f.ScrollBox or inset) end
     end
     local function Card()
         ns.NpcCard(f, "npc", T("Lehrer", "Trainer"), function() return T("Lehrer", "Trainer") end, filter and 130 or 14)
