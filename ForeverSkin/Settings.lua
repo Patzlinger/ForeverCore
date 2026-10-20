@@ -108,11 +108,17 @@ end
 
 -- Regler mit Pfeilen (MinimalSliderWithSteppers): die Schiene in dieselbe Spalte wie die Auswahllisten und gleich
 -- breit; Pfeile und Zahl hängen am Rahmen des Reglers und wandern mit
+local sliderGaps = setmetatable({}, { __mode = "k" }) -- [Regler] = { links, Pfeile zusammen } (einmal gemessen)
 local function AlignSlider(element, holder)
     local slider = holder.Slider
     if not (controlX and slider and element:GetLeft() and holder:GetLeft() and slider:GetLeft()) then return end
-    local inner = slider:GetLeft() - holder:GetLeft()          -- Platz links (Pfeil)
-    local extra = (holder:GetWidth() or 0) - (slider:GetWidth() or 0) -- Pfeile links und rechts zusammen
+    -- einmal messen: wächst die Schiene nicht mit dem Rahmen, würde er sonst bei jedem Durchgang breiter
+    local gaps = sliderGaps[holder]
+    if not gaps then
+        gaps = { slider:GetLeft() - holder:GetLeft(), (holder:GetWidth() or 0) - (slider:GetWidth() or 0) }
+        sliderGaps[holder] = gaps
+    end
+    local inner, extra = gaps[1], gaps[2] -- Platz links (Pfeil), Pfeile links und rechts zusammen
     local want = controlX + 52 - inner
     local width = CONTROL_W + extra
     if math.abs((holder:GetLeft() - element:GetLeft()) - want) > 0.5 then
