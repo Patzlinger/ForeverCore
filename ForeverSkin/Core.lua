@@ -259,7 +259,7 @@ end
 -- Ring, daneben der Name groß in Gold, darunter sein Titel ("<Metzger>") und Stufe/Art. Blizzards Titel in der
 -- Titelleiste wird dafür unsichtbar, dort steht klein, was für ein Fenster es ist (label).
 local CIRCLE = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
-function ns.NpcCard(frame, unit, label, roleFn)
+function ns.NpcCard(frame, unit, label, roleFn, rightInset)
     local look = looks[frame]
     if not look then return end
     if not look.card then
@@ -282,12 +282,12 @@ function ns.NpcCard(frame, unit, label, roleFn)
         card.portrait = Disk(43, 3, { 1, 1, 1 }) -- Bild
         card.name = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
         card.name:SetPoint("TOPLEFT", frame, "TOPLEFT", 68, -32)
-        card.name:SetPoint("RIGHT", frame, "RIGHT", -14, 0)
+        card.name:SetPoint("RIGHT", frame, "RIGHT", -(rightInset or 14), 0) -- (rechts z. B. Platz für einen Filter)
         card.name:SetJustifyH("LEFT")
         card.name:SetWordWrap(false)
         card.sub = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
         card.sub:SetPoint("TOPLEFT", card.name, "BOTTOMLEFT", 0, -3)
-        card.sub:SetPoint("RIGHT", frame, "RIGHT", -14, 0)
+        card.sub:SetPoint("RIGHT", frame, "RIGHT", -(rightInset or 14), 0)
         card.sub:SetJustifyH("LEFT")
         card.sub:SetWordWrap(false)
         card.info = frame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")

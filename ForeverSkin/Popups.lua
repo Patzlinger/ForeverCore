@@ -9,18 +9,17 @@ local C = ns.C
 local WHITE = "Interface\\Buttons\\WHITE8x8"
 local done = setmetatable({}, { __mode = "k" })
 
--- Knöpfe eines Fensters (Retail: in einem ButtonContainer, Classic: direkt), nur echte Text-Knöpfe
-local function Buttons(frame, list, depth)
-    list = list or {}
-    depth = depth or 1
-    for _, child in ipairs({ frame:GetChildren() }) do
-        if child:IsObjectType("Button") and not child:IsObjectType("CheckButton") then
-            local fs = child.GetFontString and child:GetFontString()
-            if fs and child ~= frame.CloseButton then list[#list + 1] = child end
-        elseif depth < 2 and not child:IsObjectType("EditBox") then
-            Buttons(child, list, depth + 1)
-        end
+-- nur die Antwort-Knöpfe 1–4 (Retail: im ButtonContainer, Classic: StaticPopup1Button1 …) – NICHT die Münzen
+-- eines Betrags (die sind auch Knöpfe mit Text, z. B. "1" mit Silber-Symbol)
+local function Buttons(frame)
+    local list, name = {}, frame:GetName()
+    local box = frame.ButtonContainer
+    for i = 1, 4 do
+        local b = (box and box["Button" .. i]) or frame["button" .. i] or (name and _G[name .. "Button" .. i])
+        if b then list[#list + 1] = b end
     end
+    local extra = frame.extraButton or (name and _G[name .. "ExtraButton"])
+    if extra then list[#list + 1] = extra end
     return list
 end
 

@@ -122,6 +122,15 @@ local function SkinTrainer()
         end
     end
     if type(f.skillStepButton) == "table" then ns.Flat(f.skillStepButton, C.panel, 1) end
+    -- Filter ("Optionen"): flach wie die anderen Knöpfe, der Pfeil bleibt
+    local filter = f.FilterDropdown or f.FilterDropDown
+    if filter and filter.IsObjectType and filter:IsObjectType("Button") then
+        local arrow = filter.Arrow
+        ns.SkinButton(filter)
+        if filter.NineSlice then ns.Hide(filter.NineSlice) end
+        if filter.Background then ns.Hide(filter.Background) end
+        if arrow and arrow.SetAlpha then arrow:SetAlpha(1) end
+    end
     ns.SkinButton(f.TrainButton or G("ClassTrainerTrainButton"))
     ns.SkinButton(G("ClassTrainerCancelButton"))
     ns.SkinScrollBar(f.ScrollBar or G("ClassTrainerListScrollFrameScrollBar"))
@@ -165,10 +174,27 @@ local function SkinTrainer()
         end)
     end
     if type(_G.ClassTrainerFrame_Update) == "function" then hooksecurefunc("ClassTrainerFrame_Update", Later) end
+    -- Visitenkarte wie bei Gespräch und Händler; Liste rückt darunter (Innenfläche oben ab 84, darin Liste und ggf.
+    -- die Fertigkeitsstufe – hängen sie an der Innenfläche, wandern sie mit)
+    local inset = f.Inset or G("ClassTrainerFrameInset")
+    local function Place()
+        if inset then ns.Fit(f, inset, 84) end
+        ns.Fit(f, f.skillStepButton, 88, nil, inset)
+        ns.Fit(f, f.ScrollBox, 88, nil, inset)
+        ns.Fit(f, G("ClassTrainerListScrollFrame"), 88, nil, inset)
+    end
+    local function Card()
+        ns.NpcCard(f, "npc", T("Lehrer", "Trainer"), function() return T("Lehrer", "Trainer") end, filter and 130 or 14)
+    end
     f:HookScript("OnShow", function()
-        ns.Portrait(f, "npc")
+        Card()
         Later()
+        C_Timer.After(0, function() pcall(Place) end)
     end)
+    if f:IsShown() then
+        Card()
+        C_Timer.After(0, function() pcall(Place) end)
+    end
     Later()
 end
 
