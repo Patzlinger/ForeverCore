@@ -735,16 +735,19 @@ function ns.SkinCheck(cb)
     for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetHighlightTexture", "GetDisabledTexture" }) do
         if cb[get] then ns.Hide(cb[get](cb)) end
     end
-    local w = cb:GetWidth() or 20
-    local inset = math.max(0, math.floor((w - 16) / 2))
-    ns.Flat(cb, C.input, inset)
+    -- Kästchen fest 16 × 16 mittig im Haken (nicht aus der Größe berechnet: die stimmt beim ersten Umgestalten oft
+    -- noch nicht – dann war der Rahmen nur halb zu sehen)
+    local look = ns.Flat(cb, C.input)
+    look.fill:ClearAllPoints()
+    look.fill:SetPoint("CENTER")
+    look.fill:SetSize(16, 16)
     for _, t in ipairs({ checked, disabledChecked }) do
         if t and t.SetTexture then
             t:SetTexture(WHITE)
             t:SetTexCoord(0, 1, 0, 1)
             t:ClearAllPoints()
-            t:SetPoint("TOPLEFT", inset + 3, -(inset + 3))
-            t:SetPoint("BOTTOMRIGHT", -(inset + 3), inset + 3)
+            t:SetPoint("TOPLEFT", look.fill, "TOPLEFT", 3, -3)
+            t:SetPoint("BOTTOMRIGHT", look.fill, "BOTTOMRIGHT", -3, 3)
         end
     end
     if checked then checked:SetVertexColor(C.accent[1], C.accent[2], C.accent[3], 1) end
