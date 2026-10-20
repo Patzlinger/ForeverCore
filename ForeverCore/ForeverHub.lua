@@ -1904,12 +1904,18 @@ local EDITMODE_ANCHORS = {
     { addon = "ForeverBars", name = "ForeverBars_bags",  point = "BOTTOMRIGHT", x = -110, y = 60 },
 }
 
+-- Charakter für Blizzards Addon-Verwaltung: der Name (wie in Blizzards Addon-Liste, BugGrabber, AtlasLoot) – NICHT
+-- die GUID; mit der GUID las das Spiel den falschen Zustand und ordnete An/Aus keinem Charakter zu (v62)
+local function AddonChar()
+    return (UnitNameUnmodified and UnitNameUnmodified("player")) or UnitName("player")
+end
+
 local function WillLoad(addon)
     if not (C_AddOns and C_AddOns.GetAddOnEnableState) then return true end
     if C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded(addon) then return true end
     local ok, _, _, _, loadable, reason = pcall(C_AddOns.GetAddOnInfo, addon)
     if ok and reason == "MISSING" then return false end
-    local char = UnitGUID and UnitGUID("player") or UnitName("player")
+    local char = AddonChar()
     local okState, state = pcall(C_AddOns.GetAddOnEnableState, addon, char)
     if okState and type(state) == "number" then return state > 0 end
     return not ok or loadable ~= false
@@ -2075,7 +2081,7 @@ end
 
 local function IsEnabled(name)
     if not (C_AddOns and C_AddOns.GetAddOnEnableState) then return IsLoaded(name) end
-    local ok, state = pcall(C_AddOns.GetAddOnEnableState, name, UnitGUID("player"))
+    local ok, state = pcall(C_AddOns.GetAddOnEnableState, name, AddonChar())
     if not ok or type(state) ~= "number" then return IsLoaded(name) end
     return state > 0
 end
@@ -2084,7 +2090,14 @@ local function SetEnabled(name, on)
     if not C_AddOns then return end
     local fn = on and C_AddOns.EnableAddOn or C_AddOns.DisableAddOn
     if not fn then return end
-    pcall(fn, name, GetDB().perCharacter and UnitGUID("player") or nil)
+    -- "nur dieser Charakter": nur für ihn; sonst für alle – und zusätzlich für diesen Charakter, falls er in Blizzards
+    -- Addon-Liste eine eigene Einstellung hat (die ginge sonst vor)
+    if GetDB().perCharacter then
+        pcall(fn, name, AddonChar())
+    else
+        pcall(fn, name)
+        pcall(fn, name, AddonChar())
+    end
     -- sofort speichern (sonst verwirft Blizzards Addon-Liste die Aenderung beim naechsten Schliessen)
     if C_AddOns.SaveAddOns then pcall(C_AddOns.SaveAddOns) end
 end
