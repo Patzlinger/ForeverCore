@@ -40,7 +40,7 @@ local function SkinSlot(button)
             if r:GetDrawLayer() == "BACKGROUND" or s:find("slot") then r:SetAlpha(0) end
         end
     end
-    ns.Flat(button, C.button, -3)
+    ns.Flat(button, C.button, -1) -- (nur 1 px größer als der Knopf: Luft zwischen den Feldern)
     ns.Hover(button, function(b) return b.GetChecked and b:GetChecked() end)
 end
 
@@ -62,6 +62,9 @@ local function SkinPopup(popup)
         end
         ns.SkinButton(border.OkayButton)
         ns.SkinButton(border.CancelButton)
+        -- Flächen 2 px kleiner als Blizzards Knöpfe: etwas Luft zwischen den Knöpfen und zum Rand
+        ns.Refit(border.OkayButton, 2)
+        ns.Refit(border.CancelButton, 2)
         local edit = border.IconSelectorEditBox
         if edit then
             ns.HideTextures(edit)
@@ -76,7 +79,7 @@ local function SkinPopup(popup)
     ns.Flat(popup, C.background)
     if popup.IconSelector and popup.IconSelector.ScrollBar then ns.SkinScrollBar(popup.IconSelector.ScrollBar) end
     ns.Watch(popup)
-    ns.Scaled(popup)
+    ns.Scaled(popup, 1.05) -- 5 % größer als die übrigen Fenster
     local watch = CreateFrame("Frame", nil, popup)
     watch:SetScript("OnUpdate", function()
         pcall(SkinGrid, popup.IconSelector)
@@ -108,7 +111,7 @@ local function SkinMacro()
     if textBg then
         if textBg.NineSlice then ns.Hide(textBg.NineSlice) end
         ns.HideTextures(textBg)
-        ns.Flat(textBg, C.input)
+        ns.Flat(textBg, C.input, 4) -- (4 px Luft zum Fensterrand und zur Schrift darüber)
     end
     for _, n in ipairs({ "MacroFrameScrollFrame", "MacroButtonScrollFrame" }) do
         local s = G(n)
@@ -124,6 +127,7 @@ local function SkinMacro()
     for _, n in ipairs({ "MacroEditButton", "MacroDeleteButton", "MacroNewButton", "MacroExitButton", "MacroSaveButton",
         "MacroCancelButton" }) do
         ns.SkinButton(G(n))
+        ns.Refit(G(n), 2) -- (Fläche 2 px kleiner: Luft zwischen den Knöpfen und zum Rand)
     end
     -- Classic: feste Plätze
     for i = 1, 36 do
@@ -132,7 +136,7 @@ local function SkinMacro()
         SkinSlot(b)
     end
     ns.Watch(f)
-    ns.Scaled(f) -- als Ganzes größer wie Gespräch, Händler, Lehrer (Regler "Größe" unter Fenster-Stil)
+    ns.Scaled(f, 1.05) -- als Ganzes größer wie Gespräch, Händler, Lehrer (Regler "Größe"), und 5 % mehr
     -- Plätze baut Blizzard beim Blättern/Reiter-Wechsel neu: solange offen, sichtbare Plätze prüfen; Text der Reiter
     -- mittig; die Symbol-Auswahl gestalten, sobald es sie gibt
     local watch = CreateFrame("Frame", nil, f)

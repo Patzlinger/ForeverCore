@@ -24,14 +24,14 @@ ns.DEFAULTS = {
 
 -- Größe der umgestalteten Fenster (Gespräch, Quest, Händler, Lehrer): als Ganzes, weil Blizzard den Inhalt mit
 -- festen Breiten baut – nur breiter gäbe rechts leeren Rand
-local scaled = {}
+local scaled = {} -- [Fenster] = eigener Faktor (z. B. Makro-Fenster 5 % größer als die übrigen)
 local function ApplyScale(frame)
-    local s = (tonumber(ns.GetDB().scale) or 100) / 100
+    local s = (tonumber(ns.GetDB().scale) or 100) / 100 * (scaled[frame] or 1)
     if not InCombatLockdown() or not frame:IsProtected() then frame:SetScale(s) end
 end
-function ns.Scaled(frame)
+function ns.Scaled(frame, factor)
     if not frame or scaled[frame] then return end
-    scaled[frame] = true
+    scaled[frame] = factor or 1
     frame:HookScript("OnShow", ApplyScale)
     if frame:IsShown() then ApplyScale(frame) end
 end
