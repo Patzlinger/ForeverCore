@@ -690,7 +690,7 @@ ns.Text(pingText, 10)
 local expectText = castFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 expectText:SetPoint("BOTTOMLEFT", castFrame, "TOPLEFT", 2, 2)
 expectText:SetJustifyH("LEFT")
-ns.Text(expectText, 10)
+ns.Text(expectText, 11) -- etwas groesser als die Texte in der Leiste: besser lesbar
 
 -- Duenner GCD-Balken unter der Zauberleiste (auch bei Spontanzaubern sichtbar)
 local gcdBar = CreateFrame("StatusBar", nil, anchor)
