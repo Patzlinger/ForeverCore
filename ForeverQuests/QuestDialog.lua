@@ -35,10 +35,6 @@ local function Build()
     panel.title:SetPoint("LEFT", head, "LEFT", 10, 0)
     panel.count = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     panel.count:SetPoint("LEFT", panel.title, "RIGHT", 8, 0)
-    panel.hint = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    panel.hint:SetPoint("BOTTOMLEFT", 10, 8)
-    panel.hint:SetPoint("BOTTOMRIGHT", -10, 8)
-    panel.hint:SetJustifyH("LEFT")
     panel.rows = {}
 end
 
@@ -61,12 +57,6 @@ local function Row(i)
         -- derselbe Tooltip wie bei der Questreihe im Questlog: Ziele, Questgeber/Abgabe und alle Belohnungen
         if ns.ChainTooltip then
             ns.ChainTooltip(self)
-            local tip = ns.Style.GetTooltip()
-            if tip:IsShown() then
-                tip:AddLine(" ")
-                tip:AddLine(ns.L("TIP_RIGHTCLICK_WOWHEAD"), 0.5, 0.5, 0.5)
-                tip:Show()
-            end
             return
         end
         local tip = ns.Style.GetTooltip()
@@ -82,7 +72,6 @@ local function Row(i)
                 if type(o) == "string" and o ~= "" then tip:AddLine(o, 1, 1, 1, true) end
             end
         end
-        if ns.ShowQuestieWowhead then tip:AddLine(ns.L("TIP_RIGHTCLICK_WOWHEAD"), 0.5, 0.5, 0.5) end
         tip:Show()
     end)
     row:SetScript("OnLeave", function() ns.Style.GetTooltip():Hide() end)
@@ -142,8 +131,7 @@ local function Refresh()
         y = y + row:GetHeight() + ROW_GAP
     end
     for i = #chain + 1, #panel.rows do panel.rows[i]:Hide() end
-    panel.hint:SetText(ns.ShowQuestieWowhead and ns.L("TIP_RIGHTCLICK_WOWHEAD") or "")
-    panel:SetHeight(y + 26)
+    panel:SetHeight(y + 8)
     panel:ClearAllPoints()
     panel:SetPoint("TOPLEFT", frame, "TOPRIGHT", 4, 0)
     panel:Show()
