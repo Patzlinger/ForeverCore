@@ -100,7 +100,7 @@ local function SkinMacro()
                 return (PanelTemplates_GetSelectedTab and PanelTemplates_GetSelectedTab(f) == t:GetID())
                     or (t.IsEnabled and not t:IsEnabled())
             end)
-            ns.Refit(tab, { 3, math.max(0, (tab:GetHeight() or 30) - 24), 3, 2 }) -- (3 px Luft links/rechts zum Nachbar-Reiter)
+            ns.Refit(tab, { 3, math.max(0, (tab:GetHeight() or 30) - 24), 3, 6 }) -- (3 px Luft zum Nachbar, 6 px zum Kasten darunter)
         end
     end
     -- gewähltes Makro: Hintergrund weg, großes Symbol als Platz, Name hell
@@ -111,7 +111,7 @@ local function SkinMacro()
     if textBg then
         if textBg.NineSlice then ns.Hide(textBg.NineSlice) end
         ns.HideTextures(textBg)
-        ns.Flat(textBg, C.input, 4) -- (4 px Luft zum Fensterrand und zur Schrift darüber)
+        ns.Flat(textBg, C.input, { 4, 4, 4, 8 }) -- (Luft zum Rand, zur Schrift darüber und zu den Knöpfen darunter)
     end
     for _, n in ipairs({ "MacroFrameScrollFrame", "MacroButtonScrollFrame" }) do
         local s = G(n)
@@ -127,7 +127,7 @@ local function SkinMacro()
     for _, n in ipairs({ "MacroEditButton", "MacroDeleteButton", "MacroNewButton", "MacroExitButton", "MacroSaveButton",
         "MacroCancelButton" }) do
         ns.SkinButton(G(n))
-        ns.Refit(G(n), 4) -- (Fläche 4 px kleiner: Luft zwischen den Knöpfen und zum Rand)
+        ns.Refit(G(n), { 4, 6, 4, 4 }) -- (Luft zwischen den Knöpfen, zum Rand und oben zum Textfeld)
     end
     -- Classic: feste Plätze
     for i = 1, 36 do
