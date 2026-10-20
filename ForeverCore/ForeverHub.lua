@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 62
+local VERSION = 63
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -4577,6 +4577,99 @@ function UI.DetailsRestore()
     D:ApplyProfile(prev)
     UI.Chat("Forever", string.format(T("Details nutzt wieder dein Profil „%s“.", "Details uses your profile \"%s\" again."), prev))
     return true
+end
+
+-- Details-Fenster rasten ein wie Forever-Rahmen (v63): beim Ziehen eines Details-Fensters die gelben Hilfslinien,
+-- nach dem Loslassen rastet es (samt seiner Details-Gruppe) an Forever-Rahmen, der Bildschirmmitte und am Raster
+-- ein; umgekehrt rasten Forever-Rahmen an Details-Fenstern ein. Gilt mit dem gemeinsamen Schalter "Einrasten"
+-- (Umschalt = frei). Details' eigenes Ziehen ist nicht von außen erreichbar (Details222 ist privat) – wir erkennen
+-- es an baseframe.isMoving (Details setzt es beim Ziehen) und verschieben erst danach; Details selbst bleibt
+-- unverändert. Hat Details das Fenster gerade an ein anderes Details-Fenster gehängt, gilt dessen Einrasten.
+do
+    local proxies = {}   -- [baseframe] = unsichtbarer Rahmen über Fläche + Titelleiste (die sichtbaren Kanten)
+    local watched = {}   -- [baseframe] = Zustand beim Ziehen
+    local function Proxy(instance)
+        local bf = instance.baseframe
+        local p = proxies[bf]
+        if not p then
+            p = CreateFrame("Frame", nil, bf)
+            proxies[bf] = p
+            UI.AddMover(p)
+        end
+        local tb = bf.titleBar
+        p:ClearAllPoints()
+        p:SetPoint("BOTTOMRIGHT", bf, "BOTTOMRIGHT")
+        p:SetPoint("TOPLEFT", (tb and tb:IsShown()) and tb or bf, "TOPLEFT")
+        return p
+    end
+    local function Links(instance)
+        local n = 0
+        for _ in pairs(instance.snap or {}) do n = n + 1 end
+        return n
+    end
+    -- Details-Gruppe (über instance.snap verbunden) einsammeln
+    local function Group(D, instance)
+        local list, seen = {}, {}
+        local function Add(inst)
+            if not inst or seen[inst] then return end
+            seen[inst] = true
+            list[#list + 1] = inst
+            for _, id in pairs(inst.snap or {}) do Add(D:GetInstance(id)) end
+        end
+        Add(instance)
+        return list
+    end
+    local function Shift(D, instance, dx, dy)
+        local group = Group(D, instance)
+        for _, inst in ipairs(group) do
+            local bf = inst.baseframe
+            -- nur Fenster verschieben, die am Bildschirm hängen; die anderen hängen an ihnen und folgen
+            local point, rel, relPoint, x, y = bf:GetPoint(1)
+            if point and (rel == nil or rel == UIParent) then
+                local s = UIParent:GetEffectiveScale() / bf:GetEffectiveScale()
+                bf:ClearAllPoints()
+                bf:SetPoint(point, UIParent, relPoint, x + dx * s, y + dy * s)
+            end
+        end
+        for _, inst in ipairs(group) do pcall(inst.SaveMainWindowPosition, inst) end
+    end
+    local active = false
+    local function Watch()
+        local D = DetailsReady()
+        if not (D and D.ListInstances) then return end
+        for _, instance in D:ListInstances() do
+            local bf = instance and instance.baseframe
+            if bf and instance.ativa then
+                local state = watched[bf]
+                if bf.isMoving and not state then
+                    watched[bf] = { links = Links(instance) }
+                    UI.BeginDrag(bf, { edges = Proxy(instance) })
+                elseif not bf.isMoving and state then
+                    watched[bf] = nil
+                    local dx, dy = UI.EndDrag()
+                    if Links(instance) <= state.links and (dx ~= 0 or dy ~= 0) then pcall(Shift, D, instance, dx, dy) end
+                elseif not proxies[bf] then
+                    Proxy(instance)
+                end
+            end
+        end
+    end
+    UI.Every(0.05, Watch, { addon = "ForeverCore", name = "Details einrasten", when = function() return active end })
+    local f = CreateFrame("Frame")
+    f:RegisterEvent("PLAYER_LOGIN")
+    f:SetScript("OnEvent", function()
+        -- erst wenn Details da ist; Titelleiste kann sich mit dem Skin ändern -> Kanten nach dem Laden neu
+        C_Timer.After(5, function()
+            local D = DetailsReady()
+            if not (D and D.ListInstances) then return end
+            active = true
+            if D.ChangeSkin then
+                hooksecurefunc(D, "ChangeSkin", function(instance)
+                    if instance and instance.baseframe and proxies[instance.baseframe] then pcall(Proxy, instance) end
+                end)
+            end
+        end)
+    end)
 end
 
 ---------------------------------------------------------------------------
