@@ -128,6 +128,14 @@ end
 function ns.ContentBox(frame, footer)
     local look = looks[frame]
     if not look or look.box then return end
+    -- Blizzards Innenfläche (Inset) nicht zusätzlich zeigen – sonst liegen zwei Kästen übereinander
+    local name = frame:GetName()
+    local inset = frame.Inset or (name and _G[name .. "Inset"])
+    local insetLook = inset and looks[inset]
+    if insetLook then
+        insetLook.fill:SetAlpha(0)
+        for _, e in ipairs(insetLook.edges) do e:SetAlpha(0) end
+    end
     local function Tex(layer, sub, c, a)
         local t = frame:CreateTexture(nil, layer, nil, sub)
         t:SetTexture(WHITE)

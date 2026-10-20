@@ -216,8 +216,7 @@ local function SkinMerchant()
     local function Item(name)
         local item = G(name)
         if not item then return end
-        ns.HideTextures(item) -- Fach und Namensfeld
-        ns.Flat(item, C.panel)
+        ns.HideTextures(item) -- Fach und Namensfeld (kein Kasten drumherum: lange Namen laufen über drei Zeilen)
         local button = G(name .. "ItemButton")
         if button then
             ns.Hide(button:GetNormalTexture())
