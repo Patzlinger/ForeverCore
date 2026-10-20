@@ -3,7 +3,7 @@
 ## Unreleased
 
 - **ForeverCast: cast bars for target and focus** (off by default – turn them on in /fcast): right below the ForeverUnits target and focus frames (auras move down to make room) or placed freely. Spells that can't be interrupted are grey with a shield, and interrupted casts briefly show who interrupted them.
-- **ForeverCast: new Forever look** – flat and dark with a fine gold line, muted colors, texture and font like ForeverFrames. The previous look is still there as "Clean" (/fcast » Look).
+- **ForeverCast: new Forever look** – the same fine frame as the experience bar (thin grey border all around, gold line on top), muted colors, texture and font like ForeverFrames. The previous look is still there as "Clean" (/fcast » Look).
 - ForeverCast: breath and fatigue bars in the same look, right above your cast bar (instead of Blizzard's bars).
 - ForeverCast: your own cast bar now shows "Interrupted by Name" when a cast gets interrupted. Combo points at the cast bar are off by default (ForeverUnits and ForeverPlates show them), and snapping follows the shared "Snap while moving" switch.
 - ForeverBars: Blizzard's spell effects on the buttons (the gold ring while casting, target reticle, interrupt flash, cooldown flash and the proc glow) now match the size of the ForeverBars buttons instead of reaching past their border.

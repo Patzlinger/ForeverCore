@@ -8,7 +8,6 @@
 local _, ns = ...
 local UI = ForeverHub.UI
 local T = UI.T
-local C = UI.COLOR
 
 local WHITE = "Interface\\Buttons\\WHITE8x8"
 local CLEAN_TEX = "Interface\\TargetingFrame\\UI-StatusBar"
@@ -73,10 +72,16 @@ end
 
 local boxes, bars, texts = {}, {}, {}
 
-local function Inset(region, px, parent)
+-- Rahmen wie die XP-/Ruf-Leiste von ForeverBars (Status.lua): feiner grauer 1-px-Rand rundum, innen eine dunkle
+-- Fuge, goldene Linie innen direkt unter der Oberkante; Füllung 2 px eingerückt (oben 3 px, unter der Goldlinie)
+local EDGE = { 0.22, 0.22, 0.26, 1 }
+local TOP_LINE = { 1, 0.82, 0, 0.55 }
+local BG = { 0.05, 0.05, 0.065, 0.92 }
+
+local function Inset(region, px, parent, top)
     if not region then return end
     region:ClearAllPoints()
-    region:SetPoint("TOPLEFT", parent, "TOPLEFT", px, -px)
+    region:SetPoint("TOPLEFT", parent, "TOPLEFT", px, -(top or px))
     region:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -px, px)
 end
 
@@ -84,6 +89,7 @@ local function ApplyBox(f, inner)
     if ns.LookMode() == "clean" then
         if f.fcSkin then
             f.fcSkin.bg:Hide()
+            f.fcSkin.topLine:Hide()
             for _, e in ipairs(f.fcSkin.edges) do e:Hide() end
         end
         if f.SetBackdrop then
@@ -110,19 +116,21 @@ local function ApplyBox(f, inner)
             if side[3] then e:SetHeight(1) else e:SetWidth(1) end
             s.edges[i] = e
         end
+        s.topLine = f:CreateTexture(nil, "BORDER", nil, 6)
+        s.topLine:SetPoint("TOPLEFT", 1, -1)
+        s.topLine:SetPoint("TOPRIGHT", -1, -1)
+        s.topLine:SetHeight(1)
         f.fcSkin = s
     end
-    s.bg:SetColorTexture(C.background[1], C.background[2], C.background[3], 0.8)
+    s.bg:SetColorTexture(BG[1], BG[2], BG[3], BG[4])
     s.bg:Show()
-    for i, e in ipairs(s.edges) do
-        if i == 1 then
-            e:SetVertexColor(C.accent[1], C.accent[2], C.accent[3], 0.7) -- Goldlinie oben
-        else
-            e:SetVertexColor(C.border[1], C.border[2], C.border[3], 1)
-        end
+    for _, e in ipairs(s.edges) do
+        e:SetVertexColor(EDGE[1], EDGE[2], EDGE[3], EDGE[4]) -- rundum derselbe feine Rand
         e:Show()
     end
-    Inset(inner, 1, f)
+    s.topLine:SetColorTexture(TOP_LINE[1], TOP_LINE[2], TOP_LINE[3], TOP_LINE[4]) -- Goldlinie innen oben
+    s.topLine:Show()
+    Inset(inner, 2, f, 3)
 end
 
 -- Rahmen (mit BackdropTemplate) im aktuellen Look; inner = Balken/Symbol darin (Abstand zum Rand je Look)
