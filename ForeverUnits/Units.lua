@@ -1379,7 +1379,8 @@ if UI.On then
                 if b then pcall(LayoutAuras, b) end
             end
         end
-        if InCombatLockdown() and UI.AfterCombat then UI.AfterCombat(Relayout) else Relayout() end
+        -- sofort, im Kampf erst danach (UI.AfterCombat: Schlüssel, Funktion, Addon)
+        UI.AfterCombat("ForeverUnits:castDock", Relayout, "ForeverUnits")
     end)
 end
 
