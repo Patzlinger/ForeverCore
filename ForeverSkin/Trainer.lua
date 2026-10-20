@@ -56,7 +56,7 @@ local function SkinTrainer()
     -- FOOTER = Höhe der unteren Leiste, EXTRA = so viel höher endet die Liste unten (mit Luft über der Leiste),
     -- MORE = so viel länger wird die Liste (mehr Zeilen sichtbar)
     local FOOTER = 54
-    local EXTRA -- unten so viel höher enden, dass die Liste 6 px über der unteren Leiste aufhört (beim ersten Mal ermittelt)
+    local EXTRA -- unten so viel höher enden, dass die Liste 6 px über der unteren Leiste aufhört (je Lehrer ermittelt)
     ns.ContentBox(f, FOOTER, nil, true)
     for _, key in ipairs({ "BottomInset", "skillStepButton" }) do
         local obj = f[key]
@@ -161,15 +161,18 @@ local function SkinTrainer()
     local baseHeight
     function Place()
         baseHeight = baseHeight or f:GetHeight()
-        if not EXTRA then
-            local _, listBottom = ns.Original(f, f.ScrollBox or G("ClassTrainerListScrollFrame") or inset)
-            EXTRA = math.max(0, FOOTER + 6 - (listBottom or FOOTER))
-        end
+        -- Berufslehrer: kein Zauberbuch-Knopf (der Fertigkeitsbalken steht dort)
+        local tradeskill = IsTradeskillTrainer and IsTradeskillTrainer() and true or false
+        book:SetShown(not tradeskill)
+        -- bei JEDEM Lehrer neu: Blizzards Liste endet beim Berufslehrer höher als beim Klassenlehrer. EXTRA = so viel
+        -- höher bzw. (negativ) tiefer endet sie, damit sie 6 px über der unteren Leiste aufhört – kein leerer Rest
+        local _, listBottom = ns.Original(f, f.ScrollBox or G("ClassTrainerListScrollFrame") or inset)
+        EXTRA = (FOOTER + 6) - (listBottom or (FOOTER + 6))
         local down = 0
         local function Move(region, top, skip)
             local _, bottom = ns.Original(f, region)
             if not bottom then return end
-            local d = ns.Fit(f, region, top, bottom + EXTRA, skip) or 0
+            local d = ns.Fit(f, region, top, bottom + EXTRA, skip, true) or 0
             down = math.max(down, d)
         end
         if inset then Move(inset, 84) end
@@ -177,11 +180,12 @@ local function SkinTrainer()
         Move(f.ScrollBox, 88, inset)
         Move(G("ClassTrainerListScrollFrame"), 88, inset)
         for _, bar in ipairs(bars) do Move(bar, 88, f.ScrollBox or inset) end
-        -- Berufslehrer: Fertigkeitsbalken ("20/75") lag auf dem Namen der Visitenkarte – rechts unter "Zauberbuch"
+        -- Berufslehrer: Fertigkeitsbalken ("20/75") lag auf dem Namen der Visitenkarte – rechts oben an die Stelle
+        -- des Zauberbuch-Knopfs
         local skill = f.statusBar or f.StatusBar or G("ClassTrainerStatusBar")
         if skill and skill.ClearAllPoints then
             skill:ClearAllPoints()
-            skill:SetPoint("TOPRIGHT", f, "TOPRIGHT", -14, -60)
+            skill:SetPoint("TOPRIGHT", f, "TOPRIGHT", -14, tradeskill and -36 or -60)
             skill:SetWidth(130)
         end
         local want = baseHeight + down + EXTRA

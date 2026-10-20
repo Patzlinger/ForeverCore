@@ -261,11 +261,12 @@ function ns.Original(frame, region)
     return o.top, o.bottom
 end
 
-function ns.Fit(frame, region, top, bottom, skip)
+-- exact = true: unten genau auf bottom (auch tiefer als Blizzard, z. B. damit unten kein leerer Bereich bleibt)
+function ns.Fit(frame, region, top, bottom, skip, exact)
     if not region or not region.GetNumPoints or not frame:GetTop() or not region:GetTop() then return end
     local o = Record(frame, region)
     local down = top and math.max(0, top - o.top) or 0
-    local up = bottom and math.max(0, bottom - o.bottom) or 0
+    local up = bottom and (exact and (bottom - o.bottom) or math.max(0, bottom - o.bottom)) or 0
     if down == 0 and up == 0 then o.applied = nil return 0, 0 end
     -- Punkte, die am mitwandernden Bereich (skip) hängen, bleiben; die übrigen werden versetzt
     local hasTop, hasBottom, moved = false, false, false
