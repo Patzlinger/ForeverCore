@@ -3398,7 +3398,6 @@ do
     if menu and menu.HookScript then
         local b, skin, menuFont
         local backs =setmetatable({}, { __mode = "k" })  -- [Blizzard-Knopf] = unsere flache Fläche dahinter
-        local hooked = setmetatable({}, { __mode = "k" }) -- Knöpfe, deren Maus-Hover schon eingehängt ist
         local function OpenHub()
             if _G.ForeverHub ~= hub then return end
             if PlaySound and SOUNDKIT then PlaySound(SOUNDKIT.IG_MAINMENU_OPTION) end
@@ -3428,24 +3427,35 @@ do
             end
             back:ClearAllPoints()
             back:SetAllPoints(button)
+            if not back.hl then
+                back.hl = back:CreateTexture(nil, "ARTWORK")
+                back.hl:SetPoint("TOPLEFT", 1, -1)
+                back.hl:SetPoint("BOTTOMRIGHT", -1, 1)
+                back.hl:SetColorTexture(1, 1, 1, 0.06)
+            end
+            back.hover = nil
+            back.hl:Hide()
             back:SetBackdropBorderColor(C.border[1], C.border[2], C.border[3], 1)
             back:Show()
-            if not hooked[button] then
-                hooked[button] = true
-                button:HookScript("OnEnter", function(self)
-                    local bk = skin and skin:IsShown() and backs[self]
-                    if bk then bk:SetBackdropBorderColor(C.accent[1], C.accent[2], C.accent[3], 0.9) end
-                end)
-                button:HookScript("OnLeave", function(self)
-                    local bk = backs[self]
-                    if bk then bk:SetBackdropBorderColor(C.border[1], C.border[2], C.border[3], 1) end
-                end)
+        end
+        -- Maus über einem Knopf: goldener Rand und leichte Aufhellung wie beim Forever-Core-Knopf. Ohne Haken an
+        -- Blizzards Knöpfen – solange das Menü offen ist, schaut die Fläche selbst nach, wo die Maus ist.
+        local function UpdateHover()
+            for button, back in pairs(backs) do
+                local over = back:IsShown() and button:IsShown() and button:IsMouseOver() or false
+                if over ~= (back.hover or false) then
+                    back.hover = over
+                    back.hl:SetShown(over)
+                    local c = over and C.accent or C.border
+                    back:SetBackdropBorderColor(c[1], c[2], c[3], over and 0.9 or 1)
+                end
             end
         end
         local function BuildSkin()
             skin = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
             UI.SetFlat(skin, C.background)
             skin:EnableMouse(false)
+            skin:SetScript("OnUpdate", UpdateHover) -- läuft nur, solange das Menü (und damit die Fläche) sichtbar ist
             local head = skin:CreateTexture(nil, "ARTWORK")
             head:SetPoint("TOPLEFT", 1, -1)
             head:SetPoint("TOPRIGHT", -1, -1)
