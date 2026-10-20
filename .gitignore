@@ -11,3 +11,6 @@ SavedVariables/
 *.bak
 Thumbs.db
 desktop.ini
+
+# automatischer Abgleich: erzeugt von tools/auto-sync-install.ps1 (enthält den lokalen Pfad)
+tools/auto-sync-hidden.vbs
