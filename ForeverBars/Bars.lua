@@ -2558,7 +2558,13 @@ local function MarkButton(parent, size, name)
     button:HookScript("OnEnter", function(self)
         self:SetBackdropBorderColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3], 0.9)
     end)
-    button:HookScript("OnLeave", function(self) self:SetBackdropBorderColor(unpack(GetSkin().border)) end)
+    button:HookScript("OnLeave", function(self)
+        if self.fbGround then -- Bodenmarkierung: bleibt gold umrandet (Unterschied zu den Zielmarkierungen)
+            self:SetBackdropBorderColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3], 0.9)
+        else
+            self:SetBackdropBorderColor(unpack(GetSkin().border))
+        end
+    end)
     if name then AddQuickKeybind(button) end
     return button
 end
@@ -2580,6 +2586,7 @@ local function GetMarkButtons(holder)
         groundButton:SetAttribute("type", "worldmarker")
         groundButton:SetAttribute("marker", m.world)
         groundButton:SetAttribute("action", "toggle") -- an die Mausposition setzen bzw. wieder entfernen
+        groundButton.fbGround = true
         sets.ground[i] = groundButton
     end
     -- 9. Platz: Entfernen (Markierung vom Ziel bzw. alle Bodenmarkierungen)
@@ -2650,11 +2657,16 @@ function ns.LayoutFoodMarks(cfg, holder, gap, corner, toLeft, toTop)
         return false
     end
     local sets = GetMarkButtons(holder)
-    local function Place(button, column, row)
+    local function Place(button, column, row, ground)
         button:ClearAllPoints()
         button:SetPoint(corner, holder, corner, column * (ACTION_SIZE + gap) * (toLeft and -1 or 1),
             row * (ACTION_SIZE + gap) * (toTop and 1 or -1))
-        button:SetBackdropBorderColor(unpack(GetSkin().border))
+        -- Bodenmarkierungen mit goldenem Rand: so sieht man, dass nicht die (gleich aussehenden) Zielmarkierungen dran sind
+        if ground then
+            button:SetBackdropBorderColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3], 0.9)
+        else
+            button:SetBackdropBorderColor(unpack(GetSkin().border))
+        end
         button:Show()
     end
     for key, set in pairs(sets) do
@@ -2665,7 +2677,7 @@ function ns.LayoutFoodMarks(cfg, holder, gap, corner, toLeft, toTop)
                 local point, rel, relPoint, x, y = button:GetPoint(1)
                 button:SetPoint(point, rel, relPoint, x + MARK_SEP * (toLeft and -1 or 1), y)
             elseif key == view then
-                Place(button, (i - 1) % 3, math.floor((i - 1) / 3))
+                Place(button, (i - 1) % 3, math.floor((i - 1) / 3), view == "ground")
             else
                 button:Hide()
             end
@@ -2704,7 +2716,22 @@ local function PingMenu(owner)
     for _, c in ipairs(pings) do
         table.insert(items, { radio = true, text = c.text,
             checked = function() return C_PartyInfo.GetRestrictPings and C_PartyInfo.GetRestrictPings() == c.value end,
-            onClick = function() pcall(C_PartyInfo.SetRestrictPings, c.value) end })
+            onClick = function()
+                -- nur Anführer bzw. Assistenten einer Gruppe dürfen das; sonst schluckte das Spiel den Aufruf still
+                if not IsInGroup() then ns.Print(L("PING_NEED_GROUP")) return end
+                if not (UnitIsGroupLeader("player") or (IsInRaid() and UnitIsGroupAssistant("player"))) then
+                    ns.Print(L("PING_NEED_LEAD")) return
+                end
+                local ok = pcall(C_PartyInfo.SetRestrictPings, c.value)
+                C_Timer.After(0.3, function()
+                    local now = C_PartyInfo.GetRestrictPings and C_PartyInfo.GetRestrictPings()
+                    if ok and (now == nil or now == c.value) then
+                        ns.Print(string.format(L("PING_SET"), c.text))
+                    else
+                        ns.Print(L("PING_FAILED"))
+                    end
+                end)
+            end })
     end
     ns.Style.ShowMenu(owner, items)
 end
@@ -2722,9 +2749,18 @@ local function UpdateMarkTabs(cfg, holder)
         local function Word(text, view, tipKey)
             local b = CreateFrame("Button", nil, tabs)
             b.text = b:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-            b.text:SetPoint("LEFT")
+            b.text:SetPoint("CENTER")
             b.text:SetText(text)
-            b:SetSize(b.text:GetStringWidth() + 2, 16)
+            b:SetSize(b.text:GetStringWidth() + 10, 16)
+            -- aktive Ansicht: goldene Fläche mit Linie darunter (wie ein gewählter Reiter)
+            b.bg = b:CreateTexture(nil, "BACKGROUND")
+            b.bg:SetAllPoints()
+            b.bg:SetColorTexture(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3], 0.18)
+            b.line = b:CreateTexture(nil, "ARTWORK")
+            b.line:SetPoint("BOTTOMLEFT")
+            b.line:SetPoint("BOTTOMRIGHT")
+            b.line:SetHeight(1)
+            b.line:SetColorTexture(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3], 0.9)
             b:SetScript("OnClick", function()
                 local barCfg = ns.db.bars.food
                 if ns.FoodView(barCfg) == view then return end
@@ -2777,6 +2813,8 @@ local function UpdateMarkTabs(cfg, holder)
             for _, b in ipairs({ { tabs.marks, "unit" }, { tabs.pings, "ground" } }) do
                 local on = view == b[2]
                 b[1].text:SetTextColor(on and COLOR.accent[1] or 0.55, on and COLOR.accent[2] or 0.55, on and COLOR.accent[3] or 0.55)
+                b[1].bg:SetShown(on)
+                b[1].line:SetShown(on)
             end
         end
         holder.fbMarkTabs = tabs

@@ -3,6 +3,8 @@
 ## Unreleased
 
 - The game menu (Escape) now has the Forever look – flat dark background, title bar with a fine gold line, flat buttons with a gold edge on mouse-over – and the button (now called "Forever Core") sits inside it below a divider. Blizzard's buttons keep working exactly as before; with ElvUI the menu is left alone.
+- Forever Core: Blizzard's windows (character, vendor, mail, professions, trainer, talents, auction house, friends …) can be moved – drag them at a free spot, the position is remembered. Turn it off or reset the positions in the overview (/forever » General).
+- ForeverBars, marker bar: the active view ("Marks" or "Pings") is highlighted like a selected tab, and world markers get a gold border so they can't be mistaken for target markers. "Restrict pings to" now tells you in chat whether it worked – or that only the group leader can do it.
 - ForeverBars: the professions bar now also holds class skills with their own crafting window – the rogue's Poisons and the hunter's Beast Training.
 - ForeverTooltip: lines that mix German umlauts with Chinese or Korean names (e.g. "Gefährte von 兔肥") no longer show boxes instead of ä, ö, ü – the name now gets its own font on the right.
 - ForeverAlts: the narrow columns (level, rested, gold, location, mail, honor) are tighter, so professions have much more room.

@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 61
+local VERSION = 62
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -2111,7 +2111,7 @@ local function BuildHubWindow()
     local listTop = 26 + HUB_INTRO_H + 24                 -- unter Einleitung und Überschrift "Addons"
     local tilesEnd = listTop + rowsN * (TILE_H + TILE_GAP)
     local generalY = tilesEnd + 56                        -- Überschrift "Allgemein"
-    local toolsY = generalY + 104                         -- Überschrift "Werkzeuge" (mind. ~24 px Luft zum Kasten davor)
+    local toolsY = generalY + 132                         -- Überschrift "Werkzeuge" (mind. ~24 px Luft zum Kasten davor)
     local H = toolsY + 96
     local f = UI.SettingsPanel("ForeverHubWindow", UI.NAME, W, H,
         { key = "ForeverCore", group = UI.SETTINGS_GROUPS.core, label = T("Übersicht", "Overview") })
@@ -2314,6 +2314,25 @@ local function BuildHubWindow()
         ApplyMode()
     end)
 
+    -- Blizzard-Fenster verschiebbar (Movers.lua, v62)
+    local blizzMove = UI.Check(f, 16, -(generalY + 84), T("Blizzard-Fenster verschiebbar", "Movable Blizzard windows"),
+        function(checked) if UI.SetBlizzMove then UI.SetBlizzMove(checked) end end)
+    blizzMove:HookScript("OnEnter", function(self)
+        local tip = UI.GetTooltip()
+        tip:SetOwner(self, "ANCHOR_TOP")
+        tip:AddLine(T("Blizzard-Fenster verschiebbar", "Movable Blizzard windows"))
+        tip:AddLine(T("Charakter, Händler, Post, Berufe, Lehrer, Talente, Auktionshaus, Freunde … an einer freien Stelle mit der linken Maustaste ziehen. Die Lage wird gemerkt.",
+            "Drag the character, vendor, mail, professions, trainer, talents, auction house, friends … windows at a free spot with the left mouse button. The position is remembered."), 1, 1, 1, true)
+        tip:Show()
+    end)
+    blizzMove:HookScript("OnLeave", function() UI.GetTooltip():Hide() end)
+    local blizzReset = UI.Button(f, T("Fensterpositionen zurücksetzen", "Reset window positions"), 220, function()
+        if UI.ResetBlizzPositions then UI.ResetBlizzPositions() end
+        UI.Chat("Forever", T("Blizzard-Fenster stehen beim nächsten Öffnen wieder an ihrem Platz.",
+            "Blizzard windows are back in their place the next time you open them."))
+    end)
+    blizzReset:SetPoint("TOPLEFT", 360, -(generalY + 82))
+
     ---------------------------------------------------------------------------
     -- Werkzeuge: andere Addons, Profile, Details, alle verschieben
     ---------------------------------------------------------------------------
@@ -2387,6 +2406,7 @@ local function BuildHubWindow()
         move:SetText(UI.AnyUnlocked() and T("Alle sperren", "Lock all") or T("Alle verschieben", "Move all"))
         mm:SetChecked(not GetDB().hideButton)
         snapCheck:SetChecked(UI.SnapEnabled())
+        blizzMove:SetChecked(not UI.BlizzMoveEnabled or UI.BlizzMoveEnabled())
         perChar:SetChecked(GetDB().perCharacter and true or false)
         detailsBtn.Update()
         if lang then lang.Load() end
