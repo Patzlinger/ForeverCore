@@ -567,6 +567,10 @@ gilt für **beide** (und deren Claude) genau dieser Ablauf:
   holen, auf `development` wechseln (wenn sauber), eigene Commits per `pull --rebase --autostash` hinter die neuen des
   anderen hängen, Stand in einer Zeile melden. Meldet es einen Konflikt oder falschen Zweig: erst das klären.
 - Ohne Hook von Hand: `git switch development` und `git pull --rebase --autostash`.
+- **Automatischer Abgleich (empfohlen, je Rechner einmal):** `pwsh -File tools/auto-sync-install.ps1` richtet die
+  Windows-Aufgabe „Forever Core Abgleich“ ein: alle 5 Minuten `tools/auto-sync.ps1` (wie session-sync, nur bei
+  sauberem Arbeitsstand, verknüpft neue Addon-Ordner), Protokoll `.git/forever-auto-sync.log`; entfernen mit `-Remove`.
+  Seit 2026-10-20 bei Patzlinger eingerichtet. Im Spiel danach `/reload`.
 
 **Während der Arbeit – kleine Schritte, sofort teilen**
 - Je fertige, im Syntax-Check fehlerfreie Änderung **ein** Commit (kurze deutsche Nachricht, vorne das Addon:
