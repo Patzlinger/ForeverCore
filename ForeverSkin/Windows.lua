@@ -94,6 +94,7 @@ local function SkinGossip()
     ns.ContentBox(f, 30, 80)
     ns.SkinButton((panel and panel.GoodbyeButton) or G("GossipFrameGreetingGoodbyeButton"))
     ns.Watch(f)
+    ns.Scaled(f)
     local function Later() C_Timer.After(0, function() pcall(GossipText) end) end
     if type(f.Update) == "function" then hooksecurefunc(f, "Update", Later) end
     -- Text samt Laufleiste in den Kasten: oben unter die Visitenkarte (Kasten ab 80, Text 8 darunter), unten über
@@ -210,6 +211,7 @@ local function SkinQuest()
         if p then p:HookScript("OnShow", function() C_Timer.After(0, function() pcall(Place) end) end) end
     end
     ns.Watch(f)
+    ns.Scaled(f)
     local function Later() C_Timer.After(0, function() pcall(QuestText) end) end
     -- Blizzard färbt die Texte je nach Hintergrund ("Pergament" = dunkel): danach wieder hell
     for _, fn in ipairs({ "QuestFrame_SetTitleTextColor", "QuestFrame_SetTextColor" }) do
@@ -297,6 +299,7 @@ local function SkinMerchant()
         hooksecurefunc("MerchantFrame_Update", function() pcall(Place) end)
     end
     ns.Watch(f)
+    ns.Scaled(f)
 end
 
 ---------------------------------------------------------------------------

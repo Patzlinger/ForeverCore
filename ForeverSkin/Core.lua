@@ -15,7 +15,25 @@ ns.DEFAULTS = {
     merchant = true, -- Händler
     popup = true,    -- Rückfrage-Fenster ("Sollen alle Talente verlernt werden?" …)
     trainer = true,  -- Lehrer (mit "Leisten aktualisieren")
+    scale = 110,     -- Größe von Gespräch, Quest, Händler und Lehrer in Prozent
 }
+
+-- Größe der umgestalteten Fenster (Gespräch, Quest, Händler, Lehrer): als Ganzes, weil Blizzard den Inhalt mit
+-- festen Breiten baut – nur breiter gäbe rechts leeren Rand
+local scaled = {}
+local function ApplyScale(frame)
+    local s = (tonumber(ns.GetDB().scale) or 100) / 100
+    if not InCombatLockdown() or not frame:IsProtected() then frame:SetScale(s) end
+end
+function ns.Scaled(frame)
+    if not frame or scaled[frame] then return end
+    scaled[frame] = true
+    frame:HookScript("OnShow", ApplyScale)
+    if frame:IsShown() then ApplyScale(frame) end
+end
+function ns.RescaleAll()
+    for frame in pairs(scaled) do ApplyScale(frame) end
+end
 
 function ns.GetDB()
     if type(_G.ForeverSkinDB) ~= "table" then _G.ForeverSkinDB = {} end
@@ -503,15 +521,24 @@ end
 function ns.SkinScrollBar(bar)
     if not bar or looks[bar] then return end
     looks[bar] = { mine = {}, edges = {} }
-    -- Pfeile oben/unten einheitlich grau (manche Fenster haben braune) – wie im Gespräch
-    for _, arrow in ipairs({ bar.Back, bar.Forward, bar.ScrollUpButton, bar.ScrollDownButton }) do
-        if type(arrow) == "table" and arrow.GetRegions then
-            for _, r in ipairs({ arrow:GetRegions() }) do
-                if r:IsObjectType("Texture") then
-                    if r.SetDesaturated then r:SetDesaturated(true) end
-                    r:SetVertexColor(0.8, 0.8, 0.82)
-                end
+    -- Pfeile oben/unten: Blizzards Grafiken unsichtbar (manche Fenster haben braune, die Blizzard beim Überfahren neu
+    -- setzt), dafür ein eigener feiner Pfeil wie im Hub – grau, beim Überfahren gold
+    local name = bar.GetName and bar:GetName()
+    for i, arrow in ipairs({ bar.Back or (name and _G[name .. "ScrollUpButton"]) or bar.ScrollUpButton,
+        bar.Forward or (name and _G[name .. "ScrollDownButton"]) or bar.ScrollDownButton }) do
+        if type(arrow) == "table" and arrow.GetRegions and not looks[arrow] then
+            ns.HideTextures(arrow)
+            for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetHighlightTexture", "GetDisabledTexture" }) do
+                if arrow[get] then ns.Hide(arrow[get](arrow)) end
             end
+            local tex = arrow:CreateTexture(nil, "OVERLAY", nil, 7)
+            tex:SetTexture("Interface\\ChatFrame\\ChatFrameExpandArrow")
+            tex:SetSize(10, 10)
+            tex:SetPoint("CENTER")
+            tex:SetRotation(i == 1 and (math.pi / 2) or (-math.pi / 2)) -- oben: nach oben, unten: nach unten
+            tex:SetVertexColor(0.8, 0.8, 0.82)
+            looks[arrow] = { mine = { [tex] = true }, edges = {}, lines = { tex } }
+            hovers[arrow] = { close = true } -- gleiche Maus-Färbung wie beim Schließen-Kreuz
         end
     end
     local track = bar.Track
@@ -694,7 +721,7 @@ local options
 local checks = {}
 local function Build()
     options = UI.SettingsPanel("ForeverSkinOptions", T("ForeverSkin – Einstellungen (Prototyp)", "ForeverSkin – Settings (prototype)"),
-        460, 340, { key = "ForeverSkin", group = UI.SETTINGS_GROUPS.comfort, label = T("Fenster-Stil", "Window style") })
+        460, 380, { key = "ForeverSkin", group = UI.SETTINGS_GROUPS.comfort, label = T("Fenster-Stil", "Window style") })
     local W = 420
     UI.Header(options, 18, -40, T("Fenster im Forever-Stil", "Windows in the Forever look"), W)
     local reload
@@ -710,7 +737,12 @@ local function Build()
     Check(-110, T("Händler", "Vendor"), "merchant")
     Check(-134, T("Lehrer (mit „Leisten aktualisieren“)", "Trainer (with \"Update bars\")"), "trainer")
     Check(-158, T("Rückfrage-Fenster", "Confirmation dialogs"), "popup")
-    UI.Hint(options, 22, -186, W - 12, T("Änderungen gelten nach dem Neuladen. Gefällt dir der Stil nicht, schalte " ..
+    local size = UI.Slider(options, 22, -188, T("Größe von Gespräch, Quest, Händler, Lehrer", "Size of dialog, quest, vendor, trainer"),
+        90, 130, 5, function(v)
+            ns.GetDB().scale = v
+            ns.RescaleAll()
+        end, { unit = " %", width = 220 })
+    UI.Hint(options, 22, -232, W - 12, T("Änderungen gelten nach dem Neuladen. Gefällt dir der Stil nicht, schalte " ..
         "ForeverSkin in der Addon-Liste aus – dann ist alles wieder wie vorher.",
         "Changes apply after reloading. If you don't like the look, turn ForeverSkin off in the addon list – " ..
         "everything is back as before."))
@@ -720,6 +752,7 @@ local function Build()
     options:HookScript("OnShow", function()
         local db = ns.GetDB()
         for _, c in ipairs(checks) do c.cb:SetChecked(db[c.key] and true or false) end
+        size:SetValue(tonumber(db.scale) or 100)
     end)
 end
 

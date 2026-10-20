@@ -55,7 +55,8 @@ local function SkinTrainer()
     -- "Ausbilden"; die Zeilen haben eigene Kästen
     -- FOOTER = Höhe der unteren Leiste, EXTRA = so viel höher endet die Liste unten (mit Luft über der Leiste),
     -- MORE = so viel länger wird die Liste (mehr Zeilen sichtbar)
-    local FOOTER, EXTRA, MORE = 54, 34, 80
+    local FOOTER = 54
+    local EXTRA -- unten so viel höher enden, dass die Liste 6 px über der unteren Leiste aufhört (beim ersten Mal ermittelt)
     ns.ContentBox(f, FOOTER, nil, true)
     for _, key in ipairs({ "BottomInset", "skillStepButton" }) do
         local obj = f[key]
@@ -157,6 +158,10 @@ local function SkinTrainer()
     local baseHeight
     local function Place()
         baseHeight = baseHeight or f:GetHeight()
+        if not EXTRA then
+            local _, listBottom = ns.Original(f, f.ScrollBox or G("ClassTrainerListScrollFrame") or inset)
+            EXTRA = math.max(0, FOOTER + 6 - (listBottom or FOOTER))
+        end
         local down = 0
         local function Move(region, top, skip)
             local _, bottom = ns.Original(f, region)
@@ -169,12 +174,13 @@ local function SkinTrainer()
         Move(f.ScrollBox, 88, inset)
         Move(G("ClassTrainerListScrollFrame"), 88, inset)
         for _, bar in ipairs(bars) do Move(bar, 88, f.ScrollBox or inset) end
-        local want = baseHeight + down + EXTRA + MORE
+        local want = baseHeight + down + EXTRA
         if math.abs(f:GetHeight() - want) > 0.5 then f:SetHeight(want) end
     end
     local function Card()
         ns.NpcCard(f, "npc", T("Lehrer", "Trainer"), function() return T("Lehrer", "Trainer") end, 130)
     end
+    ns.Scaled(f)
     f:HookScript("OnShow", function()
         Card()
         LoadCheck()
