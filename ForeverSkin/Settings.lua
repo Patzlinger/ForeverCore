@@ -94,6 +94,17 @@ local function SkinDropdownControl(control)
     ns.SkinArrowOnly(control.IncrementButton or control.RightButton, "right")
 end
 
+-- Spalte der Bedienelemente: so weit vom linken Zeilenrand wie die Haken (an einem Haken abgemessen)
+local controlX
+local function AlignDropdown(element, dd)
+    if not controlX or not (element:GetLeft() and dd:GetLeft()) then return end
+    -- linker Pfeil auf Höhe des Kästchens, die Liste rechts daneben (der Pfeil hängt bei Blizzard an der Liste)
+    local want = controlX + 22
+    if math.abs((dd:GetLeft() - element:GetLeft()) - want) <= 0.5 then return end
+    dd:ClearAllPoints()
+    dd:SetPoint("LEFT", element, "LEFT", want, 0)
+end
+
 -- Zeilen rechts: Abschnitts-Überschriften ("Maus", "Kamera" …) gold; Bedienelemente im Forever-Stil (Stufe 2)
 local function SkinSettingsList(list)
     local box = list and list.ScrollBox
@@ -108,7 +119,10 @@ local function SkinSettingsList(list)
             title:SetTextColor(C.accent[1], C.accent[2], C.accent[3])
             return
         end
-        if cb then ns.SkinCheck(cb) end
+        if cb then
+            ns.SkinCheck(cb)
+            if not controlX and cb:GetLeft() and element:GetLeft() then controlX = cb:GetLeft() - element:GetLeft() end
+        end
         if slider then SkinStepperSlider(slider) end
         if control then
             SkinDropdownControl(control)
@@ -117,6 +131,8 @@ local function SkinSettingsList(list)
                 ns.DropdownColor(dd)
                 -- alle Auswahllisten gleich breit (Blizzard macht sie je nach Seite verschieden breit)
                 if math.abs((dd:GetWidth() or 0) - CONTROL_W) > 0.5 then dd:SetWidth(CONTROL_W) end
+                -- und an derselben Stelle (Zeilen mit Haken davor nicht – dort steht die Liste hinter dem Haken)
+                if not cb then AlignDropdown(element, dd) end
             end
         end
         -- Name der Einstellung hell (Blizzard: gold) – ausgegraute bleiben grau; gold sind nur die Überschriften
@@ -250,6 +266,15 @@ local function SkinSettings()
         navLine:SetPoint("TOPLEFT", nav, "TOPRIGHT", 0, 0)
         navLine:SetPoint("BOTTOMLEFT", nav, "BOTTOMRIGHT", 0, 0)
         navLine:SetWidth(1)
+        -- feine goldene Linie unter den Reitern "Spiel/Addons"
+        if f.GameTab then
+            local tabLine = f:CreateTexture(nil, "ARTWORK")
+            tabLine:SetTexture(WHITE)
+            tabLine:SetVertexColor(C.accent[1], C.accent[2], C.accent[3], 0.6)
+            tabLine:SetPoint("TOPLEFT", f.GameTab, "BOTTOMLEFT", -2, -6)
+            tabLine:SetPoint("RIGHT", nav, "RIGHT", -8, 0)
+            tabLine:SetHeight(1)
+        end
         ns.SkinScrollBar(list.ScrollBar)
     end
     local container = f.Container
