@@ -36,13 +36,9 @@ local function SkinTaxi()
     for _, key in ipairs({ "TaxiMap", "Map", "MapTexture" }) do
         if type(f[key]) == "table" and f[key].IsObjectType and f[key]:IsObjectType("Texture") then keep[f[key]] = true end
     end
-    ns.SkinWindow(f, keep)
-    -- Innenfläche um die Karte: nur Blizzards Rahmen weg, die Karte bleibt
-    local inset = f.Inset or G("TaxiFrameInset")
-    if inset then
-        ns.HideTextures(inset, keep)
-        if inset.NineSlice then ns.Hide(inset.NineSlice) end
-    end
+    -- nur Rahmen, Titel-Hintergrund und Porträt weg (light) – die Karte ist eine der Hintergrund-Grafiken und
+    -- verschwand sonst mit
+    ns.SkinWindow(f, keep, true)
     ns.Watch(f)
 end
 

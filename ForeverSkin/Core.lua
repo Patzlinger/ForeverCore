@@ -131,18 +131,20 @@ end
 
 -- Fenster: dunkle Fläche, Titelleiste mit goldener Linie (wie alle Forever-Fenster); Blizzards Rahmen,
 -- Hintergrund, Porträt und Titel-Grafik unsichtbar, der Titeltext bleibt
--- keep (optional): Texturen, die bleiben sollen (z. B. die Karte der Flugkarte)
-function ns.SkinWindow(frame, keep)
+-- keep (optional): Texturen, die bleiben sollen. light = true: NICHT alle Grafiken des Fensters ausblenden, nur
+-- Rahmen, Titel-Hintergrund und Porträt (z. B. Flugkarte: die Karte ist eine der Hintergrund-Grafiken)
+function ns.SkinWindow(frame, keep, light)
     if not frame then return end
-    ns.HideTextures(frame, keep)
-    for _, key in ipairs({ "NineSlice", "Bg", "Background", "PortraitContainer", "TopTileStreaks", "TitleBg",
-        "Portrait", "portrait" }) do
+    if not light then ns.HideTextures(frame, keep) end
+    for _, key in ipairs(light and { "NineSlice", "PortraitContainer", "TopTileStreaks", "TitleBg" }
+        or { "NineSlice", "Bg", "Background", "PortraitContainer", "TopTileStreaks", "TitleBg", "Portrait", "portrait" }) do
         local obj = frame[key]
         if type(obj) == "table" then ns.Hide(obj) end
     end
     local name = frame:GetName()
     if name then
-        for _, suffix in ipairs({ "Portrait", "PortraitFrame", "TitleBg", "Bg", "BgTop" }) do ns.Hide(_G[name .. suffix]) end
+        for _, suffix in ipairs(light and { "Portrait", "PortraitFrame", "TitleBg" }
+            or { "Portrait", "PortraitFrame", "TitleBg", "Bg", "BgTop" }) do ns.Hide(_G[name .. suffix]) end
     end
     if frame.TitleContainer then ns.HideTextures(frame.TitleContainer) end
     local look = ns.Flat(frame, C.background)
@@ -162,12 +164,16 @@ function ns.SkinWindow(frame, keep)
         look.mine[look.head], look.mine[look.line] = true, true
     end
     local inset = frame.Inset or (name and _G[name .. "Inset"])
-    if inset then ns.SkinInset(inset) end
+    if inset and light then
+        if inset.NineSlice then ns.Hide(inset.NineSlice) end -- (nur den Rahmen – darin kann z. B. die Karte liegen)
+    elseif inset then
+        ns.SkinInset(inset)
+    end
     -- weitere Innenflächen mit Blizzard-Rahmen (z. B. oben beim Händler) unsichtbar – sonst doppelte Kästen
     for _, child in ipairs({ frame:GetChildren() }) do
         if child ~= inset and type(child.NineSlice) == "table" and not child:IsObjectType("Button") then
             ns.Hide(child.NineSlice)
-            ns.HideTextures(child)
+            if not light then ns.HideTextures(child) end
         end
     end
     ns.SkinClose(frame.CloseButton or (name and _G[name .. "CloseButton"]))
