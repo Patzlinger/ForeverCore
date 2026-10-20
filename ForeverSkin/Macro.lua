@@ -63,8 +63,8 @@ local function SkinPopup(popup)
         ns.SkinButton(border.OkayButton)
         ns.SkinButton(border.CancelButton)
         -- Flächen 2 px kleiner als Blizzards Knöpfe: etwas Luft zwischen den Knöpfen und zum Rand
-        ns.Refit(border.OkayButton, 2)
-        ns.Refit(border.CancelButton, 2)
+        ns.Refit(border.OkayButton, 4)
+        ns.Refit(border.CancelButton, 4)
         local edit = border.IconSelectorEditBox
         if edit then
             ns.HideTextures(edit)
@@ -79,7 +79,7 @@ local function SkinPopup(popup)
     ns.Flat(popup, C.background)
     if popup.IconSelector and popup.IconSelector.ScrollBar then ns.SkinScrollBar(popup.IconSelector.ScrollBar) end
     ns.Watch(popup)
-    ns.Scaled(popup, 1.05) -- 5 % größer als die übrigen Fenster
+    ns.Scaled(popup, 0.85) -- kleiner als die übrigen Fenster (die Symbol-Auswahl ist sehr groß)
     local watch = CreateFrame("Frame", nil, popup)
     watch:SetScript("OnUpdate", function()
         pcall(SkinGrid, popup.IconSelector)
@@ -100,7 +100,7 @@ local function SkinMacro()
                 return (PanelTemplates_GetSelectedTab and PanelTemplates_GetSelectedTab(f) == t:GetID())
                     or (t.IsEnabled and not t:IsEnabled())
             end)
-            ns.Refit(tab, { 0, math.max(0, (tab:GetHeight() or 30) - 24), 0, 2 })
+            ns.Refit(tab, { 3, math.max(0, (tab:GetHeight() or 30) - 24), 3, 2 }) -- (3 px Luft links/rechts zum Nachbar-Reiter)
         end
     end
     -- gewähltes Makro: Hintergrund weg, großes Symbol als Platz, Name hell
@@ -127,7 +127,7 @@ local function SkinMacro()
     for _, n in ipairs({ "MacroEditButton", "MacroDeleteButton", "MacroNewButton", "MacroExitButton", "MacroSaveButton",
         "MacroCancelButton" }) do
         ns.SkinButton(G(n))
-        ns.Refit(G(n), 2) -- (Fläche 2 px kleiner: Luft zwischen den Knöpfen und zum Rand)
+        ns.Refit(G(n), 4) -- (Fläche 4 px kleiner: Luft zwischen den Knöpfen und zum Rand)
     end
     -- Classic: feste Plätze
     for i = 1, 36 do
