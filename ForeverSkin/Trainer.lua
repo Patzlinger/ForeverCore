@@ -23,14 +23,17 @@ ns.UpdateTrainerButtons = UpdateButtons
 -- Aussehen
 ---------------------------------------------------------------------------
 local skinnedRows = setmetatable({}, { __mode = "k" })
+-- Blizzard macht bei manchen Zeilen (z. B. noch nicht lernbar) seine Grafiken beim Aktualisieren wieder sichtbar:
+-- darum bei JEDEM Durchgang ausblenden; Fläche und Maus-Rand nur einmal anlegen
 local function SkinRow(row)
-    if not row or skinnedRows[row] then return end
-    skinnedRows[row] = true
+    if not row then return end
     local keep = {}
     for _, key in ipairs({ "icon", "Icon" }) do
         if type(row[key]) == "table" then keep[row[key]] = true end
     end
     ns.HideTextures(row, keep)
+    if skinnedRows[row] then return end
+    skinnedRows[row] = true
     ns.Flat(row, C.panel, 1)
     ns.Hover(row, function(b) return b.selectedTex and b.selectedTex:IsShown() end)
 end
@@ -212,6 +215,16 @@ local function SkinTrainer()
         ns.NpcCard(f, "npc", T("Lehrer", "Trainer"), function() return T("Lehrer", "Trainer") end, 130)
     end
     ns.Scaled(f)
+    -- solange offen: fünfmal je Sekunde die sichtbaren Zeilen prüfen (neue Zeilen beim Scrollen, wieder sichtbare
+    -- Blizzard-Grafiken) – eigener kleiner Rahmen, läuft nur mit dem Fenster
+    local watch = CreateFrame("Frame", nil, f)
+    local waited = 0
+    watch:SetScript("OnUpdate", function(_, elapsed)
+        waited = waited + elapsed
+        if waited < 0.2 then return end
+        waited = 0
+        pcall(SkinRows)
+    end)
     f:HookScript("OnShow", function()
         Card()
         LoadCheck()
