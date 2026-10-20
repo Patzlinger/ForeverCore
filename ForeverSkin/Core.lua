@@ -305,18 +305,9 @@ function ns.NpcCard(frame, unit, label, roleFn)
     card.portrait:SetTexCoord(0, 1, 0, 1)
     for _, t in ipairs({ card.ring, card.gap, card.portrait }) do t:SetShown(exists) end
     card.name:SetText(exists and UnitName(unit) or "")
-    -- Titel aus dem Tooltip (zweite Zeile in spitzen Klammern), sonst leer
-    local sub = ""
-    if exists and C_TooltipInfo and C_TooltipInfo.GetUnit then
-        local ok, data = pcall(C_TooltipInfo.GetUnit, unit)
-        local lines = ok and data and data.lines
-        for i = 2, math.min(4, lines and #lines or 0) do
-            local text = lines[i].leftText
-            if type(text) == "string" and text:find("^<.+>$") then sub = text break end
-        end
-    end
-    -- Rolle: Titel ohne Klammern ("Rüstmeister"); ohne Titel aus den Gesprächsoptionen abgeleitet (roleFn)
-    sub = sub:gsub("^<(.+)>$", "%1")
+    -- Rolle: Titel ohne Klammern ("Stoffrüstmeister der Horde", "Schneiderbedarf"); ohne Titel aus den
+    -- Gesprächsoptionen abgeleitet (roleFn)
+    local sub = exists and ns.UnitTitle(unit) or ""
     if sub == "" and exists and roleFn then
         local ok, role = pcall(roleFn)
         if ok and type(role) == "string" then sub = role end
@@ -337,6 +328,44 @@ function ns.NpcCard(frame, unit, label, roleFn)
     end
     -- ohne NPC (z. B. Quest aus einem Gegenstand): nur der Titel in der Leiste
     if not exists then card.name:SetText("") card.info:SetText("") end
+end
+
+-- Titel eines NPCs ("<Schneiderbedarf>") aus seinem Tooltip – ohne Klammern; "" wenn er keinen hat.
+-- Erst Blizzards Tooltip-Daten, sonst ein eigener unsichtbarer Tooltip. Farbcodes und Leerzeichen werden entfernt.
+local scanTip
+local function TitleIn(text)
+    if type(text) ~= "string" or (issecretvalue and issecretvalue(text)) then return nil end
+    text = strtrim((text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")))
+    return text:match("^<(.+)>$")
+end
+function ns.UnitTitle(unit)
+    if C_TooltipInfo and C_TooltipInfo.GetUnit then
+        local ok, data = pcall(C_TooltipInfo.GetUnit, unit)
+        local lines = ok and type(data) == "table" and data.lines
+        if type(lines) == "table" then
+            for i = 2, math.min(6, #lines) do
+                local title = TitleIn(lines[i] and lines[i].leftText)
+                if title then return title end
+            end
+        end
+    end
+    if not scanTip then
+        scanTip = CreateFrame("GameTooltip", "ForeverSkinScanTooltip", UIParent, "GameTooltipTemplate")
+    end
+    local ok = pcall(function()
+        scanTip:SetOwner(WorldFrame, "ANCHOR_NONE")
+        scanTip:SetUnit(unit)
+    end)
+    local found = ""
+    if ok then
+        for i = 2, math.min(6, scanTip:NumLines()) do
+            local line = _G["ForeverSkinScanTooltipTextLeft" .. i]
+            local title = line and TitleIn(line:GetText())
+            if title then found = title break end
+        end
+    end
+    scanTip:Hide()
+    return found
 end
 
 -- Rolle eines NPCs aus seinen Gesprächsoptionen (Symbol der Option) bzw. seinen Quests
