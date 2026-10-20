@@ -113,13 +113,24 @@ local function Put(region, element, x, width)
     end
 end
 
+-- Pfeil-Knopf nach seiner MITTE setzen (Blizzards Pfeil-Knöpfe sind bei Listen breiter als bei Reglern – der Pfeil
+-- sitzt mittig im Knopf, nach der linken Kante gesetzt lagen die Listen-Pfeile darum weiter rechts)
+local function PutCenter(region, element, cx)
+    if not (region and region.GetCenter and element:GetLeft()) then return end
+    local x = region:GetCenter()
+    if not x then return end
+    if math.abs((x - element:GetLeft()) - cx) > 0.5 then
+        region:ClearAllPoints()
+        region:SetPoint("CENTER", element, "LEFT", cx, 0)
+    end
+end
+
 -- Pfeil – Mitte – Pfeil in die festen Spalten
 local function PlaceRow(element, left, middle, right)
     if not controlX then return end
-    local x = controlX + ARROW_GAP
-    Put(left, element, x)
+    PutCenter(left, element, controlX + ARROW_GAP + ARROW_W / 2)
     Put(middle, element, BodyX(), CONTROL_W)
-    Put(right, element, BodyX() + CONTROL_W + PAD)
+    PutCenter(right, element, BodyX() + CONTROL_W + PAD + ARROW_W / 2)
 end
 
 -- Knopf oder Liste ohne Pfeile in die Spalte der Listen
