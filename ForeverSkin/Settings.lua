@@ -106,6 +106,22 @@ local function AlignDropdown(element, dd)
     dd:SetPoint("LEFT", element, "LEFT", want, 0)
 end
 
+-- Regler mit Pfeilen (MinimalSliderWithSteppers): die Schiene in dieselbe Spalte wie die Auswahllisten und gleich
+-- breit; Pfeile und Zahl hängen am Rahmen des Reglers und wandern mit
+local function AlignSlider(element, holder)
+    local slider = holder.Slider
+    if not (controlX and slider and element:GetLeft() and holder:GetLeft() and slider:GetLeft()) then return end
+    local inner = slider:GetLeft() - holder:GetLeft()          -- Platz links (Pfeil)
+    local extra = (holder:GetWidth() or 0) - (slider:GetWidth() or 0) -- Pfeile links und rechts zusammen
+    local want = controlX + 52 - inner
+    local width = CONTROL_W + extra
+    if math.abs((holder:GetLeft() - element:GetLeft()) - want) > 0.5 then
+        holder:ClearAllPoints()
+        holder:SetPoint("LEFT", element, "LEFT", want, 0)
+    end
+    if extra > 0 and math.abs((holder:GetWidth() or 0) - width) > 0.5 then holder:SetWidth(width) end
+end
+
 -- Zeilen rechts: Abschnitts-Überschriften ("Maus", "Kamera" …) gold; Bedienelemente im Forever-Stil (Stufe 2)
 local function SkinSettingsList(list)
     local box = list and list.ScrollBox
@@ -125,7 +141,12 @@ local function SkinSettingsList(list)
             ns.PlaceCheck(cb)
             if not controlX and cb:GetLeft() and element:GetLeft() then controlX = cb:GetLeft() - element:GetLeft() end
         end
-        if slider then SkinStepperSlider(slider) end
+        if slider then
+            SkinStepperSlider(slider)
+            if slider.Slider then AlignSlider(element, slider) end
+        end
+        -- Tastaturbelegung: Tasten-Paar in dieselbe Spalte (der zweite Knopf hängt am ersten)
+        if element.Button1 and element.Button2 and element.Button1.GetLeft then AlignDropdown(element, element.Button1) end
         if control then
             SkinDropdownControl(control)
             local dd = control.Dropdown or control.DropDown
