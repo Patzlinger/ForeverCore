@@ -165,11 +165,39 @@ local function ReactionRGB(unit)
     if c then return c.r, c.g, c.b end
 end
 
+-- Mischzeilen wie "Gefährte von 兔肥 猛斤": enthält eine Zeile chinesische/koreanische Zeichen, nimmt das Spiel für
+-- die ganze Zeile eine asiatische Schrift – der fehlen ä, ö, ü (Kästchen). Darum solche Zeilen teilen: der Text vor
+-- dem ersten asiatischen Zeichen links, der Rest (meist ein Name) rechts – jede Hälfte bekommt ihre eigene Schrift.
+local ASIAN = "[\227-\237][\128-\191][\128-\191]" -- UTF-8 von U+3000 bis U+D7FF (CJK, Kana, Hangul)
+local LATIN = "[\195\197][\128-\191]"             -- UTF-8 von ä, ö, ü, ß, é … (U+00C0 bis U+017F)
+local function SplitMixedLines(tip)
+    local name = tip:GetName()
+    if not name then return end
+    for i = 1, tip:NumLines() do
+        local left, right = _G[name .. "TextLeft" .. i], _G[name .. "TextRight" .. i]
+        local text = left and left:GetText()
+        if text and not IsSecret(text) and right and not (right:IsShown() and (right:GetText() or "") ~= "")
+            and text:find(LATIN) then
+            local at = text:find(ASIAN)
+            if at and at > 1 then
+                local head, rest = strtrim(text:sub(1, at - 1)), text:sub(at)
+                if head:find(LATIN) then
+                    left:SetText(head)
+                    right:SetText(rest)
+                    right:SetTextColor(left:GetTextColor())
+                    right:Show()
+                end
+            end
+        end
+    end
+end
+
 local function OnUnit(tip)
     if not skinned[tip] then return end
     local d = GetDB()
     local _, unit = tip:GetUnit()
     if not unit or IsSecret(unit) then return end
+    pcall(SplitMixedLines, tip)
     local r, g, b
     local isPlayer = UnitIsPlayer(unit)
     if not IsSecret(isPlayer) and isPlayer then
