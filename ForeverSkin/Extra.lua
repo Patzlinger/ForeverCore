@@ -62,10 +62,10 @@ local function SkinTaxi()
             if r ~= largest then r:SetAlpha(0) end
         end
     end
-    -- nur Rahmen, Titel-Hintergrund und Porträt weg (light), den Rest erledigt KeepOnlyMap
+    -- nur Rahmen, Titel-Hintergrund und Porträt weg (light). KeepOnlyMap (nur die größte Grafik behalten) ist
+    -- abgeschaltet: in Forever war die Karte nicht die größte Grafik und verschwand – erst mit /fskin taxi nachsehen
     ns.SkinWindow(f, keep, true)
-    f:HookScript("OnShow", function() C_Timer.After(0, function() pcall(KeepOnlyMap) end) end)
-    if f:IsShown() then pcall(KeepOnlyMap) end
+    ns.KeepOnlyMap = KeepOnlyMap -- (zum Ausprobieren)
     ns.Watch(f)
 end
 
@@ -118,6 +118,37 @@ local function SkinLoot()
     -- Zeilen baut Blizzard bei jeder Beute neu: solange das Fenster offen ist, in jedem Bild prüfen
     local watch = CreateFrame("Frame", nil, f)
     watch:SetScript("OnUpdate", function() pcall(SkinLootRows) end)
+end
+
+-- Prüfbefehl /fskin taxi: welche Grafiken hat die Flugkarte (Name, Datei/Atlas, Größe, Sichtbarkeit) – im Chat
+function ns.DumpTaxi()
+    local f = G("TaxiFrame")
+    if not (f and f:IsShown()) then
+        ns.UI.Chat("ForeverSkin", ns.T("Erst die Flugkarte öffnen, dann /fskin taxi.", "Open the flight map first, then /fskin taxi."))
+        return
+    end
+    local n = 0
+    local function Dump(holder, label, depth)
+        for _, r in ipairs({ holder:GetRegions() }) do
+            if r:IsObjectType("Texture") and n < 40 then
+                n = n + 1
+                local tex = r.GetTexture and r:GetTexture()
+                local atlas = r.GetAtlas and r:GetAtlas()
+                local layer = r:GetDrawLayer()
+                ns.UI.Chat("ForeverSkin", string.format("%s %s | %s | %dx%d | %s | a=%.1f%s", label, r:GetName() or "-",
+                    tostring(atlas or tex), r:GetWidth() or 0, r:GetHeight() or 0, tostring(layer), r:GetAlpha() or 0,
+                    ns.IsMine(holder, r) and " (FS)" or ""))
+            end
+        end
+        if depth < 2 then
+            for i, child in ipairs({ holder:GetChildren() }) do
+                if not child:IsObjectType("Button") then
+                    Dump(child, label .. ">" .. (child:GetName() or ("#" .. i)), depth + 1)
+                end
+            end
+        end
+    end
+    Dump(f, "TaxiFrame", 1)
 end
 
 local events = CreateFrame("Frame")

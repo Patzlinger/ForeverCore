@@ -1034,4 +1034,11 @@ if UI.RegisterSettingsLink then
 end
 
 SLASH_FOREVERSKIN1 = "/fskin"
-SlashCmdList["FOREVERSKIN"] = ns.Safe(T("Befehl", "Command"), function() ns.ToggleOptions() end)
+SlashCmdList["FOREVERSKIN"] = ns.Safe(T("Befehl", "Command"), function(msg)
+    msg = strtrim(msg or ""):lower()
+    if msg == "taxi" and ns.DumpTaxi then
+        ns.DumpTaxi() -- Prüfbefehl: Grafiken der Flugkarte im Chat
+    else
+        ns.ToggleOptions()
+    end
+end)
