@@ -256,17 +256,12 @@ local function SkinMerchant()
         ns.HideTextures(item) -- Fach und Namensfeld
         -- Kasten etwas größer als das Feld, damit Name und Preis ganz darin liegen; Namen höchstens zwei Zeilen
         -- (sonst ragten lange Namen wie "Muster: Lavendelfarbenes Magiestoffhemd" oben heraus)
-        -- wie ein flacher Knopf (Knopf-Farbe, beim Überfahren goldener Rand) – etwas größer als das Feld, damit Name
-        -- und Preis ganz darin liegen (Rückkauf-Feld unten ohne Überstand: darunter beginnt die Geldleiste)
-        ns.Flat(item, C.button, name == "MerchantBuyBackItem" and { -3, -3, -3, 0 } or { -3, -3, -3, -5 })
-        ns.Hover(item)
+        -- keine Kästen: nur eine zarte goldene Trennlinie unter jedem Gegenstand (nicht beim Rückkauf unten)
+        if name ~= "MerchantBuyBackItem" then ns.Line(item, -5) end
         local nameText = item.Name or G(name .. "Name")
         if nameText and nameText.SetMaxLines then nameText:SetMaxLines(2) end
         local button = G(name .. "ItemButton")
-        if button then
-            ns.Hide(button:GetNormalTexture())
-            ns.Flat(button, { 0.04, 0.04, 0.05, 1 })
-        end
+        if button then ns.Hide(button:GetNormalTexture()) end -- (Blizzards Fach-Rahmen; Qualitätsrand bleibt)
     end
     for i = 1, 12 do Item("MerchantItem" .. i) end
     Item("MerchantBuyBackItem")
