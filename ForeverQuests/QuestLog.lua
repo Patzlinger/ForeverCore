@@ -1131,6 +1131,8 @@ function ns.ShowQuestInfoTooltip(owner, questID)
 end
 
 -- Zeile der Questreihe (Pool je Ansicht): nicht anklickbar, Tooltip beim Darüberfahren
+ns.ChainTooltip = ChainTooltip -- auch für die Questreihe am Quest-Dialog (QuestDialog.lua)
+
 local function ChainRow(dv, index)
     local row = dv.chain[index]
     if row then return row end

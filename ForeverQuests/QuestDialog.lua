@@ -47,6 +47,7 @@ local function Row(i)
     if row then return row end
     row = CreateFrame("Button", nil, panel)
     row:RegisterForClicks("RightButtonUp")
+    row.view = { anchor = "ANCHOR_RIGHT" } -- Tooltip-Seite für den Tracker-Tooltip
     row.hl = row:CreateTexture(nil, "HIGHLIGHT")
     row.hl:SetAllPoints()
     row.hl:SetColorTexture(1, 1, 1, 0.06)
@@ -57,6 +58,17 @@ local function Row(i)
     row:SetScript("OnEnter", function(self)
         local e = self.entry
         if not e then return end
+        -- derselbe Tooltip wie bei der Questreihe im Questlog: Ziele, Questgeber/Abgabe und alle Belohnungen
+        if ns.ChainTooltip then
+            ns.ChainTooltip(self)
+            local tip = ns.Style.GetTooltip()
+            if tip:IsShown() then
+                tip:AddLine(" ")
+                tip:AddLine(ns.L("TIP_RIGHTCLICK_WOWHEAD"), 0.5, 0.5, 0.5)
+                tip:Show()
+            end
+            return
+        end
         local tip = ns.Style.GetTooltip()
         tip:SetOwner(self, "ANCHOR_RIGHT")
         tip:AddLine(e.name or ("Quest #" .. e.questID), 1, 0.82, 0)
@@ -119,7 +131,7 @@ local function Refresh()
             end
         end
         if ns.db and ns.db.showQuestIDs then text = text .. "  |cff6a6a6a#" .. e.questID .. "|r" end
-        row.entry = e
+        row.entry, row.done, row.inLog = e, done, inLog
         row.text:SetWidth(WIDTH - 24)
         row.text:SetText(text)
         row.text:SetTextColor(r, g, b)
