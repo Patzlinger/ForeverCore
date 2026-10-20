@@ -1,16 +1,17 @@
 -- ForeverCast: minimalistische Zauberleiste mit Ping, Lag und Spell-Queue-Fenster
-local ADDON_NAME = ...
+local ADDON_NAME, ns = ...
 
 local GCD_SPELL = 61304   -- interne Zauber-ID der globalen Abklingzeit
 local FADE_TIME = 0.5     -- so lange blendet die Leiste nach dem Zauber aus
 local BAR_WIDTH = 290
 
-local COLOR_CAST    = { 1, 0.7, 0 }      -- normaler Zauber (gold)
-local COLOR_CHANNEL = { 0.3, 0.6, 1 }    -- kanalisierter Zauber (blau)
-local COLOR_QUEUE   = { 0.2, 1, 0.2 }    -- jetzt kann der naechste Zauber gedrueckt werden
-local COLOR_FAIL    = { 1, 0.15, 0.15 }  -- unterbrochen / fehlgeschlagen
-local COLOR_IDLE    = { 0.4, 0.4, 0.4 }  -- Platzhalter zum Verschieben
-local COLOR_FLIGHT  = { 0.6, 0.45, 1 }   -- Flugzeit (violett)
+-- Farben je Look (Look.lua: Forever gedämpft, Clean kräftig wie früher); die Tabellen bleiben dieselben
+local COLOR_CAST    = ns.COLORS.cast     -- normaler Zauber (gold)
+local COLOR_CHANNEL = ns.COLORS.channel  -- kanalisierter Zauber (blau)
+local COLOR_QUEUE   = ns.COLORS.queue    -- jetzt kann der naechste Zauber gedrueckt werden
+local COLOR_FAIL    = ns.COLORS.fail     -- unterbrochen / fehlgeschlagen
+local COLOR_IDLE    = ns.COLORS.idle     -- Platzhalter zum Verschieben
+local COLOR_FLIGHT  = ns.COLORS.flight   -- Flugzeit (violett)
 
 -- Kanalisierte Zauber und ihre Anzahl Ticks. Die Zauber-ID dient nur dazu, den
 -- Namen in der Client-Sprache herauszufinden; erkannt wird dann am Namen (alle Raenge).
@@ -55,8 +56,16 @@ local DEFAULTS = {
     showExpect = true,
     showInstant = true,
     showMelee = true,
-    showCombo = true,
+    showCombo = false,  -- Combopunkte zeigen ForeverUnits/ForeverPlates; hier nur auf Wunsch
     hideBlizzard = true,
+    look = "forever",   -- "forever" (flach, Goldlinie) oder "clean" (bisheriger Look) – Look.lua
+    -- Zauberleisten für Ziel und Fokus (Units.lua): standardmäßig aus; angedockt unter den ForeverUnits-Rahmen
+    targetBar = false,
+    focusBar = false,
+    unitDock = true,
+    unitHeight = 18,
+    unitWidth = 220,    -- nur frei platziert (angedockt: so breit wie der Rahmen)
+    showMirror = true,  -- Atem/Erschöpfung im Forever-Stil statt Blizzards Leisten (Mirror.lua)
     minimapAngle = 130,
     width = BAR_WIDTH,  -- Laenge der Leiste in Pixeln
     height = 24,        -- Hoehe der Leiste in Pixeln
@@ -79,8 +88,14 @@ local function GetDB()
         if db[k] == nil then db[k] = v end
     end
     db.flights = db.flights or {} -- gemerkte Flugzeiten: ["Start → Ziel"] = Sekunden
+    -- einmalig: Combopunkte an der Leiste standardmäßig aus (zeigen ForeverUnits/ForeverPlates)
+    if not db.comboOffV2 then
+        db.showCombo = false
+        db.comboOffV2 = true
+    end
     return db
 end
+ns.GetDB = GetDB
 
 ---------------------------------------------------------------------------
 -- Hilfsfunktionen
@@ -587,31 +602,16 @@ anchor:SetPoint("CENTER", 32, -336)
 anchor:SetMovable(true)
 anchor:SetClampedToScreen(true)
 
--- Dezenter WoW-Rahmen: schmaler, leicht abgerundeter Tooltip-Rand in gedecktem Bronze
-local SOFT_BACKDROP = {
-    bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
-    edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-    tile = true, tileSize = 16, edgeSize = 8,
-    insets = { left = 2, right = 2, top = 2, bottom = 2 },
-}
-
-local function ApplySoftBackdrop(f)
-    f:SetBackdrop(SOFT_BACKDROP)
-    f:SetBackdropColor(0, 0, 0, 0.55)
-    f:SetBackdropBorderColor(0.6, 0.55, 0.45, 0.7)
-end
-
+-- Rahmen im gewählten Look (Look.lua: Forever = flach mit Goldlinie, Clean = bronzener Tooltip-Rand wie früher)
 local castFrame = CreateFrame("Frame", nil, anchor, "BackdropTemplate")
 castFrame:SetPoint("TOPLEFT")
 castFrame:SetPoint("TOPRIGHT")
 castFrame:SetHeight(20)
-ApplySoftBackdrop(castFrame)
 castFrame:Hide()
 
 local bar = CreateFrame("StatusBar", nil, castFrame)
-bar:SetPoint("TOPLEFT", 3, -3)
-bar:SetPoint("BOTTOMRIGHT", -3, 3)
-bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
+ns.StyleBox(castFrame, bar)
+ns.StyleBar(bar)
 bar:SetMinMaxValues(0, 1)
 
 -- Bereich am Ende: hier kann der naechste Zauber schon gedrueckt werden
@@ -677,27 +677,27 @@ nameText:SetPoint("RIGHT", timeText, "LEFT", -4, 0)
 local iconFrame = CreateFrame("Frame", nil, castFrame, "BackdropTemplate")
 iconFrame:SetSize(20, 20)
 iconFrame:SetPoint("RIGHT", castFrame, "LEFT", -3, 0)
-ApplySoftBackdrop(iconFrame)
 
 local icon = iconFrame:CreateTexture(nil, "ARTWORK")
-icon:SetPoint("TOPLEFT", 3, -3)
-icon:SetPoint("BOTTOMRIGHT", -3, 3)
 icon:SetTexCoord(0.07, 0.93, 0.07, 0.93) -- Rand des Symbols abschneiden
+ns.StyleBox(iconFrame, icon)
 
 local pingText = castFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 pingText:SetPoint("LEFT", castFrame, "RIGHT", 5, 0)
+ns.Text(pingText, 10)
 
 -- Kleine Zeile ueber der Leiste: "≈ 14–22 Schaden · 8.5 % Krit"
 local expectText = castFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 expectText:SetPoint("BOTTOMLEFT", castFrame, "TOPLEFT", 2, 2)
 expectText:SetJustifyH("LEFT")
+ns.Text(expectText, 10)
 
 -- Duenner GCD-Balken unter der Zauberleiste (auch bei Spontanzaubern sichtbar)
 local gcdBar = CreateFrame("StatusBar", nil, anchor)
 gcdBar:SetPoint("TOPLEFT", castFrame, "BOTTOMLEFT", 3, -2)
 gcdBar:SetPoint("TOPRIGHT", castFrame, "BOTTOMRIGHT", -3, -2)
 gcdBar:SetHeight(4)
-gcdBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
+ns.StyleBar(gcdBar)
 gcdBar:SetMinMaxValues(0, 1)
 gcdBar:Hide()
 
@@ -739,9 +739,9 @@ local function ApplySize()
     castFrame:SetHeight(o.height)
     iconFrame:SetSize(o.height, o.height)
     spark:SetSize(math.max(8, o.height * 0.6), o.height * 1.4)
-    local font = o.height >= 26 and "GameFontHighlight" or "GameFontHighlightSmall"
-    nameText:SetFontObject(font)
-    timeText:SetFontObject(font)
+    local size = o.height >= 26 and 12 or 10
+    ns.Text(nameText, size)
+    ns.Text(timeText, size)
 end
 
 ---------------------------------------------------------------------------
@@ -941,7 +941,8 @@ local function StartCast(isChannel, fake)
     Wake()
 end
 
-local function FinishCast(kind)
+-- by = GUID dessen, der unterbrochen hat (UNIT_SPELLCAST_INTERRUPTED) – "Unterbrochen von Name"
+local function FinishCast(kind, by)
     if kind == "done" then
         if state.mode ~= "cast" and state.mode ~= "channel" and state.mode ~= "flight" then return end
         if not state.secret and state.mode == "cast" then bar:SetValue(1) end
@@ -954,7 +955,7 @@ local function FinishCast(kind)
         HideZones()
         SetBarColor(COLOR_FAIL)
         bar:SetValue(1)
-        nameText:SetText(kind == "interrupted" and T("Unterbrochen", "Interrupted") or T("Fehlgeschlagen", "Failed"))
+        nameText:SetText(kind == "interrupted" and ns.InterruptedText(by) or T("Fehlgeschlagen", "Failed"))
         timeText:SetText("")
         expectText:SetText("")
     end
@@ -962,7 +963,8 @@ local function FinishCast(kind)
     HideTicks()
     if state.mode ~= "fade" then
         state.mode = "fade"
-        state.fadeStart = GetTime()
+        -- Unterbrochen/fehlgeschlagen: erst kurz stehen lassen (lesbar), dann ausblenden
+        state.fadeStart = GetTime() + (kind ~= "done" and 0.5 or 0)
     end
     Wake()
 end
@@ -992,13 +994,14 @@ local popups = {}
 
 for i = 1, POPUP_MAX do
     local f = CreateFrame("Frame", nil, anchor, "BackdropTemplate")
-    ApplySoftBackdrop(f)
+    ns.StyleBox(f)
     f:SetHeight(20)
     f.icon = f:CreateTexture(nil, "ARTWORK")
     f.icon:SetSize(14, 14)
     f.icon:SetPoint("LEFT", 4, 0)
     f.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
     f.text = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    ns.Text(f.text, 10)
     f.text:SetPoint("LEFT", f.icon, "RIGHT", 4, 0)
     f:Hide()
     popups[i] = f
@@ -1370,7 +1373,7 @@ OnUpdate = Safe("Anzeige", function()
             state.failed = nil
             HideOrPlaceholder()
         else
-            castFrame:SetAlpha(alpha)
+            castFrame:SetAlpha(math.min(1, alpha))
         end
     end
 
@@ -1429,7 +1432,8 @@ castFrame:SetScript("OnDragStart", function()
     anchor:StartMoving()
     castDragging = true
     UpdateGrid()
-    UI.BeginDrag(anchor, { edges = castFrame, snap = o.snap, grid = o.gridShow and o.gridSize or nil })
+    -- Einrasten: gemeinsamer Schalter in der Übersicht (Umschalt = frei), Raster beim Ziehen
+    UI.BeginDrag(anchor, { edges = castFrame, grid = o.gridShow and o.gridSize or nil })
 end)
 
 -- Position als Versatz der Mitte zur Bildschirmmitte speichern (so stehen X/Y in den Einstellungen)
@@ -1526,6 +1530,7 @@ local function RunTestSequence()
                 { low = 120, high = 120, overTime = 18, crit = 9.2 })
             ShowPopup(T("Test-Spontanzauber", "Test instant"), "Interface\\Icons\\Spell_Fire_Fireball",
                 { low = 55, high = 67, crit = 8.5 })
+            if ns.TestMirror then ns.TestMirror() end -- Atem-Leiste (Mirror.lua)
         end },
         { 10, function()
             pendingFlight = nil
@@ -1646,7 +1651,7 @@ end
 local ApplySettings, ToggleOptions, ToggleLock
 do
 -- Seite im zentralen Einstellungsfenster von Forever Core (verhält sich wie das bisherige eigene Fenster)
-local options = UI.SettingsPanel("ForeverCastOptions", T("ForeverCast – Einstellungen", "ForeverCast – Settings"), 600, 580,
+local options = UI.SettingsPanel("ForeverCastOptions", T("ForeverCast – Einstellungen", "ForeverCast – Settings"), 600, 700,
     { key = "ForeverCast", group = UI.SETTINGS_GROUPS.frames, label = T("Zauberleiste", "Cast bar") })
 local L, R, COL = 16, 306, 276 -- linke / rechte Spalte, Breite der Ueberschriften
 
@@ -1766,10 +1771,39 @@ local posY = UI.Number(options, L + 150, -480, "Y", PosGet(2), PosSet(2))
 castFrame.fcOnMoved = function()
     if options:IsShown() then posX:Load() posY:Load() end
 end
-Section(R, -456, T("Ausrichten (wenn entsperrt)", "Alignment (when unlocked)"), {
-    { "gridShow", T("Raster beim Ziehen und hier", "Grid while dragging and here") },
-    { "snap",     T("Einrasten (Umschalt = aus)", "Snap (Shift = off)") },
+-- Look (Look.lua): Forever (Standard) oder Clean (bisheriger Look); Einrasten gilt über den Schalter der Übersicht
+UI.Header(options, R + 2, -456, T("Look", "Look"), COL)
+local lookBtn = UI.AddArrow(UI.Button(options, "", 220))
+lookBtn:SetPoint("TOPLEFT", R + 2, -480)
+-- (Hilfen als Felder statt eigener Variablen: die Datei ist nahe an Luas Grenze von 200 lokalen Variablen)
+function lookBtn.Load()
+    local mode = ns.LookMode()
+    for _, l in ipairs(ns.LOOKS) do if l.key == mode then lookBtn:SetText(l.label) return end end
+end
+lookBtn:SetScript("OnClick", Safe("Einstellungen", function(self)
+    UI.ChoiceMenu(self, ns.LOOKS, ns.LookMode, function(key)
+        GetDB().look = key
+        lookBtn.Load()
+        ns.Restyle()
+    end)
+end))
+
+-- Ziel & Fokus (Units.lua) und Atem/Erschöpfung (Mirror.lua)
+Section(L, -540, T("Zauberleisten für Ziel und Fokus", "Cast bars for target and focus"), {
+    { "targetBar", T("Zauberleiste des Ziels", "Target cast bar") },
+    { "focusBar",  T("Zauberleiste des Fokus", "Focus cast bar") },
+    { "unitDock",  T("Unter den Rahmen von ForeverUnits", "Below the ForeverUnits frames") },
 })
+UI.Hint(options, L + 2, -640, COL - 10, T("Nicht angedockt (oder ohne ForeverUnits): frei verschiebbar, wenn die Leiste entsperrt ist.",
+    "Not docked (or without ForeverUnits): movable while the bar is unlocked.")):SetWordWrap(true)
+Section(R, -540, T("Atem und Erschöpfung", "Breath and fatigue"), {
+    { "showMirror", T("Im Forever-Stil über der Zauberleiste", "In Forever style above the cast bar") },
+})
+local unitHeightSlider = UI.Slider(options, R + 2, -600, T("Höhe Ziel/Fokus-Leisten", "Height of target/focus bars"), 12, 30, 2,
+    Safe("Einstellungen", function(value)
+        GetDB().unitHeight = value
+        if ns.ApplyUnits then ns.ApplyUnits() end
+    end), { width = 170, unit = " px" })
 
 local testBtn = MakeButton(options, T("Test", "Test"), 70, RunTestSequence)
 testBtn:SetPoint("BOTTOMLEFT", 16, 14)
@@ -1799,6 +1833,8 @@ options:SetScript("OnShow", Safe("Einstellungen", function()
     end
     widthSlider:Load(GetDB().width)
     heightSlider:Load(GetDB().height)
+    unitHeightSlider:Load(GetDB().unitHeight)
+    lookBtn.Load()
     posX:Load()
     posY:Load()
     UpdateGrid()
@@ -1821,7 +1857,11 @@ ApplySettings = function()
     UpdateCombo()
     ApplyBlizzardBar()
     UpdateGrid()
+    if ns.ApplyUnits then ns.ApplyUnits() end   -- Ziel/Fokus (Units.lua)
+    if ns.ApplyMirror then ns.ApplyMirror() end -- Atem/Erschöpfung (Mirror.lua)
 end
+ns.OnRestyle = function() ApplySettings() end
+ns.IsLocked = function() return GetDB().locked end
 
 function ToggleOptions()
     options:SetShown(not options:IsShown())
@@ -1988,9 +2028,9 @@ H.UNIT_SPELLCAST_CHANNEL_STOP = function()
     if state.mode == "channel" and not state.test then FinishCast("done") end
 end
 
-H.UNIT_SPELLCAST_INTERRUPTED = function(_, castGUID)
+H.UNIT_SPELLCAST_INTERRUPTED = function(_, castGUID, _, by)
     if state.test then return end
-    if state.mode == "channel" or IsCurrentCast(castGUID) then FinishCast("interrupted") end
+    if state.mode == "channel" or IsCurrentCast(castGUID) then FinishCast("interrupted", by) end
 end
 
 H.UNIT_SPELLCAST_FAILED = function(_, castGUID)

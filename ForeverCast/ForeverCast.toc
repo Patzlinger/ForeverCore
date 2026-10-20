@@ -12,4 +12,7 @@
 ## Group: ForeverCore
 ## SavedVariables: ForeverCastDB, ForeverHubDB
 
+Look.lua
 ForeverCast.lua
+Units.lua
+Mirror.lua

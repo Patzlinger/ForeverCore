@@ -507,6 +507,20 @@ local function LayoutAuras(b)
     local dotsOn = supported and f.dotBars and (b.key == "target" or b.key == "focus")
     -- Kombopunkte als Balken unter dem Rahmen (Combo.lua): Auren und DoT-Leisten rücken darunter
     local y = -3 - (ns.ComboSpace and ns.ComboSpace(b, "BELOW") or 0)
+    -- Zauberleiste von ForeverCast (Ziel/Fokus, angedockt): Platz direkt darunter, Andockpunkt b.fcCastDock
+    local castH = _G.ForeverCastDockHeight and _G.ForeverCastDockHeight(b.key) or 0
+    if castH > 0 then
+        b.fcCastDock = b.fcCastDock or CreateFrame("Frame", nil, b)
+        b.fcCastDock:ClearAllPoints()
+        b.fcCastDock:SetPoint("TOPLEFT", b, "BOTTOMLEFT", 0, y)
+        b.fcCastDock:SetPoint("TOPRIGHT", b, "BOTTOMRIGHT", 0, y)
+        b.fcCastDock:SetHeight(castH)
+        y = y - castH - 3
+    elseif b.fcCastDock then
+        b.fcCastDock:ClearAllPoints()
+        b.fcCastDock:SetPoint("TOPLEFT", b, "BOTTOMLEFT", 0, y)
+        b.fcCastDock:SetSize(1, 1)
+    end
     for _, kind in ipairs({ "buffs", "debuffs" }) do
         local wanted = supported and f[kind]
         local c = b.v.auras[kind]
@@ -1356,6 +1370,16 @@ if UI.On then
             local b = ns.frames[info.key]
             if b and b.unit and UnitExists(b.unit) then pcall(ns.UpdateAll, b) end
         end
+    end)
+    -- ForeverCast: Zauberleiste für Ziel/Fokus an-/abgedockt -> Platz unter den Rahmen neu verteilen
+    UI.On("ForeverCastDock", function()
+        local function Relayout()
+            for _, key in ipairs({ "target", "focus" }) do
+                local b = ns.frames[key]
+                if b then pcall(LayoutAuras, b) end
+            end
+        end
+        if InCombatLockdown() and UI.AfterCombat then UI.AfterCombat(Relayout) else Relayout() end
     end)
 end
 
