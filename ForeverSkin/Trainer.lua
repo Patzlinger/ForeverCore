@@ -32,14 +32,6 @@ local function SkinRow(row)
         if type(row[key]) == "table" then keep[row[key]] = true end
     end
     ns.HideTextures(row, keep)
-    -- auch auf Unterflächen der Zeile (dort liegen bei manchen Zeilen Blizzards braune Flächen) – nicht bei
-    -- Knöpfen (Symbol) und Geld (Münzen)
-    for _, child in ipairs({ row:GetChildren() }) do
-        local n = child:GetName() or ""
-        if not child:IsObjectType("Button") and not n:find("Money") and not child.GetMoney and child ~= row.money then
-            ns.HideTextures(child, keep)
-        end
-    end
     if skinnedRows[row] then return end
     skinnedRows[row] = true
     ns.Flat(row, C.panel, 1)

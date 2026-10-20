@@ -651,25 +651,6 @@ function ns.Hover(frame, selected)
     hovers[frame] = { selected = selected, row = true }
 end
 
--- zarte goldene Trennlinie unter einem Rahmen (y = Abstand unter dessen Unterkante, negativ = tiefer)
-function ns.Line(frame, y)
-    if not frame or not frame.CreateTexture then return end
-    local look = looks[frame]
-    if not look then
-        look = { mine = {}, edges = {} }
-        looks[frame] = look
-    end
-    if look.line then return end
-    local line = frame:CreateTexture(nil, "BORDER", nil, -6)
-    line:SetTexture(WHITE)
-    line:SetVertexColor(C.accent[1], C.accent[2], C.accent[3], 0.25)
-    line:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 0, y or 0)
-    line:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, y or 0)
-    line:SetHeight(1)
-    look.line = line
-    look.mine[line] = true
-end
-
 -- Symbol-Knopf (z. B. Reparieren, Plunder verkaufen): Blizzards Rahmen weg, das Symbol bleibt, flache Fläche dahinter
 function ns.SkinIconButton(button)
     if not button or hovers[button] then return end
