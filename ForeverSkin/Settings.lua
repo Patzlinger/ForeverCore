@@ -121,6 +121,7 @@ local function SkinSettingsList(list)
         end
         if cb then
             ns.SkinCheck(cb)
+            ns.PlaceCheck(cb)
             if not controlX and cb:GetLeft() and element:GetLeft() then controlX = cb:GetLeft() - element:GetLeft() end
         end
         if slider then SkinStepperSlider(slider) end

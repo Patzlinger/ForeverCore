@@ -99,10 +99,26 @@ function ns.Flat(frame, fill, inset)
         e[i]:ClearAllPoints()
         e[i]:SetPoint(p[1], f, p[1])
         e[i]:SetPoint(p[2], f, p[2])
-        if p[3] then e[i]:SetHeight(1) else e[i]:SetWidth(1) end
+        ns.OnePixel(e[i], p[3] ~= nil)
     end
     ns.EdgeColor(frame, C.border)
     return look
+end
+
+-- Linie genau 1 Bildschirmpixel dick (bei krummer UI-Skalierung fielen 1-px-Linien sonst mal auf ein, mal auf zwei
+-- Pixel – Ränder wirkten unterschiedlich dick)
+function ns.OnePixel(texture, horizontal)
+    if PixelUtil and PixelUtil.SetHeight then
+        if horizontal then PixelUtil.SetHeight(texture, 1, 1) else PixelUtil.SetWidth(texture, 1, 1) end
+    elseif horizontal then
+        texture:SetHeight(1)
+    else
+        texture:SetWidth(1)
+    end
+    if texture.SetSnapToPixelGrid then
+        texture:SetSnapToPixelGrid(false)
+        texture:SetTexelSnappingBias(0)
+    end
 end
 
 function ns.EdgeColor(frame, c, a)
@@ -738,9 +754,7 @@ function ns.SkinCheck(cb)
     -- Kästchen fest 16 × 16 mittig im Haken (nicht aus der Größe berechnet: die stimmt beim ersten Umgestalten oft
     -- noch nicht – dann war der Rahmen nur halb zu sehen)
     local look = ns.Flat(cb, C.input)
-    look.fill:ClearAllPoints()
-    look.fill:SetPoint("CENTER")
-    look.fill:SetSize(16, 16)
+    ns.PlaceCheck(cb)
     for _, t in ipairs({ checked, disabledChecked }) do
         if t and t.SetTexture then
             t:SetTexture(WHITE)
@@ -753,6 +767,25 @@ function ns.SkinCheck(cb)
     if checked then checked:SetVertexColor(C.accent[1], C.accent[2], C.accent[3], 1) end
     if disabledChecked then disabledChecked:SetVertexColor(0.5, 0.5, 0.5, 1) end
     ns.Hover(cb)
+end
+
+-- Kästchen eines Hakens: 16 × 16 auf ganzen Pixeln mittig im Haken (bei jedem Durchgang – Blizzard ändert die Größe
+-- des Hakens teils nachträglich)
+function ns.PlaceCheck(cb)
+    local look = looks[cb]
+    if not (look and look.fill) then return end
+    local w, h = cb:GetWidth() or 16, cb:GetHeight() or 16
+    local x, y = math.floor((w - 16) / 2 + 0.5), math.floor((h - 16) / 2 + 0.5)
+    if look.checkX == x and look.checkY == y then return end
+    look.checkX, look.checkY = x, y
+    look.fill:ClearAllPoints()
+    if PixelUtil and PixelUtil.SetPoint then
+        PixelUtil.SetPoint(look.fill, "TOPLEFT", cb, "TOPLEFT", x, -y)
+        PixelUtil.SetSize(look.fill, 16, 16)
+    else
+        look.fill:SetPoint("TOPLEFT", cb, "TOPLEFT", x, -y)
+        look.fill:SetSize(16, 16)
+    end
 end
 
 -- Regler (Blizzard-Slider): feine dunkle Schiene, goldener Schieber
