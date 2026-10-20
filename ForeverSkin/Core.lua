@@ -16,6 +16,8 @@ ns.DEFAULTS = {
     popup = true,    -- Rückfrage-Fenster ("Sollen alle Talente verlernt werden?" …)
     trainer = true,  -- Lehrer (mit "Leisten aktualisieren")
     settings = true, -- Blizzards Optionen-Fenster (Stufe 1: Rahmen und Gerüst)
+    taxi = true,     -- Flugkarte
+    loot = true,     -- Beute-Fenster
     scale = 110,     -- Größe von Gespräch, Quest, Händler und Lehrer in Prozent
 }
 
@@ -129,9 +131,10 @@ end
 
 -- Fenster: dunkle Fläche, Titelleiste mit goldener Linie (wie alle Forever-Fenster); Blizzards Rahmen,
 -- Hintergrund, Porträt und Titel-Grafik unsichtbar, der Titeltext bleibt
-function ns.SkinWindow(frame)
+-- keep (optional): Texturen, die bleiben sollen (z. B. die Karte der Flugkarte)
+function ns.SkinWindow(frame, keep)
     if not frame then return end
-    ns.HideTextures(frame)
+    ns.HideTextures(frame, keep)
     for _, key in ipairs({ "NineSlice", "Bg", "Background", "PortraitContainer", "TopTileStreaks", "TitleBg",
         "Portrait", "portrait" }) do
         local obj = frame[key]
@@ -970,7 +973,7 @@ local options
 local checks = {}
 local function Build()
     options = UI.SettingsPanel("ForeverSkinOptions", T("ForeverSkin – Einstellungen (Prototyp)", "ForeverSkin – Settings (prototype)"),
-        460, 404, { key = "ForeverSkin", group = UI.SETTINGS_GROUPS.comfort, label = T("Fenster-Stil", "Window style") })
+        460, 452, { key = "ForeverSkin", group = UI.SETTINGS_GROUPS.comfort, label = T("Fenster-Stil", "Window style") })
     local W = 420
     UI.Header(options, 18, -40, T("Fenster im Forever-Stil", "Windows in the Forever look"), W)
     local reload
@@ -987,12 +990,14 @@ local function Build()
     Check(-134, T("Lehrer (mit „Leisten aktualisieren“)", "Trainer (with \"Update bars\")"), "trainer")
     Check(-158, T("Rückfrage-Fenster", "Confirmation dialogs"), "popup")
     Check(-182, T("Optionen-Fenster (Rahmen, Liste, Knöpfe)", "Options window (frame, list, buttons)"), "settings")
-    local size = UI.Slider(options, 22, -212, T("Größe von Gespräch, Quest, Händler, Lehrer", "Size of dialog, quest, vendor, trainer"),
+    Check(-206, T("Flugkarte", "Flight map"), "taxi")
+    Check(-230, T("Beute-Fenster", "Loot window"), "loot")
+    local size = UI.Slider(options, 22, -260, T("Größe von Gespräch, Quest, Händler, Lehrer", "Size of dialog, quest, vendor, trainer"),
         90, 130, 5, function(v)
             ns.GetDB().scale = v
             ns.RescaleAll()
         end, { unit = " %", width = 220 })
-    UI.Hint(options, 22, -256, W - 12, T("Änderungen gelten nach dem Neuladen. Gefällt dir der Stil nicht, schalte " ..
+    UI.Hint(options, 22, -304, W - 12, T("Änderungen gelten nach dem Neuladen. Gefällt dir der Stil nicht, schalte " ..
         "ForeverSkin in der Addon-Liste aus – dann ist alles wieder wie vorher.",
         "Changes apply after reloading. If you don't like the look, turn ForeverSkin off in the addon list – " ..
         "everything is back as before."))
