@@ -32,6 +32,7 @@ eintragen; behobene mit Datum und Ursache nach „Erledigt“ verschieben.
 | ForeverTooltip | Patzlinger | im Release (Beta, seit 2026-10-20) |
 | ForeverPlates | Patzlinger | im Release (Beta, seit 2026-10-20) |
 | ForeverAlts | flowfy | im Release (Beta, seit 2026-10-20) |
+| ForeverSkin | flowfy | Prototyp (seit 2026-10-20, nicht im Release): Blizzard-Fenster im Forever-Stil – erst NPC-Gespräch, Quest-Dialog, Händler; Blizzards Grafiken nur unsichtbar (SetAlpha), eigene Texturen darunter |
 | `tools/`, `release/` | gemeinsam | – |
 
 - **Keine Absprachen nötig: jeder arbeitet frei an allen Addons** (Zusammenarbeit auf Augenhöhe). Die Spalte
@@ -393,6 +394,7 @@ Damit alle Einstellungsfenster gleich aussehen, gelten diese Maße. Quelle: `For
   | /ftip, /forevertooltip | ForeverTooltip |
   | /fplates, /foreverplates | ForeverPlates (`/fplates skin` = Forever-Rahmen an/aus) |
   | /falts, /foreveralts | ForeverAlts |
+  | /fskin | ForeverSkin (Prototyp) |
 - Tastenkürzel über `Bindings.xml` + `BINDING_HEADER_…`/`BINDING_NAME_…` (Bereich "AddOns")
 
 ## 12. Code-Stil
