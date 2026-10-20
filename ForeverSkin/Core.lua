@@ -229,8 +229,22 @@ end
 -- unteren Ankerpunkte nach oben (z. B. Laufleiste nicht bis in die Knopfleiste).
 -- Hängt der Bereich an einem anderen Bereich, der selbst versetzt wird (skip), bleibt er, wie er ist – er wandert mit.
 local original = setmetatable({}, { __mode = "k" }) -- [Bereich] = { Ankerpunkte, Abstände vom Fensterrand }
+-- Ankerpunkte als Text (zum Erkennen, ob Blizzard einen Bereich inzwischen selbst neu aufgehängt hat)
+local function Signature(region)
+    local parts = {}
+    for i = 1, region:GetNumPoints() do
+        local p, rel, rp, x, y = region:GetPoint(i)
+        parts[i] = string.format("%s|%s|%s|%d|%d", p or "", tostring(rel), rp or "", math.floor((x or 0) + 0.5),
+            math.floor((y or 0) + 0.5))
+    end
+    return table.concat(parts, ";")
+end
+
 local function Record(frame, region)
     local o = original[region]
+    -- hat Blizzard den Bereich seit unserem Versetzen neu aufgehängt (z. B. Lehrerliste unter der Fertigkeitsstufe),
+    -- gilt die neue Lage als Blizzards Ursprung
+    if o and o.applied and Signature(region) ~= o.applied then o = nil end
     if not o then
         o = { points = {}, top = frame:GetTop() - region:GetTop(), bottom = region:GetBottom() - frame:GetBottom(),
             height = region:GetHeight() }
@@ -252,7 +266,7 @@ function ns.Fit(frame, region, top, bottom, skip)
     local o = Record(frame, region)
     local down = top and math.max(0, top - o.top) or 0
     local up = bottom and math.max(0, bottom - o.bottom) or 0
-    if down == 0 and up == 0 then return 0, 0 end
+    if down == 0 and up == 0 then o.applied = nil return 0, 0 end
     -- Punkte, die am mitwandernden Bereich (skip) hängen, bleiben; die übrigen werden versetzt
     local hasTop, hasBottom, moved = false, false, false
     for _, p in ipairs(o.points) do
@@ -262,7 +276,7 @@ function ns.Fit(frame, region, top, bottom, skip)
             moved = true
         end
     end
-    if not moved then return 0, 0 end
+    if not moved then o.applied = nil return 0, 0 end
     region:ClearAllPoints()
     for _, p in ipairs(o.points) do
         local point, rel, relPoint, x, y = p[1], p[2], p[3], p[4], p[5] or 0
@@ -282,6 +296,7 @@ function ns.Fit(frame, region, top, bottom, skip)
     if bottom and ((hasTop and not hasBottom) or (hasBottom and not hasTop)) then
         region:SetHeight(math.max(20, o.height - down - up))
     end
+    o.applied = Signature(region)
     return down, up
 end
 

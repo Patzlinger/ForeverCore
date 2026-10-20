@@ -142,10 +142,13 @@ local function SkinTrainer()
     end)
     replace:SetScript("OnLeave", function() ns.UI.GetTooltip():Hide() end)
 
+    local Place -- (unten)
     local function Later()
         C_Timer.After(0, function()
             pcall(SkinRows)
             pcall(UpdateButtons)
+            -- Blizzard hängt die Liste bei jedem Aktualisieren neu auf (unter die Fertigkeitsstufe, falls sichtbar)
+            if Place and f:IsShown() then pcall(Place) end
         end)
     end
     if type(_G.ClassTrainerFrame_Update) == "function" then hooksecurefunc("ClassTrainerFrame_Update", Later) end
@@ -156,7 +159,7 @@ local function SkinTrainer()
     -- Liste behält ihre Höhe (vorher wurde sie gestaucht und lief über die Knöpfe). Oben rückt sie um "down" nach
     -- unten, unten endet sie EXTRA höher über dem Rand – hängt etwas an der Innenfläche/Liste, wandert es mit.
     local baseHeight
-    local function Place()
+    function Place()
         baseHeight = baseHeight or f:GetHeight()
         if not EXTRA then
             local _, listBottom = ns.Original(f, f.ScrollBox or G("ClassTrainerListScrollFrame") or inset)
@@ -174,6 +177,13 @@ local function SkinTrainer()
         Move(f.ScrollBox, 88, inset)
         Move(G("ClassTrainerListScrollFrame"), 88, inset)
         for _, bar in ipairs(bars) do Move(bar, 88, f.ScrollBox or inset) end
+        -- Berufslehrer: Fertigkeitsbalken ("20/75") lag auf dem Namen der Visitenkarte – rechts unter "Zauberbuch"
+        local skill = f.statusBar or f.StatusBar or G("ClassTrainerStatusBar")
+        if skill and skill.ClearAllPoints then
+            skill:ClearAllPoints()
+            skill:SetPoint("TOPRIGHT", f, "TOPRIGHT", -14, -60)
+            skill:SetWidth(130)
+        end
         local want = baseHeight + down + EXTRA
         if math.abs(f:GetHeight() - want) > 0.5 then f:SetHeight(want) end
     end
