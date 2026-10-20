@@ -94,8 +94,9 @@ local function SkinDropdownControl(control)
     ns.SkinArrowOnly(control.IncrementButton or control.RightButton, "right")
 end
 
--- Spalte der Bedienelemente: so weit vom linken Zeilenrand wie die Haken (an einem Haken abgemessen)
-local controlX
+-- Spalte der Bedienelemente: so weit vom linken Zeilenrand wie die Haken (an einem Haken abgemessen);
+-- labelX: Spalte der Namen (an einer Zeile mit Namen abgemessen)
+local controlX, labelX
 local function AlignDropdown(element, dd)
     if not controlX or not (element:GetLeft() and dd:GetLeft()) then return end
     -- alle Auswahllisten in EINER Spalte: rechts neben der Haken-Spalte (so passt es auch in Zeilen mit Haken davor);
@@ -108,19 +109,38 @@ end
 
 -- Regler mit Pfeilen (MinimalSliderWithSteppers): die Schiene in dieselbe Spalte wie die Auswahllisten und gleich
 -- breit; Pfeile und Zahl hängen am Rahmen des Reglers und wandern mit
-local sliderGaps = setmetatable({}, { __mode = "k" }) -- [Regler] = { links, Pfeile zusammen } (einmal gemessen)
+-- Lage der Pfeile einer ausgerichteten Auswahlliste (vom linken Zeilenrand): linker Rand des linken Pfeils, rechter
+-- Rand des rechten – die Regler-Pfeile kommen genau dorthin, damit alle Pfeile in einer Reihe stehen
+local arrowL, arrowR
+local function MeasureArrows(element, control)
+    if arrowL then return end
+    local dec, inc = control.DecrementButton or control.LeftButton, control.IncrementButton or control.RightButton
+    if dec and inc and dec:GetLeft() and inc:GetRight() and element:GetLeft() then
+        arrowL, arrowR = dec:GetLeft() - element:GetLeft(), inc:GetRight() - element:GetLeft()
+    end
+end
+
+local sliderGaps = setmetatable({}, { __mode = "k" }) -- [Regler] = { links, Pfeile zusammen, Pfeil-Abstände } (einmal)
 local function AlignSlider(element, holder)
     local slider = holder.Slider
     if not (controlX and slider and element:GetLeft() and holder:GetLeft() and slider:GetLeft()) then return end
     -- einmal messen: wächst die Schiene nicht mit dem Rahmen, würde er sonst bei jedem Durchgang breiter
     local gaps = sliderGaps[holder]
     if not gaps then
-        gaps = { slider:GetLeft() - holder:GetLeft(), (holder:GetWidth() or 0) - (slider:GetWidth() or 0) }
+        local back, fwd = holder.Back or holder.BackButton, holder.Forward or holder.ForwardButton
+        gaps = { slider:GetLeft() - holder:GetLeft(), (holder:GetWidth() or 0) - (slider:GetWidth() or 0),
+            back and back:GetLeft() and (back:GetLeft() - holder:GetLeft()) or nil,
+            fwd and fwd:GetRight() and (holder:GetRight() - fwd:GetRight()) or nil }
         sliderGaps[holder] = gaps
     end
     local inner, extra = gaps[1], gaps[2] -- Platz links (Pfeil), Pfeile links und rechts zusammen
     local want = controlX + 52 - inner
     local width = CONTROL_W + extra
+    -- Pfeile genau unter die Pfeile der Auswahllisten (wenn schon gemessen)
+    if arrowL and gaps[3] and gaps[4] then
+        want = arrowL - gaps[3]
+        width = (arrowR - arrowL) + gaps[3] + gaps[4]
+    end
     if math.abs((holder:GetLeft() - element:GetLeft()) - want) > 0.5 then
         holder:ClearAllPoints()
         holder:SetPoint("LEFT", element, "LEFT", want, 0)
@@ -162,10 +182,16 @@ local function SkinSettingsList(list)
                 if math.abs((dd:GetWidth() or 0) - CONTROL_W) > 0.5 then dd:SetWidth(CONTROL_W) end
                 -- und an derselben Stelle – auch in Zeilen mit Haken davor
                 AlignDropdown(element, dd)
+                MeasureArrows(element, control)
             end
         end
         -- Name der Einstellung hell (Blizzard: gold) – ausgegraute bleiben grau; gold sind nur die Überschriften
         local label = element.Text or element.Label
+        -- Spalte der Namen (für linksbündige Knöpfe ohne Namen) an einer Zeile mit Namen abmessen
+        if not labelX and label and label.GetLeft and label:GetLeft() and element:GetLeft() and label:IsShown()
+            and (label:GetText() or "") ~= "" then
+            labelX = label:GetLeft() - element:GetLeft()
+        end
         if label and label.GetTextColor and label.SetTextColor then
             local r, g, b = label:GetTextColor()
             if r and r > 0.9 and g > 0.7 and b < 0.3 then label:SetTextColor(0.92, 0.92, 0.92) end
@@ -178,8 +204,23 @@ local function SkinSettingsList(list)
                 -- einzelne Knöpfe (z. B. "Tutorial-Neustart", "Zurücksetzen") so breit wie die Auswahllisten und in
                 -- derselben Spalte; Tasten-Paare (Tastenbelegung) bleiben, wie sie sind
                 if key == "Button" then
-                    if math.abs((b:GetWidth() or 0) - CONTROL_W) > 0.5 then b:SetWidth(CONTROL_W) end
-                    AlignDropdown(element, b)
+                    local label = element.Text or element.Label
+                    local named = label and label.GetText and (label:GetText() or "") ~= "" and label:IsShown()
+                    if named or not labelX then
+                        -- Knopf mit Namen davor: in die Spalte der Auswahllisten, gleich breit
+                        if math.abs((b:GetWidth() or 0) - CONTROL_W) > 0.5 then b:SetWidth(CONTROL_W) end
+                        AlignDropdown(element, b)
+                    else
+                        -- Knopf ohne Namen (Tastaturbelegung: "Klickzauber", "Bewegungstasten" …): linksbündig ab der
+                        -- Spalte der Namen bis zum Ende der Auswahllisten-Spalte
+                        local left, right = labelX, (controlX or labelX) + 52 + CONTROL_W
+                        if element:GetLeft() and b:GetLeft() and (math.abs((b:GetLeft() - element:GetLeft()) - left) > 0.5
+                            or math.abs((b:GetWidth() or 0) - (right - left)) > 0.5) then
+                            b:ClearAllPoints()
+                            b:SetPoint("LEFT", element, "LEFT", left, 0)
+                            b:SetWidth(right - left)
+                        end
+                    end
                 end
             end
         end
