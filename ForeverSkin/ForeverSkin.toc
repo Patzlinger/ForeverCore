@@ -19,3 +19,4 @@ Popups.lua
 Trainer.lua
 Settings.lua
 Extra.lua
+Macro.lua
