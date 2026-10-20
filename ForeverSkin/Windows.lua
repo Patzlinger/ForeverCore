@@ -96,9 +96,17 @@ local function SkinGossip()
     ns.Watch(f)
     local function Later() C_Timer.After(0, function() pcall(GossipText) end) end
     if type(f.Update) == "function" then hooksecurefunc(f, "Update", Later) end
+    -- Text samt Laufleiste unter die Visitenkarte (Kasten beginnt bei 80, Text 8 darunter)
+    local function Place()
+        if not panel then return end
+        ns.PushDown(f, panel.ScrollBox, 88)
+        ns.PushDown(f, panel.ScrollBar, 88)
+        ns.PushDown(f, G("GossipGreetingScrollFrame"), 88)
+    end
     f:HookScript("OnShow", function()
         ns.NpcCard(f, "npc", ns.T("Gespräch", "Conversation"))
         Later()
+        C_Timer.After(0, function() pcall(Place) end)
     end)
 end
 
@@ -173,7 +181,21 @@ local function SkinQuest()
     for _, n in ipairs(QUEST_PANELS) do HidePanel(G(n)) end
     for _, n in ipairs(QUEST_BUTTONS) do ns.SkinButton(G(n)) end
     ns.ContentBox(f, 30, 80)
-    f:HookScript("OnShow", function() ns.NpcCard(f, "questnpc", ns.T("Quest", "Quest")) end)
+    local function Place()
+        for _, n in ipairs({ "QuestDetailScrollFrame", "QuestProgressScrollFrame", "QuestRewardScrollFrame",
+            "QuestGreetingScrollFrame" }) do
+            local s = G(n)
+            if s and s:IsShown() then ns.PushDown(f, s, 88) end
+        end
+    end
+    f:HookScript("OnShow", function()
+        ns.NpcCard(f, "questnpc", ns.T("Quest", "Quest"))
+        C_Timer.After(0, function() pcall(Place) end)
+    end)
+    for _, n in ipairs({ "QuestFrameDetailPanel", "QuestFrameProgressPanel", "QuestFrameRewardPanel", "QuestFrameGreetingPanel" }) do
+        local p = G(n)
+        if p then p:HookScript("OnShow", function() C_Timer.After(0, function() pcall(Place) end) end) end
+    end
     ns.Watch(f)
     local function Later() C_Timer.After(0, function() pcall(QuestText) end) end
     -- Blizzard färbt die Texte je nach Hintergrund ("Pergament" = dunkel): danach wieder hell
@@ -236,6 +258,7 @@ local function SkinMerchant()
             ns.SkinTab(tab, function(t) return f.selectedTab == t:GetID() end)
         end
     end
+    ns.ContentBox(f, 30, 30) -- ein eigener Kasten statt Blizzards Innenflächen (Händlerliste bis über das Geld)
     f:HookScript("OnShow", function() ns.Portrait(f, "npc") end)
     ns.Watch(f)
 end

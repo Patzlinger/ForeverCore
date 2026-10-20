@@ -123,6 +123,13 @@ function ns.SkinWindow(frame)
     end
     local inset = frame.Inset or (name and _G[name .. "Inset"])
     if inset then ns.SkinInset(inset) end
+    -- weitere Innenflächen mit Blizzard-Rahmen (z. B. oben beim Händler) unsichtbar – sonst doppelte Kästen
+    for _, child in ipairs({ frame:GetChildren() }) do
+        if child ~= inset and type(child.NineSlice) == "table" and not child:IsObjectType("Button") then
+            ns.Hide(child.NineSlice)
+            ns.HideTextures(child)
+        end
+    end
     ns.SkinClose(frame.CloseButton or (name and _G[name .. "CloseButton"]))
 end
 
@@ -191,6 +198,28 @@ function ns.Portrait(frame, unit)
     if shown then SetPortraitTexture(look.portrait, unit) end
     look.portrait:SetShown(shown)
     look.portraitEdge:SetShown(shown)
+end
+
+-- Textbereich unter die Visitenkarte: Blizzards Textbereich (und seine Laufleiste) beginnt je nach Fenster an einer
+-- anderen Höhe. Liegt er höher als top (Abstand vom oberen Fensterrand), rückt er um den Unterschied nach unten.
+-- Nur die oberen Ankerpunkte werden versetzt, ausgehend von Blizzards ursprünglicher Lage (nie mehrfach).
+local original = setmetatable({}, { __mode = "k" }) -- [Bereich] = { Ankerpunkte, Abstand vom Fensterrand }
+function ns.PushDown(frame, region, top)
+    if not region or not region.GetNumPoints or not frame:GetTop() or not region:GetTop() then return end
+    local o = original[region]
+    if not o then
+        o = { points = {}, offset = frame:GetTop() - region:GetTop() }
+        for i = 1, region:GetNumPoints() do o.points[i] = { region:GetPoint(i) } end
+        original[region] = o
+    end
+    local shift = top - o.offset
+    if shift <= 0 then return end
+    region:ClearAllPoints()
+    for _, p in ipairs(o.points) do
+        local point, rel, relPoint, x, y = p[1], p[2], p[3], p[4], p[5]
+        if point:find("TOP") then y = (y or 0) - shift end
+        region:SetPoint(point, rel, relPoint, x, y)
+    end
 end
 
 -- Visitenkarte des NPCs über dem Inhalt (dort, wo Blizzard sein Porträt hat): großes rundes Porträt mit goldenem
