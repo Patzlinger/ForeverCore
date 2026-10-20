@@ -24,18 +24,20 @@ local function SkinSlot(button)
         if type(t) == "table" and t.SetAlpha then t:SetAlpha(0) end
     end
     if name then
-        for _, suffix in ipairs({ "SlotBackground", "Background", "NormalTexture" }) do ns.Hide(G(name .. suffix)) end
+        for _, suffix in ipairs({ "SlotBackground", "Background" }) do ns.Hide(G(name .. suffix)) end
     end
-    for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetHighlightTexture", "GetCheckedTexture" }) do
+    -- die "normale" Grafik des Knopfs ist hier oft das SYMBOL – sie bleibt; nur gedrückt/hell/angehakt weg
+    local normal = button.GetNormalTexture and button:GetNormalTexture()
+    for _, get in ipairs({ "GetPushedTexture", "GetHighlightTexture", "GetCheckedTexture" }) do
         if button[get] then ns.Hide(button[get](button)) end
     end
-    -- Fach-Grafiken, die als Datei/Atlas "Slot" heißen (z. B. leeres Fach), ebenfalls weg – Symbole bleiben
+    -- Fach-Grafiken: Hintergrund-Ebene (das graue Fach-Muster) und alles, was als Datei/Atlas "Slot" heißt
     for _, r in ipairs({ button:GetRegions() }) do
-        if r:IsObjectType("Texture") then
+        if r:IsObjectType("Texture") and r ~= normal and not ns.IsMine(button, r) then
             local atlas = r.GetAtlas and r:GetAtlas()
             local tex = r.GetTexture and r:GetTexture()
             local s = ((type(atlas) == "string" and atlas or "") .. (type(tex) == "string" and tex or "")):lower()
-            if s:find("slot") or s:find("quickslot") then r:SetAlpha(0) end
+            if r:GetDrawLayer() == "BACKGROUND" or s:find("slot") then r:SetAlpha(0) end
         end
     end
     ns.Flat(button, C.button, -3)
@@ -74,8 +76,12 @@ local function SkinPopup(popup)
     ns.Flat(popup, C.background)
     if popup.IconSelector and popup.IconSelector.ScrollBar then ns.SkinScrollBar(popup.IconSelector.ScrollBar) end
     ns.Watch(popup)
+    ns.Scaled(popup)
     local watch = CreateFrame("Frame", nil, popup)
-    watch:SetScript("OnUpdate", function() pcall(SkinGrid, popup.IconSelector) end)
+    watch:SetScript("OnUpdate", function()
+        pcall(SkinGrid, popup.IconSelector)
+        if ns.SkinOpenMenu then pcall(ns.SkinOpenMenu) end -- aufgeklappte Auswahlliste ("Alle Symbole")
+    end)
 end
 
 local function SkinMacro()
@@ -126,6 +132,7 @@ local function SkinMacro()
         SkinSlot(b)
     end
     ns.Watch(f)
+    ns.Scaled(f) -- als Ganzes größer wie Gespräch, Händler, Lehrer (Regler "Größe" unter Fenster-Stil)
     -- Plätze baut Blizzard beim Blättern/Reiter-Wechsel neu: solange offen, sichtbare Plätze prüfen; Text der Reiter
     -- mittig; die Symbol-Auswahl gestalten, sobald es sie gibt
     local watch = CreateFrame("Frame", nil, f)
@@ -137,6 +144,7 @@ local function SkinMacro()
         end
         local popup = G("MacroPopupFrame")
         if popup then pcall(SkinPopup, popup) end
+        if ns.SkinOpenMenu then pcall(ns.SkinOpenMenu) end -- aufgeklappte Auswahllisten flach
     end)
 end
 
