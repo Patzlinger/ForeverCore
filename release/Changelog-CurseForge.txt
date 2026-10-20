@@ -3,6 +3,7 @@
 ## Unreleased
 
 - The game menu (Escape) now has the Forever look – flat dark background, title bar with a fine gold line, flat buttons with a gold edge on mouse-over – and the button (now called "Forever Core") sits inside it below a divider. Blizzard's buttons keep working exactly as before; with ElvUI the menu is left alone.
+- ForeverBars: the professions bar now also holds class skills with their own crafting window – the rogue's Poisons and the hunter's Beast Training.
 - ForeverTooltip: lines that mix German umlauts with Chinese or Korean names (e.g. "Gefährte von 兔肥") no longer show boxes instead of ä, ö, ü – the name now gets its own font on the right.
 - ForeverAlts: the narrow columns (level, rested, gold, location, mail, honor) are tighter, so professions have much more room.
 

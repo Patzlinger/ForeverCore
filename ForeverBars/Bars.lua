@@ -925,9 +925,28 @@ end
 
 local FISHING_SLOT = 4 -- GetProfessions liefert Angeln an 4. Stelle
 
+-- Klassen-Fertigkeiten mit eigenem Berufsfenster (stehen nicht bei den Berufen): Schurke "Gifte",
+-- Jäger "Wildtierausbildung" – kommen ans Ende der Berufeleiste, sobald der Charakter sie kennt
+local CLASS_TRADE_SPELLS = { 2842, 5149 }
+
+local function KnowsSpell(spellID)
+    if C_SpellBook and C_SpellBook.IsSpellKnown then
+        local ok, known = pcall(C_SpellBook.IsSpellKnown, spellID)
+        if ok and known then return true end
+    end
+    if IsPlayerSpell and IsPlayerSpell(spellID) then return true end
+    return IsSpellKnown and IsSpellKnown(spellID) or false
+end
+
 local function ProfessionSpells()
     local list = {}
-    if not GetProfessions or not GetProfessionInfo then return list end
+    local function AddClassTrades()
+        for _, spellID in ipairs(CLASS_TRADE_SPELLS) do
+            if KnowsSpell(spellID) then table.insert(list, { spell = spellID, icon = SpellIcon(spellID) }) end
+        end
+        return list
+    end
+    if not GetProfessions or not GetProfessionInfo then return AddClassTrades() end
     local indices = { GetProfessions() }
     local seen = {}
     for i = 1, 6 do
@@ -951,7 +970,7 @@ local function ProfessionSpells()
             for _, entry in ipairs(spells) do table.insert(list, entry) end
         end
     end
-    return list
+    return AddClassTrades()
 end
 
 -- Berufs-Zauber zu einem Zauber (oder nil, wenn es kein Berufs-Zauber des Charakters ist)
