@@ -135,7 +135,7 @@ end
 
 -- Gliederung wie bei Blizzard, aber flach: abgesetzter Kasten für den Inhalt (wie die Abschnitts-Kästen der
 -- Menüs) und unten eine dunklere Leiste mit feiner goldener Linie für die Knöpfe. footer = Höhe der unteren Leiste.
-function ns.ContentBox(frame, footer, top)
+function ns.ContentBox(frame, footer, top, noBox)
     local look = looks[frame]
     if not look or look.box then return end
     top = top or 32
@@ -163,6 +163,8 @@ function ns.ContentBox(frame, footer, top)
     footLine:SetPoint("BOTTOMLEFT", foot, "TOPLEFT")
     footLine:SetPoint("BOTTOMRIGHT", foot, "TOPRIGHT")
     footLine:SetHeight(1)
+    look.box = true
+    if noBox then return end -- nur die untere Leiste (z. B. Händler: dort haben die Gegenstände eigene Kästen)
     -- Inhalt
     local box = Tex("BACKGROUND", -6, C.panel, C.panel[4])
     box:SetPoint("TOPLEFT", 8, -top)
@@ -203,21 +205,28 @@ end
 -- Textbereich unter die Visitenkarte: Blizzards Textbereich (und seine Laufleiste) beginnt je nach Fenster an einer
 -- anderen Höhe. Liegt er höher als top (Abstand vom oberen Fensterrand), rückt er um den Unterschied nach unten.
 -- Nur die oberen Ankerpunkte werden versetzt, ausgehend von Blizzards ursprünglicher Lage (nie mehrfach).
-local original = setmetatable({}, { __mode = "k" }) -- [Bereich] = { Ankerpunkte, Abstand vom Fensterrand }
-function ns.PushDown(frame, region, top)
+-- bottom (optional): ebenso unten – endet der Bereich tiefer als bottom über dem unteren Fensterrand, rücken seine
+-- unteren Ankerpunkte nach oben (z. B. Laufleiste nicht bis in die Knopfleiste).
+-- Hängt der Bereich an einem anderen Bereich, der selbst versetzt wird (skip), bleibt er, wie er ist – er wandert mit.
+local original = setmetatable({}, { __mode = "k" }) -- [Bereich] = { Ankerpunkte, Abstände vom Fensterrand }
+function ns.Fit(frame, region, top, bottom, skip)
     if not region or not region.GetNumPoints or not frame:GetTop() or not region:GetTop() then return end
     local o = original[region]
     if not o then
-        o = { points = {}, offset = frame:GetTop() - region:GetTop() }
+        o = { points = {}, top = frame:GetTop() - region:GetTop(), bottom = region:GetBottom() - frame:GetBottom() }
         for i = 1, region:GetNumPoints() do o.points[i] = { region:GetPoint(i) } end
         original[region] = o
     end
-    local shift = top - o.offset
-    if shift <= 0 then return end
+    for _, p in ipairs(o.points) do
+        if skip and p[2] == skip then return end
+    end
+    local down = top and math.max(0, top - o.top) or 0
+    local up = bottom and math.max(0, bottom - o.bottom) or 0
+    if down == 0 and up == 0 then return end
     region:ClearAllPoints()
     for _, p in ipairs(o.points) do
-        local point, rel, relPoint, x, y = p[1], p[2], p[3], p[4], p[5]
-        if point:find("TOP") then y = (y or 0) - shift end
+        local point, rel, relPoint, x, y = p[1], p[2], p[3], p[4], p[5] or 0
+        if point:find("TOP") then y = y - down elseif point:find("BOTTOM") then y = y + up end
         region:SetPoint(point, rel, relPoint, x, y)
     end
 end

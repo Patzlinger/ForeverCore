@@ -96,12 +96,13 @@ local function SkinGossip()
     ns.Watch(f)
     local function Later() C_Timer.After(0, function() pcall(GossipText) end) end
     if type(f.Update) == "function" then hooksecurefunc(f, "Update", Later) end
-    -- Text samt Laufleiste unter die Visitenkarte (Kasten beginnt bei 80, Text 8 darunter)
+    -- Text samt Laufleiste in den Kasten: oben unter die Visitenkarte (Kasten ab 80, Text 8 darunter), unten über
+    -- die Knopfleiste (Kasten endet 38 über dem Rand)
     local function Place()
         if not panel then return end
-        ns.PushDown(f, panel.ScrollBox, 88)
-        ns.PushDown(f, panel.ScrollBar, 88)
-        ns.PushDown(f, G("GossipGreetingScrollFrame"), 88)
+        ns.Fit(f, panel.ScrollBox, 88, 44)
+        ns.Fit(f, panel.ScrollBar, 88, 44, panel.ScrollBox)
+        ns.Fit(f, G("GossipGreetingScrollFrame"), 88, 44)
     end
     f:HookScript("OnShow", function()
         ns.NpcCard(f, "npc", ns.T("Gespräch", "Conversation"))
@@ -185,7 +186,11 @@ local function SkinQuest()
         for _, n in ipairs({ "QuestDetailScrollFrame", "QuestProgressScrollFrame", "QuestRewardScrollFrame",
             "QuestGreetingScrollFrame" }) do
             local s = G(n)
-            if s and s:IsShown() then ns.PushDown(f, s, 88) end
+            if s and s:IsShown() then
+                ns.Fit(f, s, 88, 44)
+                local bar = s.ScrollBar or G(n .. "ScrollBar")
+                if bar then ns.Fit(f, bar, 88, 44, s) end
+            end
         end
     end
     f:HookScript("OnShow", function()
@@ -258,7 +263,9 @@ local function SkinMerchant()
             ns.SkinTab(tab, function(t) return f.selectedTab == t:GetID() end)
         end
     end
-    ns.ContentBox(f, 30, 30) -- ein eigener Kasten statt Blizzards Innenflächen (Händlerliste bis über das Geld)
+    -- nur die untere Leiste mit dem Geld; kein großer Kasten (die Gegenstände haben eigene, Blizzards Bereiche für
+    -- Seiten und Rückkauf passten nicht dazu – Ränder überlagerten sich)
+    ns.ContentBox(f, 30, nil, true)
     f:HookScript("OnShow", function() ns.Portrait(f, "npc") end)
     ns.Watch(f)
 end
