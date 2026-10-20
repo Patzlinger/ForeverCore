@@ -181,7 +181,7 @@ eintragen; behobene mit Datum und Ursache nach „Erledigt“ verschieben.
   `UI.API.<Addonname> = { Funktion = … }` ab, ein anderes ruft nur auf, wenn es das gibt (`if UI.API.X and UI.API.X.F`),
   am besten mit `pcall`. Bisher: `ForeverQuests` (DungeonOfQuest, ShowDungeonOfQuest), `ForeverBags` (ShowCharacter,
   HasBank, FreeSlots), `ForeverAlts` (Characters, CharsWithQuest, Toggle), `ForeverSpellbook` (OutdatedCount,
-  ReplaceOutdated). Wer liefert, trägt das in die .toc als
+  ReplaceOutdated, Toggle). Wer liefert, trägt das in die .toc als
   `## OptionalDeps` des Nutzers ein, damit er vorher lädt.
 - **Einstellungsseiten dürfen `SetScript("OnShow"/"OnHide")` benutzen** (Hub v48): die Seite fängt das ab, die
   Abschnitts-Kästen von `UI.Header` und die Hub-Haken bleiben erhalten. Seiten müssen in 720 Breite passen.

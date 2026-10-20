@@ -211,8 +211,7 @@ end
 -- unteren Ankerpunkte nach oben (z. B. Laufleiste nicht bis in die Knopfleiste).
 -- Hängt der Bereich an einem anderen Bereich, der selbst versetzt wird (skip), bleibt er, wie er ist – er wandert mit.
 local original = setmetatable({}, { __mode = "k" }) -- [Bereich] = { Ankerpunkte, Abstände vom Fensterrand }
-function ns.Fit(frame, region, top, bottom, skip)
-    if not region or not region.GetNumPoints or not frame:GetTop() or not region:GetTop() then return end
+local function Record(frame, region)
     local o = original[region]
     if not o then
         o = { points = {}, top = frame:GetTop() - region:GetTop(), bottom = region:GetBottom() - frame:GetBottom(),
@@ -220,6 +219,19 @@ function ns.Fit(frame, region, top, bottom, skip)
         for i = 1, region:GetNumPoints() do o.points[i] = { region:GetPoint(i) } end
         original[region] = o
     end
+    return o
+end
+
+-- Blizzards ursprüngliche Abstände eines Bereichs vom oberen und unteren Fensterrand
+function ns.Original(frame, region)
+    if not region or not region.GetNumPoints or not frame:GetTop() or not region:GetTop() then return end
+    local o = Record(frame, region)
+    return o.top, o.bottom
+end
+
+function ns.Fit(frame, region, top, bottom, skip)
+    if not region or not region.GetNumPoints or not frame:GetTop() or not region:GetTop() then return end
+    local o = Record(frame, region)
     local down = top and math.max(0, top - o.top) or 0
     local up = bottom and math.max(0, bottom - o.bottom) or 0
     if down == 0 and up == 0 then return 0, 0 end

@@ -1167,6 +1167,7 @@ if UI.API then
             return ok and #list or 0
         end,
         ReplaceOutdated = ReplaceOutdated,
+        Toggle = function() Toggle() end, -- Zauberbuch öffnen/schließen (z. B. Knopf im Lehrerfenster)
     }
 end
 

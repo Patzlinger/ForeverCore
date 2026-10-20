@@ -51,7 +51,10 @@ local function SkinTrainer()
     if not f or ns.trainerSkinned then return end
     ns.trainerSkinned = true
     ns.SkinWindow(f)
-    ns.ContentBox(f, 30, nil, true) -- untere Leiste (Geld, Knöpfe); die Zeilen haben eigene Kästen
+    -- untere Leiste zweizeilig: oben Haken "Nicht verfügbare ausblenden" und "Leisten aktualisieren", unten Geld und
+    -- "Ausbilden"; die Zeilen haben eigene Kästen
+    local FOOTER, EXTRA = 54, 24
+    ns.ContentBox(f, FOOTER, nil, true)
     for _, key in ipairs({ "BottomInset", "skillStepButton" }) do
         local obj = f[key]
         if type(obj) == "table" then
@@ -60,14 +63,36 @@ local function SkinTrainer()
         end
     end
     if type(f.skillStepButton) == "table" then ns.Flat(f.skillStepButton, C.panel, 1) end
-    -- Filter ("Optionen"): flach wie die anderen Knöpfe, der Pfeil bleibt
-    local filter = f.FilterDropdown or f.FilterDropDown
-    if filter and filter.IsObjectType and filter:IsObjectType("Button") then
-        local arrow = filter.Arrow
-        ns.SkinButton(filter)
-        if filter.NineSlice then ns.Hide(filter.NineSlice) end
-        if filter.Background then ns.Hide(filter.Background) end
-        if arrow and arrow.SetAlpha then arrow:SetAlpha(1) end
+    -- Blizzards Filter ("Optionen") unsichtbar und nicht anklickbar – statt dessen oben "Zauberbuch" und unten der
+    -- Haken "Nicht verfügbare ausblenden" (dieselbe Einstellung wie im Filter)
+    local filter = f.FilterDropdown or f.FilterDropDown or G("ClassTrainerFrameFilterDropDown")
+    if filter then
+        filter:SetAlpha(0)
+        if filter.EnableMouse then filter:EnableMouse(false) end
+        local fb = filter.Button or (filter:GetName() and G(filter:GetName() .. "Button"))
+        if fb and fb.EnableMouse then fb:EnableMouse(false) end
+    end
+    local book = ns.UI.Button(f, T("Zauberbuch", "Spellbook"), 110, function()
+        local api = ns.UI.API and ns.UI.API.ForeverSpellbook
+        if api and api.Toggle then
+            pcall(api.Toggle)
+        elseif PlayerSpellsUtil and PlayerSpellsUtil.ToggleSpellBookFrame then
+            pcall(PlayerSpellsUtil.ToggleSpellBookFrame)
+        elseif ToggleSpellBook then
+            pcall(ToggleSpellBook, BOOKTYPE_SPELL or "spell")
+        end
+    end)
+    book:SetPoint("TOPRIGHT", f, "TOPRIGHT", -12, -32)
+    book:SetFrameLevel(f:GetFrameLevel() + 20)
+    local hideCheck = ns.UI.Check(f, nil, nil, T("Nicht verfügbare ausblenden", "Hide unavailable"), function(checked)
+        if SetTrainerServiceTypeFilter then pcall(SetTrainerServiceTypeFilter, "unavailable", checked and 0 or 1) end
+        if type(_G.ClassTrainerFrame_Update) == "function" then pcall(_G.ClassTrainerFrame_Update) end
+    end)
+    hideCheck:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 12, 34)
+    hideCheck:SetFrameLevel(f:GetFrameLevel() + 20)
+    local function LoadCheck()
+        local shown = GetTrainerServiceTypeFilter and GetTrainerServiceTypeFilter("unavailable")
+        hideCheck:SetChecked(not shown)
     end
     ns.SkinButton(f.TrainButton or G("ClassTrainerTrainButton"))
     ns.SkinButton(G("ClassTrainerCancelButton"))
@@ -87,18 +112,14 @@ local function SkinTrainer()
     for _, bar in ipairs(bars) do ns.SkinScrollBar(bar) end
     ns.Watch(f)
 
-    -- Knopf "Leisten aktualisieren" links neben "Ausbilden" (nur sichtbar, wenn alte Ränge in den Leisten liegen)
-    local train = f.TrainButton or G("ClassTrainerTrainButton")
+    -- Knopf "Leisten aktualisieren" oben rechts in der unteren Leiste (nur sichtbar, wenn alte Ränge in den Leisten
+    -- liegen)
     replace = ns.UI.Button(f, "", 130, function()
         local api = ns.UI.API and ns.UI.API.ForeverSpellbook
         if api and api.ReplaceOutdated then pcall(api.ReplaceOutdated) end
         C_Timer.After(0.5, function() pcall(UpdateButtons) end)
     end)
-    if train then
-        replace:SetPoint("RIGHT", train, "LEFT", -6, 0)
-    else
-        replace:SetPoint("BOTTOMRIGHT", -100, 6)
-    end
+    replace:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -8, 30)
     replace:SetFrameLevel(f:GetFrameLevel() + 20)
     replace:SetScript("OnEnter", function(self)
         local tip = ns.UI.GetTooltip()
@@ -120,24 +141,39 @@ local function SkinTrainer()
     -- Visitenkarte wie bei Gespräch und Händler; Liste rückt darunter (Innenfläche oben ab 84, darin Liste und ggf.
     -- die Fertigkeitsstufe – hängen sie an der Innenfläche, wandern sie mit)
     local inset = f.Inset or G("ClassTrainerFrameInset")
-    -- unten über der Knopfleiste (30) enden – sonst lag der untere Pfeil der Laufleiste auf "Ausbilden"
+    -- Das Fenster wird um den Platz der Visitenkarte und der zweiten Leistenzeile höher (wie beim Händler): die
+    -- Liste behält ihre Höhe (vorher wurde sie gestaucht und lief über die Knöpfe). Oben rückt sie um "down" nach
+    -- unten, unten endet sie EXTRA höher über dem Rand – hängt etwas an der Innenfläche/Liste, wandert es mit.
+    local baseHeight
     local function Place()
-        if inset then ns.Fit(f, inset, 84, 34) end
-        ns.Fit(f, f.skillStepButton, 88, nil, inset)
-        ns.Fit(f, f.ScrollBox, 88, 38, inset)
-        ns.Fit(f, G("ClassTrainerListScrollFrame"), 88, 38, inset)
-        for _, bar in ipairs(bars) do ns.Fit(f, bar, 88, 38, f.ScrollBox or inset) end
+        baseHeight = baseHeight or f:GetHeight()
+        local down = 0
+        local function Move(region, top, skip)
+            local _, bottom = ns.Original(f, region)
+            if not bottom then return end
+            local d = ns.Fit(f, region, top, bottom + EXTRA, skip) or 0
+            down = math.max(down, d)
+        end
+        if inset then Move(inset, 84) end
+        ns.Fit(f, f.skillStepButton, 88, nil, inset) -- (feste Höhe: nur verschieben)
+        Move(f.ScrollBox, 88, inset)
+        Move(G("ClassTrainerListScrollFrame"), 88, inset)
+        for _, bar in ipairs(bars) do Move(bar, 88, f.ScrollBox or inset) end
+        local want = baseHeight + down + EXTRA
+        if math.abs(f:GetHeight() - want) > 0.5 then f:SetHeight(want) end
     end
     local function Card()
-        ns.NpcCard(f, "npc", T("Lehrer", "Trainer"), function() return T("Lehrer", "Trainer") end, filter and 130 or 14)
+        ns.NpcCard(f, "npc", T("Lehrer", "Trainer"), function() return T("Lehrer", "Trainer") end, 130)
     end
     f:HookScript("OnShow", function()
         Card()
+        LoadCheck()
         Later()
         C_Timer.After(0, function() pcall(Place) end)
     end)
     if f:IsShown() then
         Card()
+        LoadCheck()
         C_Timer.After(0, function() pcall(Place) end)
     end
     Later()
