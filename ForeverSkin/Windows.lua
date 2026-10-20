@@ -91,13 +91,13 @@ local function SkinGossip()
     local panel = f.GreetingPanel or G("GossipFrameGreetingPanel")
     HidePanel(panel)
     if panel and panel.ScrollBox then ns.HideTextures(panel.ScrollBox) end
-    ns.ContentBox(f, 30)
+    ns.ContentBox(f, 30, 80)
     ns.SkinButton((panel and panel.GoodbyeButton) or G("GossipFrameGreetingGoodbyeButton"))
     ns.Watch(f)
     local function Later() C_Timer.After(0, function() pcall(GossipText) end) end
     if type(f.Update) == "function" then hooksecurefunc(f, "Update", Later) end
     f:HookScript("OnShow", function()
-        ns.Portrait(f, "npc")
+        ns.NpcCard(f, "npc", ns.T("Gespräch", "Conversation"))
         Later()
     end)
 end
@@ -172,8 +172,8 @@ local function SkinQuest()
     ns.SkinWindow(f)
     for _, n in ipairs(QUEST_PANELS) do HidePanel(G(n)) end
     for _, n in ipairs(QUEST_BUTTONS) do ns.SkinButton(G(n)) end
-    ns.ContentBox(f, 30)
-    f:HookScript("OnShow", function() ns.Portrait(f, "questnpc") end)
+    ns.ContentBox(f, 30, 80)
+    f:HookScript("OnShow", function() ns.NpcCard(f, "questnpc", ns.T("Quest", "Quest")) end)
     ns.Watch(f)
     local function Later() C_Timer.After(0, function() pcall(QuestText) end) end
     -- Blizzard färbt die Texte je nach Hintergrund ("Pergament" = dunkel): danach wieder hell
@@ -216,7 +216,12 @@ local function SkinMerchant()
     local function Item(name)
         local item = G(name)
         if not item then return end
-        ns.HideTextures(item) -- Fach und Namensfeld (kein Kasten drumherum: lange Namen laufen über drei Zeilen)
+        ns.HideTextures(item) -- Fach und Namensfeld
+        -- Kasten etwas größer als das Feld, damit Name und Preis ganz darin liegen; Namen höchstens zwei Zeilen
+        -- (sonst ragten lange Namen wie "Muster: Lavendelfarbenes Magiestoffhemd" oben heraus)
+        ns.Flat(item, C.panel, { -3, -3, -3, -5 })
+        local nameText = item.Name or G(name .. "Name")
+        if nameText and nameText.SetMaxLines then nameText:SetMaxLines(2) end
         local button = G(name .. "ItemButton")
         if button then
             ns.Hide(button:GetNormalTexture())

@@ -64,11 +64,14 @@ function ns.Flat(frame, fill, inset)
         end
         looks[frame] = look
     end
+    -- inset: Zahl (rundum nach innen) oder { links, oben, rechts, unten } (negativ = über den Rahmen hinaus)
     inset = inset or 0
+    local l, t, r, b = inset, inset, inset, inset
+    if type(inset) == "table" then l, t, r, b = inset[1], inset[2], inset[3], inset[4] end
     local f, e = look.fill, look.edges
     f:ClearAllPoints()
-    f:SetPoint("TOPLEFT", inset, -inset)
-    f:SetPoint("BOTTOMRIGHT", -inset, inset)
+    f:SetPoint("TOPLEFT", l, -t)
+    f:SetPoint("BOTTOMRIGHT", -r, b)
     f:SetVertexColor(fill[1], fill[2], fill[3], fill[4] or 1)
     for i, p in ipairs({ { "TOPLEFT", "TOPRIGHT", 1 }, { "BOTTOMLEFT", "BOTTOMRIGHT", 1 },
         { "TOPLEFT", "BOTTOMLEFT", nil }, { "TOPRIGHT", "BOTTOMRIGHT", nil } }) do
@@ -125,9 +128,10 @@ end
 
 -- Gliederung wie bei Blizzard, aber flach: abgesetzter Kasten für den Inhalt (wie die Abschnitts-Kästen der
 -- Menüs) und unten eine dunklere Leiste mit feiner goldener Linie für die Knöpfe. footer = Höhe der unteren Leiste.
-function ns.ContentBox(frame, footer)
+function ns.ContentBox(frame, footer, top)
     local look = looks[frame]
     if not look or look.box then return end
+    top = top or 32
     -- Blizzards Innenfläche (Inset) nicht zusätzlich zeigen – sonst liegen zwei Kästen übereinander
     local name = frame:GetName()
     local inset = frame.Inset or (name and _G[name .. "Inset"])
@@ -154,7 +158,7 @@ function ns.ContentBox(frame, footer)
     footLine:SetHeight(1)
     -- Inhalt
     local box = Tex("BACKGROUND", -6, C.panel, C.panel[4])
-    box:SetPoint("TOPLEFT", 8, -32)
+    box:SetPoint("TOPLEFT", 8, -top)
     box:SetPoint("BOTTOMRIGHT", -8, footer + 8)
     for i, p in ipairs({ { "TOPLEFT", "TOPRIGHT", 1 }, { "BOTTOMLEFT", "BOTTOMRIGHT", 1 },
         { "TOPLEFT", "BOTTOMLEFT", nil }, { "TOPRIGHT", "BOTTOMRIGHT", nil } }) do
@@ -187,6 +191,88 @@ function ns.Portrait(frame, unit)
     if shown then SetPortraitTexture(look.portrait, unit) end
     look.portrait:SetShown(shown)
     look.portraitEdge:SetShown(shown)
+end
+
+-- Visitenkarte des NPCs über dem Inhalt (dort, wo Blizzard sein Porträt hat): großes rundes Porträt mit goldenem
+-- Ring, daneben der Name groß in Gold, darunter sein Titel ("<Metzger>") und Stufe/Art. Blizzards Titel in der
+-- Titelleiste wird dafür unsichtbar, dort steht klein, was für ein Fenster es ist (label).
+local CIRCLE = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
+function ns.NpcCard(frame, unit, label)
+    local look = looks[frame]
+    if not look then return end
+    if not look.card then
+        local card = {}
+        local function Disk(size, sub, c)
+            local t = frame:CreateTexture(nil, "ARTWORK", nil, sub)
+            t:SetTexture(WHITE)
+            t:SetVertexColor(c[1], c[2], c[3], 1)
+            t:SetSize(size, size)
+            t:SetPoint("CENTER", frame, "TOPLEFT", 36, -50)
+            local mask = frame:CreateMaskTexture()
+            mask:SetTexture(CIRCLE, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+            mask:SetAllPoints(t)
+            t:AddMaskTexture(mask)
+            look.mine[t] = true
+            return t
+        end
+        card.ring = Disk(48, 1, C.accent)        -- goldener Ring
+        card.gap = Disk(45, 2, C.background)     -- feine dunkle Fuge
+        card.portrait = Disk(43, 3, { 1, 1, 1 }) -- Bild
+        card.name = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+        card.name:SetPoint("TOPLEFT", frame, "TOPLEFT", 68, -32)
+        card.name:SetPoint("RIGHT", frame, "RIGHT", -14, 0)
+        card.name:SetJustifyH("LEFT")
+        card.name:SetWordWrap(false)
+        card.sub = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        card.sub:SetPoint("TOPLEFT", card.name, "BOTTOMLEFT", 0, -3)
+        card.sub:SetPoint("RIGHT", frame, "RIGHT", -14, 0)
+        card.sub:SetJustifyH("LEFT")
+        card.sub:SetWordWrap(false)
+        card.info = frame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+        card.info:SetPoint("TOPLEFT", card.sub, "BOTTOMLEFT", 0, -2)
+        card.info:SetJustifyH("LEFT")
+        card.label = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        card.label:SetPoint("TOP", frame, "TOP", 0, -5)
+        look.card = card
+        -- Blizzards Titel (NPC-Name) nicht doppelt
+        if frame.TitleContainer then ns.Hide(frame.TitleContainer) end
+        local name = frame:GetName()
+        if name then ns.Hide(_G[name .. "TitleText"]) end
+    end
+    local card = look.card
+    card.label:SetText(label or "")
+    local exists = UnitExists(unit)
+    if exists and SetPortraitTexture then SetPortraitTexture(card.portrait, unit) end
+    card.portrait:SetTexCoord(0, 1, 0, 1)
+    for _, t in ipairs({ card.ring, card.gap, card.portrait }) do t:SetShown(exists) end
+    card.name:SetText(exists and UnitName(unit) or "")
+    -- Titel aus dem Tooltip (zweite Zeile in spitzen Klammern), sonst leer
+    local sub = ""
+    if exists and C_TooltipInfo and C_TooltipInfo.GetUnit then
+        local ok, data = pcall(C_TooltipInfo.GetUnit, unit)
+        local lines = ok and data and data.lines
+        for i = 2, math.min(4, lines and #lines or 0) do
+            local text = lines[i].leftText
+            if type(text) == "string" and text:find("^<.+>$") then sub = text break end
+        end
+    end
+    card.sub:SetText(sub)
+    local info = ""
+    if exists then
+        local level = UnitLevel(unit)
+        local kind = UnitCreatureType and UnitCreatureType(unit)
+        if level and level > 0 then info = (LEVEL or "Level") .. " " .. level end
+        if kind and kind ~= "" then info = info ~= "" and (info .. "  ·  " .. kind) or kind end
+    end
+    card.info:SetText(info)
+    card.info:ClearAllPoints()
+    if sub ~= "" then
+        card.info:SetPoint("TOPLEFT", card.sub, "BOTTOMLEFT", 0, -2)
+    else
+        card.info:SetPoint("TOPLEFT", card.name, "BOTTOMLEFT", 0, -4)
+    end
+    -- ohne NPC (z. B. Quest aus einem Gegenstand): nur der Titel in der Leiste
+    if not exists then card.name:SetText("") card.info:SetText("") end
 end
 
 -- Innenfläche (Inset): etwas hellere Fläche statt Blizzards Rahmen
