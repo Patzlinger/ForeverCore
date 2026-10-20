@@ -53,7 +53,9 @@ local function SkinTrainer()
     ns.SkinWindow(f)
     -- untere Leiste zweizeilig: oben Haken "Nicht verfügbare ausblenden" und "Leisten aktualisieren", unten Geld und
     -- "Ausbilden"; die Zeilen haben eigene Kästen
-    local FOOTER, EXTRA = 54, 24
+    -- FOOTER = Höhe der unteren Leiste, EXTRA = so viel höher endet die Liste unten (mit Luft über der Leiste),
+    -- MORE = so viel länger wird die Liste (mehr Zeilen sichtbar)
+    local FOOTER, EXTRA, MORE = 54, 34, 80
     ns.ContentBox(f, FOOTER, nil, true)
     for _, key in ipairs({ "BottomInset", "skillStepButton" }) do
         local obj = f[key]
@@ -84,15 +86,23 @@ local function SkinTrainer()
     end)
     book:SetPoint("TOPRIGHT", f, "TOPRIGHT", -12, -32)
     book:SetFrameLevel(f:GetFrameLevel() + 20)
+    -- (das Spiel meldet an/aus je nach Version als true/false oder 1/0 – 0 ist in Lua "wahr")
+    local function UnavailableShown()
+        local v = GetTrainerServiceTypeFilter and GetTrainerServiceTypeFilter("unavailable")
+        return v == true or v == 1
+    end
     local hideCheck = ns.UI.Check(f, nil, nil, T("Nicht verfügbare ausblenden", "Hide unavailable"), function(checked)
-        if SetTrainerServiceTypeFilter then pcall(SetTrainerServiceTypeFilter, "unavailable", checked and 0 or 1) end
+        if not SetTrainerServiceTypeFilter then return end
+        local ok = pcall(SetTrainerServiceTypeFilter, "unavailable", checked and 0 or 1)
+        if not ok or UnavailableShown() == checked then
+            pcall(SetTrainerServiceTypeFilter, "unavailable", not checked) -- andere Schreibweise (true/false)
+        end
         if type(_G.ClassTrainerFrame_Update) == "function" then pcall(_G.ClassTrainerFrame_Update) end
     end)
     hideCheck:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 12, 34)
     hideCheck:SetFrameLevel(f:GetFrameLevel() + 20)
     local function LoadCheck()
-        local shown = GetTrainerServiceTypeFilter and GetTrainerServiceTypeFilter("unavailable")
-        hideCheck:SetChecked(not shown)
+        hideCheck:SetChecked(not UnavailableShown())
     end
     ns.SkinButton(f.TrainButton or G("ClassTrainerTrainButton"))
     ns.SkinButton(G("ClassTrainerCancelButton"))
@@ -159,7 +169,7 @@ local function SkinTrainer()
         Move(f.ScrollBox, 88, inset)
         Move(G("ClassTrainerListScrollFrame"), 88, inset)
         for _, bar in ipairs(bars) do Move(bar, 88, f.ScrollBox or inset) end
-        local want = baseHeight + down + EXTRA
+        local want = baseHeight + down + EXTRA + MORE
         if math.abs(f:GetHeight() - want) > 0.5 then f:SetHeight(want) end
     end
     local function Card()

@@ -503,6 +503,17 @@ end
 function ns.SkinScrollBar(bar)
     if not bar or looks[bar] then return end
     looks[bar] = { mine = {}, edges = {} }
+    -- Pfeile oben/unten einheitlich grau (manche Fenster haben braune) – wie im Gespräch
+    for _, arrow in ipairs({ bar.Back, bar.Forward, bar.ScrollUpButton, bar.ScrollDownButton }) do
+        if type(arrow) == "table" and arrow.GetRegions then
+            for _, r in ipairs({ arrow:GetRegions() }) do
+                if r:IsObjectType("Texture") then
+                    if r.SetDesaturated then r:SetDesaturated(true) end
+                    r:SetVertexColor(0.8, 0.8, 0.82)
+                end
+            end
+        end
+    end
     local track = bar.Track
     local thumb = track and (track.Thumb or (track.GetThumb and track:GetThumb()))
     if thumb then

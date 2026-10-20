@@ -277,7 +277,9 @@ local function ScanTrainer()
         end
     end
     if SetTrainerServiceTypeFilter then
-        for f, v in pairs(saved) do pcall(SetTrainerServiceTypeFilter, f, v and 1 or 0) end
+        -- (das Spiel meldet "aus" teils als 0 – in Lua ist 0 "wahr": darum ausdrücklich vergleichen, sonst stand der
+        -- Filter nach jedem Auslesen wieder auf "alles zeigen")
+        for f, v in pairs(saved) do pcall(SetTrainerServiceTypeFilter, f, (v == true or v == 1) and 1 or 0) end
     end
     scanning = false
     if #list > 0 then
