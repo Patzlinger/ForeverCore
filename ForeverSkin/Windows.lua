@@ -254,11 +254,9 @@ local function SkinMerchant()
         local item = G(name)
         if not item then return end
         ns.HideTextures(item) -- Fach und Namensfeld
-        -- Kasten etwas größer als das Feld, damit Name und Preis ganz darin liegen; Namen höchstens zwei Zeilen
-        -- (sonst ragten lange Namen wie "Muster: Lavendelfarbenes Magiestoffhemd" oben heraus)
-        -- wie ein flacher Knopf (Knopf-Farbe, beim Überfahren goldener Rand) – etwas größer als das Feld, damit Name
-        -- und Preis ganz darin liegen (Rückkauf-Feld unten ohne Überstand: darunter beginnt die Geldleiste)
-        ns.Flat(item, C.button, name == "MerchantBuyBackItem" and { -3, -3, -3, 0 } or { -3, -3, -3, -5 })
+        -- wie ein flacher Knopf (Knopf-Farbe, beim Überfahren goldener Rand); Größe und Lage bestimmt das Raster
+        -- unten (Layout), Namen höchstens zwei Zeilen
+        ns.Flat(item, C.button)
         ns.Hover(item)
         local nameText = item.Name or G(name .. "Name")
         if nameText and nameText.SetMaxLines then nameText:SetMaxLines(2) end
@@ -286,15 +284,90 @@ local function SkinMerchant()
     -- nur die untere Leiste mit dem Geld; kein großer Kasten (die Gegenstände haben eigene, Blizzards Bereiche für
     -- Seiten und Rückkauf passten nicht dazu – Ränder überlagerten sich)
     ns.ContentBox(f, 26, nil, true)
-    -- Visitenkarte wie beim Gespräch: die Gegenstandsliste rückt darunter, das Fenster wird um genau diesen Platz
-    -- höher (Blättern, Rückkauf und Geld hängen unten und wandern mit)
-    local baseHeight
+    -- Eigenes, festes Raster statt Blizzards Lagen (die passten nach dem Umgestalten nicht mehr zusammen):
+    -- unter der Visitenkarte zwei gleich breite Spalten mit gleich hohen Feldern (Symbol links, rechts oben Name,
+    -- unten Preis), darunter die Blätter-Zeile, dann die Knopfzeile (Reparieren, Plunder links, letzter Rückkauf
+    -- rechts), unten die Geldleiste. Die Fensterhöhe ergibt sich daraus. Blizzard positioniert bei jedem
+    -- Aktualisieren neu – darum danach jedes Mal wieder.
+    local PAD, GAP, ROW_GAP, ITEM_H, TOP, FOOT = 10, 8, 6, 44, 88, 26
+    local function Inner(item, name)
+        local button = G(name .. "ItemButton")
+        local label = item.Name or G(name .. "Name")
+        local money = G(name .. "MoneyFrame")
+        if button then
+            button:ClearAllPoints()
+            button:SetPoint("LEFT", item, "LEFT", 4, 0)
+        end
+        if label and button then
+            label:ClearAllPoints()
+            label:SetPoint("TOPLEFT", button, "TOPRIGHT", 7, -1)
+            label:SetPoint("RIGHT", item, "RIGHT", -6, 0)
+            label:SetJustifyH("LEFT")
+        end
+        if money and button then
+            money:ClearAllPoints()
+            money:SetPoint("BOTTOMLEFT", button, "BOTTOMRIGHT", 5, 1)
+        end
+    end
     local function Place()
-        local first = G("MerchantItem1")
-        if not first then return end
-        baseHeight = baseHeight or f:GetHeight()
-        local down = ns.Fit(f, first, 88) or 0
-        if down > 0 and math.abs(f:GetHeight() - (baseHeight + down)) > 0.5 then f:SetHeight(baseHeight + down) end
+        local W = f:GetWidth()
+        if not W or W < 100 then return end
+        local colW = math.floor((W - 2 * PAD - GAP) / 2)
+        local buyback = f.selectedTab == 2
+        local count = buyback and (BUYBACK_ITEMS_PER_PAGE or 12) or (MERCHANT_ITEMS_PER_PAGE or 10)
+        local rows = math.ceil(count / 2)
+        for i = 1, 12 do
+            local item = G("MerchantItem" .. i)
+            if item and i <= count then
+                local col, row = (i - 1) % 2, math.floor((i - 1) / 2)
+                item:ClearAllPoints()
+                item:SetPoint("TOPLEFT", f, "TOPLEFT", PAD + col * (colW + GAP), -(TOP + row * (ITEM_H + ROW_GAP)))
+                item:SetSize(colW, ITEM_H)
+                Inner(item, "MerchantItem" .. i)
+            end
+        end
+        local y = TOP + rows * (ITEM_H + ROW_GAP) + 2
+        -- Blätter-Zeile (nur beim Händler, nicht beim Rückkauf)
+        if not buyback then
+            local prev, nextButton, page = G("MerchantPrevPageButton"), G("MerchantNextPageButton"), G("MerchantPageText")
+            if prev then
+                prev:ClearAllPoints()
+                prev:SetPoint("TOPLEFT", f, "TOPLEFT", PAD, -y)
+                prev:SetSize(24, 24)
+            end
+            if nextButton then
+                nextButton:ClearAllPoints()
+                nextButton:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PAD, -y)
+                nextButton:SetSize(24, 24)
+            end
+            if page then
+                page:ClearAllPoints()
+                page:SetPoint("TOP", f, "TOP", 0, -(y + 6))
+            end
+            y = y + 24 + 10
+            -- Knopfzeile: Reparieren, Gegenstand reparieren, Gildenbank, Plunder links; letzter Rückkauf rechts
+            local x = PAD
+            for _, n in ipairs({ "MerchantRepairAllButton", "MerchantRepairItemButton", "MerchantGuildBankRepairButton",
+                "MerchantSellAllJunkButton" }) do
+                local b = G(n)
+                if b and b:IsShown() then
+                    b:ClearAllPoints()
+                    b:SetPoint("TOPLEFT", f, "TOPLEFT", x, -(y + 4))
+                    b:SetSize(36, 36)
+                    x = x + 36 + 6
+                end
+            end
+            local bb = G("MerchantBuyBackItem")
+            if bb then
+                bb:ClearAllPoints()
+                bb:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PAD, -y)
+                bb:SetSize(colW, ITEM_H)
+                Inner(bb, "MerchantBuyBackItem")
+            end
+            y = y + ITEM_H + 8
+        end
+        local h = y + FOOT + 4
+        if math.abs(f:GetHeight() - h) > 0.5 then f:SetHeight(h) end
     end
     local function Card()
         ns.NpcCard(f, "npc", ns.T("Händler", "Vendor"), function() return ns.T("Händler", "Vendor") end)
@@ -304,8 +377,9 @@ local function SkinMerchant()
         Card()
         C_Timer.After(0, function() pcall(Place) end)
     end)
-    if type(_G.MerchantFrame_Update) == "function" then
-        hooksecurefunc("MerchantFrame_Update", function() pcall(Place) end)
+    for _, fn in ipairs({ "MerchantFrame_Update", "MerchantFrame_UpdateRepairButtons", "MerchantFrame_UpdateMerchantInfo",
+        "MerchantFrame_UpdateBuybackInfo" }) do
+        if type(_G[fn]) == "function" then hooksecurefunc(fn, function() pcall(Place) end) end
     end
     ns.Watch(f)
     ns.Scaled(f)
