@@ -91,12 +91,15 @@ local function SkinGossip()
     local panel = f.GreetingPanel or G("GossipFrameGreetingPanel")
     HidePanel(panel)
     if panel and panel.ScrollBox then ns.HideTextures(panel.ScrollBox) end
-    ns.Flat(panel, C.panel, 0)
+    ns.ContentBox(f, 30)
     ns.SkinButton((panel and panel.GoodbyeButton) or G("GossipFrameGreetingGoodbyeButton"))
     ns.Watch(f)
     local function Later() C_Timer.After(0, function() pcall(GossipText) end) end
     if type(f.Update) == "function" then hooksecurefunc(f, "Update", Later) end
-    f:HookScript("OnShow", Later)
+    f:HookScript("OnShow", function()
+        ns.Portrait(f, "npc")
+        Later()
+    end)
 end
 
 ---------------------------------------------------------------------------
@@ -169,6 +172,8 @@ local function SkinQuest()
     ns.SkinWindow(f)
     for _, n in ipairs(QUEST_PANELS) do HidePanel(G(n)) end
     for _, n in ipairs(QUEST_BUTTONS) do ns.SkinButton(G(n)) end
+    ns.ContentBox(f, 30)
+    f:HookScript("OnShow", function() ns.Portrait(f, "questnpc") end)
     ns.Watch(f)
     local function Later() C_Timer.After(0, function() pcall(QuestText) end) end
     -- Blizzard färbt die Texte je nach Hintergrund ("Pergament" = dunkel): danach wieder hell
@@ -227,6 +232,7 @@ local function SkinMerchant()
             ns.SkinTab(tab, function(t) return f.selectedTab == t:GetID() end)
         end
     end
+    f:HookScript("OnShow", function() ns.Portrait(f, "npc") end)
     ns.Watch(f)
 end
 

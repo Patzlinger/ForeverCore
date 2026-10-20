@@ -123,6 +123,64 @@ function ns.SkinWindow(frame)
     ns.SkinClose(frame.CloseButton or (name and _G[name .. "CloseButton"]))
 end
 
+-- Gliederung wie bei Blizzard, aber flach: abgesetzter Kasten für den Inhalt (wie die Abschnitts-Kästen der
+-- Menüs) und unten eine dunklere Leiste mit feiner goldener Linie für die Knöpfe. footer = Höhe der unteren Leiste.
+function ns.ContentBox(frame, footer)
+    local look = looks[frame]
+    if not look or look.box then return end
+    local function Tex(layer, sub, c, a)
+        local t = frame:CreateTexture(nil, layer, nil, sub)
+        t:SetTexture(WHITE)
+        t:SetVertexColor(c[1], c[2], c[3], a or 1)
+        look.mine[t] = true
+        return t
+    end
+    -- untere Leiste
+    local foot = Tex("BACKGROUND", -7, C.header)
+    foot:SetPoint("BOTTOMLEFT", 1, 1)
+    foot:SetPoint("BOTTOMRIGHT", -1, 1)
+    foot:SetHeight(footer)
+    local footLine = Tex("BORDER", -6, C.accent, 0.35)
+    footLine:SetPoint("BOTTOMLEFT", foot, "TOPLEFT")
+    footLine:SetPoint("BOTTOMRIGHT", foot, "TOPRIGHT")
+    footLine:SetHeight(1)
+    -- Inhalt
+    local box = Tex("BACKGROUND", -6, C.panel, C.panel[4])
+    box:SetPoint("TOPLEFT", 8, -32)
+    box:SetPoint("BOTTOMRIGHT", -8, footer + 8)
+    for i, p in ipairs({ { "TOPLEFT", "TOPRIGHT", 1 }, { "BOTTOMLEFT", "BOTTOMRIGHT", 1 },
+        { "TOPLEFT", "BOTTOMLEFT", nil }, { "TOPRIGHT", "BOTTOMRIGHT", nil } }) do
+        local e = Tex("BORDER", -5, C.border)
+        e:SetPoint(p[1], box, p[1])
+        e:SetPoint(p[2], box, p[2])
+        if p[3] then e:SetHeight(1) else e:SetWidth(1) end
+    end
+    look.box = box
+end
+
+-- Porträt des NPCs klein und eckig mit goldenem Rand links in der Titelleiste (wie das Logo der Forever-Fenster)
+function ns.Portrait(frame, unit)
+    local look = looks[frame]
+    if not look then return end
+    if not look.portrait then
+        local edge = frame:CreateTexture(nil, "ARTWORK", nil, 1)
+        edge:SetTexture(WHITE)
+        edge:SetVertexColor(C.accent[1], C.accent[2], C.accent[3], 0.8)
+        edge:SetSize(21, 21)
+        edge:SetPoint("TOPLEFT", 6, -2)
+        local p = frame:CreateTexture(nil, "ARTWORK", nil, 2)
+        p:SetPoint("TOPLEFT", edge, "TOPLEFT", 1, -1)
+        p:SetPoint("BOTTOMRIGHT", edge, "BOTTOMRIGHT", -1, 1)
+        p:SetTexCoord(0.12, 0.88, 0.12, 0.88) -- rundes Bild eckig zuschneiden
+        look.portrait, look.portraitEdge = p, edge
+        look.mine[p], look.mine[edge] = true, true
+    end
+    local shown = UnitExists(unit) and SetPortraitTexture ~= nil
+    if shown then SetPortraitTexture(look.portrait, unit) end
+    look.portrait:SetShown(shown)
+    look.portraitEdge:SetShown(shown)
+end
+
 -- Innenfläche (Inset): etwas hellere Fläche statt Blizzards Rahmen
 function ns.SkinInset(inset)
     if not inset then return end
