@@ -712,6 +712,16 @@ function Refresh()
         local c = wtGroups and #wtGroups.now or 0
         tabList[#tabList + 1] = { key = "wt", label = "What's Training" .. (c > 0 and (" |cff33ff33(" .. c .. ")|r") or ""), icon = 134939, gap = true }
     end
+    -- Verweis ganz unten: öffnet Blizzards Makro-Fenster (kein eigener Inhalt, der Reiter bleibt, wie er ist)
+    tabList[#tabList + 1] = { key = "macros", label = T("Makros", "Macros"), icon = "Interface\\Icons\\INV_Misc_Note_01",
+        gap = true, link = function()
+            if ShowMacroFrame then
+                ShowMacroFrame()
+            else
+                if C_AddOns and C_AddOns.LoadAddOn then pcall(C_AddOns.LoadAddOn, "Blizzard_MacroUI") end
+                if _G.MacroFrame then ShowUIPanel(_G.MacroFrame) end
+            end
+        end }
     if view ~= "upcoming" and view ~= "wt" and not lines[view] and not groupByKey[view] then view = 1 end
     if view == "wt" and not WTInstalled() then view = 1 end
     for _, b in ipairs(tabs) do b:Hide() end
@@ -721,8 +731,13 @@ function Refresh()
         b:SetPoint("TOPLEFT", 0, -(i - 1) * 27 - (tab.gap and 10 or 0)) -- Lehrer-Reiter etwas abgesetzt
         b:SetText(tab.label)
         b.icon:SetTexture(tab.icon or 134400)
-        b:SetEnabled(view ~= tab.key or query ~= "")
+        b:SetEnabled(tab.link ~= nil or view ~= tab.key or query ~= "")
         b:SetScript("OnClick", function()
+            if tab.link then
+                if InCombatLockdown() then Chat(T("Im Kampf nicht möglich.", "Not possible in combat.")) return end
+                tab.link()
+                return
+            end
             view = tab.key
             search:SetText("")
             search:ClearFocus()
