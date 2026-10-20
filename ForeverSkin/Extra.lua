@@ -58,7 +58,8 @@ local function SkinTaxi()
         if not largest or area < 10000 then return end -- Größen noch nicht bekannt: beim nächsten Öffnen
         cleaned = true
         for _, r in ipairs(list) do
-            if r ~= largest and not keep[r] then r:SetAlpha(0) end
+            -- (auch nicht die per Name erkannten: Rahmenteile heißen ebenfalls "TaxiFrame…")
+            if r ~= largest then r:SetAlpha(0) end
         end
     end
     -- nur Rahmen, Titel-Hintergrund und Porträt weg (light), den Rest erledigt KeepOnlyMap
