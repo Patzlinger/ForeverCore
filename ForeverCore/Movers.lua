@@ -90,10 +90,11 @@ local function Setup(name)
         pcall(frame.SetUserPlaced, frame, false) -- Lage merkt sich Forever Core, nicht Blizzards Layout-Datei
         Save(frame, name)
     end
-    -- ziehen am Fenster selbst und an seiner Titelleiste (falls sie eigene Mausflächen hat)
+    -- ziehen am Fenster selbst (an freien Stellen). Die Titelleiste (TitleContainer) NICHT mausfähig machen: sie liegt
+    -- über dem Schließen-Kreuz und fing dessen Klicks ab (v62) – dort nur, wenn sie ohnehin Mausklicks annimmt
     for _, handle in ipairs({ frame, frame.TitleContainer }) do
-        if handle and handle.RegisterForDrag then
-            handle:EnableMouse(true)
+        if handle and handle.RegisterForDrag and (handle == frame or (handle.IsMouseEnabled and handle:IsMouseEnabled())) then
+            if handle == frame then handle:EnableMouse(true) end
             handle:RegisterForDrag("LeftButton")
             handle:HookScript("OnDragStart", StartDrag)
             handle:HookScript("OnDragStop", StopDrag)

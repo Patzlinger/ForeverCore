@@ -56,7 +56,6 @@ local function SkinTrainer()
     -- FOOTER = Höhe der unteren Leiste, EXTRA = so viel höher endet die Liste unten (mit Luft über der Leiste),
     -- MORE = so viel länger wird die Liste (mehr Zeilen sichtbar)
     local FOOTER = 54
-    local EXTRA -- unten so viel höher enden, dass die Liste 6 px über der unteren Leiste aufhört (je Lehrer ermittelt)
     ns.ContentBox(f, FOOTER, nil, true)
     for _, key in ipairs({ "BottomInset", "skillStepButton" }) do
         local obj = f[key]
@@ -158,28 +157,48 @@ local function SkinTrainer()
     -- Das Fenster wird um den Platz der Visitenkarte und der zweiten Leistenzeile höher (wie beim Händler): die
     -- Liste behält ihre Höhe (vorher wurde sie gestaucht und lief über die Knöpfe). Oben rückt sie um "down" nach
     -- unten, unten endet sie EXTRA höher über dem Rand – hängt etwas an der Innenfläche/Liste, wandert es mit.
-    local baseHeight
+    -- Größe wie das Gesprächsfenster; Liste fest zwischen Visitenkarte (bzw. Fertigkeitsstufe) und unterer Leiste.
+    -- (Früher relativ zu Blizzards Lage verschoben – Blizzard hängt die Liste aber je nach Lehrer anders auf, dann
+    -- blieb unten Platz frei oder es überlappte oben.) Nach jedem Aktualisieren erneut, weil Blizzard neu aufhängt.
     function Place()
-        baseHeight = baseHeight or f:GetHeight()
+        local gossip = G("GossipFrame")
+        local w = gossip and gossip:GetWidth() or 384
+        local h = gossip and gossip:GetHeight() or 512
+        if math.abs(f:GetWidth() - w) > 0.5 then f:SetWidth(w) end
+        if math.abs(f:GetHeight() - h) > 0.5 then f:SetHeight(h) end
         -- Berufslehrer: kein Zauberbuch-Knopf (der Fertigkeitsbalken steht dort)
         local tradeskill = IsTradeskillTrainer and IsTradeskillTrainer() and true or false
         book:SetShown(not tradeskill)
-        -- bei JEDEM Lehrer neu: Blizzards Liste endet beim Berufslehrer höher als beim Klassenlehrer. EXTRA = so viel
-        -- höher bzw. (negativ) tiefer endet sie, damit sie 6 px über der unteren Leiste aufhört – kein leerer Rest
-        local _, listBottom = ns.Original(f, f.ScrollBox or G("ClassTrainerListScrollFrame") or inset)
-        EXTRA = (FOOTER + 6) - (listBottom or (FOOTER + 6))
-        local down = 0
-        local function Move(region, top, skip)
-            local _, bottom = ns.Original(f, region)
-            if not bottom then return end
-            local d = ns.Fit(f, region, top, bottom + EXTRA, skip, true) or 0
-            down = math.max(down, d)
+        local TOP, BOTTOM, LEFT, RIGHT = -88, FOOTER + 6, 10, -30
+        if inset then
+            inset:ClearAllPoints()
+            inset:SetPoint("TOPLEFT", f, "TOPLEFT", 6, TOP + 4)
+            inset:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -6, BOTTOM - 4)
         end
-        if inset then Move(inset, 84) end
-        ns.Fit(f, f.skillStepButton, 88, nil, inset) -- (feste Höhe: nur verschieben)
-        Move(f.ScrollBox, 88, inset)
-        Move(G("ClassTrainerListScrollFrame"), 88, inset)
-        for _, bar in ipairs(bars) do Move(bar, 88, f.ScrollBox or inset) end
+        local step = f.skillStepButton
+        local stepShown = type(step) == "table" and step:IsShown()
+        if stepShown then
+            step:ClearAllPoints()
+            step:SetPoint("TOPLEFT", f, "TOPLEFT", LEFT, TOP)
+            step:SetPoint("RIGHT", f, "RIGHT", RIGHT, 0)
+        end
+        local list = f.ScrollBox or G("ClassTrainerListScrollFrame")
+        if list then
+            list:ClearAllPoints()
+            if stepShown then
+                list:SetPoint("TOPLEFT", step, "BOTTOMLEFT", 0, -4)
+            else
+                list:SetPoint("TOPLEFT", f, "TOPLEFT", LEFT, TOP)
+            end
+            list:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", RIGHT, BOTTOM)
+        end
+        for _, bar in ipairs(bars) do
+            if list then
+                bar:ClearAllPoints()
+                bar:SetPoint("TOPLEFT", list, "TOPRIGHT", 8, -2)
+                bar:SetPoint("BOTTOMLEFT", list, "BOTTOMRIGHT", 8, 2)
+            end
+        end
         -- Berufslehrer: Fertigkeitsbalken ("20/75") lag auf dem Namen der Visitenkarte – rechts oben an die Stelle
         -- des Zauberbuch-Knopfs
         local skill = f.statusBar or f.StatusBar or G("ClassTrainerStatusBar")
@@ -188,8 +207,6 @@ local function SkinTrainer()
             skill:SetPoint("TOPRIGHT", f, "TOPRIGHT", -14, tradeskill and -36 or -60)
             skill:SetWidth(130)
         end
-        local want = baseHeight + down + EXTRA
-        if math.abs(f:GetHeight() - want) > 0.5 then f:SetHeight(want) end
     end
     local function Card()
         ns.NpcCard(f, "npc", T("Lehrer", "Trainer"), function() return T("Lehrer", "Trainer") end, 130)
