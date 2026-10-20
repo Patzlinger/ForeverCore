@@ -3396,8 +3396,8 @@ end
 do
     local menu = _G.GameMenuFrame
     if menu and menu.HookScript then
-        local b, skin
-        local backs = setmetatable({}, { __mode = "k" })  -- [Blizzard-Knopf] = unsere flache Fläche dahinter
+        local b, skin, menuFont
+        local backs =setmetatable({}, { __mode = "k" })  -- [Blizzard-Knopf] = unsere flache Fläche dahinter
         local hooked = setmetatable({}, { __mode = "k" }) -- Knöpfe, deren Maus-Hover schon eingehängt ist
         local function OpenHub()
             if _G.ForeverHub ~= hub then return end
@@ -3464,9 +3464,10 @@ do
         end
         local function Layout()
             local buttons = MenuButtons()
-            local last
+            local first, last
             for _, btn in ipairs(buttons) do
                 if not last or (btn:GetBottom() or 0) < (last:GetBottom() or 0) then last = btn end
+                if not first or (btn:GetTop() or 0) > (first:GetTop() or 0) then first = btn end
             end
             local style = Skinned() and last ~= nil
             if style then
@@ -3508,14 +3509,27 @@ do
             b:ClearAllPoints()
             if style then
                 b:SetSize(last:GetWidth(), last:GetHeight())
-                b:SetPoint("TOP", last, "BOTTOM", 0, -17)
+                b:SetPoint("TOP", last, "BOTTOM", 0, -19)
+                -- gleiche Schrift wie Blizzards Knöpfe
+                -- (als Schriftobjekt, sonst setzt der Knopf beim Überfahren wieder seine kleine Schrift)
+                local theirs = last:GetFontString()
+                if theirs and theirs:GetFont() then
+                    local font, size, flags = theirs:GetFont()
+                    menuFont = menuFont or CreateFont("ForeverCoreGameMenuFont")
+                    menuFont:SetFont(font, size, flags or "")
+                    menuFont:SetTextColor(theirs:GetTextColor())
+                    b:SetNormalFontObject(menuFont)
+                    b:SetHighlightFontObject(menuFont)
+                end
                 skin.divider:ClearAllPoints()
-                skin.divider:SetPoint("TOPLEFT", last, "BOTTOMLEFT", 0, -8)
-                skin.divider:SetPoint("TOPRIGHT", last, "BOTTOMRIGHT", 0, -8)
+                skin.divider:SetPoint("TOPLEFT", last, "BOTTOMLEFT", 0, -9)
+                skin.divider:SetPoint("TOPRIGHT", last, "BOTTOMRIGHT", 0, -9)
+                -- Fläche nach den Knöpfen ausgerichtet (nicht nach Blizzards Rahmen): Titelleiste, darunter rundum
+                -- derselbe Abstand von 14 px zu den Knöpfen
+                local GAP = 14
                 skin:ClearAllPoints()
-                skin:SetPoint("TOPLEFT", menu, "TOPLEFT", 0, 26) -- Titelleiste über den Knöpfen
-                skin:SetPoint("RIGHT", menu, "RIGHT", 0, 0)
-                skin:SetPoint("BOTTOM", b, "BOTTOM", 0, -14)
+                skin:SetPoint("TOPLEFT", first, "TOPLEFT", -GAP - 4, 27 + GAP)
+                skin:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", GAP + 4, -GAP - 4)
                 skin:Show()
             else
                 b:SetSize(150, 22)
