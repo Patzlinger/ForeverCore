@@ -3386,7 +3386,7 @@ function hub.OpenSettings()
     end
 end
 
--- Knopf "Forever Hub" am Spielmenue (Escape): ein EIGENER Knopf direkt unter dem Menue – nicht in Blizzards
+-- Knopf "Forever Core" (früher "Forever Hub") am Spielmenue (Escape): ein EIGENER Knopf direkt unter dem Menue – nicht in Blizzards
 -- Knopfliste. (Frueher per GameMenuFrame:AddButton eingehaengt: das machte die Knoepfe des Menues "von einem Addon
 -- beruehrt", und Blizzard blockierte danach geschuetzte Aktionen daraus – ADDON_ACTION_FORBIDDEN "callback()".)
 -- Spielmenü im Forever-Stil (v61): Blizzards Rahmen, Kopf und rote Knopfgrafiken werden nur unsichtbar gemacht
@@ -3491,7 +3491,7 @@ do
             end
             -- Hub-Knopf: im Forever-Stil unter dem letzten Knopf in derselben Fläche, sonst wie bisher unter dem Menü
             if not b then
-                b = UI.Button(UIParent, "Forever Hub", 150, OpenHub)
+                b = UI.Button(UIParent, UI.NAME, 150, OpenHub) -- "Forever Core"
                 -- Forever-Core-Symbol links vor dem Text (Text dafür etwas nach rechts)
                 local label = b:GetFontString()
                 if label then
