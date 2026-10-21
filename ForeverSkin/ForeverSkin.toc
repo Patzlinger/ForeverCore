@@ -23,3 +23,4 @@ Extra.lua
 Macro.lua
 Mail.lua
 Tabard.lua
+DressUp.lua

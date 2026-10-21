@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **ForeverSkin: dressing room in the Forever look** – flat window without a title bar, a small round portrait with a gold ring at the top left, flat outfit dropdown and buttons, the item list on the right flat, a fine gold line above the bottom buttons; the model and its background stay. Switch: /fskin » "Dressing room".
+
 - ForeverSkin: every restyled window shows "Your gold: …" on the left of its title bar (NPC dialog, quest dialog, merchant, trainer, flight map, macros, trade, mailbox, tabard) – updated whenever your gold changes; the merchant footer now only lists special currencies.
 
 - **ForeverSkin: tabard design (guild tabard) in the Forever look** – NPC card at the top, the greeting below it, the model in a flat inner area, the five design rows as grey bars with flat arrows, cost on the left and the buttons on the right in the footer bar, your gold in the title bar. Switch: /fskin » "Tabard design".
