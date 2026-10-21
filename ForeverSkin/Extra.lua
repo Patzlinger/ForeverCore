@@ -188,6 +188,7 @@ end
 local tradeOurs = setmetatable({}, { __mode = "k" }) -- eigene Texturen (Visitenkarten), bleiben sichtbar
 local slotState = setmetatable({}, { __mode = "k" }) -- [Platz] = zuletzt gesetzte Randfarbe (als Text)
 
+local slotLooks = setmetatable({}, { __mode = "k" }) -- [Platz] = unsere flache Fläche (fill, edges)
 local function SkinTradeSlot(button)
     if not button or slotState[button] ~= nil then return end
     local icon = button.icon or button.Icon or (button:GetName() and _G[button:GetName() .. "IconTexture"])
@@ -204,15 +205,16 @@ local function SkinTradeSlot(button)
         icon:SetPoint("BOTTOMRIGHT", -2, 2)
         icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
     end
-    ns.Flat(button, C.button)
+    slotLooks[button] = ns.Flat(button, C.button)
     slotState[button] = ""
 end
 
--- Zeilen wie im Händler-Fenster: flacher Kasten über die ganze Spaltenbreite (Maus drauf = goldener Rand), links
--- das Symbol mit Rand in Seltenheitsfarbe, daneben der Name in Seltenheitsfarbe und darunter klein die Art
--- ("Stoff", "Trank" …). Der Kasten ist ein eigener Rahmen hinter Blizzards Zeile.
-local rowLooks = {} -- [Platz-Knopf] = { box, sub, name }
-local function TradeRow(f, row, button, nameText, column)
+-- Zeilen wie im Händler-Fenster, aber ohne durchgehende Balken: links das Symbol mit Rand in Seltenheitsfarbe,
+-- daneben der Name in Seltenheitsfarbe und darunter klein die Art ("Stoff", "Trank" …). Leere Plätze zeigen
+-- keinen Kasten, sondern (auf deiner Seite) den Hinweis "Gegenstand hierher ziehen" – hältst du einen Gegenstand
+-- am Mauszeiger, leuchten die freien Plätze gold auf. Maus über einer Zeile: feiner goldener Rand.
+local rowLooks = {}  -- [Platz-Knopf] = { box, boxLook, slotLook, sub, name, hint, player }
+local function TradeRow(f, row, button, nameText, column, player, index)
     if not (row and button) or rowLooks[button] then return end
     -- im Spalten-Kasten über dessen Fläche, aber unter Blizzards Zeile (Symbol, Name)
     local parent = column or f
@@ -226,12 +228,20 @@ local function TradeRow(f, row, button, nameText, column)
     box:SetPoint("LEFT", column or row, "LEFT", 4, 0)
     box:SetPoint("RIGHT", column or row, "RIGHT", -4, 0)
     tradeOurs[box] = true
-    ns.Flat(box, C.button)
+    local boxLook = ns.Flat(box, C.accent)
     local sub = box:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     sub:SetPoint("BOTTOMLEFT", button, "BOTTOMRIGHT", 8, 2)
     sub:SetPoint("RIGHT", box, "RIGHT", -6, 0)
     sub:SetJustifyH("LEFT")
     sub:SetWordWrap(false)
+    local hint
+    if player then
+        hint = box:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+        hint:SetPoint("LEFT", button, "LEFT", 4, 0)
+        hint:SetPoint("RIGHT", box, "RIGHT", -6, 0)
+        hint:SetJustifyH("LEFT")
+        hint:SetText(ns.T("+  Gegenstand hierher ziehen", "+  Drag an item here"))
+    end
     if nameText then
         nameText:ClearAllPoints()
         nameText:SetPoint("TOPLEFT", button, "TOPRIGHT", 8, -2)
@@ -239,10 +249,20 @@ local function TradeRow(f, row, button, nameText, column)
         nameText:SetJustifyH("LEFT")
         nameText:SetWordWrap(false)
     end
-    rowLooks[button] = { box = box, sub = sub, name = nameText }
+    rowLooks[button] = { box = box, boxLook = boxLook, slotLook = slotLooks[button], sub = sub, name = nameText,
+        hint = hint, player = player }
 end
 
--- Zeile auffrischen: Seltenheitsfarbe für Symbol-Rand und Namen, Art darunter, goldener Rand bei Maus darüber
+local function Alpha(look, fill, edge, c)
+    if not look then return end
+    look.fill:SetAlpha(fill)
+    for _, e in ipairs(look.edges) do
+        if c then e:SetVertexColor(c[1], c[2], c[3], 1) end
+        e:SetAlpha(edge)
+    end
+end
+
+-- Zeile auffrischen (solange das Fenster offen ist)
 local function UpdateTradeRow(button, link)
     local look = button and rowLooks[button]
     if not look or slotState[button] == nil then return end
@@ -257,6 +277,11 @@ local function UpdateTradeRow(button, link)
     for _, get in ipairs({ "GetHighlightTexture", "GetPushedTexture", "GetNormalTexture" }) do
         if button[get] then ns.Hide(button[get](button)) end
     end
+    local over = look.box:IsMouseOver()
+    local dragging = look.player and not link and CursorHasItem and CursorHasItem() or false
+    local key = tostring(link) .. (over and "+" or "-") .. (dragging and "d" or "")
+    if slotState[button] == key then return end
+    slotState[button] = key
     local quality, kind
     if link then
         local _, _, q, _, _, itemType, subType = GetItemInfo(link)
@@ -264,12 +289,26 @@ local function UpdateTradeRow(button, link)
     end
     local r, g, b = 1, 1, 1
     if type(quality) == "number" and GetItemQualityColor then r, g, b = GetItemQualityColor(quality) end
-    local over = look.box:IsMouseOver()
-    local key = tostring(link) .. (over and "+" or "-")
-    if slotState[button] == key then return end
-    slotState[button] = key
-    -- leerer Platz: zarter goldener Rand (hier kann etwas hinein)
-    ns.EdgeColor(look.box, over and C.accent or C.border, 1)
+    -- Kasten der Zeile: nur beim Darüberfahren (feiner goldener Rand) bzw. als Ablage-Hinweis beim Ziehen
+    if dragging then
+        Alpha(look.boxLook, 0.08, 0.8)
+    else
+        Alpha(look.boxLook, 0, over and 0.6 or 0)
+    end
+    -- Platz: mit Gegenstand flach mit Rand in Seltenheitsfarbe, leer unsichtbar
+    if link then
+        Alpha(look.slotLook, 1, (quality and quality >= 2) and 1 or 0.6, { r * 0.8, g * 0.8, b * 0.8 })
+    else
+        Alpha(look.slotLook, 0, 0)
+    end
+    if look.hint then
+        look.hint:SetShown(not link)
+        if dragging then
+            look.hint:SetTextColor(C.accent[1], C.accent[2], C.accent[3])
+        else
+            look.hint:SetTextColor(0.5, 0.5, 0.5)
+        end
+    end
     if look.name and link then look.name:SetTextColor(r, g, b) end
     look.sub:SetText(link and kind or "")
 end
@@ -592,7 +631,7 @@ local function SkinTrade()
                     -- Spalte: Plätze 1-6 im Gegenstands-Kasten, der 7. im Kasten "wird nicht gehandelt"
                     local who = side == "TradePlayerItem" and "Player" or "Recipient"
                     local column = G("Trade" .. who .. (i == (MAX_TRADE_ITEMS or 7) and "EnchantInset" or "ItemsInset"))
-                    TradeRow(f, row, button, G(side .. i .. "Name") or row.Name, column)
+                    TradeRow(f, row, button, G(side .. i .. "Name") or row.Name, column, who == "Player", i)
                 end
             end
         end
