@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **ForeverSkin: tabard design (guild tabard) in the Forever look** – NPC card at the top, the greeting below it, the model in a flat inner area, the five design rows as grey bars with flat arrows, cost on the left and the buttons on the right in the footer bar, your gold in the title bar. Switch: /fskin » "Tabard design".
+
 
 - **ForeverQuests: zone levels on the world map** – hover a zone on the continent or world map and its level range appears right after the name, e.g. "Elwynn Forest (1–10)", colored by difficulty for your character. Switch: /fq » Display.
 
