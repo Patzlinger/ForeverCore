@@ -105,18 +105,80 @@ local function Collect()
 end
 
 ---------------------------------------------------------------------------
+-- Rückmeldung beim Klicken (Waren-Zeilen und Knöpfe unten): gedrückt = kurz dunkler, ausgeführt = kurzes goldenes
+-- Aufleuchten, bei Käufen dazu rechts "+Anzahl", das nach oben weggleitet
+---------------------------------------------------------------------------
+local function Feedback(frame)
+    if frame.fbPress then return end
+    frame.fbPress = frame:CreateTexture(nil, "OVERLAY", nil, 6)
+    frame.fbPress:SetPoint("TOPLEFT", 1, -1)
+    frame.fbPress:SetPoint("BOTTOMRIGHT", -1, 1)
+    frame.fbPress:SetColorTexture(0, 0, 0, 0.3)
+    frame.fbPress:Hide()
+    frame:HookScript("OnMouseDown", function(self) self.fbPress:Show() end)
+    frame:HookScript("OnMouseUp", function(self) self.fbPress:Hide() end)
+    frame:HookScript("OnHide", function(self) self.fbPress:Hide() end)
+    -- goldenes Aufleuchten
+    local glow = frame:CreateTexture(nil, "OVERLAY", nil, 7)
+    glow:SetPoint("TOPLEFT", 1, -1)
+    glow:SetPoint("BOTTOMRIGHT", -1, 1)
+    glow:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 1)
+    glow:SetAlpha(0)
+    local ag = glow:CreateAnimationGroup()
+    local fade = ag:CreateAnimation("Alpha")
+    fade:SetFromAlpha(0.45)
+    fade:SetToAlpha(0)
+    fade:SetDuration(0.5)
+    fade:SetSmoothing("OUT")
+    ag:SetScript("OnFinished", function() glow:SetAlpha(0) end)
+    frame.fbGlow = ag
+    -- "+Anzahl"
+    local plus = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    plus:SetPoint("RIGHT", frame, "RIGHT", -12, 0)
+    plus:SetTextColor(C.accent[1], C.accent[2], C.accent[3])
+    plus:SetAlpha(0)
+    local pg = plus:CreateAnimationGroup()
+    local move = pg:CreateAnimation("Translation")
+    move:SetOffset(0, 14)
+    move:SetDuration(0.7)
+    move:SetSmoothing("OUT")
+    local pfade = pg:CreateAnimation("Alpha")
+    pfade:SetFromAlpha(1)
+    pfade:SetToAlpha(0)
+    pfade:SetDuration(0.7)
+    pg:SetScript("OnFinished", function() plus:SetAlpha(0) end)
+    frame.fbPlus, frame.fbPlusAnim = plus, pg
+end
+
+local function Flash(frame, amount)
+    if not (frame and frame.fbGlow) then return end
+    frame.fbGlow:Stop()
+    frame.fbGlow:Play()
+    if amount and frame.fbPlus then
+        frame.fbPlus:SetText("+" .. amount)
+        frame.fbPlusAnim:Stop()
+        frame.fbPlusAnim:Play()
+    end
+end
+
+---------------------------------------------------------------------------
 -- Kaufen
 ---------------------------------------------------------------------------
 StaticPopupDialogs["FOREVERSKIN_MERCHANT_BUY"] = {
     text = "%s",
     button1 = YES or "Ja", button2 = NO or "Nein",
-    OnAccept = function(_, data) if data then BuyMerchantItem(data.index, data.qty) end end,
+    OnAccept = function(_, data)
+        if not data then return end
+        BuyMerchantItem(data.index, data.qty)
+        Flash(data.row, data.amount)
+    end,
     timeout = 0, hideOnEscape = true, whileDead = true,
 }
 
-local function Buy(e, stack)
+local function Buy(e, stack, row)
     if e.buyback then
         BuybackItem(e.index)
+        Flash(row, e.stack or 1)
         return
     end
     local qty = 1
@@ -124,12 +186,15 @@ local function Buy(e, stack)
         local max = GetMerchantItemMaxStack and GetMerchantItemMaxStack(e.index) or 1
         qty = math.max(1, math.floor((max or 1) / math.max(1, e.stack)))
     end
+    local amount = qty * math.max(1, e.stack or 1)
     if e.ext then
-        -- Sonderwährung (Ehre, Marken …): vorher fragen
+        -- Sonderwährung (Ehre, Marken …): vorher fragen; Rückmeldung erst nach dem Ja
         StaticPopup_Show("FOREVERSKIN_MERCHANT_BUY", string.format(T("%s für %s kaufen?", "Buy %s for %s?"),
-            (e.link or e.name) .. (qty > 1 and (" ×" .. qty) or ""), e.price), nil, { index = e.index, qty = qty })
+            (e.link or e.name) .. (qty > 1 and (" ×" .. qty) or ""), e.price), nil,
+            { index = e.index, qty = qty, row = row, amount = amount })
     else
         BuyMerchantItem(e.index, qty)
+        Flash(row, amount)
     end
 end
 
@@ -188,7 +253,7 @@ local function Row(i)
         if IsModifiedClick("DRESSUP") and e.link then DressUpItemLink(e.link) return end
         if button == "LeftButton" and IsModifiedClick("CHATLINK") and e.link then ChatEdit_InsertLink(e.link) return end
         if button == "RightButton" then
-            Buy(e, IsShiftKeyDown())
+            Buy(e, IsShiftKeyDown(), self)
         elseif not e.buyback and PickupMerchantItem then
             PickupMerchantItem(e.index)
         end
@@ -197,6 +262,7 @@ local function Row(i)
         local e = self.entry
         if e and not e.buyback and PickupMerchantItem then PickupMerchantItem(e.index) end
     end)
+    Feedback(row)
     rows[i] = row
     return row
 end
@@ -315,8 +381,10 @@ local function IconButton(icon, tip, onClick)
     b:SetScript("OnClick", function(self)
         if self.usable == false then return end
         onClick()
+        Flash(self) -- kurzes goldenes Aufleuchten als Rückmeldung
         C_Timer.After(0.3, function() pcall(Refresh) end)
     end)
+    Feedback(b) -- gedrückt = kurz dunkler
     -- benutzbar oder ausgegraut (Tooltip bleibt, Klick tut dann nichts)
     function b:SetUsable(on)
         self.usable = on and true or false
