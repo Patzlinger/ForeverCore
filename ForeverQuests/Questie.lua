@@ -612,6 +612,88 @@ local function AddAlts(tooltip, questID)
     end
 end
 
+-- Verzeichnis Gegenstand -> Quests aus Questies Quest-Daten: Gegenstand, den die Quest mitgibt (sourceItemId, z. B.
+-- ein Horn zum Herbeirufen), weitere nötige Gegenstände (requiredSourceItems) und Gegenstands-Ziele (objectives[3]).
+-- Questies Gegenstands-Feld "relatedQuests" kennt nur einen Teil davon. Einmal nach dem Login in Häppchen gebaut
+-- (nur außerhalb des Kampfs), damit nichts ruckelt; bis dahin werden die Quests im eigenen Questlog direkt geprüft.
+local itemIndex, indexing = nil, false
+local function QuestItems(db, questID, add)
+    local ok, src = pcall(db.QueryQuestSingle, questID, "sourceItemId")
+    if ok and type(src) == "number" and src > 0 then add(src) end
+    local okR, req = pcall(db.QueryQuestSingle, questID, "requiredSourceItems")
+    if okR and type(req) == "table" then
+        for _, item in ipairs(req) do if type(item) == "number" then add(item) end end
+    end
+    local okO, obj = pcall(db.QueryQuestSingle, questID, "objectives")
+    if okO and type(obj) == "table" and type(obj[3]) == "table" then
+        for _, entry in ipairs(obj[3]) do
+            local item = type(entry) == "table" and entry[1] or entry
+            if type(item) == "number" then add(item) end
+        end
+    end
+end
+local function BuildItemIndex()
+    if itemIndex or indexing or not ns.HasQuestie() then return end
+    local db = Module("QuestieDB")
+    local all = db and db.QuestPointers
+    if type(all) ~= "table" or not db.QueryQuestSingle then return end
+    indexing = true
+    local ids = {}
+    for id in pairs(all) do ids[#ids + 1] = id end
+    local index, pos = {}, 1
+    local function Step()
+        if InCombatLockdown() then C_Timer.After(2, Step) return end
+        local last = math.min(#ids, pos + 299)
+        for i = pos, last do
+            local q = ids[i]
+            QuestItems(db, q, function(item)
+                local list = index[item]
+                if not list then list = {} index[item] = list end
+                list[#list + 1] = q
+            end)
+        end
+        pos = last + 1
+        if pos <= #ids then
+            C_Timer.After(0, Step)
+        else
+            itemIndex, indexing = index, false
+        end
+    end
+    Step()
+end
+do
+    local f = CreateFrame("Frame")
+    f:RegisterEvent("PLAYER_LOGIN")
+    f:SetScript("OnEvent", function()
+        -- Questie braucht nach dem Login etwas, bis seine Datenbank bereit ist
+        local tries = 0
+        local function Try()
+            tries = tries + 1
+            if ns.HasQuestie() and ns.db and ns.db.itemQuestTooltip ~= false then
+                pcall(BuildItemIndex)
+            elseif tries < 20 then
+                C_Timer.After(5, Try)
+            end
+        end
+        C_Timer.After(8, Try)
+    end)
+end
+
+-- Quests im eigenen Questlog, zu denen der Gegenstand gehört (sofort, auch bevor das Verzeichnis fertig ist)
+local function LogQuestsWithItem(db, itemID)
+    local out = {}
+    if not (C_QuestLog.GetNumQuestLogEntries and C_QuestLog.GetInfo) then return out end
+    for i = 1, C_QuestLog.GetNumQuestLogEntries() do
+        local info = C_QuestLog.GetInfo(i)
+        if info and not info.isHeader and info.questID then
+            local hit = false
+            QuestItems(db, info.questID, function(item) if item == itemID then hit = true end end)
+            if hit then out[#out + 1] = info.questID end
+        end
+    end
+    return out
+end
+
 local function AddItemQuestLines(tooltip, itemID)
     if not (ns.db and ns.db.itemQuestTooltip ~= false and ns.HasQuestie()) then return end
     if type(itemID) ~= "number" or (issecretvalue and issecretvalue(itemID)) then return end
@@ -624,15 +706,28 @@ local function AddItemQuestLines(tooltip, itemID)
     local okR, related = pcall(db.QueryItemSingle, itemID, "relatedQuests")
     local quests, seen = {}, {}
     if starts then quests[1], seen[starts] = { id = starts, starts = true }, true end
-    if okR and type(related) == "table" then
-        for _, id in ipairs(related) do
-            if type(id) == "number" and not seen[id] then
-                seen[id] = true
-                quests[#quests + 1] = { id = id }
+    if not itemIndex then pcall(BuildItemIndex) end
+    local sources = { LogQuestsWithItem(db, itemID), okR and related, itemIndex and itemIndex[itemID] }
+    for i = 1, 3 do
+        local source = sources[i]
+        if type(source) == "table" then
+            for _, id in ipairs(source) do
+                if type(id) == "number" and not seen[id] then
+                    seen[id] = true
+                    quests[#quests + 1] = { id = id }
+                end
             end
         end
     end
     if #quests == 0 then return end
+    -- Startgegenstand zuerst, dann Quests im eigenen Questlog, danach offene, zuletzt abgeschlossene
+    local RANK = { log = 1, missing = 2, done = 3 }
+    for _, q in ipairs(quests) do q.state = QuestState(q.id) end
+    table.sort(quests, function(a, b)
+        if (a.starts or false) ~= (b.starts or false) then return a.starts and true or false end
+        if RANK[a.state] ~= RANK[b.state] then return RANK[a.state] < RANK[b.state] end
+        return a.id < b.id
+    end)
     tooltip:AddLine(" ")
     for i, q in ipairs(quests) do
         if i > MAX_ITEM_QUESTS then
@@ -641,7 +736,7 @@ local function AddItemQuestLines(tooltip, itemID)
         end
         local okN, name = pcall(db.QueryQuestSingle, q.id, "name")
         name = (okN and name) or (C_QuestLog.GetTitleForQuestID and C_QuestLog.GetTitleForQuestID(q.id)) or ("Quest " .. q.id)
-        local state = QuestState(q.id)
+        local state = q.state
         local st = STATE_TEXT[state]
         local label = ns.L(q.starts and "TIP_ITEM_STARTS" or "TIP_ITEM_FOR") .. " " .. name
         if ns.db.showQuestIDs then label = label .. "  |cff6a6a6a#" .. q.id .. "|r" end

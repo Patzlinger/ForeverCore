@@ -1,5 +1,5 @@
 -- ForeverCast – Look.lua: Optik aller Leisten (eigene Zauberleiste, Ziel/Fokus, Atem/Erschöpfung).
---   "forever" (Standard): flach und dunkel mit feinem Rand und Goldlinie oben wie die Forever-Fenster, gedämpfte
+--   "forever" (Standard): flach und dunkel mit feinem einfarbigem Rand rundum (ohne Goldlinie), gedämpfte
 --                         Farben; Textur und Schrift wie ForeverFrames (falls aktiv), sonst Raid-Textur und Friz.
 --   "clean":              der frühere Look – Blizzards Balken-Textur, weicher bronzener Tooltip-Rand, kräftige Farben.
 -- Wird VOR ForeverCast.lua geladen: die Farbtabellen (ns.COLORS) werden dort direkt benutzt und hier beim Wechsel
@@ -22,7 +22,7 @@ local SOFT_BACKDROP = {
 }
 
 ns.LOOKS = {
-    { key = "forever", label = T("Forever (flach, Goldlinie)", "Forever (flat, gold line)") },
+    { key = "forever", label = T("Forever (flach, feiner Rand)", "Forever (flat, fine border)") },
     { key = "clean",   label = T("Clean (bisheriger Look)", "Clean (previous look)") },
 }
 
@@ -75,7 +75,6 @@ local boxes, bars, texts = {}, {}, {}
 -- Rahmen wie die XP-/Ruf-Leiste von ForeverBars (Status.lua): feiner grauer 1-px-Rand rundum, innen eine dunkle
 -- Fuge, goldene Linie innen direkt unter der Oberkante; Füllung 2 px eingerückt (oben 3 px, unter der Goldlinie)
 local EDGE = { 0.22, 0.22, 0.26, 1 }
-local TOP_LINE = { 1, 0.82, 0, 0.55 }
 local BG = { 0.05, 0.05, 0.065, 0.92 }
 
 local function Inset(region, px, parent, top)
@@ -128,9 +127,9 @@ local function ApplyBox(f, inner)
         e:SetVertexColor(EDGE[1], EDGE[2], EDGE[3], EDGE[4]) -- rundum derselbe feine Rand
         e:Show()
     end
-    s.topLine:SetColorTexture(TOP_LINE[1], TOP_LINE[2], TOP_LINE[3], TOP_LINE[4]) -- Goldlinie innen oben
-    s.topLine:Show()
-    Inset(inner, 2, f, 3)
+    -- keine Goldlinie oben (Wunsch 2026-10-21): Rand rundum einfarbig
+    s.topLine:Hide()
+    Inset(inner, 2, f)
 end
 
 -- Rahmen (mit BackdropTemplate) im aktuellen Look; inner = Balken/Symbol darin (Abstand zum Rand je Look)
