@@ -134,7 +134,7 @@ local function SkinDressUp()
         end
         for _, suffix in ipairs({ "Portrait", "PortraitFrame", "TitleBg", "Bg" }) do ns.Hide(G("DressUpFrame" .. suffix)) end
         if f.TitleContainer then ns.HideTextures(f.TitleContainer) end
-        ns.Flat(f, C.background)
+        -- (flache Fläche samt der Leiste darunter: siehe "footer")
         local title = (f.TitleContainer and f.TitleContainer.TitleText) or G("DressUpFrameTitleText")
         if title then title:SetTextColor(C.accent[1], C.accent[2], C.accent[3]) end
         ns.SkinClose(f.CloseButton or G("DressUpFrameCloseButton"))
@@ -143,8 +143,28 @@ local function SkinDressUp()
         if inset and not Forbidden(inset) and inset.NineSlice then ns.Hide(inset.NineSlice) end
     end)
     Step("portrait", function() Portrait(f) end)
-    -- untere Leiste: feine goldene Linie über den Knöpfen (wie in den übrigen Fenstern)
-    Step("footer", function() ns.ContentBox(f, FOOTER, nil, true) end)
+    -- untere Leiste UNTER Blizzards altem Fensterrand: das Fenster wächst optisch um FOOTER nach unten, die feine
+    -- goldene Linie liegt genau am alten Rand – so endet das Hintergrundbild des Modells darüber
+    Step("footer", function()
+        local look = ns.Flat(f, C.background, { 0, 0, 0, -FOOTER })
+        if not look then return end
+        local foot = f:CreateTexture(nil, "BACKGROUND", nil, -7)
+        foot:SetColorTexture(C.header[1], C.header[2], C.header[3], 1)
+        foot:SetPoint("BOTTOMLEFT", look.fill, "BOTTOMLEFT", 1, 1)
+        foot:SetPoint("BOTTOMRIGHT", look.fill, "BOTTOMRIGHT", -1, 1)
+        foot:SetHeight(FOOTER - 1)
+        local line = f:CreateTexture(nil, "BORDER", nil, -6)
+        line:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 0.35)
+        line:SetPoint("BOTTOMLEFT", foot, "TOPLEFT")
+        line:SetPoint("BOTTOMRIGHT", foot, "TOPRIGHT")
+        line:SetHeight(1)
+        -- die neue Fläche fängt die Maus ab (sonst klickt man ins Spiel durch)
+        local grip = CreateFrame("Frame", nil, f)
+        grip:SetPoint("TOPLEFT", f, "BOTTOMLEFT", 0, 0)
+        grip:SetPoint("TOPRIGHT", f, "BOTTOMRIGHT", 0, 0)
+        grip:SetHeight(FOOTER)
+        grip:EnableMouse(true)
+    end)
     -- oben: Set-Auswahl, Speichern, Details-Knopf
     Step("top", function()
         local dropdown = f.OutfitDropdown or f.OutfitDropDown or G("DressUpFrameOutfitDropdown")
@@ -167,7 +187,8 @@ local function SkinDressUp()
         for _, b in ipairs({ link or false, reset or false, cancel or false }) do
             if b then SkinTextButton(b) end
         end
-        local y = FOOTER / 2
+        -- (die Leiste liegt UNTER Blizzards altem Fensterrand, siehe "footer": Mitte bei −FOOTER/2)
+        local y = -FOOTER / 2
         local function Put(b, point, rel, relPoint, x, yy)
             if not b or Forbidden(b) then return end
             b:ClearAllPoints()
@@ -176,17 +197,6 @@ local function SkinDressUp()
         Put(link, "LEFT", f, "BOTTOMLEFT", 10, y)
         Put(cancel, "RIGHT", f, "BOTTOMRIGHT", -10, y)
         if cancel then Put(reset, "RIGHT", cancel, "LEFT", -8, 0) end
-        local inset = f.Inset or G("DressUpFrameInset")
-        if inset and not Forbidden(inset) then
-            local points = {}
-            for i = 1, inset:GetNumPoints() do
-                local p, rel, rp, x, yy = inset:GetPoint(i)
-                if type(p) == "string" and p:find("BOTTOM") then rel, rp, yy = f, p, FOOTER + 4 end
-                points[i] = { p, rel, rp, x or 0, yy or 0 }
-            end
-            inset:ClearAllPoints()
-            for _, pt in ipairs(points) do inset:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5]) end
-        end
     end)
     -- alle übrigen Text-Knöpfe und Auswahlfelder (Blizzard benennt sie je nach Fassung anders)
     Step("controls", function()

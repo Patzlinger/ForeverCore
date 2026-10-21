@@ -54,12 +54,23 @@ function ns.DumpMouse()
         -- nichts, das Mausklicks annimmt (z. B. Zier-Rahmen): alle sichtbaren Fenster unter dem Mauszeiger suchen und
         -- die kleinsten zeigen (je mit Name und Eltern-Kette)
         local hits = {}
+        -- (manche Fenster liefern gesperrte Werte – die werden übersprungen)
+        local secret = issecretvalue or function() return false end
+        local function Yes(obj, method)
+            local ok, v = pcall(obj[method], obj)
+            return ok and not secret(v) and v == true
+        end
         if EnumerateFrames then
             local f = EnumerateFrames()
             while f do
                 local forbidden = f.IsForbidden and f:IsForbidden()
-                if not forbidden and f:IsVisible() and f.IsMouseOver and f:IsMouseOver() and f ~= UIParent and f ~= WorldFrame then
-                    hits[#hits + 1] = { frame = f, area = (f:GetWidth() or 0) * (f:GetHeight() or 0) }
+                if not forbidden and f ~= UIParent and f ~= WorldFrame and f.IsMouseOver
+                    and Yes(f, "IsVisible") and Yes(f, "IsMouseOver") then
+                    local okW, w = pcall(f.GetWidth, f)
+                    local okH, h = pcall(f.GetHeight, f)
+                    if okW and okH and not secret(w) and not secret(h) then
+                        hits[#hits + 1] = { frame = f, area = (w or 0) * (h or 0) }
+                    end
                 end
                 f = EnumerateFrames(f)
             end
