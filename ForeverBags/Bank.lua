@@ -8,7 +8,7 @@ local addonName, ns = ...
 local L = ns.L
 local UI = ForeverHub.UI
 
-local PAD, HEADER, TOOLBAR, FOOTER = 8, 27, 28, 24
+local PAD, HEADER, TOOLBAR, FOOTER = 8, 27, 28, 30 -- (Fußzeile mit Platz für "Kaufen" in voller Höhe)
 local BAGBAR, BAGSLOT = 48, 30 -- Zeile "Taschenplätze" unter den Bankplätzen (Höhe samt Luft, Kantenlänge eines Platzes)
 local DEFAULT_POS = "CENTER" -- noch nie verschoben: Bildschirmmitte; danach die gemerkte Lage (Ziehen speichert sie)
 
@@ -401,10 +401,9 @@ local function CreateBank()
     bagBar.label:SetPoint("LEFT", 0, 0)
     bagBar.label:SetText(L("BANKBAG_LABEL"))
 
-    buyButton = UI.Button(bank, L("BUY_BANK"), 70, function() ns.BuyBankSlot() end)
+    buyButton = UI.Button(bank, L("BUY_BANK"), 90, function() ns.BuyBankSlot() end)
     -- unten rechts in der Fußzeile (auf Höhe von "… frei"); die Ecke rechts bleibt für den Größen-Griff frei
-    buyButton:SetHeight(20)
-    buyButton:SetPoint("BOTTOMRIGHT", bank, "BOTTOMRIGHT", -PAD - 16, PAD - 2)
+    buyButton:SetPoint("BOTTOMRIGHT", bank, "BOTTOMRIGHT", -PAD - 16, PAD)
     buyButton:HookScript("OnEnter", function(self) ns.SimpleTip(self, L("TIP_BUY_BANK")) end)
     buyButton:HookScript("OnLeave", ns.HideTip)
     buyText = bank:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
