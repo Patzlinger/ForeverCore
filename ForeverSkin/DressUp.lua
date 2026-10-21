@@ -160,6 +160,8 @@ end
 -- direkt dahinter (unabhängig davon, was Blizzard in der Liste zeichnet)
 local panelTop = setmetatable({}, { __mode = "k" })  -- [Liste] = Abstand der Oberkante zur Oberkante des Fensters
 local panelBack = setmetatable({}, { __mode = "k" }) -- [Liste] = eigene Fläche dahinter
+local panelWidth = setmetatable({}, { __mode = "k" }) -- [Liste] = gewünschte Breite (Blizzards Breite − NARROW)
+local NARROW = 60 -- so viel schmaler als bei Blizzard (die Einträge sind kurz)
 local function PlacePanel(f, panel)
     if not panel or Forbidden(panel) or not panel:IsShown() then return end
     if not panelTop[panel] and panel:GetTop() and f:GetTop() then panelTop[panel] = panel:GetTop() - f:GetTop() end
@@ -173,6 +175,12 @@ local function PlacePanel(f, panel)
         panel:SetPoint("TOPLEFT", f, "TOPRIGHT", 4, y)
         if w and h and w > 0 and h > 0 then panel:SetSize(w, h) end
     end
+    -- etwas schmaler als bei Blizzard (einmal die ursprüngliche Breite merken, dann immer wieder setzen)
+    if not panelWidth[panel] and (panel:GetWidth() or 0) > NARROW + 100 then
+        panelWidth[panel] = math.floor(panel:GetWidth() - NARROW)
+    end
+    local want = panelWidth[panel]
+    if want and math.abs((panel:GetWidth() or 0) - want) > 0.5 then panel:SetWidth(want) end
     local b = panelBack[panel]
     if not b then
         b = CreateFrame("Frame", nil, f)
