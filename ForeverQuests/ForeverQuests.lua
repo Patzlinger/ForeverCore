@@ -36,6 +36,7 @@ ns.defaults = {
     showQuestIDs = false,    -- Quest-IDs in Tracker, Questlog und Dungeonfenster anzeigen
     itemQuestTooltip = true, -- Questgegenstände im Tooltip: zugehörige Quest und ob man sie (noch) hat (mit Questie)
     dialogChain = true,      -- Questreihe neben dem Quest-Dialog (Annehmen/Abgeben), mit Questie
+    zoneLevels = true,       -- Stufenbereich hinter dem Gebietsnamen auf der Weltkarte (ZoneLevels.lua)
     autoAccept = false,      -- Quests automatisch annehmen (Schalter im Feld am Quest-Dialog, AutoQuest.lua)
     autoTurnIn = false,      -- fertige Quests automatisch abgeben (bei mehreren Belohnungen wählt man selbst)
     showMinimapButton = true,

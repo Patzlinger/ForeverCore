@@ -205,6 +205,8 @@ local function CreateOptions()
     CreateSelector(display, L("OPT_LANGUAGE"), 14, -270, 158, LanguageChoices(), "language", ns.OnLanguageChanged)
 
     CreateSelector(display, L("OPT_REWARDS"), 14, -300, 158, RewardChoices(), "rewardHighlight")
+    -- Stufenbereich hinter dem Gebietsnamen auf der Weltkarte (ZoneLevels.lua)
+    CreateSettingCheckbox(display, L("OPT_ZONE_LEVELS"), 14, -342, "zoneLevels")
     local rewardHint = display:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     rewardHint:SetPoint("TOPLEFT", 14, -322)
     rewardHint:SetWidth(PANEL_WIDTH - 28)
