@@ -56,8 +56,15 @@ function ns.BankIDs()
             if ok and type(data) == "table" then tabs = data end
         end
         if tabs then
+            -- zusätzlich nach der gemeldeten ANZAHL gekaufter Fächer begrenzen (der Forever-Client lieferte zeitweise
+            -- auch nicht gekaufte Fächer mit)
+            local bought
+            if C_Bank.FetchNumPurchasedBankTabs then
+                local ok, n = pcall(C_Bank.FetchNumPurchasedBankTabs, Enum.BankType.Character)
+                if ok and type(n) == "number" then bought = n end
+            end
             for _, tab in ipairs(tabs) do
-                if type(tab) == "table" and tab.ID then list[#list + 1] = tab.ID end
+                if type(tab) == "table" and tab.ID and (not bought or #list < bought) then list[#list + 1] = tab.ID end
             end
         else
             -- ohne Abfrage: nur das erste Fach (das hat jeder)
@@ -69,8 +76,14 @@ function ns.BankIDs()
     end
     list[#list + 1] = bi.Bank or -1
     do
+        -- nur die GEKAUFTEN Bank-Taschenplätze (GetNumBankSlots); nicht gekaufte melden im Forever-Client teils eine Größe
         local first = bi.BankBag_1 or ((NUM_BAG_SLOTS or 4) + 1)
-        for i = 0, (NUM_BANKBAGSLOTS or 7) - 1 do list[#list + 1] = first + i end
+        local count = NUM_BANKBAGSLOTS or 7
+        if GetNumBankSlots then
+            local ok, n = pcall(GetNumBankSlots)
+            if ok and type(n) == "number" then count = math.min(count, n) end
+        end
+        for i = 0, count - 1 do list[#list + 1] = first + i end
     end
     if bi.Reagentbank then list[#list + 1] = bi.Reagentbank end
     return list
