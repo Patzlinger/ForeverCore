@@ -103,6 +103,37 @@ function ns.BankCheck()
     Say(string.format("Gekauft: Fächer-Liste %s, Fächer-Anzahl %s, Bank-Taschenplätze %s, Enum Bankfach %s",
         Try(C_Bank and C_Bank.FetchPurchasedBankTabData, bankType), Try(C_Bank and C_Bank.FetchNumPurchasedBankTabs, bankType),
         Try(GetNumBankSlots), tostring(Enum and Enum.BagIndex and Enum.BagIndex.CharacterBankTab_1)))
+    -- Inhalt einer Tabelle als kurzer Text (Felder = Werte)
+    local function Fields(t)
+        if type(t) ~= "table" then return tostring(t) end
+        local parts = {}
+        for k, v in pairs(t) do
+            if type(v) ~= "table" and type(v) ~= "function" then parts[#parts + 1] = tostring(k) .. "=" .. tostring(v) end
+        end
+        table.sort(parts)
+        return "{" .. table.concat(parts, ", ") .. "}"
+    end
+    if C_Bank then
+        local names = {}
+        for k in pairs(C_Bank) do names[#names + 1] = k end
+        table.sort(names)
+        Say("C_Bank: " .. table.concat(names, ", "))
+        if C_Bank.FetchPurchasedBankTabData then
+            local ok, data = pcall(C_Bank.FetchPurchasedBankTabData, bankType)
+            if ok and type(data) == "table" and data[1] then Say("Fach 1: " .. Fields(data[1])) end
+        end
+        if C_Bank.FetchNextPurchasableBankTabData then
+            local ok, data = pcall(C_Bank.FetchNextPurchasableBankTabData, bankType)
+            Say("Nächster kaufbarer Platz: " .. (ok and Fields(data) or "Fehler"))
+        end
+        for _, fn in ipairs({ "CanPurchaseBankTab", "HasMaxBankTabs", "FetchBankLockedReason", "CanUseBank" }) do
+            if C_Bank[fn] then Say(fn .. ": " .. Try(C_Bank[fn], bankType)) end
+        end
+    end
+    local bag = ns.BankIDs()[1]
+    if bag and C_Container.GetContainerNumFreeSlots then
+        Say("Freie Plätze Fach " .. bag .. ": " .. Try(C_Container.GetContainerNumFreeSlots, bag))
+    end
     local bag = ns.BankIDs()[1]
     local b = bag and buttons[bag] and buttons[bag][1]
     if not b then Say("kein Bankplatz angelegt") return end
