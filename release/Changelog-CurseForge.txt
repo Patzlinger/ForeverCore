@@ -4,6 +4,7 @@
 
 - **ForeverBars: action bar 1 switches pages in forms and stealth** (like Blizzard's main bar) – druid forms, warrior stances, rogue stealth, plus vehicles and the page arrows. On by default; turn it off for bar 1 under Visibility » "Switch page in forms".
 - ForeverBars: the stance bar now sits on the left above the pet bar by default (classes without a permanent pet: in the pet bar's place). Bars you moved yourself stay where they are.
+- **ForeverQuests: automatic quest accept and turn-in** – a small "Automatic" box docks to the right of the quest dialog and the NPC chat window with two switches (both off by default). Grey quests aren't accepted; with several rewards or a gold cost you still decide yourself. Hold Shift while talking to the NPC to skip it once.
 
 - Forever Core: turning on Blizzard's quick keybind mode now ends "Move all" automatically (frames get locked again), so you don't drag frames by accident while binding keys.
 - **ForeverQuests: quest items in the tracker can be used** – click the item icon next to the quest (Shift-click links it in chat). The icons are a bit bigger, show their cooldown and give the same feedback as the merchant window (darker when pressed, gold flash when used). In combat the buttons stay where they were when the fight started.

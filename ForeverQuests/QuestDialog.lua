@@ -133,7 +133,13 @@ local function Refresh()
     for i = #chain + 1, #panel.rows do panel.rows[i]:Hide() end
     panel:SetHeight(y + 8)
     panel:ClearAllPoints()
-    panel:SetPoint("TOPLEFT", frame, "TOPRIGHT", 4, 0)
+    -- unter dem Feld "Automatisch" (AutoQuest.lua), wenn es angedockt ist
+    local dock = ns.AutoQuestPanel and ns.AutoQuestPanel()
+    if dock then
+        panel:SetPoint("TOPLEFT", dock, "BOTTOMLEFT", 0, -4)
+    else
+        panel:SetPoint("TOPLEFT", frame, "TOPRIGHT", 4, 0)
+    end
     panel:Show()
 end
 

@@ -22,6 +22,7 @@ Tracker.lua
 GroupQuests.lua
 PartyTooltip.lua
 QuestLog.lua
+AutoQuest.lua
 QuestDialog.lua
 Options.lua
 Minimap.lua
