@@ -194,18 +194,32 @@ local function SkinTradeSlot(button)
     local icon = button.icon or button.Icon or (button:GetName() and _G[button:GetName() .. "IconTexture"])
     local keep = {}
     if icon then keep[icon] = true end
+    -- Blizzards Seltenheitsrand bleibt (wie in den ForeverBags-Taschen)
+    if button.IconBorder then keep[button.IconBorder] = true end
     ns.HideTextures(button, keep)
-    if button.IconBorder then ns.Hide(button.IconBorder) end
     for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetHighlightTexture" }) do
         if button[get] then ns.Hide(button[get](button)) end
     end
+    -- Aussehen wie ein Taschenplatz in ForeverBags: dunkle Fläche, feiner 1-px-Rand (Maus drauf = gold), Symbol
+    -- 1 px eingerückt
     if icon and icon.SetTexCoord then
         icon:ClearAllPoints()
-        icon:SetPoint("TOPLEFT", 2, -2)
-        icon:SetPoint("BOTTOMRIGHT", -2, 2)
-        icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+        icon:SetPoint("TOPLEFT", 1, -1)
+        icon:SetPoint("BOTTOMRIGHT", -1, 1)
+        icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
     end
-    slotLooks[button] = ns.Flat(button, C.button)
+    local bg = button:CreateTexture(nil, "BACKGROUND", nil, -8)
+    bg:SetAllPoints()
+    bg:SetColorTexture(0.06, 0.06, 0.08, 0.85)
+    tradeOurs[bg] = true
+    local edge = CreateFrame("Frame", nil, button, "BackdropTemplate")
+    edge:SetAllPoints()
+    edge:SetFrameLevel(button:GetFrameLevel() + 2)
+    edge:EnableMouse(false)
+    edge:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 })
+    edge:SetBackdropBorderColor(C.border[1], C.border[2], C.border[3], 1)
+    tradeOurs[edge] = true
+    slotLooks[button] = { bg = bg, edge = edge }
     slotState[button] = ""
 end
 
@@ -271,8 +285,12 @@ local function UpdateTradeRow(button, link)
     local row = button:GetParent()
     if row and not Forbidden(row) then ns.HideTextures(row) end
     if not look.keep then
+        -- bleiben sichtbar: Symbol, Blizzards Seltenheitsrand, unsere dunkle Fläche
         local icon = button.icon or button.Icon or (button:GetName() and _G[button:GetName() .. "IconTexture"])
-        look.keep = icon and { [icon] = true } or {}
+        look.keep = {}
+        for _, t in ipairs({ icon or false, button.IconBorder or false, look.slotLook and look.slotLook.bg or false }) do
+            if t then look.keep[t] = true end
+        end
     end
     ns.HideTextures(button, look.keep)
     for _, get in ipairs({ "GetHighlightTexture", "GetPushedTexture", "GetNormalTexture" }) do
@@ -281,7 +299,7 @@ local function UpdateTradeRow(button, link)
     -- Blizzards Aufleucht-Animationen (z. B. goldenes Leuchten beim Herausnehmen eines Gegenstands): Animationen
     -- setzen die Deckkraft selbst und überstimmen das Unsichtbar-Machen – darum anhalten und die Grafik verstecken
     local function Quiet(frame, depth)
-        if not frame or Forbidden(frame) then return end
+        if not frame or Forbidden(frame) or tradeOurs[frame] then return end -- (unser Rand-Rahmen bleibt)
         if frame.GetAnimationGroups then
             for _, ag in ipairs({ frame:GetAnimationGroups() }) do if ag:IsPlaying() then ag:Stop() end end
         end
@@ -302,7 +320,7 @@ local function UpdateTradeRow(button, link)
     Quiet((row and not Forbidden(row)) and row or button, 1) -- (Zeile samt Platz-Knopf und dessen Unter-Rahmen)
     local over = look.box:IsMouseOver()
     local dragging = look.player and not link and CursorHasItem and CursorHasItem() or false
-    local key = tostring(link) .. (over and "+" or "-") .. (dragging and "d" or "")
+    local key = tostring(link) .. (over and "+" or "-") .. (dragging and "d" or "") .. (button:IsMouseOver() and "s" or "")
     if slotState[button] == key then return end
     slotState[button] = key
     local quality, kind
@@ -314,11 +332,14 @@ local function UpdateTradeRow(button, link)
     if type(quality) == "number" and GetItemQualityColor then r, g, b = GetItemQualityColor(quality) end
     -- grauer Balken der Zeile; Maus drauf bzw. Gegenstand am Mauszeiger über freiem Platz: goldener Rand
     Alpha(look.boxLook, 1, 1, (over or dragging) and C.accent or C.border)
-    -- Platz: mit Gegenstand flach mit Rand in Seltenheitsfarbe, leer unsichtbar
-    if link then
-        Alpha(look.slotLook, 1, (quality and quality >= 2) and 1 or 0.6, { r * 0.8, g * 0.8, b * 0.8 })
-    else
-        Alpha(look.slotLook, 0, 0)
+    -- Platz wie in ForeverBags: grauer Rand, Maus genau auf dem Platz = gold (Seltenheit zeigt Blizzards Rand)
+    local slot = look.slotLook
+    if slot and slot.edge then
+        if button:IsMouseOver() then
+            slot.edge:SetBackdropBorderColor(C.accent[1], C.accent[2], C.accent[3], 0.9)
+        else
+            slot.edge:SetBackdropBorderColor(C.border[1], C.border[2], C.border[3], 1)
+        end
     end
     if look.name and link then look.name:SetTextColor(r, g, b) end
     look.sub:SetText(link and kind or "")

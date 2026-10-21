@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverSkin, trade window: the item slots look like the slots in ForeverBags – dark square, fine grey border (gold on mouseover), Blizzard's quality border.
+
 - ForeverFrames: "Boosted Rest" from camping no longer shows as a debuff on party and raid frames (recognized once out of combat, then hidden everywhere).
 - ForeverBags: your professions (main professions and cooking) as small icons in the bag window's title bar – click to open or close the profession window; the tooltip shows your skill.
 - ForeverSkin, profession trainers: the skill rank row above the list ("Apprentice Cook" etc.) is as tall as the other rows, looks like them and can be clicked again.
