@@ -395,7 +395,7 @@ Damit alle Einstellungsfenster gleich aussehen, gelten diese Maße. Quelle: `For
   | /ftip, /forevertooltip | ForeverTooltip |
   | /fplates, /foreverplates | ForeverPlates (`/fplates skin` = Forever-Rahmen an/aus) |
   | /falts, /foreveralts | ForeverAlts |
-  | /fskin | ForeverSkin (Prototyp) |
+  | /fskin | ForeverSkin |
 - Tastenkürzel über `Bindings.xml` + `BINDING_HEADER_…`/`BINDING_NAME_…` (Bereich "AddOns")
 
 ## 12. Code-Stil
