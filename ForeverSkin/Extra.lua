@@ -180,7 +180,11 @@ end
 -- Kastens grün (statt Blizzards grünem Leuchten). Geld-Eingabe und Knöpfe flach.
 local GREEN = { 0.30, 0.85, 0.30 }
 local SHIFT = 34 -- so viel wächst das Fenster nach oben (Platz für die Visitenkarten)
-local DOWN = 16  -- so viel wächst das Fenster nach unten (Platz für die Knöpfe)
+local DOWN = 22  -- so viel wächst das Fenster nach unten (Platz für die Knöpfe)
+-- Geschützte Blizzard-Rahmen (z. B. für Kauf-/Bezahlfunktionen) dürfen Addons nicht einmal ansehen: überspringen
+local function Forbidden(obj)
+    return obj and obj.IsForbidden and obj:IsForbidden()
+end
 local tradeOurs = setmetatable({}, { __mode = "k" }) -- eigene Texturen (Visitenkarten), bleiben sichtbar
 local slotState = setmetatable({}, { __mode = "k" }) -- [Platz] = zuletzt gesetzte Randfarbe (als Text)
 
@@ -217,8 +221,8 @@ local function TradeRow(f, row, button, nameText, column)
     box:SetFrameLevel(level)
     if row:GetFrameLevel() <= level then row:SetFrameLevel(level + 1) end
     if button:GetFrameLevel() <= level + 1 then button:SetFrameLevel(level + 2) end
-    box:SetPoint("TOP", button, "TOP", 0, 3)
-    box:SetPoint("BOTTOM", button, "BOTTOM", 0, -3)
+    box:SetPoint("TOP", button, "TOP", 0, 1) -- (je 1 px über/unter dem Symbol: Lücke zur nächsten Zeile)
+    box:SetPoint("BOTTOM", button, "BOTTOM", 0, -1)
     box:SetPoint("LEFT", column or row, "LEFT", 4, 0)
     box:SetPoint("RIGHT", column or row, "RIGHT", -4, 0)
     tradeOurs[box] = true
@@ -242,6 +246,17 @@ end
 local function UpdateTradeRow(button, link)
     local look = button and rowLooks[button]
     if not look or slotState[button] == nil then return end
+    -- Blizzards Leuchten/Hervorhebung von Zeile und Platz (setzt Blizzard beim Hineinlegen neu): immer unsichtbar
+    local row = button:GetParent()
+    if row and not Forbidden(row) then ns.HideTextures(row) end
+    if not look.keep then
+        local icon = button.icon or button.Icon or (button:GetName() and _G[button:GetName() .. "IconTexture"])
+        look.keep = icon and { [icon] = true } or {}
+    end
+    ns.HideTextures(button, look.keep)
+    for _, get in ipairs({ "GetHighlightTexture", "GetPushedTexture", "GetNormalTexture" }) do
+        if button[get] then ns.Hide(button[get](button)) end
+    end
     local quality, kind
     if link then
         local _, _, q, _, _, itemType, subType = GetItemInfo(link)
@@ -253,7 +268,7 @@ local function UpdateTradeRow(button, link)
     local key = tostring(link) .. (over and "+" or "-")
     if slotState[button] == key then return end
     slotState[button] = key
-    ns.EdgeColor(button, link and { r * 0.8, g * 0.8, b * 0.8 } or C.border, (link and quality and quality >= 2) and 1 or 0.6)
+    -- leerer Platz: zarter goldener Rand (hier kann etwas hinein)
     ns.EdgeColor(look.box, over and C.accent or C.border, 1)
     if look.name and link then look.name:SetTextColor(r, g, b) end
     look.sub:SetText(link and kind or "")
@@ -280,10 +295,6 @@ local function IsTradeArt(holder, r)
     return false
 end
 
--- Geschützte Blizzard-Rahmen (z. B. für Kauf-/Bezahlfunktionen) dürfen Addons nicht einmal ansehen: überspringen
-local function Forbidden(obj)
-    return obj and obj.IsForbidden and obj:IsForbidden()
-end
 
 local function HideTradeArt(frame, depth)
     if not frame or Forbidden(frame) or not frame.GetRegions then return end
@@ -399,7 +410,7 @@ local function GrowUp(f)
         foot:SetColorTexture(C.header[1], C.header[2], C.header[3], 1)
         foot:SetPoint("BOTTOMLEFT", look.fill, "BOTTOMLEFT", 1, 1)
         foot:SetPoint("BOTTOMRIGHT", look.fill, "BOTTOMRIGHT", -1, 1)
-        foot:SetHeight(DOWN + 22)
+        foot:SetHeight(DOWN + 14) -- (Linie 14 px über dem alten Fensterrand: Luft zu den Kästen darüber)
         local footLine = f:CreateTexture(nil, "BORDER", nil, -6)
         footLine:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 0.35)
         footLine:SetPoint("BOTTOMLEFT", foot, "TOPLEFT")
@@ -411,7 +422,7 @@ local function GrowUp(f)
     local trade, cancel = G("TradeFrameTradeButton"), G("TradeFrameCancelButton")
     if cancel and not Forbidden(cancel) then
         cancel:ClearAllPoints()
-        cancel:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -10, -DOWN + 8)
+        cancel:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -10, -DOWN + 6)
         cancel:SetSize(104, 24)
         if trade and not Forbidden(trade) then
             trade:ClearAllPoints()
