@@ -135,7 +135,14 @@ local function SkinDetailsPanel(panel)
         if depth >= 4 then return end
         for _, child in ipairs({ frame:GetChildren() }) do
             local isList = child.ScrollTarget or child.ForEachFrame or child:IsObjectType("ScrollFrame")
-            if not Forbidden(child) and not isList and not child:IsObjectType("Button") then Strip(child, depth + 1) end
+            if not Forbidden(child) and not child:IsObjectType("Button") then
+                if isList then
+                    -- Laufliste: nur ihre eigene Hintergrund-Grafik weg, die Einträge (Unter-Rahmen) bleiben
+                    ns.HideTextures(child)
+                else
+                    Strip(child, depth + 1)
+                end
+            end
         end
     end
     Strip(panel, 1)
@@ -168,8 +175,8 @@ local function PlacePanel(f, panel)
         b:SetAllPoints(panel)
         b:SetFrameStrata(panel:GetFrameStrata())
         b:SetFrameLevel(math.max(0, panel:GetFrameLevel() - 1))
-        -- 20 % durchsichtig, Rand 3 px statt 1 (auf Wunsch)
-        local look = ns.Flat(b, { C.background[1], C.background[2], C.background[3], 0.8 })
+        -- deutlich durchsichtig (60 % Deckkraft), Rand 3 px statt 1 (auf Wunsch)
+        local look = ns.Flat(b, { C.background[1], C.background[2], C.background[3], 0.6 })
         for i, e in ipairs(look and look.edges or {}) do
             local horizontal = i <= 2 -- (oben, unten; 3 und 4 sind links, rechts)
             if PixelUtil and PixelUtil.SetHeight then
