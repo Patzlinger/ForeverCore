@@ -10,6 +10,7 @@ ns.defaults = {
     replaceBlizzard = true, -- Blizzards Taschenfenster ersetzen (B, Rucksack-Knopf, Händler usw. öffnen dann dieses)
     -- (kein Sperren: das Taschenfenster lässt sich an der Titelleiste immer verschieben – wie Blizzards Taschen)
     showBagBar = false,     -- Leiste mit den angelegten Taschen im Fenster (Knopf in der Werkzeugzeile)
+    profCollapsed = false,  -- Berufsleiste rechts am Fenster eingeklappt (Knopf in der Titelleiste)
     separateBags = false,   -- jede Tasche in eigener Reihe, dezent getrennt (feine Linie)
     pos = nil,            -- { x, y }: untere rechte Ecke ab der unteren rechten Bildschirmecke; nil = Standard
     columns = 10,           -- Taschenplätze pro Reihe

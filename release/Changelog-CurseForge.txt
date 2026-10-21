@@ -11,7 +11,7 @@
 
 - ForeverSkin, trade window: the item slots look like the slots in ForeverBags – dark square, fine grey border (gold on mouseover), Blizzard's quality border.
 
-- ForeverBags: a slim profession strip attached to the right edge of the bag window (same frame look) opens your profession windows directly (one per profession, plus Poisons/Beast Training). A button in the title bar, next to the gear, folds it in and out. They hide during combat and come back right after.
+- ForeverBags: a slim profession strip attached to the right edge of the bag window (same frame look) opens your profession windows directly (one per profession, plus Poisons/Beast Training). A button in the title bar, next to the gear (same professions icon as in the Forever micro menu), folds it in and out – shown by default. They hide during combat and come back right after.
 - ForeverFrames: "Boosted Rest" from camping no longer shows as a debuff on party and raid frames (recognized once out of combat, then hidden everywhere).
 - ForeverSkin, profession trainers: the skill rank row above the list ("Apprentice Cook" etc.) is as tall as the other rows, looks like them and can be clicked again.
 

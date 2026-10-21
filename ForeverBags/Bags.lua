@@ -1417,15 +1417,25 @@ do
         for i = #list + 1, #buttons do buttons[i]:Hide() end
         holder:SetSize(SIZE + 2 * INSET, math.max(1, #list * (SIZE + GAP) - GAP) + 2 * INSET)
         holder.count = #list
-        if list[1] then tab.icon:SetTexture(list[1].icon) end -- Schalter zeigt das Symbol des ersten Berufs
         dirty = false
+    end
+
+    -- Farbe des Schalters: weiß beim Darüberfahren, gold = Leiste offen, grau = eingeklappt
+    local function TabColor()
+        if tab.hovered then
+            tab.icon:SetVertexColor(1, 1, 1)
+        elseif ns.db.profCollapsed then
+            tab.icon:SetVertexColor(0.5, 0.5, 0.5)
+        else
+            tab.icon:SetVertexColor(C.accent[1], C.accent[2], C.accent[3])
+        end
     end
 
     local function Update()
         if not (holder and tab) then return end
         local open = window and window:IsShown()
         tab:SetShown((holder.count or 0) > 0)
-        tab.icon:SetDesaturated(ns.db.profCollapsed and true or false) -- eingeklappt: grau
+        TabColor()
         if InCombatLockdown() then return end -- im Kampf nichts an geschützten Rahmen ändern
         if dirty then Rebuild() end
         Anchor()
@@ -1435,19 +1445,36 @@ do
 
     local function Setup()
         if holder or not window or InCombatLockdown() then return end
+        -- Leiste ist standardmäßig ausgeklappt: einmalig auch bei allen, die sie früher eingeklappt hatten
+        if not ns.db.profOpenDefault then
+            ns.db.profCollapsed = false
+            ns.db.profOpenDefault = true
+        end
         holder = CreateFrame("Frame", "ForeverBagsProfessions", UIParent, "BackdropTemplate")
         holder:SetFrameStrata(window:GetFrameStrata())
         UI.SetFlat(holder, C.background) -- wie das Fenster selbst
         holder:Hide()
-        -- Schalter in der Titelleiste links neben dem Zahnrad (gehört zum Fenster, nicht geschützt)
-        tab = HeaderButton("Interface\\Icons\\INV_Misc_Book_09", "", function()
+        -- Schalter in der Titelleiste links neben dem Zahnrad (gehört zum Fenster, nicht geschützt). Symbol wie
+        -- „Berufe“ im Forever-Mikromenü (ForeverBars): gold, beim Darüberfahren weiß, eingeklappt grau.
+        tab = HeaderButton("Interface\\AddOns\\ForeverBags\\Media\\Professions", "", function()
             ns.db.profCollapsed = not ns.db.profCollapsed
             Update()
         end)
+        tab.icon:SetTexCoord(0, 1, 0, 1)
+        tab.icon:ClearAllPoints()
+        tab.icon:SetPoint("CENTER")
+        tab.icon:SetSize(14, 14)
+        tab.icon:SetAlpha(1)
         tab:SetPoint("RIGHT", window.gear, "LEFT", -6, 0)
         tab:SetScript("OnEnter", function(self)
-            self.icon:SetAlpha(1)
+            self.hovered = true
+            TabColor()
             SimpleTip(self, ns.db.profCollapsed and L("PROF_SHOW") or L("PROF_HIDE"))
+        end)
+        tab:SetScript("OnLeave", function(self)
+            self.hovered = nil
+            TabColor()
+            HideTip()
         end)
         window:HookScript("OnShow", Update)
         window:HookScript("OnHide", Update)
