@@ -1467,7 +1467,7 @@ do
         Anchor()
         holder:SetShown(open and not ns.db.profCollapsed and (holder.count or 0) > 0 and true or false)
     end
-    ns.UpdateProfessionButtons = Update
+    ns.UpdateProfessionEdge = Update -- (ns.UpdateProfessionButtons = Symbole in der Titelleiste, oben)
 
     local function Setup()
         if holder or not window or InCombatLockdown() then return end
