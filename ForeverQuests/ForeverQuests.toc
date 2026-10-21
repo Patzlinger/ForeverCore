@@ -23,6 +23,7 @@ Tracker.lua
 GroupQuests.lua
 PartyTooltip.lua
 ZoneLevels.lua
+DungeonMaps.lua
 QuestLog.lua
 AutoQuest.lua
 QuestDialog.lua
