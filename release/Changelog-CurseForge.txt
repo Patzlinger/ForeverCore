@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- ForeverMinimap: Blizzard's buff and debuff bars move a little to the left by default, so they no longer reach into the bigger minimap and its button bar (only while you haven't moved them in Edit Mode; option "Move Blizzard's buffs next to the minimap" in /fmm » Comfort).
 - **ForeverBars: action bar 1 switches pages in forms and stealth** (like Blizzard's main bar) – druid forms, warrior stances, rogue stealth, plus vehicles and the page arrows. On by default; turn it off for bar 1 under Visibility » "Switch page in forms".
 - ForeverBars: the stance bar now sits on the left above the pet bar by default (classes without a permanent pet: in the pet bar's place). Bars you moved yourself stay where they are.
 - **ForeverQuests: automatic quest accept and turn-in** – a small "Automatic" box docks to the right of the quest dialog and the NPC chat window with two switches (both off by default). Grey quests aren't accepted; with several rewards or a gold cost you still decide yourself. Hold Shift while talking to the NPC to skip it once.

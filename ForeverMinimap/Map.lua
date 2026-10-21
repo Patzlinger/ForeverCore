@@ -1387,3 +1387,82 @@ function ns.OpenEditMode()
     end
     if _G.EditModeManagerFrame and ShowUIPanel then ShowUIPanel(_G.EditModeManagerFrame) end
 end
+
+---------------------------------------------------------------------------
+-- Blizzards Buff- und Debuff-Leiste neben die Minimap: Blizzards Standardplatz (oben rechts, 255 bzw. 270 px vom
+-- Rand) liegt bei der größeren ForeverMinimap samt Knopfleiste unter der Karte. Solange die Leisten im
+-- Bearbeitungsmodus nicht verschoben wurden (IsInDefaultPosition), rücken sie so weit nach links, dass sie 8 px vor
+-- der Minimap enden – nur nach links, nie weiter nach rechts als Blizzard. Einstellung "auraBesideMap" (Komfort).
+-- Nur SetPoint an Blizzards Rahmen (keine eigenen Skripte); setzt Blizzard sie neu, kommen sie im nächsten Bild wieder.
+---------------------------------------------------------------------------
+local AURA_FRAMES = { { name = "BuffFrame", x = -255, y = -10 }, { name = "DebuffFrame", x = -270, y = -155 } }
+local AURA_GAP = 8
+
+local function MapLeft()
+    local left
+    for _, f in ipairs({ Minimap, _G.ForeverMinimapStrip, _G.ForeverMinimapBar }) do
+        if f and f:IsVisible() and f:GetLeft() then
+            local l = f:GetLeft() * f:GetEffectiveScale() / UIParent:GetEffectiveScale()
+            if not left or l < left then left = l end
+        end
+    end
+    return left
+end
+
+local function IsDefault(frame, info)
+    if frame.IsInDefaultPosition then
+        local ok, yes = pcall(frame.IsInDefaultPosition, frame)
+        if ok then return yes end
+    end
+    return true
+end
+
+local function PlaceAura(info)
+    local frame = _G[info.name]
+    local d = ns.GetDB()
+    if not frame or not d.auraBesideMap or not IsDefault(frame, info) then return end
+    if InCombatLockdown() and frame:IsProtected() then
+        UI.AfterCombat("ForeverMinimap:aura" .. info.name, function() PlaceAura(info) end, "ForeverMinimap")
+        return
+    end
+    local left = MapLeft()
+    if not left then return end
+    -- rechte Kante der Leiste: 8 px vor der Karte; Blizzards Versatz zwischen Buffs und Debuffs (15 px) bleibt
+    local want = math.min(info.x, left - UIParent:GetRight() - AURA_GAP + (info.x + 255))
+    frame.fcmmPlacing = true
+    frame:ClearAllPoints()
+    frame:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", want, info.y)
+    frame.fcmmPlacing = nil
+end
+
+local function PlaceAuras()
+    for _, info in ipairs(AURA_FRAMES) do pcall(PlaceAura, info) end
+end
+
+do
+    local hooked = {}
+    local function Hook()
+        for _, info in ipairs(AURA_FRAMES) do
+            local frame = _G[info.name]
+            if frame and not hooked[frame] then
+                hooked[frame] = true
+                hooksecurefunc(frame, "SetPoint", function(self)
+                    if self.fcmmPlacing or self.fcmmPending or not ns.GetDB().auraBesideMap then return end
+                    self.fcmmPending = true
+                    C_Timer.After(0, function()
+                        self.fcmmPending = nil
+                        pcall(PlaceAura, info)
+                    end)
+                end)
+            end
+        end
+    end
+    local f = CreateFrame("Frame")
+    f:RegisterEvent("PLAYER_ENTERING_WORLD")
+    pcall(f.RegisterEvent, f, "EDIT_MODE_LAYOUTS_UPDATED")
+    f:SetScript("OnEvent", function()
+        Hook()
+        C_Timer.After(0.5, PlaceAuras)
+    end)
+    if UI.On then UI.On("ForeverMinimap.Layout", function() C_Timer.After(0, PlaceAuras) end) end
+end

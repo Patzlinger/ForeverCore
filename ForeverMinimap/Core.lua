@@ -47,6 +47,7 @@ ns.DEFAULTS = {
     cityZoom = true,         -- in Staedten und Gasthaeusern (Ruhegebiet) naeher heran
     cityZoomLevel = 2,       -- Zoomstufe dort (0 = ganz weit, 5 = ganz nah)
     pingNames = true,        -- beim Pingen kurz zeigen, wer gepingt hat
+    auraBesideMap = true,    -- Blizzards Buff-/Debuff-Leiste neben die Minimap (solange im Bearbeitungsmodus nicht verschoben)
     minimapAngle = 190,
 }
 

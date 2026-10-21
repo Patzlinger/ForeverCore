@@ -22,7 +22,7 @@ local function Build()
     local clockH = 44 + CS + DS + 2 * CS + 4    -- Uhr und Koordinaten
     local leftH, rightH = topH + M.pad + barH, btnH + M.pad + clockH
     local colH = math.max(leftH, rightH)
-    local qolH = 44 + 3 * CS + 8                -- Komfort (breit, zwei Spalten innen)
+    local qolH = 44 + 4 * CS + 8                -- Komfort (breit, zwei Spalten innen)
     local H = -M.panelTop + colH + M.pad + qolH + M.pad + M.footerHeight + M.pad
     -- Seite im zentralen Einstellungsfenster von Forever Core (verhält sich wie das bisherige eigene Fenster)
     options = UI.SettingsPanel("ForeverMinimapOptions", T("Einstellungen", "Settings"), W, H,
@@ -110,6 +110,7 @@ local function Build()
     UI.MenuCheck(qol, x0, y0, T("Rechtsklick auf die Karte: Verfolgung", "Right-click on the map: tracking"), Get("rightClickTracking"), Set("rightClickTracking"))
     UI.MenuCheck(qol, x0, y0 - CS, T("Nach 10 Sekunden zurück auf die Grundstufe", "Back to the base zoom after 10 seconds"), Get("autoZoom"), Set("autoZoom"))
     UI.MenuCheck(qol, x0, y0 - 2 * CS, T("Beim Pingen zeigen, wer gepingt hat", "Show who pinged"), Get("pingNames"), Set("pingNames"))
+    UI.MenuCheck(qol, x0, y0 - 3 * CS, T("Blizzards Buffs neben die Minimap rücken", "Move Blizzard's buffs next to the minimap"), Get("auraBesideMap"), Set("auraBesideMap"))
     local x1 = COL + M.pad + x0
     UI.MenuCheck(qol, x1, y0, T("In Städten und Gasthäusern näher heran", "Closer zoom in cities and inns"), Get("cityZoom"), Set("cityZoom"))
     UI.MenuSlider(qol, x1, y0 - CS - 4, T("Zoomstufe dort (0–5)", "Zoom level there (0–5)"), 0, 5, 1, Get("cityZoomLevel"), Set("cityZoomLevel"))
