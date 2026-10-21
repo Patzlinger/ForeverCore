@@ -812,6 +812,14 @@ end
 local function StartDrag()
     if InCombatLockdown() then return end
     window.fbagsMoving = true
+    -- Vor dem Ziehen an der linken oberen Ecke festmachen, genau an der jetzigen Stelle: das Fenster hängt sonst an
+    -- der unteren rechten Ecke (gespeicherte Lage) bzw. an Bank/Händler (angedockt) – ändert sich beim Ziehen die
+    -- Höhe (Taschen aktualisieren sich), wuchs es nach oben weg und sprang unter der Maus davon
+    local left, top = window:GetLeft(), window:GetTop()
+    if left and top then
+        window:ClearAllPoints()
+        window:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", left, top)
+    end
     window:StartMoving()
 end
 
@@ -1146,6 +1154,13 @@ function ns.CreateBagWindow(name, title, posKey, defaultPos)
     w.header:SetScript("OnDragStart", function()
         if InCombatLockdown() then return end
         w.fbagsMoving = true
+        -- an der linken oberen Ecke festmachen (Standardlage "Mitte" hängt an der Mitte – Höhenänderung beim Ziehen
+        -- ließ das Fenster sonst unter der Maus wegrutschen)
+        local left, top = w:GetLeft(), w:GetTop()
+        if left and top then
+            w:ClearAllPoints()
+            w:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", left, top)
+        end
         w:StartMoving()
     end)
     w.header:SetScript("OnDragStop", function()
