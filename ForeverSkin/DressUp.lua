@@ -139,7 +139,8 @@ local function SkinDetailsPanel(panel)
         end
     end
     Strip(panel, 1)
-    ns.Flat(panel, C.background)
+    -- (keine eigene Fläche auf der Liste selbst – die liegt als eigener Rahmen dahinter, siehe PlacePanel; sonst
+    -- überdeckte sie dessen Durchsichtigkeit)
     if panel.ScrollBar then ns.SkinScrollBar(panel.ScrollBar) end
 end
 
@@ -167,16 +168,16 @@ local function PlacePanel(f, panel)
         b:SetAllPoints(panel)
         b:SetFrameStrata(panel:GetFrameStrata())
         b:SetFrameLevel(math.max(0, panel:GetFrameLevel() - 1))
-        -- 20 % durchsichtig, Rand 2 px statt 1 (auf Wunsch)
+        -- 20 % durchsichtig, Rand 3 px statt 1 (auf Wunsch)
         local look = ns.Flat(b, { C.background[1], C.background[2], C.background[3], 0.8 })
         for i, e in ipairs(look and look.edges or {}) do
             local horizontal = i <= 2 -- (oben, unten; 3 und 4 sind links, rechts)
             if PixelUtil and PixelUtil.SetHeight then
-                if horizontal then PixelUtil.SetHeight(e, 2, 2) else PixelUtil.SetWidth(e, 2, 2) end
+                if horizontal then PixelUtil.SetHeight(e, 3, 3) else PixelUtil.SetWidth(e, 3, 3) end
             elseif horizontal then
-                e:SetHeight(2)
+                e:SetHeight(3)
             else
-                e:SetWidth(2)
+                e:SetWidth(3)
             end
         end
         panelBack[panel] = b
