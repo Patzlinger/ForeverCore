@@ -512,7 +512,8 @@ local function GrowUp(f)
         for _, pt in ipairs(points) do close:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5]) end
     end
     -- die neue Fläche fängt die Maus ab (sonst klickt man durch) und lässt das Fenster daran ziehen
-    local grip = CreateFrame("Frame", nil, f)
+    -- (mit Namen: ForeverBags hängt die Taschen an dessen Oberkante)
+    local grip = CreateFrame("Frame", "ForeverSkinTradeTop", f)
     grip:SetPoint("BOTTOMLEFT", f, "TOPLEFT", 0, 0)
     grip:SetPoint("BOTTOMRIGHT", f, "TOPRIGHT", 0, 0)
     grip:SetHeight(SHIFT)

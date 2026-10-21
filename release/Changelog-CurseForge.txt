@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverBags: when a trade starts, the bags open and dock to the right of the trade window (top edges aligned, also with the ForeverSkin look); they close again afterwards if they weren't open before. Drag them away and they stay put until the trade ends.
+
 - ForeverChat: the main chat now sits right in the bottom left corner by default (only while it is on Blizzard's default spot in Edit Mode; turn it off with "Bottom left corner" in /fchat » Position and lock).
 - ForeverSkin: confirmation dialogs that only appear later (e.g. "Are you sure you want to complete this trade?") are restyled too; in the trade window the item slot has the same small gap to its row on all sides.
 

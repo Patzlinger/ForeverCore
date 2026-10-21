@@ -754,7 +754,8 @@ local function PlaceOnOpen()
     if not window or window.fbagsMoving or not window:IsShown() then return end
     local bankOpen = _G.ForeverBagsBank and _G.ForeverBagsBank:IsShown()
     local merchantOpen = _G.MerchantFrame and _G.MerchantFrame:IsShown()
-    if not (bankOpen or merchantOpen) then
+    local tradeOpen = _G.TradeFrame and _G.TradeFrame:IsShown()
+    if not (bankOpen or merchantOpen or tradeOpen) then
         window.fbagsDetached = nil
     elseif window.fbagsDetached then
         return
@@ -794,6 +795,14 @@ local function PlaceOnOpen()
         end
         return
     end
+    -- Handel: rechts neben das Handelsfenster, oben bündig (mit ForeverSkin ist dessen Titelleiste nach oben
+    -- erweitert – dann an deren Oberkante, ForeverSkinTradeTop)
+    local trade = _G.TradeFrame
+    if trade and trade:IsShown() then
+        local top = _G.ForeverSkinTradeTop
+        Dock((top and top:IsShown()) and top or trade, "TOPRIGHT", 4, 0)
+        return
+    end
     if ns.db.openAtCursor == false then
         RestorePosition()
         return
@@ -828,7 +837,8 @@ local function StopDrag()
     window.fbagsMoving = nil
     window:StopMovingOrSizing()
     -- bei Bank/Händler selbst gezogen: abgedockt, bis die wieder zu sind
-    if (_G.ForeverBagsBank and _G.ForeverBagsBank:IsShown()) or (_G.MerchantFrame and _G.MerchantFrame:IsShown()) then
+    if (_G.ForeverBagsBank and _G.ForeverBagsBank:IsShown()) or (_G.MerchantFrame and _G.MerchantFrame:IsShown())
+        or (_G.TradeFrame and _G.TradeFrame:IsShown()) then
         window.fbagsDetached = true
     end
     SavePosition()
@@ -1340,6 +1350,23 @@ function ns.SetupBags()
         pcall(prof.RegisterEvent, prof, event)
     end
     prof:SetScript("OnEvent", function() pcall(ns.UpdateProfessionButtons) end)
+    -- Handel: Taschen öffnen und rechts ans Handelsfenster hängen; beim Schließen des Handels wieder zu, wenn wir
+    -- sie geöffnet hatten
+    local trade = CreateFrame("Frame")
+    local openedForTrade = false
+    for _, event in ipairs({ "TRADE_SHOW", "TRADE_CLOSED" }) do pcall(trade.RegisterEvent, trade, event) end
+    trade:SetScript("OnEvent", function(_, event)
+        if event == "TRADE_SHOW" then
+            openedForTrade = not window:IsShown()
+            window.fbagsDetached = nil
+            ns.OpenBags()
+            -- (das Handelsfenster ist im selben Moment erst im Aufbau: kurz danach nochmals anlegen)
+            for _, delay in ipairs({ 0, 0.1, 0.3 }) do C_Timer.After(delay, function() pcall(PlaceOnOpen) end) end
+        else
+            if openedForTrade then ns.CloseBags() end
+            openedForTrade = false
+        end
+    end)
     window:HookScript("OnShow", function() pcall(ns.UpdateProfessionButtons) end)
 end
 
