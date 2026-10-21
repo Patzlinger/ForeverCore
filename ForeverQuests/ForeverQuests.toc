@@ -6,7 +6,7 @@
 ## Category: Forever Core
 ## Author: flowfy
 ## X-License: MIT
-## Version: 0.44b
+## Version: 0.47b
 ## X-Curse-Project-ID: 1743753
 ## Dependencies: ForeverCore
 ## OptionalDeps: Questie

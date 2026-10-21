@@ -1,7 +1,7 @@
 Forever Core – für World of Warcraft: Forever (Interface 16001)
 ===============================================================
 Less clutter. More control. Just the essentials.
-Version 0.44b (Beta) · by Patzlinger & flowfy · MIT License
+Version 0.47b (Beta) · by Patzlinger & flowfy · MIT License
 
 DEUTSCH
 -------

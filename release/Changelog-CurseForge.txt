@@ -2,9 +2,10 @@
 
 ## Unreleased
 
-## 0.44b update 2 – October 21, 2026
+## 0.47b – October 21, 2026
 
 ### New
+- **ForeverSkin – Blizzard's windows in the Forever look (new, beta):** NPC dialogs and quest dialogs with a portrait card, a completely new merchant window (right-click to buy, Shift + right-click for an amount window with "Max", hide unusable items, a gold flash when you buy), trainers, the macro window and icon picker, the loot window, the flight map and Blizzard's options. Only the look changes – Blizzard's windows and buttons work exactly as before. Settings: /fskin
 - **ForeverCast: cast bars for target and focus** (off by default – turn them on in /fcast): right below the ForeverUnits target and focus frames (auras move down to make room) or placed freely. Spells that can't be interrupted are grey with a shield, and interrupted casts briefly show who interrupted them.
 - **ForeverCast: new Forever look** – flat and dark with a fine single-colored border, muted colors, texture and font like ForeverFrames. The previous look is still there as "Clean" (/fcast » Look).
 - ForeverCast: breath and fatigue bars in the same look, right above your cast bar (instead of Blizzard's bars).

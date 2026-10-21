@@ -4,7 +4,7 @@
 ## Category: Forever Core
 ## Notes: Overview of all your characters: level, rested XP, gold, professions, location and open dungeon quests
 ## Notes-deDE: Übersicht aller deiner Charaktere: Stufe, Erholung, Gold, Berufe, Ort und offene Dungeonquests
-## Version: 0.44b
+## Version: 0.47b
 ## X-Curse-Project-ID: 1743753
 ## Author: flowfy
 ## X-License: MIT

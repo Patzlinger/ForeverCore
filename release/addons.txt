@@ -17,3 +17,4 @@ ForeverChat
 ForeverPlates
 ForeverAlts
 ForeverTooltip
+ForeverSkin

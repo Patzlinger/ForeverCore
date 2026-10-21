@@ -32,7 +32,7 @@ eintragen; behobene mit Datum und Ursache nach „Erledigt“ verschieben.
 | ForeverTooltip | Patzlinger | im Release (Beta, seit 2026-10-20) |
 | ForeverPlates | Patzlinger | im Release (Beta, seit 2026-10-20) |
 | ForeverAlts | flowfy | im Release (Beta, seit 2026-10-20) |
-| ForeverSkin | flowfy | Prototyp (seit 2026-10-20, nicht im Release): Blizzard-Fenster im Forever-Stil – erst NPC-Gespräch, Quest-Dialog, Händler; Blizzards Grafiken nur unsichtbar (SetAlpha), eigene Texturen darunter |
+| ForeverSkin | flowfy | im Release (Beta, seit 0.47b, 2026-10-21) |
 | `tools/`, `release/` | gemeinsam | – |
 
 - **Keine Absprachen nötig: jeder arbeitet frei an allen Addons** (Zusammenarbeit auf Augenhöhe). Die Spalte

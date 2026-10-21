@@ -5,7 +5,7 @@
 ## IconTexture: Interface\AddOns\ForeverChat\Media\ForeverCore
 ## Category: Forever Core
 ## Author: Patzlinger
-## Version: 0.44b
+## Version: 0.47b
 ## X-License: MIT
 ## X-Curse-Project-ID: 1743753
 ## Dependencies: ForeverCore

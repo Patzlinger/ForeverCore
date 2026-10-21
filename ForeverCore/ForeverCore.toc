@@ -4,7 +4,7 @@
 ## Category: Forever Core
 ## Notes: Base of the Forever Core suite: hub window (/forever) to turn single addons on and off and open their settings
 ## Notes-deDE: Grundlage von Forever Core: Hub-Fenster (/forever), um einzelne Addons ein- und auszuschalten und ihre Einstellungen zu öffnen
-## Version: 0.44b
+## Version: 0.47b
 ## X-Curse-Project-ID: 1743753
 ## Author: Patzlinger
 ## X-License: MIT

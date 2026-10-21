@@ -1,12 +1,13 @@
 ## Interface: 16001
-## Title: ForeverSkin |cff8a8a8a(Prototyp)|r
+## Title: ForeverSkin |cff8a8a8a(Beta)|r
 ## IconTexture: Interface\AddOns\ForeverCore\Media\ForeverCore
 ## Category: Forever Core
-## Notes: Blizzard windows in the Forever Core look (prototype: NPC dialog, quest dialog, vendor)
-## Notes-deDE: Blizzard-Fenster im Forever-Core-Stil (Prototyp: NPC-Gespräch, Quest-Dialog, Händler)
-## Version: 0.44b
+## Notes: Blizzard windows in the Forever Core look: NPC and quest dialogs, merchant, trainer, macros, loot, flight map, options
+## Notes-deDE: Blizzard-Fenster im Forever-Core-Stil: NPC-Gespräch, Quest-Dialog, Händler, Lehrer, Makros, Beute, Flugkarte, Optionen
+## Version: 0.47b
 ## Author: flowfy
 ## X-License: MIT
+## X-Curse-Project-ID: 1743753
 ## Dependencies: ForeverCore
 ## OptionalDeps: Questie, ForeverSpellbook
 ## Group: ForeverCore

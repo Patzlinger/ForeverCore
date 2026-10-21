@@ -75,6 +75,11 @@ Every part is its own addon. Use all of them, or only the ones you need.
 - The Forever look, with the border in item quality or class color
 - Item level, IDs, the unit's target and a movable anchor
 
+**ForeverSkin – Blizzard's windows in the Forever look** (/fskin) *(new)*
+- NPC and quest dialogs, merchant, trainers, macros, loot, flight map and Blizzard's options – flat, dark and tidy
+- A new merchant window: right-click to buy, Shift + right-click for an amount, hide items you can't use
+- Only the look changes: Blizzard's windows and buttons work exactly as before
+
 **ForeverSpellbook – compact spellbook** (/fsb)
 - All your spells with a search
 - Finds lower spell ranks on your bars and fixes them with one click
