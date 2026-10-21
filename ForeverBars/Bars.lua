@@ -99,7 +99,6 @@ local BAR_GAP = 1.5    -- Abstand zwischen aneinanderliegenden Leisten (wie "Abs
 local SIDE_GAP = 24    -- Abstand von Berufe-/Verpflegungsleiste zu den Aktionsleisten (Platz für den Einklapp-Pfeil)
 local FRAME_SPACE = 4  -- Rand des Rahmens um eine Leiste (siehe UpdateBarFrame)
 local PET_GAP = 8     -- kleiner Abstand der Begleiter-/Haltungsleiste zu den Aktionsleisten (Flächen berühren sich nicht)
-local PET_CLASSES = { HUNTER = true, WARLOCK = true, DEATHKNIGHT = true } -- Klassen mit dauerhaftem Begleiter
 
 -- Tatsächliche Größe einer Leiste. Aktionsleisten: "100 %" im Menü sind 105 % der Blizzard-Knopfgröße
 -- (die Knöpfe sollten größer werden, ohne dass im Menü ein krummer Wert steht)
@@ -164,12 +163,9 @@ local function DefaultPosition(key)
     local smallBottom = stackTop + PET_GAP                          -- Unterkante der Begleiter-/Haltungsreihe
     local topCfg = bars[topKey] or bars.bar1
     local topWidth = (12 * ACTION_SIZE + 11 * ns.ButtonGap(topCfg)) * Scale(topKey)
-    local topLeft = width / 2 - topWidth / 2
-    -- Haltungsleiste links über der Begleiterleiste; bei Klassen ohne Begleiter (Krieger, Schurke, Druide …) ist die
-    -- Begleiterleiste meist ausgeblendet, dann rückt die Haltungsleiste an ihren Platz
-    local _, playerClass = UnitClass("player")
-    local stanceBottom = PET_CLASSES[playerClass] and (smallBottom + smallRow + PET_GAP) or smallBottom
-    local aboveSmall = stanceBottom + smallRow + PET_GAP            -- darüber: Fahrzeug verlassen
+    local topLeft, topRight = width / 2 - topWidth / 2, width / 2 + topWidth / 2
+    -- Haltungsleiste in derselben Reihe rechts: rechtsbündig mit der obersten Aktionsleiste
+    local aboveSmall = smallBottom + smallRow + PET_GAP             -- darüber: Fahrzeug verlassen
     local microHeight = HolderHeight("micro", 40)
     -- Mikromenü unter der Minimap angedockt: die Taschen sitzen allein unten rechts in der Ecke
     if bars.micro.dockMinimap and C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("ForeverMinimap") then
@@ -181,7 +177,7 @@ local function DefaultPosition(key)
         bar4 = { width - 30, height / 2 }, bar5 = { width - 30 - ACTION_SIZE - 8, height / 2 },
         pet = { topLeft, smallBottom },     -- BOTTOMLEFT
         totem = { topLeft, smallBottom },   -- BOTTOMLEFT, beim Schamanen statt der Begleiterleiste
-        stance = { topLeft, stanceBottom }, -- BOTTOMLEFT, über der Begleiterleiste
+        stance = { topRight, smallBottom }, -- BOTTOMRIGHT, rechtsbündig über der obersten Aktionsleiste
         prof = { left - SIDE_GAP - FRAME_SPACE, statusBase + FRAME_SPACE }, -- BOTTOMRIGHT (Rahmen eingerechnet)
         food = { right + SIDE_GAP + FRAME_SPACE, statusBase + FRAME_SPACE }, -- BOTTOMLEFT, gespiegelt zur Berufeleiste
         xp = { width / 2, statusCenter.xp or (EDGE + 9) }, rep = { width / 2, statusCenter.rep or (EDGE + 30) },

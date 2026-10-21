@@ -105,7 +105,7 @@ ns.defaults = {
         xp = BarDefaults(true), rep = BarDefaults(true),
     },
     -- (Profile verwaltet seit 0.41b ForeverCore – je Charakter, siehe RegisterSettings am Ende dieser Datei)
-    layoutVersion = 27,-- Stand der Standard-Anordnung (siehe MigrateLayout)
+    layoutVersion = 28,-- Stand der Standard-Anordnung (siehe MigrateLayout)
     skin = "FOREVER",        -- Aussehen der Knöpfe (ns.SKINS in Bars.lua)
     hoverAlpha = 15,         -- Stärke des Hover-Leuchtens über den Knöpfen (%)
     procGlow = "FOREVER",    -- Leuchten bei Procs: "FOREVER" (goldener Rahmen), "BLIZZARD", "OFF"
@@ -139,7 +139,8 @@ ns.defaults.bars.stance.buttons = 10 -- Haltungsleiste zeigt immer so viele Knö
 ns.defaults.bars.pet.scale = 66
 ns.defaults.bars.pet.point = "BOTTOMLEFT"
 ns.defaults.bars.stance.scale = 66
-ns.defaults.bars.stance.point = "BOTTOMLEFT" -- links über der Begleiterleiste, linksbündig wie diese
+ns.defaults.bars.stance.point = "BOTTOMRIGHT" -- rechtsbündig über der obersten Aktionsleiste
+ns.defaults.bars.stance.growX = "LEFT"        -- erster Knopf rechts, damit die Leiste rechtsbündig wächst
 ns.defaults.bars.prof.point = "BOTTOMRIGHT"
 ns.defaults.bars.prof.frame = true
 ns.defaults.bars.prof.scale = 84
@@ -246,7 +247,8 @@ ns.FillDefaults = FillDefaults
 --  25 (0.44b+): Aktionsleisten standardmäßig 105 % (so lang wie die Erfahrungsleiste) – Positionen neu
 --  26 (0.44b+): Erfahrung/Ruf direkt unter Aktionsleiste 1, dafür mehr Luft zum Bildschirmrand – Positionen neu
 --  27 (0.48b+): Haltungsleiste links über der Begleiterleiste (statt rechts), "Fahrzeug verlassen" darüber – neu
-local LAYOUT_VERSION = 27
+--  28 (0.48b+): Haltungsleiste wieder rechtsbündig über der obersten Aktionsleiste (wie vor 27) – neu
+local LAYOUT_VERSION = 28
 -- Standardgrößen vor 16 (nur Leisten, die noch darauf stehen, wachsen mit)
 local OLD_SCALES = { pet = 56, stance = 56, prof = 80, food = 80, bags = 76, queue = 50 }
 local STANDARD_LAYOUT_BARS = { "bar1", "bar2", "bar3", "bar6", "bar7", "bar8", "pet", "stance", "prof", "food",
@@ -277,12 +279,12 @@ function ns.MigrateLayout(db)
         if version < 2 then
             target.bars = CopyTable(ns.defaults.bars)
         else
-            if version < 27 then
+            if version < 28 then -- (27 hatte die Haltungsleiste kurz links – gilt nicht mehr)
                 local stance = target.bars.stance
                 if stance and not stance.moved then
                     stance.x, stance.y = nil, nil
-                    if stance.point == nil or stance.point == "BOTTOMRIGHT" then stance.point = "BOTTOMLEFT" end
-                    if stance.growX == "LEFT" then stance.growX = "RIGHT" end
+                    stance.point = "BOTTOMRIGHT"
+                    if stance.growX == "RIGHT" then stance.growX = "LEFT" end
                 end
                 if target.bars.vehicle then target.bars.vehicle.x, target.bars.vehicle.y = nil, nil end
             end
