@@ -116,14 +116,30 @@ local function Place(f)
     local first = G("TabardFrameCustomization1")
     if first and inset then
         local rowH = first:GetHeight() or 22
-        Anchor(first, "BOTTOMRIGHT", inset, "BOTTOMRIGHT", -10, 10 + (ROWS - 1) * (rowH + 4))
+        Anchor(first, "BOTTOMRIGHT", inset, "BOTTOMRIGHT", -10, 14 + (ROWS - 1) * (rowH + 4))
         for i = 2, ROWS do
             Anchor(G("TabardFrameCustomization" .. i), "TOP", G("TabardFrameCustomization" .. (i - 1)), "BOTTOM", 0, -4)
         end
     end
-    -- untere Leiste: Kosten links, "Abbrechen" rechts, "Annehmen" 8 daneben (alles auf halber Höhe)
+    -- Dreh-Knöpfe unten links in der Innenfläche (mit Luft zur goldenen Linie)
+    if inset then Anchor(G("TabardCharacterModelRotateLeftButton"), "BOTTOMLEFT", inset, "BOTTOMLEFT", 10, 14) end
+    -- untere Leiste: Kosten links, "Abbrechen" rechts, "Annehmen" 8 daneben (alles auf halber Höhe).
+    -- Blizzards Kosten-Feld ist breit und schreibt rechtsbündig: so setzen, dass sein sichtbarer Text 10 vom Rand
+    -- beginnt
     local y = FOOTER / 2
-    Anchor(G("TabardFrameCostFrame"), "LEFT", f, "BOTTOMLEFT", 10, y)
+    local cost = G("TabardFrameCostFrame")
+    if cost and not Forbidden(cost) then
+        local left, minLeft = cost:GetLeft(), nil
+        local function Check(obj)
+            if obj:IsShown() and obj.GetLeft and obj:GetLeft() and not (obj.GetText and (obj:GetText() or "") == "" and obj:IsObjectType("FontString")) then
+                minLeft = math.min(minLeft or obj:GetLeft(), obj:GetLeft())
+            end
+        end
+        for _, r in ipairs({ cost:GetRegions() }) do if r:IsObjectType("FontString") then Check(r) end end
+        for _, child in ipairs({ cost:GetChildren() }) do if not Forbidden(child) then Check(child) end end
+        local offset = (left and minLeft) and (minLeft - left) or 0
+        Anchor(cost, "LEFT", f, "BOTTOMLEFT", 10 - offset, y)
+    end
     local cancel, accept = G("TabardFrameCancelButton"), G("TabardFrameAcceptButton")
     Anchor(cancel, "RIGHT", f, "BOTTOMRIGHT", -10, y)
     if cancel then Anchor(accept, "RIGHT", cancel, "LEFT", -8, 0) end
@@ -157,7 +173,7 @@ local function SkinTabard()
     end)
     Step("place", function() Place(f) end)
     ns.Watch(f)
-    ns.Scaled(f)
+    ns.Scaled(f, 1.05) -- wie die übrigen Fenster (Regler "Größe") und 5 % mehr (das Modell braucht Platz)
     f:HookScript("OnShow", function()
         Step("card", function()
             ns.NpcCard(f, "npc", T("Wappenrock", "Tabard"), function() return T("Wappenrock-Gestaltung", "Tabard design") end, 130)
