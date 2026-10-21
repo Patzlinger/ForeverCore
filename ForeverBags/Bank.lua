@@ -401,8 +401,9 @@ local function CreateBank()
     bagBar.label:SetText(L("BANKBAG_LABEL"))
 
     buyButton = UI.Button(bank, L("BUY_BANK"), 70, function() ns.BuyBankSlot() end)
-    buyButton:SetHeight(22)
-    buyButton:SetPoint("RIGHT", bagBar, "RIGHT", 0, 0) -- (auf halber Höhe der Zeile, ganz im Fenster)
+    -- unten rechts in der Fußzeile (auf Höhe von "… frei"); die Ecke rechts bleibt für den Größen-Griff frei
+    buyButton:SetHeight(20)
+    buyButton:SetPoint("BOTTOMRIGHT", bank, "BOTTOMRIGHT", -PAD - 16, PAD - 2)
     buyButton:HookScript("OnEnter", function(self) ns.SimpleTip(self, L("TIP_BUY_BANK")) end)
     buyButton:HookScript("OnLeave", ns.HideTip)
     buyText = bank:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
