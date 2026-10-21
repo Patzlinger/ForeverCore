@@ -278,6 +278,28 @@ local function UpdateTradeRow(button, link)
     for _, get in ipairs({ "GetHighlightTexture", "GetPushedTexture", "GetNormalTexture" }) do
         if button[get] then ns.Hide(button[get](button)) end
     end
+    -- Blizzards Aufleucht-Animationen (z. B. goldenes Leuchten beim Herausnehmen eines Gegenstands): Animationen
+    -- setzen die Deckkraft selbst und überstimmen das Unsichtbar-Machen – darum anhalten und die Grafik verstecken
+    local function Quiet(frame, depth)
+        if not frame or Forbidden(frame) then return end
+        if frame.GetAnimationGroups then
+            for _, ag in ipairs({ frame:GetAnimationGroups() }) do if ag:IsPlaying() then ag:Stop() end end
+        end
+        for _, r in ipairs({ frame:GetRegions() }) do
+            if r:IsObjectType("Texture") and not look.keep[r] and not ns.IsMine(frame, r) and not tradeOurs[r] then
+                if r.GetAnimationGroups then
+                    for _, ag in ipairs({ r:GetAnimationGroups() }) do if ag:IsPlaying() then ag:Stop() end end
+                end
+                if r:IsShown() then r:Hide() end
+            end
+        end
+        if depth < 2 then
+            for _, child in ipairs({ frame:GetChildren() }) do
+                if not child:IsObjectType("Cooldown") then Quiet(child, depth + 1) end
+            end
+        end
+    end
+    Quiet((row and not Forbidden(row)) and row or button, 1) -- (Zeile samt Platz-Knopf und dessen Unter-Rahmen)
     local over = look.box:IsMouseOver()
     local dragging = look.player and not link and CursorHasItem and CursorHasItem() or false
     local key = tostring(link) .. (over and "+" or "-") .. (dragging and "d" or "")
