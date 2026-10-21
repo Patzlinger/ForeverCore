@@ -66,6 +66,43 @@ local function Portrait(f)
     if SetPortraitTexture then SetPortraitTexture(portrait.image, "player") end
 end
 
+-- Fläche des Fensters samt Leiste unten (Blizzards alter Rand + GROW). Blizzard baut das Fenster beim Auf-/Zuklappen
+-- der Liste um – darum bei jedem Öffnen, Aufklappen und jeder Größenänderung neu setzen und sichtbar halten.
+local back
+local function ApplyBack(f)
+    local look = ns.Flat(f, C.background, { 0, 0, 0, -GROW })
+    if not look then return end
+    if not back then
+        back = {}
+        back.foot = f:CreateTexture(nil, "BACKGROUND", nil, -7)
+        back.foot:SetColorTexture(C.header[1], C.header[2], C.header[3], 1)
+        back.line = f:CreateTexture(nil, "BORDER", nil, -6)
+        back.line:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 0.35)
+        back.line:SetHeight(1)
+        -- die neue Fläche fängt die Maus ab (sonst klickt man ins Spiel durch)
+        back.grip = CreateFrame("Frame", nil, f)
+        back.grip:SetPoint("TOPLEFT", f, "BOTTOMLEFT", 0, 0)
+        back.grip:SetPoint("TOPRIGHT", f, "BOTTOMRIGHT", 0, 0)
+        back.grip:SetHeight(GROW)
+        back.grip:EnableMouse(true)
+    end
+    back.foot:ClearAllPoints()
+    back.foot:SetPoint("BOTTOMLEFT", look.fill, "BOTTOMLEFT", 1, 1)
+    back.foot:SetPoint("BOTTOMRIGHT", look.fill, "BOTTOMRIGHT", -1, 1)
+    back.foot:SetHeight(FOOTER - 1)
+    back.line:ClearAllPoints()
+    back.line:SetPoint("BOTTOMLEFT", back.foot, "TOPLEFT")
+    back.line:SetPoint("BOTTOMRIGHT", back.foot, "TOPRIGHT")
+    for _, t in ipairs({ look.fill, back.foot, back.line }) do
+        t:SetAlpha(1)
+        t:Show()
+    end
+    for _, e in ipairs(look.edges or {}) do
+        e:SetAlpha(1)
+        e:Show()
+    end
+end
+
 -- alle Text-Knöpfe und Auswahlfelder im Fenster finden (unabhängig von Blizzards Namen)
 local function FindControls(frame, depth, found)
     for _, child in ipairs({ frame:GetChildren() }) do
@@ -106,6 +143,7 @@ local function SkinDetailsPanel(panel)
     if panel.ScrollBar then ns.SkinScrollBar(panel.ScrollBar) end
 end
 
+local shiftedPanels = setmetatable({}, { __mode = "k" })
 -- die Liste ist ein namenloser Unterrahmen der Anprobe (laut /fskin maus 312 × 473), rechts vom Modell. Darum außer
 -- Blizzards bekanntem Namen jeden großen Unterrahmen, der weit rechts liegt (nicht Modell/Innenfläche/Knöpfe)
 local function SkinDetails(f)
@@ -115,7 +153,20 @@ local function SkinDetails(f)
     for _, child in ipairs({ f:GetChildren() }) do
         if not Forbidden(child) and child ~= inset and child ~= f.ModelScene and not child:IsObjectType("Button") then
             local left, w, h = child:GetLeft(), child:GetWidth() or 0, child:GetHeight() or 0
-            if left and fl and fw and left > fl + fw * 0.7 and w > 150 and h > 250 then SkinDetailsPanel(child) end
+            if left and fl and fw and left > fl + fw * 0.7 and w > 150 and h > 250 then
+                SkinDetailsPanel(child)
+                -- Blizzard lässt die Liste etwas über den Fensterrand ragen (für seinen verzierten Rahmen): 6 nach rechts
+                if not shiftedPanels[child] then
+                    shiftedPanels[child] = true
+                    local points = {}
+                    for i = 1, child:GetNumPoints() do
+                        local p, rel, rp, x, y = child:GetPoint(i)
+                        points[i] = { p, rel, rp, (x or 0) + 6, y or 0 }
+                    end
+                    child:ClearAllPoints()
+                    for _, pt in ipairs(points) do child:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5]) end
+                end
+            end
         end
     end
 end
@@ -150,26 +201,7 @@ local function SkinDressUp()
     Step("portrait", function() Portrait(f) end)
     -- untere Leiste UNTER Blizzards altem Fensterrand: das Fenster wächst optisch um FOOTER nach unten, die feine
     -- goldene Linie liegt genau am alten Rand – so endet das Hintergrundbild des Modells darüber
-    Step("footer", function()
-        local look = ns.Flat(f, C.background, { 0, 0, 0, -GROW })
-        if not look then return end
-        local foot = f:CreateTexture(nil, "BACKGROUND", nil, -7)
-        foot:SetColorTexture(C.header[1], C.header[2], C.header[3], 1)
-        foot:SetPoint("BOTTOMLEFT", look.fill, "BOTTOMLEFT", 1, 1)
-        foot:SetPoint("BOTTOMRIGHT", look.fill, "BOTTOMRIGHT", -1, 1)
-        foot:SetHeight(FOOTER - 1)
-        local line = f:CreateTexture(nil, "BORDER", nil, -6)
-        line:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 0.35)
-        line:SetPoint("BOTTOMLEFT", foot, "TOPLEFT")
-        line:SetPoint("BOTTOMRIGHT", foot, "TOPRIGHT")
-        line:SetHeight(1)
-        -- die neue Fläche fängt die Maus ab (sonst klickt man ins Spiel durch)
-        local grip = CreateFrame("Frame", nil, f)
-        grip:SetPoint("TOPLEFT", f, "BOTTOMLEFT", 0, 0)
-        grip:SetPoint("TOPRIGHT", f, "BOTTOMRIGHT", 0, 0)
-        grip:SetHeight(GROW)
-        grip:EnableMouse(true)
-    end)
+    Step("footer", function() ApplyBack(f) end)
     -- oben: Set-Auswahl, Speichern, Details-Knopf
     Step("top", function()
         local dropdown = f.OutfitDropdown or f.OutfitDropDown or G("DressUpFrameOutfitDropdown")
@@ -212,14 +244,21 @@ local function SkinDressUp()
     -- rechts: Liste der Teile – Rahmen und Verzierung weg, flache Fläche (Einträge mit Symbolen bleiben)
     Step("details", function() SkinDetails(f) end)
     ns.Watch(f)
+    f:HookScript("OnSizeChanged", function() C_Timer.After(0, function() Step("footer", function() ApplyBack(f) end) end) end)
     f:HookScript("OnShow", function()
         Step("portrait", function() Portrait(f) end)
+        C_Timer.After(0, function() Step("footer", function() ApplyBack(f) end) end)
         -- (die Liste rechts entsteht teils erst beim ersten Aufklappen)
         C_Timer.After(0, function() Step("details", function() SkinDetails(f) end) end)
     end)
     local details = f.ToggleOutfitDetailsButton
     if type(details) == "table" and details.HookScript and not Forbidden(details) then
-        details:HookScript("OnClick", function() C_Timer.After(0, function() Step("details", function() SkinDetails(f) end) end) end)
+        details:HookScript("OnClick", function()
+            C_Timer.After(0, function()
+                Step("details", function() SkinDetails(f) end)
+                Step("footer", function() ApplyBack(f) end)
+            end)
+        end)
     end
     -- solange offen: Blizzards Knopf-Grafiken unsichtbar halten, aufgeklappte Auswahlliste flach
     local watch = CreateFrame("Frame", nil, f)
