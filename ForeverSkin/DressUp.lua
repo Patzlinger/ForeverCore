@@ -11,6 +11,8 @@ local function G(name) return _G[name] end
 local function Forbidden(obj) return obj and obj.IsForbidden and obj:IsForbidden() end
 local CIRCLE = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
 local FOOTER = 36
+local LINE_UP = 20 -- so weit über Blizzards altem Fensterrand liegt die goldene Linie (2–3 px unter dem Modellbild)
+local GROW = FOOTER - LINE_UP -- so weit wächst das Fenster nach unten
 
 local function Step(what, fn)
     local ok, err = pcall(fn)
@@ -149,7 +151,7 @@ local function SkinDressUp()
     -- untere Leiste UNTER Blizzards altem Fensterrand: das Fenster wächst optisch um FOOTER nach unten, die feine
     -- goldene Linie liegt genau am alten Rand – so endet das Hintergrundbild des Modells darüber
     Step("footer", function()
-        local look = ns.Flat(f, C.background, { 0, 0, 0, -FOOTER })
+        local look = ns.Flat(f, C.background, { 0, 0, 0, -GROW })
         if not look then return end
         local foot = f:CreateTexture(nil, "BACKGROUND", nil, -7)
         foot:SetColorTexture(C.header[1], C.header[2], C.header[3], 1)
@@ -165,7 +167,7 @@ local function SkinDressUp()
         local grip = CreateFrame("Frame", nil, f)
         grip:SetPoint("TOPLEFT", f, "BOTTOMLEFT", 0, 0)
         grip:SetPoint("TOPRIGHT", f, "BOTTOMRIGHT", 0, 0)
-        grip:SetHeight(FOOTER)
+        grip:SetHeight(GROW)
         grip:EnableMouse(true)
     end)
     -- oben: Set-Auswahl, Speichern, Details-Knopf
@@ -190,8 +192,8 @@ local function SkinDressUp()
         for _, b in ipairs({ link or false, reset or false, cancel or false }) do
             if b then SkinTextButton(b) end
         end
-        -- (die Leiste liegt UNTER Blizzards altem Fensterrand, siehe "footer": Mitte bei −FOOTER/2)
-        local y = -FOOTER / 2
+        -- (die Leiste reicht von −GROW bis LINE_UP über Blizzards altem Fensterrand, siehe "footer": Knöpfe mittig darin)
+        local y = -GROW + FOOTER / 2
         local function Put(b, point, rel, relPoint, x, yy)
             if not b or Forbidden(b) then return end
             b:ClearAllPoints()
