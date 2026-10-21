@@ -142,48 +142,109 @@ local function Shift(obj, dx, dy)
     for _, pt in ipairs(points) do obj:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5]) end
 end
 
--- Mehr Luft unten: das Fenster wächst optisch um DOWN nach unten (eigene Fläche, die Reiter darunter rücken mit).
--- Unten eine Leiste mit feiner goldener Linie (FOOT über dem alten Fensterrand, wie beim Handel), darin feste Plätze
--- für die Knöpfe; Blizzards Innenfläche endet darüber.
-local DOWN, FOOT = 14, 24
-local function Grow(f)
-    local look = ns.Flat(f, C.background, { 0, 0, 0, -DOWN })
-    if look then
-        local foot = f:CreateTexture(nil, "BACKGROUND", nil, -7)
-        foot:SetColorTexture(C.header[1], C.header[2], C.header[3], 1)
-        foot:SetPoint("BOTTOMLEFT", look.fill, "BOTTOMLEFT", 1, 1)
-        foot:SetPoint("BOTTOMRIGHT", look.fill, "BOTTOMRIGHT", -1, 1)
-        foot:SetHeight(DOWN + FOOT)
-        local line = f:CreateTexture(nil, "BORDER", nil, -6)
-        line:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 0.35)
-        line:SetPoint("BOTTOMLEFT", foot, "TOPLEFT")
-        line:SetPoint("BOTTOMRIGHT", foot, "TOPRIGHT")
-        line:SetHeight(1)
-        ours[foot], ours[line] = true, true
+-- Aufbau wie Händler und Lehrer: oben eine Visitenkarte (rundes Bild mit goldenem Ring, daneben Titel groß in Gold,
+-- darunter die Anzahl der Nachrichten), darunter ab TOP die Liste in der Innenfläche, unten eine feste Leiste
+-- (FOOTER hoch, feine goldene Linie) mit den Knöpfen. Blizzard hängt Teile beim Aktualisieren neu auf – darum
+-- werden die Plätze immer wieder geprüft (Place).
+local TOP, FOOTER = -87, 40
+local CIRCLE = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
+local MAIL_ICON = "Interface\\Icons\\INV_Letter_15"
+local card
+local function Card(f)
+    if card then return card end
+    card = {}
+    local function Disk(size, sub, c)
+        local t = f:CreateTexture(nil, "ARTWORK", nil, sub)
+        t:SetColorTexture(c[1], c[2], c[3], 1)
+        t:SetSize(size, size)
+        t:SetPoint("CENTER", f, "TOPLEFT", 36, -56) -- (wie die Visitenkarte von Händler und Lehrer)
+        local mask = f:CreateMaskTexture()
+        mask:SetTexture(CIRCLE, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+        mask:SetAllPoints(t)
+        t:AddMaskTexture(mask)
+        ours[t] = true
+        return t
     end
-    -- die neue Fläche fängt die Maus ab (sonst klickt man ins Spiel durch)
-    local grip = CreateFrame("Frame", nil, f)
-    grip:SetPoint("TOPLEFT", f, "BOTTOMLEFT", 0, 0)
-    grip:SetPoint("TOPRIGHT", f, "BOTTOMRIGHT", 0, 0)
-    grip:SetHeight(DOWN)
-    grip:EnableMouse(true)
-    ours[grip] = true
-    -- Blizzards Innenfläche (Posteingang) endet über der Leiste – sie lag sonst darüber und die Linie lief
-    -- durch die Knöpfe
-    local inset = f.Inset or G(f:GetName() .. "Inset")
+    card.ring = Disk(48, 1, C.accent)
+    card.gap = Disk(45, 2, C.background)
+    card.icon = Disk(43, 3, { 1, 1, 1 })
+    card.icon:SetTexture(MAIL_ICON)
+    card.name = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    card.name:SetPoint("TOPLEFT", f, "TOPLEFT", 68, -37)
+    card.name:SetPoint("RIGHT", f, "RIGHT", -14, 0)
+    card.name:SetJustifyH("LEFT")
+    card.name:SetText(ns.T("Briefkasten", "Mailbox"))
+    card.sub = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    card.sub:SetPoint("TOPLEFT", card.name, "BOTTOMLEFT", 0, -3)
+    card.sub:SetJustifyH("LEFT")
+    card.sub:SetTextColor(0.85, 0.85, 0.85)
+    card.info = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    card.info:SetPoint("TOPLEFT", card.sub, "BOTTOMLEFT", 0, -2)
+    card.info:SetJustifyH("LEFT")
+    return card
+end
+
+local function UpdateCard(f)
+    local c = Card(f)
+    local shown, total = 0, 0
+    if GetInboxNumItems then shown, total = GetInboxNumItems() end
+    total = math.max(total or 0, shown or 0)
+    c.sub:SetText(total == 1 and ns.T("1 Nachricht", "1 message") or string.format(ns.T("%d Nachrichten", "%d messages"), total))
+    local page = G("InboxFrame") and G("InboxFrame").pageNum
+    local pages = math.max(1, math.ceil(total / (INBOXITEMS_TO_DISPLAY or 7)))
+    c.info:SetText(type(page) == "number" and pages > 1 and string.format(ns.T("Seite %d von %d", "Page %d of %d"), page, pages) or "")
+end
+
+-- Ankerpunkt nur neu setzen, wenn er nicht schon so ist (sonst würde das Fenster ständig neu berechnet)
+local function Anchor(obj, point, rel, relPoint, x, y)
+    if not obj or Forbidden(obj) then return end
+    local p, r, rp, ox, oy = obj:GetPoint(1)
+    if obj:GetNumPoints() == 1 and p == point and r == rel and rp == relPoint
+        and math.abs((ox or 0) - x) < 0.5 and math.abs((oy or 0) - y) < 0.5 then return end
+    obj:ClearAllPoints()
+    obj:SetPoint(point, rel, relPoint, x, y)
+end
+
+local function Place(f)
+    local inbox = G("InboxFrame")
+    local inInbox = inbox and inbox:IsShown()
+    -- Visitenkarte nur im Posteingang (beim Senden stehen dort Empfänger und Betreff)
+    local c = Card(f)
+    for _, t in ipairs({ c.ring, c.gap, c.icon, c.name, c.sub, c.info }) do t:SetShown(inInbox and true or false) end
+    if inInbox then UpdateCard(f) end
+    -- Innenfläche zwischen Visitenkarte und unterer Leiste
+    local inset = f.Inset or G("MailFrameInset")
     if inset and not Forbidden(inset) then
-        local points = {}
-        for i = 1, inset:GetNumPoints() do
-            local p, rel, rp, x, y = inset:GetPoint(i)
-            -- untere Ankerpunkte: am Fenster, 6 px über der goldenen Linie der Leiste
-            if type(p) == "string" and p:find("BOTTOM") then
-                rel, rp, y = f, p, FOOT + 6
-            end
-            points[i] = { p, rel, rp, x or 0, y or 0 }
+        local p1, r1, _, x1, y1 = inset:GetPoint(1)
+        local p2, r2, _, x2, y2 = inset:GetPoint(2)
+        if not (inset:GetNumPoints() == 2 and p1 == "TOPLEFT" and r1 == f and x1 == 6 and y1 == TOP + 4
+            and p2 == "BOTTOMRIGHT" and r2 == f and x2 == -6 and y2 == FOOTER + 4) then
+            inset:ClearAllPoints()
+            inset:SetPoint("TOPLEFT", f, "TOPLEFT", 6, TOP + 4)
+            inset:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -6, FOOTER + 4)
         end
-        inset:ClearAllPoints()
-        for _, pt in ipairs(points) do inset:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5]) end
     end
+    -- erste Nachricht 7 px unter der Oberkante der Innenfläche (die übrigen hängt Blizzard darunter)
+    local first = G("MailItem1")
+    if first then
+        local button = G("MailItem1Button") or first.Button
+        -- (Abstand Zeile ↔ Symbol bleibt, wie Blizzard ihn hat: nur die Zeile wird gesetzt)
+        local dx = 0
+        if button and button:GetLeft() and first:GetLeft() then dx = button:GetLeft() - first:GetLeft() end
+        Anchor(first, "TOPLEFT", f, "TOPLEFT", 14 - dx, TOP - 6)
+    end
+    -- untere Leiste: Knöpfe mittig in ihrer Höhe, 10 px vom Rand
+    local y = FOOTER / 2
+    Anchor(G("InboxPrevPageButton"), "LEFT", f, "BOTTOMLEFT", 10, y)
+    Anchor(G("InboxNextPageButton"), "RIGHT", f, "BOTTOMRIGHT", -10, y)
+    Anchor(G("OpenAllMail"), "CENTER", f, "BOTTOM", 0, y)
+    Anchor(G("InboxFrameOpenAllButton"), "CENTER", f, "BOTTOM", 0, y)
+    local send, cancel = G("SendMailMailButton"), G("SendMailCancelButton")
+    Anchor(cancel, "RIGHT", f, "BOTTOMRIGHT", -10, y)
+    if cancel then Anchor(send, "RIGHT", cancel, "LEFT", -8, 0) end
+    -- zweiter Reiter mit Abstand neben dem ersten
+    local tab1 = G("MailFrameTab1")
+    if tab1 then Anchor(G("MailFrameTab2"), "LEFT", tab1, "RIGHT", 8, 0) end
 end
 
 -- grauer Balken je Nachricht mit dem Symbol darin (1 px Luft rundum, wie im Handelsfenster)
@@ -251,36 +312,6 @@ local function SkinSend()
     Shift(G("SendMailCODButton"), 0, -3)
 end
 
--- Knöpfe unten in die neue Leiste (etwas tiefer), "Senden" mit Abstand neben "Abbrechen", Reiter unter das
--- gewachsene Fenster
-local function PlaceBottom(f)
-    -- feste Plätze in der unteren Leiste (mittig in deren Höhe): Zurück links, Weiter rechts, "Alle öffnen" mittig;
-    -- beim Senden "Abbrechen" rechts, "Senden" 8 px links daneben
-    local y = -DOWN + 5
-    local function Put(name, point, x)
-        local b = G(name)
-        if not b or Forbidden(b) then return end
-        b:ClearAllPoints()
-        b:SetPoint(point, f, point, x, y)
-    end
-    Put("InboxPrevPageButton", "BOTTOMLEFT", 10)
-    Put("InboxNextPageButton", "BOTTOMRIGHT", -10)
-    Put("OpenAllMail", "BOTTOM", 0)
-    Put("InboxFrameOpenAllButton", "BOTTOM", 0)
-    Put("SendMailCancelButton", "BOTTOMRIGHT", -10)
-    local send, cancel = G("SendMailMailButton"), G("SendMailCancelButton")
-    if send and cancel and not Forbidden(send) and not Forbidden(cancel) then
-        send:ClearAllPoints()
-        send:SetPoint("RIGHT", cancel, "LEFT", -8, 0)
-    end
-    Shift(G("MailFrameTab1"), 0, -DOWN - 2)
-    local tab1, tab2 = G("MailFrameTab1"), G("MailFrameTab2")
-    if tab1 and tab2 and not Forbidden(tab2) then
-        tab2:ClearAllPoints()
-        tab2:SetPoint("LEFT", tab1, "RIGHT", 8, 0)
-    end
-end
-
 local function SkinMail()
     local f = G("MailFrame")
     if not f or ns.mailSkinned then return end
@@ -294,16 +325,31 @@ local function SkinMail()
             end)
         end
     end
-    Step("grow", function() Grow(f) end)
+    ns.ContentBox(f, FOOTER, nil, true) -- untere Leiste mit feiner goldener Linie (wie beim Lehrer)
     Step("inbox", SkinInbox)
     Step("send", SkinSend)
-    Step("bottom", function() PlaceBottom(f) end)
     Step("bars", function() SkinBars(f, 1) end)
+    Step("place", function() Place(f) end)
     ns.Watch(f)
     ns.Scaled(f) -- so groß wie Gespräch, Händler und Co.
-    -- solange offen: Brieftext hell halten (Blizzard färbt beim Wechsel neu), Reiter-Beschriftung mittig
+    -- Blizzard hängt beim Blättern/Reiterwechsel teils neu auf: danach und beim Öffnen wieder an die festen Plätze
+    if type(_G.InboxFrame_Update) == "function" then
+        hooksecurefunc("InboxFrame_Update", function() C_Timer.After(0, function() pcall(Place, f) end) end)
+    end
+    f:HookScript("OnShow", function() C_Timer.After(0, function() pcall(Place, f) end) end)
+    local events = CreateFrame("Frame", nil, f)
+    events:RegisterEvent("MAIL_INBOX_UPDATE")
+    events:SetScript("OnEvent", function() if f:IsShown() then pcall(Place, f) end end)
+    -- solange offen: Brieftext hell halten (Blizzard färbt beim Wechsel neu), Reiter-Beschriftung mittig, Plätze
+    -- prüfen (fünfmal je Sekunde)
     local watch = CreateFrame("Frame", nil, f)
-    watch:SetScript("OnUpdate", function()
+    local waited = 0
+    watch:SetScript("OnUpdate", function(_, elapsed)
+        waited = waited + elapsed
+        if waited >= 0.2 then
+            waited = 0
+            pcall(Place, f)
+        end
         pcall(LightText, G("SendMailBodyEditBox"))
         -- Balken nur bei sichtbaren Nachrichten-Zeilen
         for row, box in pairs(rowBoxes) do box:SetShown(row:IsVisible()) end
