@@ -2105,16 +2105,38 @@ end
 
 ---------------------------------------------------------------------------
 -- Feste Seite der Aktionsleisten. Eine "Seite" ist eine Belegung von 12 Knöpfen; nach dem Umhängen in die
--- eigenen Halter muss jede Leiste ihre Seite selbst setzen. Leiste 1 überlässt den Wechsel Blizzard
--- (Gestalten, Fahrzeuge, Seiten-Pfeile). Läuft über die geschützte Blizzard-Technik (Zustandstreiber).
+-- eigenen Halter muss jede Leiste ihre Seite selbst setzen. Leiste 1 wechselt die Seite standardmäßig selbst
+-- (Gestalten, Verstohlenheit, Fahrzeuge, Seiten-Pfeile; abschaltbar). Läuft über die geschützte Blizzard-Technik
+-- (Zustandstreiber).
 ---------------------------------------------------------------------------
 
 -- Eigene Seite jeder Leiste (wie bei Blizzard): Leiste 1 = Seite 1, Leiste 2 = Seite 6 usw.
 local HOME_PAGES = { bar1 = 1, bar2 = 6, bar3 = 5, bar4 = 3, bar5 = 4, bar6 = 13, bar7 = 14, bar8 = 15 }
 
--- nil = Blizzard regelt es (Leiste 1), sonst die feste Seite der Leiste
-local function PagingDriver(def)
-    if def.kind ~= "action" or def.key == "bar1" then return nil end
+-- Leiste 1 mit Seitenwechsel (wie Blizzards Hauptleiste): Fahrzeug/Übernahme, Seiten-Pfeile bzw. Umschalt+Zahl,
+-- Gestalten und Haltungen (Druide, Krieger …) sowie Verstohlenheit (Schurke) – die Zusatzseiten 7 bis 11.
+-- Nötig, weil Blizzard den Wechsel nur an seiner eigenen Hauptleiste setzt, die Knöpfe aber in unserem Halter liegen.
+local function FormPagingDriver()
+    local parts = {}
+    if GetOverrideBarIndex then table.insert(parts, "[overridebar]" .. GetOverrideBarIndex()) end
+    if GetVehicleBarIndex then
+        table.insert(parts, "[vehicleui]" .. GetVehicleBarIndex())
+        table.insert(parts, "[possessbar]" .. GetVehicleBarIndex())
+    end
+    if GetTempShapeshiftBarIndex then table.insert(parts, "[shapeshift]" .. GetTempShapeshiftBarIndex()) end
+    for page = 2, 6 do table.insert(parts, "[bar:" .. page .. "]" .. page) end
+    for bonus = 1, 5 do table.insert(parts, "[bonusbar:" .. bonus .. "]" .. (6 + bonus)) end
+    table.insert(parts, "1")
+    return table.concat(parts, "; ")
+end
+
+-- nil = Blizzard regelt es (Leiste 1 mit ausgeschaltetem Gestaltwechsel), sonst die Seite(n) der Leiste
+local function PagingDriver(def, cfg)
+    if def.kind ~= "action" then return nil end
+    if def.key == "bar1" then
+        if cfg and cfg.formPaging == false then return nil end
+        return FormPagingDriver()
+    end
     return tostring(HOME_PAGES[def.key] or 1)
 end
 
@@ -2143,7 +2165,7 @@ local function SetupPaging(def, cfg, holder)
             end
         ]])
     end
-    local driver = PagingDriver(def)
+    local driver = PagingDriver(def, cfg)
     if driver then
         RegisterStateDriver(holder, "page", driver)
         holder.fbPaging = true

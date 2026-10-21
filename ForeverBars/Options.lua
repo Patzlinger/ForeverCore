@@ -551,6 +551,10 @@ local function CreateOptions()
             function() return SelectedConfig()[option.key] end,
             function(value) SelectedConfig()[option.key] = value; Changed() end)
     end
+    -- Nur Leiste 1: Seite bei Gestalt, Haltung und Verstohlenheit wechseln (wie Blizzards Hauptleiste)
+    options.formPagingCheck = CreateCheckbox(visPage, L("OPT_FORM_PAGING"), 290, -92 - #hideOptions * 24 - 8,
+        function() return SelectedConfig().formPaging ~= false end,
+        function(value) SelectedConfig().formPaging = value; Changed() end)
 
     -- Unten: eigene Makro-Bedingung (ersetzt alle Einstellungen oben)
     CreateCheckbox(visPage, L("OPT_CUSTOM"), 14, -280,
@@ -1110,6 +1114,7 @@ function ns.RefreshOptions()
     options.growYSelector:SetShown(hasButtons)
     options.flyoutSelector:SetShown(def.kind == "action")
     options.copySelector:SetShown(def.kind == "action")
+    if options.formPagingCheck then options.formPagingCheck:SetShown(def.key == "bar1") end
     options.backpackCheck:SetShown(def.kind == "bags")
     options.collapseArrowCheck:SetShown(def.kind == "prof" or def.kind == "food")
     options.arrowSideSelector:SetShown((def.kind == "prof" or def.kind == "food") and SelectedConfig().collapseArrow == true)

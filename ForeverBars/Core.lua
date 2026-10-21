@@ -131,6 +131,7 @@ ns.defaults = {
     hideStatusBlizzard = true, -- Blizzards Erfahrungs- und Rufleiste unsichtbar machen (solange die eigene Leiste an ist)
 }
 ns.defaults.bars.pet.buttons = 10
+ns.defaults.bars.bar1.formPaging = true -- Leiste 1 wechselt bei Gestalt, Haltung und Verstohlenheit die Seite
 ns.defaults.bars.stance.buttons = 10 -- Haltungsleiste zeigt immer so viele Knöpfe, wie der Charakter Haltungen hat
 -- Standard-Anordnung (Positionen in Bars.lua, DefaultPosition): Begleiter- und Haltungsleiste halb so groß,
 -- links bzw. rechts bündig über den Aktionsleisten; Berufeleiste mit Rahmen links daneben;
