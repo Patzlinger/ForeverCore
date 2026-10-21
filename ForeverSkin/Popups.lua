@@ -45,6 +45,27 @@ local function SkinPopup(frame)
     ns.Watch(frame)
 end
 
+-- Prüfbefehl /fskin maus: welches Fenster liegt unter der Maus (Name, Eltern-Kette, geschützt?) – im Chat. Dient
+-- dazu, Blizzard-Fenster zu finden, die anders heißen als erwartet (z. B. die Rückfrage "Handel abschließen?").
+function ns.DumpMouse()
+    local foci = GetMouseFoci and GetMouseFoci() or { GetMouseFocus and GetMouseFocus() }
+    local frame = foci and foci[1]
+    if not frame then
+        ns.UI.Chat("ForeverSkin", ns.T("Unter der Maus liegt kein Fenster.", "No frame under the mouse."))
+        return
+    end
+    local depth = 0
+    while frame and depth < 8 do
+        local forbidden = frame.IsForbidden and frame:IsForbidden()
+        local name = forbidden and "(geschützt)" or (frame.GetName and frame:GetName()) or "-"
+        local kind = (not forbidden and frame.GetObjectType) and frame:GetObjectType() or "?"
+        ns.UI.Chat("ForeverSkin", string.rep("  ", depth) .. name .. " [" .. kind .. "]")
+        if forbidden then break end
+        frame = frame.GetParent and frame:GetParent()
+        depth = depth + 1
+    end
+end
+
 -- Beim Login gibt es im Forever-Client nicht immer schon alle Rückfrage-Fenster (sie entstehen beim ersten
 -- Anzeigen, z. B. "Handel abschließen?") – darum zusätzlich nach jedem Anzeigen nachsehen (nur angehängt, Blizzards
 -- Funktion bleibt unverändert)
