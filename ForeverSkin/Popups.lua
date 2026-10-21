@@ -24,7 +24,10 @@ local function Buttons(frame)
 end
 
 local function SkinPopup(frame)
-    if not frame or done[frame] then return end
+    if not frame then return end
+    -- Knöpfe bei jedem Anzeigen prüfen (Blizzard legt sie teils erst später an; ns.SkinButton gestaltet jeden nur einmal)
+    for _, b in ipairs(Buttons(frame)) do ns.SkinButton(b) end
+    if done[frame] then return end
     done[frame] = true
     ns.HideTextures(frame)
     if type(frame.Border) == "table" then ns.Hide(frame.Border) end
@@ -42,6 +45,17 @@ local function SkinPopup(frame)
     ns.Watch(frame)
 end
 
+-- Beim Login gibt es im Forever-Client nicht immer schon alle Rückfrage-Fenster (sie entstehen beim ersten
+-- Anzeigen, z. B. "Handel abschließen?") – darum zusätzlich nach jedem Anzeigen nachsehen (nur angehängt, Blizzards
+-- Funktion bleibt unverändert)
+local hooked = false
 function ns.SkinPopups()
-    for i = 1, 4 do SkinPopup(_G["StaticPopup" .. i]) end
+    for i = 1, 10 do
+        local frame = _G["StaticPopup" .. i]
+        if frame then SkinPopup(frame) end
+    end
+    if not hooked and type(_G.StaticPopup_Show) == "function" then
+        hooked = true
+        hooksecurefunc("StaticPopup_Show", function() pcall(ns.SkinPopups) end)
+    end
 end

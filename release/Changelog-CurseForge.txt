@@ -3,6 +3,8 @@
 ## Unreleased
 
 - ForeverChat: the main chat now sits right in the bottom left corner by default (only while it is on Blizzard's default spot in Edit Mode; turn it off with "Bottom left corner" in /fchat » Position and lock).
+- ForeverSkin: confirmation dialogs that only appear later (e.g. "Are you sure you want to complete this trade?") are restyled too; in the trade window the item slot has the same small gap to its row on all sides.
+
 - ForeverSkin, trade window: the item slots look like the slots in ForeverBags – dark square, fine grey border (gold on mouseover), Blizzard's quality border.
 
 - ForeverBags: small profession buttons on the left edge of the bag window open your profession windows directly (one per profession, plus Poisons/Beast Training). A slim arrow next to them folds them in and out. They hide during combat and come back right after.

@@ -239,7 +239,7 @@ local function TradeRow(f, row, button, nameText, column, player, index)
     if button:GetFrameLevel() <= level + 1 then button:SetFrameLevel(level + 2) end
     box:SetPoint("TOP", button, "TOP", 0, 1) -- (je 1 px über/unter dem Symbol: Lücke zur nächsten Zeile)
     box:SetPoint("BOTTOM", button, "BOTTOM", 0, -1)
-    box:SetPoint("LEFT", column or row, "LEFT", 4, 0)
+    box:SetPoint("LEFT", button, "LEFT", -1, 0) -- (links dieselbe Luft wie oben und unten)
     box:SetPoint("RIGHT", column or row, "RIGHT", -4, 0)
     tradeOurs[box] = true
     local boxLook = ns.Flat(box, C.button)
