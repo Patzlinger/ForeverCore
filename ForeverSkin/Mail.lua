@@ -336,6 +336,29 @@ local function SkinSend()
     -- das untere etwas tiefer – unten bleibt durch die tiefer gesetzten Knöpfe trotzdem Platz
     Shift(G("SendMailSendMoneyButton"), 0, 3)
     Shift(G("SendMailCODButton"), 0, -3)
+    -- die ganze Geld-Zeile ("Zu sendende Menge", Geldfelder, "Geld senden"/"Nachnahme") 14 px höher: sie lag sonst
+    -- auf der goldenen Linie der unteren Leiste. Nur, was nicht an einem anderen Teil dieser Zeile hängt (das
+    -- wandert ohnehin mit).
+    local group, members = {}, {}
+    for _, n in ipairs({ "SendMailMoneyText", "SendMailMoney", "SendMailSendMoneyButton", "SendMailCODButton" }) do
+        local obj = G(n)
+        if obj and not Forbidden(obj) then
+            group[#group + 1] = obj
+            members[obj] = true
+        end
+    end
+    for _, obj in ipairs(group) do
+        local _, rel = obj:GetPoint(1)
+        if not members[rel] then
+            local points = {}
+            for i = 1, obj:GetNumPoints() do
+                local p, r, rp, x, y = obj:GetPoint(i)
+                points[i] = { p, r, rp, x or 0, (y or 0) + 14 }
+            end
+            obj:ClearAllPoints()
+            for _, pt in ipairs(points) do obj:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5]) end
+        end
+    end
 end
 
 local function SkinMail()
