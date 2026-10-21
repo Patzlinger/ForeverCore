@@ -222,6 +222,7 @@ end
 -- Blizzards Handels-Grafiken im ganzen Fenster unsichtbar (auch in Unter-Rahmen wie dem Porträt des anderen):
 -- alles mit "Portrait", "TradeFrame", Platz-Hintergrund oder Namensfeld im Namen, Schlüssel oder in der Datei.
 -- Münz-Symbole, Gegenstands-Symbole und unsere eigenen Flächen bleiben.
+local SHIFT = 34 -- so viel wächst das Fenster nach oben (Platz für die Visitenkarten)
 local tradeOurs = setmetatable({}, { __mode = "k" }) -- eigene Texturen (Visitenkarten), bleiben sichtbar
 local ART = { "portrait", "tradeframe", "slot%-background", "questitemnameframe", "nameframe", "ui%-frame", "recipient" }
 local function IsTradeArt(holder, r)
@@ -270,7 +271,7 @@ local function TradeCard(f, column, unit)
         -- Streifen zwischen Titelleiste und Geldfeld der Spalte: die Karte sitzt darin mittig (gleich viel Luft
         -- zur goldenen Linie oben wie zum Kasten unten)
         local band = CreateFrame("Frame", nil, f)
-        band:SetPoint("TOP", f, "TOP", 0, -24)
+        band:SetPoint("TOP", f, "TOP", 0, -24 + SHIFT)
         band:SetPoint("BOTTOMLEFT", column, "TOPLEFT", 0, 0)
         band:SetPoint("BOTTOMRIGHT", column, "TOPRIGHT", 0, 0)
         card.band = band
@@ -344,32 +345,43 @@ local function UpdateTradeCards()
     if right then TradeCard(G("TradeFrame"), right, "NPC") end
 end
 
--- Mehr Platz oben für die Visitenkarten: Fenster um SHIFT höher, alles, was oben am Fenster hängt, rückt um
--- SHIFT nach unten (einmalig; unten Hängendes wie die Knöpfe bleibt)
-local SHIFT = 34
-local function MakeRoom(f)
-    local function Shift(obj)
-        if obj == f.CloseButton or tradeOurs[obj] or Forbidden(obj) or not obj.GetNumPoints then return end
-        local points, changed = {}, false
-        for i = 1, obj:GetNumPoints() do
-            local p, rel, rp, x, y = obj:GetPoint(i)
-            if rel == f and type(rp) == "string" and rp:find("TOP") then
-                y = (y or 0) - SHIFT
-                changed = true
-            end
-            points[i] = { p, rel, rp, x or 0, y or 0 }
+-- Mehr Platz oben für die Visitenkarten: das Fenster wächst optisch um SHIFT nach OBEN (eigene Fläche, Titelleiste
+-- und Schließen-Kreuz rücken hoch). Blizzards Inhalt bleibt, wo er ist – die Gold-Eingabe ist geschützt und
+-- ließe sich ohnehin nicht mitverschieben.
+local function GrowUp(f)
+    local look = ns.Flat(f, C.background, { 0, -SHIFT, 0, 0 })
+    if look and look.head then
+        look.head:ClearAllPoints()
+        look.head:SetPoint("TOPLEFT", look.fill, "TOPLEFT", 1, -1)
+        look.head:SetPoint("TOPRIGHT", look.fill, "TOPRIGHT", -1, -1)
+    end
+    local close = f.CloseButton or G("TradeFrameCloseButton")
+    if close and not Forbidden(close) then
+        local points = {}
+        for i = 1, close:GetNumPoints() do
+            local p, rel, rp, x, y = close:GetPoint(i)
+            points[i] = { p, rel, rp, x or 0, (y or 0) + SHIFT }
         end
-        if not changed then return end
-        obj:ClearAllPoints()
-        for _, pt in ipairs(points) do obj:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5]) end
+        close:ClearAllPoints()
+        for _, pt in ipairs(points) do close:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5]) end
     end
-    for _, child in ipairs({ f:GetChildren() }) do Shift(child) end
-    for _, r in ipairs({ f:GetRegions() }) do
-        if not ns.IsMine(f, r) and r:IsObjectType("FontString") then Shift(r) end
-    end
-    f:SetHeight(f:GetHeight() + SHIFT)
+    -- die neue Fläche fängt die Maus ab (sonst klickt man durch) und lässt das Fenster daran ziehen
+    local grip = CreateFrame("Frame", nil, f)
+    grip:SetPoint("BOTTOMLEFT", f, "TOPLEFT", 0, 0)
+    grip:SetPoint("BOTTOMRIGHT", f, "TOPRIGHT", 0, 0)
+    grip:SetHeight(SHIFT)
+    grip:EnableMouse(true)
+    grip:RegisterForDrag("LeftButton")
+    grip:SetScript("OnDragStart", function()
+        local fn = f:GetScript("OnDragStart")
+        if fn then fn(f, "LeftButton") end
+    end)
+    grip:SetScript("OnDragStop", function()
+        local fn = f:GetScript("OnDragStop")
+        if fn then fn(f) end
+    end)
+    tradeOurs[grip] = true
 end
-
 -- eigener flacher Kasten hinter einem Blizzard-Knopf (als Geschwister-Rahmen darunter – unabhängig davon, was
 -- Blizzard mit den Grafiken des Knopfs macht); Maus drauf = goldener Rand
 local buttonBoxes = {}
@@ -439,10 +451,10 @@ local function SkinTrade()
         end
     end
     ns.SkinWindow(f)
-    ns.ContentBox(f, 32, nil, true) -- untere Leiste mit goldener Linie für die Knöpfe
+    ns.ContentBox(f, 27, nil, true) -- untere Leiste mit goldener Linie für die Knöpfe
     -- eigener Titel ("Handel"); Namen und Porträts stehen als Visitenkarten über den Spalten
     local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    title:SetPoint("TOP", f, "TOP", 0, -6)
+    title:SetPoint("TOP", f, "TOP", 0, -6 + SHIFT)
     title:SetText(TRADE or ns.T("Handel", "Trade"))
     -- Knöpfe zuerst (hängen von nichts anderem ab)
     Step("buttons", function()
@@ -452,7 +464,7 @@ local function SkinTrade()
             ButtonBox(f, b)
         end
     end)
-    Step("room", function() MakeRoom(f) end)
+    Step("grow", function() GrowUp(f) end)
     ns.Scaled(f) -- so groß wie Gespräch, Händler und Co.
     Step("art", function() HideTradeArt(f, 1) end)
     Step("cards", UpdateTradeCards)
