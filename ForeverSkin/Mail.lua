@@ -205,7 +205,29 @@ local function Anchor(obj, point, rel, relPoint, x, y)
     obj:SetPoint(point, rel, relPoint, x, y)
 end
 
+local balance, postage
 local function Place(f)
+    -- Größe wie das Gesprächsfenster (wie Händler und Lehrer) – Blizzards Postfenster ist kleiner, dann reichten
+    -- die Nachrichten bis in die untere Leiste
+    local gossip = G("GossipFrame")
+    local w, h = gossip and gossip:GetWidth() or 384, gossip and gossip:GetHeight() or 512
+    if math.abs(f:GetWidth() - w) > 0.5 then f:SetWidth(w) end
+    if math.abs(f:GetHeight() - h) > 0.5 then f:SetHeight(h) end
+    -- eigener Kontostand links in der Titelleiste (beide Reiter)
+    if not balance then
+        balance = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        balance:SetPoint("LEFT", f, "TOPLEFT", 10, -12)
+    end
+    if ns.Money and GetMoney then balance:SetText(ns.T("Dein Gold: ", "Your gold: ") .. ns.Money(GetMoney())) end
+    -- Porto beim Senden beschriften (sonst sah die Zahl aus wie das eigene Gold)
+    local cost = G("SendMailCostMoneyFrame")
+    if cost and not Forbidden(cost) then
+        if not postage then
+            postage = cost:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+            postage:SetPoint("RIGHT", cost, "LEFT", -4, 0)
+            postage:SetText(ns.T("Porto:", "Postage:"))
+        end
+    end
     local inbox = G("InboxFrame")
     local inInbox = inbox and inbox:IsShown()
     -- Visitenkarte nur im Posteingang (beim Senden stehen dort Empfänger und Betreff)
@@ -242,6 +264,8 @@ local function Place(f)
     local send, cancel = G("SendMailMailButton"), G("SendMailCancelButton")
     Anchor(cancel, "RIGHT", f, "BOTTOMRIGHT", -10, y)
     if cancel then Anchor(send, "RIGHT", cancel, "LEFT", -8, 0) end
+    -- Porto links neben "Senden" (mit Beschriftung "Porto:")
+    if send then Anchor(cost, "RIGHT", send, "LEFT", -12, 0) end
     -- zweiter Reiter mit Abstand neben dem ersten
     local tab1 = G("MailFrameTab1")
     if tab1 then Anchor(G("MailFrameTab2"), "LEFT", tab1, "RIGHT", 8, 0) end
