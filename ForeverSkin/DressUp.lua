@@ -137,8 +137,12 @@ local function SkinDetailsPanel(panel)
             local isList = child.ScrollTarget or child.ForEachFrame or child:IsObjectType("ScrollFrame")
             if not Forbidden(child) and not child:IsObjectType("Button") then
                 if isList then
-                    -- Laufliste: nur ihre eigene Hintergrund-Grafik weg, die Einträge (Unter-Rahmen) bleiben
-                    ns.HideTextures(child)
+                    -- Laufliste: nur ihr großer Hintergrund weg – kleine Grafiken (die Symbole der Teile) bleiben
+                    for _, r in ipairs({ child:GetRegions() }) do
+                        if r:IsObjectType("Texture") and (r:GetWidth() or 0) > 60 and (r:GetHeight() or 0) > 60 then
+                            r:SetAlpha(0)
+                        end
+                    end
                 else
                     Strip(child, depth + 1)
                 end
@@ -196,18 +200,30 @@ end
 -- die Liste ist ein namenloser Unterrahmen der Anprobe (laut /fskin maus 312 × 473), rechts vom Modell. Darum außer
 -- Blizzards bekanntem Namen jeden großen Unterrahmen, der weit rechts liegt (nicht Modell/Innenfläche/Knöpfe)
 local function SkinDetails(f)
-    SkinDetailsPanel(f.OutfitDetailsPanel)
-    if f.OutfitDetailsPanel then PlacePanel(f, f.OutfitDetailsPanel) end
-    local inset = f.Inset or G("DressUpFrameInset")
-    local fl, fw = f:GetLeft(), f:GetWidth()
-    for _, child in ipairs({ f:GetChildren() }) do
-        if not Forbidden(child) and child ~= inset and child ~= f.ModelScene and not child:IsObjectType("Button") then
-            local left, w, h = child:GetLeft(), child:GetWidth() or 0, child:GetHeight() or 0
-            if left and fl and fw and left > fl + fw * 0.7 and w > 150 and h > 250 then
-                SkinDetailsPanel(child)
-                PlacePanel(f, child)
+    -- genau EINE Liste bearbeiten (sonst lagen zwei halbdurchsichtige Flächen übereinander und wirkten deckend):
+    -- Blizzards bekannte, wenn sie sichtbar ist, sonst der große Kasten rechts
+    local target = f.OutfitDetailsPanel
+    if not (target and not Forbidden(target) and target:IsShown()) then
+        target = nil
+        local inset = f.Inset or G("DressUpFrameInset")
+        local fl, fw = f:GetLeft(), f:GetWidth()
+        for _, child in ipairs({ f:GetChildren() }) do
+            if not Forbidden(child) and child ~= inset and child ~= f.ModelScene and not child:IsObjectType("Button")
+                and child:IsShown() then
+                local left, w, h = child:GetLeft(), child:GetWidth() or 0, child:GetHeight() or 0
+                if left and fl and fw and left > fl + fw * 0.7 and w > 150 and h > 250 then
+                    target = child
+                    break
+                end
             end
         end
+    end
+    if not target then return end
+    SkinDetailsPanel(target)
+    PlacePanel(f, target)
+    -- eine eventuell früher angelegte Fläche einer anderen Liste ausblenden
+    for panel, b in pairs(panelBack) do
+        if panel ~= target then b:Hide() end
     end
 end
 
