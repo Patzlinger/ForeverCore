@@ -143,11 +143,42 @@ local function SkinDetailsPanel(panel)
     if panel.ScrollBar then ns.SkinScrollBar(panel.ScrollBar) end
 end
 
-local shiftedPanels = setmetatable({}, { __mode = "k" })
+-- Liste rechts: immer 4 rechts neben dem Hauptfenster (Blizzard ließ sie für seinen Zier-Rahmen über den Rand ragen
+-- und hängt sie beim Aufklappen neu an), Oberkante wie bei Blizzard; dazu eine eigene deckende Fläche als Rahmen
+-- direkt dahinter (unabhängig davon, was Blizzard in der Liste zeichnet)
+local panelTop = setmetatable({}, { __mode = "k" })  -- [Liste] = Abstand der Oberkante zur Oberkante des Fensters
+local panelBack = setmetatable({}, { __mode = "k" }) -- [Liste] = eigene Fläche dahinter
+local function PlacePanel(f, panel)
+    if not panel or Forbidden(panel) or not panel:IsShown() then return end
+    if not panelTop[panel] and panel:GetTop() and f:GetTop() then panelTop[panel] = panel:GetTop() - f:GetTop() end
+    local y = panelTop[panel] or 0
+    local p, rel, rp, x, oy = panel:GetPoint(1)
+    if not (panel:GetNumPoints() == 1 and p == "TOPLEFT" and rel == f and rp == "TOPRIGHT"
+        and math.abs((x or 0) - 4) < 0.5 and math.abs((oy or 0) - y) < 0.5) then
+        -- (Größe behalten: hing die Liste mit zwei Ecken, hätte sie sonst keine eigene Größe mehr)
+        local w, h = panel:GetWidth(), panel:GetHeight()
+        panel:ClearAllPoints()
+        panel:SetPoint("TOPLEFT", f, "TOPRIGHT", 4, y)
+        if w and h and w > 0 and h > 0 then panel:SetSize(w, h) end
+    end
+    local b = panelBack[panel]
+    if not b then
+        b = CreateFrame("Frame", nil, f)
+        b:SetAllPoints(panel)
+        b:SetFrameStrata(panel:GetFrameStrata())
+        b:SetFrameLevel(math.max(0, panel:GetFrameLevel() - 1))
+        ns.Flat(b, { C.background[1], C.background[2], C.background[3], 1 })
+        panelBack[panel] = b
+        panel:HookScript("OnShow", function() b:Show() end)
+        panel:HookScript("OnHide", function() b:Hide() end)
+    end
+    b:SetShown(panel:IsShown())
+end
 -- die Liste ist ein namenloser Unterrahmen der Anprobe (laut /fskin maus 312 × 473), rechts vom Modell. Darum außer
 -- Blizzards bekanntem Namen jeden großen Unterrahmen, der weit rechts liegt (nicht Modell/Innenfläche/Knöpfe)
 local function SkinDetails(f)
     SkinDetailsPanel(f.OutfitDetailsPanel)
+    if f.OutfitDetailsPanel then PlacePanel(f, f.OutfitDetailsPanel) end
     local inset = f.Inset or G("DressUpFrameInset")
     local fl, fw = f:GetLeft(), f:GetWidth()
     for _, child in ipairs({ f:GetChildren() }) do
@@ -155,17 +186,7 @@ local function SkinDetails(f)
             local left, w, h = child:GetLeft(), child:GetWidth() or 0, child:GetHeight() or 0
             if left and fl and fw and left > fl + fw * 0.7 and w > 150 and h > 250 then
                 SkinDetailsPanel(child)
-                -- Blizzard lässt die Liste etwas über den Fensterrand ragen (für seinen verzierten Rahmen): 6 nach rechts
-                if not shiftedPanels[child] then
-                    shiftedPanels[child] = true
-                    local points = {}
-                    for i = 1, child:GetNumPoints() do
-                        local p, rel, rp, x, y = child:GetPoint(i)
-                        points[i] = { p, rel, rp, (x or 0) + 6, y or 0 }
-                    end
-                    child:ClearAllPoints()
-                    for _, pt in ipairs(points) do child:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5]) end
-                end
+                PlacePanel(f, child)
             end
         end
     end
@@ -261,10 +282,17 @@ local function SkinDressUp()
         end)
     end
     -- solange offen: Blizzards Knopf-Grafiken unsichtbar halten, aufgeklappte Auswahlliste flach
+    -- und alle 0,3 s die Liste rechts prüfen (Lage, Fläche – Blizzard hängt sie beim Aufklappen neu an)
     local watch = CreateFrame("Frame", nil, f)
-    watch:SetScript("OnUpdate", function()
+    local waited = 0
+    watch:SetScript("OnUpdate", function(_, elapsed)
         pcall(KeepButtonsFlat)
         if ns.SkinOpenMenu then pcall(ns.SkinOpenMenu) end
+        waited = waited + elapsed
+        if waited >= 0.3 then
+            waited = 0
+            pcall(SkinDetails, f)
+        end
     end)
 end
 
