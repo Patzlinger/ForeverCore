@@ -86,18 +86,7 @@ local function FindControls(frame, depth, found)
 end
 
 -- Liste der Teile rechts: Blizzards verzierter Rahmen weg, flache Fläche – die Einträge (in der Laufliste) bleiben
-local function SkinDetails(f)
-    local panel = f.OutfitDetailsPanel
-    if not panel then
-        -- (ohne bekannten Namen: der große Kasten rechts neben dem Fenster)
-        for _, child in ipairs({ f:GetChildren() }) do
-            if not Forbidden(child) and child:GetLeft() and f:GetRight() and child:GetLeft() >= f:GetRight() - 10
-                and (child:GetHeight() or 0) > 150 then
-                panel = child
-                break
-            end
-        end
-    end
+local function SkinDetailsPanel(panel)
     if not panel or Forbidden(panel) then return end
     -- Rahmen-Teile mehrere Ebenen tief (die Verzierung oben liegt verschachtelt) – nicht in der Liste selbst und
     -- nicht in Knöpfen (dort sind die Symbole der Teile)
@@ -113,6 +102,20 @@ local function SkinDetails(f)
     Strip(panel, 1)
     ns.Flat(panel, C.background)
     if panel.ScrollBar then ns.SkinScrollBar(panel.ScrollBar) end
+end
+
+-- die Liste ist ein namenloser Unterrahmen der Anprobe (laut /fskin maus 312 × 473), rechts vom Modell. Darum außer
+-- Blizzards bekanntem Namen jeden großen Unterrahmen, der weit rechts liegt (nicht Modell/Innenfläche/Knöpfe)
+local function SkinDetails(f)
+    SkinDetailsPanel(f.OutfitDetailsPanel)
+    local inset = f.Inset or G("DressUpFrameInset")
+    local fl, fw = f:GetLeft(), f:GetWidth()
+    for _, child in ipairs({ f:GetChildren() }) do
+        if not Forbidden(child) and child ~= inset and child ~= f.ModelScene and not child:IsObjectType("Button") then
+            local left, w, h = child:GetLeft(), child:GetWidth() or 0, child:GetHeight() or 0
+            if left and fl and fw and left > fl + fw * 0.7 and w > 150 and h > 250 then SkinDetailsPanel(child) end
+        end
+    end
 end
 
 local function SkinDressUp()
