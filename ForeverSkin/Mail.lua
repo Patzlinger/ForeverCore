@@ -128,6 +128,76 @@ local function SkinButtons(list)
     end
 end
 
+-- Element um dx/dy verschieben (alle Ankerpunkte, einmalig)
+local shifted = setmetatable({}, { __mode = "k" })
+local function Shift(obj, dx, dy)
+    if not obj or Forbidden(obj) or shifted[obj] or not obj.GetNumPoints then return end
+    shifted[obj] = true
+    local points = {}
+    for i = 1, obj:GetNumPoints() do
+        local p, rel, rp, x, y = obj:GetPoint(i)
+        points[i] = { p, rel, rp, (x or 0) + dx, (y or 0) + dy }
+    end
+    obj:ClearAllPoints()
+    for _, pt in ipairs(points) do obj:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5]) end
+end
+
+-- Mehr Luft: das Fenster wächst optisch um UP nach oben und um DOWN nach unten (eigene Fläche; Titelleiste,
+-- Schließen-Kreuz und die Reiter darunter rücken mit). Blizzards Inhalt bleibt, wo er ist – unten kommt eine
+-- Leiste mit feiner goldener Linie (wie beim Handel), die Knöpfe darin rücken etwas nach unten.
+local UP, DOWN, FOOT = 12, 10, 31
+local function Grow(f)
+    local look = ns.Flat(f, C.background, { 0, -UP, 0, -DOWN })
+    if look and look.head then
+        look.head:ClearAllPoints()
+        look.head:SetPoint("TOPLEFT", look.fill, "TOPLEFT", 1, -1)
+        look.head:SetPoint("TOPRIGHT", look.fill, "TOPRIGHT", -1, -1)
+    end
+    if look then
+        local foot = f:CreateTexture(nil, "BACKGROUND", nil, -7)
+        foot:SetColorTexture(C.header[1], C.header[2], C.header[3], 1)
+        foot:SetPoint("BOTTOMLEFT", look.fill, "BOTTOMLEFT", 1, 1)
+        foot:SetPoint("BOTTOMRIGHT", look.fill, "BOTTOMRIGHT", -1, 1)
+        foot:SetHeight(DOWN + FOOT)
+        local line = f:CreateTexture(nil, "BORDER", nil, -6)
+        line:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 0.35)
+        line:SetPoint("BOTTOMLEFT", foot, "TOPLEFT")
+        line:SetPoint("BOTTOMRIGHT", foot, "TOPRIGHT")
+        line:SetHeight(1)
+        ours[foot], ours[line] = true, true
+    end
+    Shift(f.CloseButton or G(f:GetName() .. "CloseButton"), 0, UP)
+    -- eigener Titel der Titelleiste (Blizzards Titeltext rückt mit hoch)
+    local title = f.TitleContainer and f.TitleContainer.TitleText or G(f:GetName() .. "TitleText")
+    Shift(title, 0, UP)
+    -- die neuen Flächen fangen die Maus ab (sonst klickt man ins Spiel durch)
+    for _, side in ipairs({ { "BOTTOMLEFT", "TOPLEFT", "BOTTOMRIGHT", "TOPRIGHT", UP },
+        { "TOPLEFT", "BOTTOMLEFT", "TOPRIGHT", "BOTTOMRIGHT", DOWN } }) do
+        local grip = CreateFrame("Frame", nil, f)
+        grip:SetPoint(side[1], f, side[2], 0, 0)
+        grip:SetPoint(side[3], f, side[4], 0, 0)
+        grip:SetHeight(side[5])
+        grip:EnableMouse(true)
+        ours[grip] = true
+    end
+end
+
+-- grauer Balken je Nachricht mit dem Symbol darin (1 px Luft rundum, wie im Handelsfenster)
+local rowBoxes = {}
+local function RowBox(row, button)
+    if not (row and button) or rowBoxes[row] then return end
+    local parent = row:GetParent() or row
+    local box = CreateFrame("Frame", nil, parent)
+    box:SetFrameLevel(math.max(0, row:GetFrameLevel() - 1))
+    box:SetPoint("TOP", button, "TOP", 0, 1)
+    box:SetPoint("BOTTOM", button, "BOTTOM", 0, -1)
+    box:SetPoint("LEFT", button, "LEFT", -1, 0)
+    box:SetPoint("RIGHT", row, "RIGHT", 0, 0)
+    ns.Flat(box, C.button)
+    ours[box] = true
+    rowBoxes[row] = box
+end
+
 ---------------------------------------------------------------------------
 -- Postfenster (Posteingang und Senden)
 ---------------------------------------------------------------------------
@@ -138,8 +208,9 @@ local function SkinInbox()
         local row = G("MailItem" .. i)
         if row and not Forbidden(row) then
             ns.HideTextures(row)
-            ns.Flat(row, C.panel, { 0, 1, 0, 1 })
-            BagSlot(G("MailItem" .. i .. "Button") or row.Button)
+            local button = G("MailItem" .. i .. "Button") or row.Button
+            BagSlot(button)
+            RowBox(row, button)
         end
     end
     ns.SkinArrowButton(G("InboxPrevPageButton"), true)
@@ -170,6 +241,31 @@ local function SkinSend()
         if box and not Forbidden(box) then SkinEdit(box, { -4, 0, -2, 0 }) end
     end
     SkinButtons({ "SendMailMailButton", "SendMailCancelButton" })
+    -- "Nachnahme" etwas unter "Geld senden" (die Kästchen klebten aneinander)
+    Shift(G("SendMailCODButton"), 0, -3)
+end
+
+-- Knöpfe unten in die neue Leiste (etwas tiefer), "Senden" mit Abstand neben "Abbrechen", Reiter unter das
+-- gewachsene Fenster
+local function PlaceBottom(f)
+    for _, n in ipairs({ "InboxPrevPageButton", "InboxNextPageButton", "OpenAllMail", "InboxFrameOpenAllButton",
+        "SendMailCancelButton", "SendMailCostMoneyFrame" }) do
+        -- nur, was direkt am Fenster hängt (hängt es an einem anderen Knopf, wandert es mit dem ohnehin mit)
+        local obj = G(n)
+        local _, rel = obj and not Forbidden(obj) and obj.GetPoint and obj:GetPoint(1)
+        if rel and not (rel.IsObjectType and rel:IsObjectType("Button")) then Shift(obj, 0, -6) end
+    end
+    local send, cancel = G("SendMailMailButton"), G("SendMailCancelButton")
+    if send and cancel and not Forbidden(send) and not Forbidden(cancel) then
+        send:ClearAllPoints()
+        send:SetPoint("RIGHT", cancel, "LEFT", -8, 0)
+    end
+    Shift(G("MailFrameTab1"), 0, -DOWN - 2)
+    local tab1, tab2 = G("MailFrameTab1"), G("MailFrameTab2")
+    if tab1 and tab2 and not Forbidden(tab2) then
+        tab2:ClearAllPoints()
+        tab2:SetPoint("LEFT", tab1, "RIGHT", 8, 0)
+    end
 end
 
 local function SkinMail()
@@ -185,8 +281,10 @@ local function SkinMail()
             end)
         end
     end
+    Step("grow", function() Grow(f) end)
     Step("inbox", SkinInbox)
     Step("send", SkinSend)
+    Step("bottom", function() PlaceBottom(f) end)
     Step("bars", function() SkinBars(f, 1) end)
     ns.Watch(f)
     ns.Scaled(f) -- so groß wie Gespräch, Händler und Co.
@@ -194,6 +292,8 @@ local function SkinMail()
     local watch = CreateFrame("Frame", nil, f)
     watch:SetScript("OnUpdate", function()
         pcall(LightText, G("SendMailBodyEditBox"))
+        -- Balken nur bei sichtbaren Nachrichten-Zeilen
+        for row, box in pairs(rowBoxes) do box:SetShown(row:IsVisible()) end
         for i = 1, 2 do
             local tab = G("MailFrameTab" .. i)
             if tab then pcall(ns.CenterText, tab) end
