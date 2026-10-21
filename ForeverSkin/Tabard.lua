@@ -96,7 +96,8 @@ local function Place(f)
     end
     -- Innenfläche und Modell darin
     local inset = f.Inset or G("TabardFrameInset")
-    local _, _, _, _, insetY = inset and not Forbidden(inset) and inset:GetPoint(1)
+    local insetY
+    if inset and not Forbidden(inset) then insetY = select(5, inset:GetPoint(1)) end
     if inset and not Forbidden(inset) and not (inset:GetNumPoints() == 2 and math.abs((insetY or 0) - top) < 0.5) then
         inset:ClearAllPoints()
         inset:SetPoint("TOPLEFT", f, "TOPLEFT", 6, top)
