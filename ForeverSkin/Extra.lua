@@ -219,16 +219,89 @@ local function TradeSlotEdge(button, link)
     ns.EdgeColor(button, c, 1)
 end
 
+-- Blizzards Handels-Grafiken im ganzen Fenster unsichtbar (auch in Unter-Rahmen wie dem Porträt des anderen):
+-- alles mit "Portrait", "TradeFrame", Platz-Hintergrund oder Namensfeld im Namen, Schlüssel oder in der Datei.
+-- Münz-Symbole, Gegenstands-Symbole und unsere eigenen Flächen bleiben.
+local ART = { "portrait", "tradeframe", "slot%-background", "questitemnameframe", "nameframe", "ui%-frame", "recipient" }
+local function IsTradeArt(holder, r)
+    local name = (r:GetName() or ""):lower()
+    local atlas = r.GetAtlas and r:GetAtlas()
+    local tex = r.GetTexture and r:GetTexture()
+    local text = name .. "|" .. (type(atlas) == "string" and atlas or "") .. "|" .. (type(tex) == "string" and tex or "")
+    -- Schlüssel im Rahmen (z. B. holder.portrait) – nur lesen
+    for k, v in pairs(holder) do
+        if v == r and type(k) == "string" then text = text .. "|" .. k end
+    end
+    text = text:lower()
+    if text:find("coin") or text:find("money") or text:find("icon") then return false end
+    for _, p in ipairs(ART) do
+        if text:find(p) then return true end
+    end
+    return false
+end
+
+local function HideTradeArt(frame, depth)
+    if not frame or not frame.GetRegions then return end
+    for _, r in ipairs({ frame:GetRegions() }) do
+        if r:IsObjectType("Texture") and not ns.IsMine(frame, r) and IsTradeArt(frame, r) then r:SetAlpha(0) end
+    end
+    if depth < 3 then
+        for _, child in ipairs({ frame:GetChildren() }) do HideTradeArt(child, depth + 1) end
+    end
+end
+
+-- Namen über die eigene Spalte (statt gequetscht in die Titelleiste), in Klassenfarbe
+local function PlaceTradeNames(f)
+    for _, n in ipairs({ { "TradeFramePlayerNameText", "TradePlayerInputMoneyInset", "player" },
+        { "TradeFrameRecipientNameText", "TradeRecipientMoneyInset", "NPC" } }) do
+        local text, column = G(n[1]), G(n[2])
+        if text and column then
+            text:ClearAllPoints()
+            text:SetPoint("BOTTOMLEFT", column, "TOPLEFT", 2, 6)
+            text:SetPoint("BOTTOMRIGHT", column, "TOPRIGHT", -2, 6)
+            text:SetJustifyH("CENTER")
+            local r, g, b = 1, 1, 1
+            if UnitExists(n[3]) and UnitIsPlayer(n[3]) then
+                local _, class = UnitClass(n[3])
+                local color = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
+                if color then r, g, b = color.r, color.g, color.b end
+            end
+            text:SetTextColor(r, g, b)
+        end
+    end
+end
+
+-- alle Text-Knöpfe des Fensters (Handeln, Abbrechen …) flach – unabhängig vom Namen
+local function SkinTradeButtons(frame, depth)
+    for _, child in ipairs({ frame:GetChildren() }) do
+        if child:IsObjectType("Button") then
+            local label = child.GetText and child:GetText()
+            if type(label) == "string" and label ~= "" and child ~= frame.CloseButton then ns.SkinButton(child) end
+        elseif depth < 2 then
+            SkinTradeButtons(child, depth + 1)
+        end
+    end
+end
+
 local function SkinTrade()
     local f = G("TradeFrame")
     if not f then return end
-    ns.SkinWindow(f)
-    -- Rahmenteile, Porträts und Hintergründe (Retail und ältere Fassungen)
-    for _, n in ipairs({ "TradeFramePlayerPortrait", "TradeFrameRecipientPortrait", "TradeRecipientPortraitFrame",
-        "TradeRecipientBG", "TradeRecipientLeftBorder", "TradeRecipientBotLeftCorner", "TradeRecipientBottomBorder",
-        "TradeRecipientMoneyBg", "TradeFrameBG" }) do
-        ns.Hide(G(n))
+    local function Step(what, fn)
+        local ok, err = pcall(fn)
+        if not ok and ns.UI.ReportError then ns.UI.ReportError("ForeverSkin", "trade/" .. what, err) end
     end
+    ns.SkinWindow(f)
+    ns.ContentBox(f, 32, nil, true) -- untere Leiste mit goldener Linie für die Knöpfe
+    -- eigener Titel ("Handel"), die Namen stehen über den Spalten
+    local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    title:SetPoint("TOP", f, "TOP", 0, -6)
+    title:SetText(TRADE or ns.T("Handel", "Trade"))
+    Step("art", function() HideTradeArt(f, 1) end)
+    Step("names", function() PlaceTradeNames(f) end)
+    f:HookScript("OnShow", function()
+        Step("art", function() HideTradeArt(f, 1) end)
+        Step("names", function() PlaceTradeNames(f) end)
+    end)
     -- Kästen: deine Gegenstände, die des anderen, "wird nicht gehandelt" und die Geldfelder
     local boxes = {}
     for _, n in ipairs({ "TradePlayerItemsInset", "TradeRecipientItemsInset", "TradePlayerEnchantInset",
@@ -258,7 +331,9 @@ local function SkinTrade()
             local row = G(side .. i)
             if row then
                 ns.Hide(G(side .. i .. "NameFrame"))
+                ns.Hide(G(side .. i .. "SlotTexture")) -- Blizzards Platz-Hintergrund (goldener Rahmen um den Platz)
                 if row.NameFrame then ns.Hide(row.NameFrame) end
+                if row.SlotTexture then ns.Hide(row.SlotTexture) end
                 SkinTradeSlot(G(side .. i .. "ItemButton") or row.ItemButton)
             end
         end
@@ -281,10 +356,7 @@ local function SkinTrade()
             ns.Flat(box, C.input or C.panel, { -4, 1, 0, 1 })
         end
     end
-    for _, n in ipairs({ "TradeFrameTradeButton", "TradeFrameCancelButton" }) do
-        local b = G(n)
-        if b then ns.SkinButton(b) end
-    end
+    Step("buttons", function() SkinTradeButtons(f, 1) end)
     ns.Watch(f)
     -- Solange das Fenster offen ist: Seltenheitsfarben und "hat Handeln gedrückt" (grüner Rand)
     local accepted = setmetatable({}, { __mode = "k" })

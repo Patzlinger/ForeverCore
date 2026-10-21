@@ -19,9 +19,8 @@ local HISTORY_SIZE = 10     -- so viele vergangene Level merken
 local MATCH_WINDOW = 1.5    -- Sekunden, in denen XP und Kill-/Quest-Meldung zusammengehören
 local FLAT = "Interface\\Buttons\\WHITE8x8"
 local INSET = 2                                  -- 1 px Rand + 1 px dunkle Fuge, Füllung liegt innen
--- Stil wie die Forever-Fenster: dunkle Fläche, feiner grauer Rand, goldene Linie oben
+-- Stil wie die Zauberleiste von ForeverCast: dunkle Fläche, feiner grauer Rand rundum
 local EDGE = { 0.22, 0.22, 0.26, 1 }
-local TOP_LINE = { 1, 0.82, 0, 0.55 }
 local TEXT_COLOR = { 1, 1, 0.98 }
 -- Füllfarben wie im ursprünglichen ForeverXP: Erfahrung kräftig Violett, Erholung Blau, fertige Quests Gold
 -- (auf Wunsch zurück, 2026-10-18). Jede Füllung bekommt einen leichten Glanz (oben heller, unten dunkler).
@@ -459,19 +458,15 @@ local function Build(key, holder)
     local w = { key = key, textParts = {}, hovered = false }
     local root = CreateFrame("Frame", nil, holder, "BackdropTemplate")
     root:SetAllPoints(holder)
-    -- scharfer 1-px-Rand wie die Forever-Fenster (statt des weichen Tooltip-Rands) und goldene Linie oben
+    -- scharfer 1-px-Rand rundum, einfarbig wie bei der Zauberleiste von ForeverCast (ohne goldene Linie oben,
+    -- Wunsch 2026-10-21); Füllung rundum gleich eingerückt
     root:SetBackdrop({ bgFile = FLAT, edgeFile = FLAT, edgeSize = 1 })
     root:SetBackdropColor(0.05, 0.05, 0.065, 0.92)
     root:SetBackdropBorderColor(EDGE[1], EDGE[2], EDGE[3], EDGE[4])
     root:EnableMouse(true)
     w.root = root
-    w.topLine = root:CreateTexture(nil, "BORDER")
-    w.topLine:SetPoint("TOPLEFT", 1, -1)
-    w.topLine:SetPoint("TOPRIGHT", -1, -1)
-    w.topLine:SetHeight(1)
-    w.topLine:SetColorTexture(TOP_LINE[1], TOP_LINE[2], TOP_LINE[3], TOP_LINE[4])
     w.inner = CreateFrame("Frame", nil, root)
-    w.inner:SetPoint("TOPLEFT", INSET, -INSET - 1)
+    w.inner:SetPoint("TOPLEFT", INSET, -INSET)
     w.inner:SetPoint("BOTTOMRIGHT", -INSET, INSET)
     -- leerer Teil der Leiste etwas heller als der Rahmen, damit Striche und Kante sichtbar bleiben
     w.track = root:CreateTexture(nil, "ARTWORK")
