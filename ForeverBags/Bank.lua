@@ -87,6 +87,21 @@ end
 function ns.BankCheck()
     local function Say(text) print("|cffffcc00ForeverBags|r: " .. tostring(text)) end
     Say("Fächer: " .. table.concat(ns.BankIDs(), ", ") .. " · Bank offen: " .. tostring(atBank))
+    -- je Fach die Größe, dazu, was das Spiel als gekauft meldet (Fehlersuche "nicht gekaufte Plätze sichtbar")
+    local sizes = {}
+    for _, bag in ipairs(ns.BankIDs()) do sizes[#sizes + 1] = bag .. "=" .. (C_Container.GetContainerNumSlots(bag) or 0) end
+    Say("Größen: " .. table.concat(sizes, ", "))
+    local function Try(fn, ...)
+        if type(fn) ~= "function" then return "–" end
+        local ok, a = pcall(fn, ...)
+        if not ok then return "Fehler" end
+        if type(a) == "table" then return "#" .. #a end
+        return tostring(a)
+    end
+    local bankType = Enum and Enum.BankType and Enum.BankType.Character
+    Say(string.format("Gekauft: Fächer-Liste %s, Fächer-Anzahl %s, Bank-Taschenplätze %s, Enum Bankfach %s",
+        Try(C_Bank and C_Bank.FetchPurchasedBankTabData, bankType), Try(C_Bank and C_Bank.FetchNumPurchasedBankTabs, bankType),
+        Try(GetNumBankSlots), tostring(Enum and Enum.BagIndex and Enum.BagIndex.CharacterBankTab_1)))
     local bag = ns.BankIDs()[1]
     local b = bag and buttons[bag] and buttons[bag][1]
     if not b then Say("kein Bankplatz angelegt") return end
