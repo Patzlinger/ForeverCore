@@ -139,6 +139,33 @@ function ns.EdgeColor(frame, c, a)
     for _, e in ipairs(look.edges) do e:SetVertexColor(c[1], c[2], c[3], a or c[4] or 1) end
 end
 
+-- Kontostand links in der Titelleiste ("Dein Gold: …") – feste Stilregel für alle umgestalteten Fenster
+-- (docs/Fenster-Stil.md). Aktualisiert sich bei jeder Gold-Änderung und beim Öffnen.
+local goldTexts = {} -- [Fenster] = Text
+local GOLD_SKIP = { LootFrame = true, SettingsPanel = true } -- (zu schmal bzw. kein Spiel-Fenster)
+local function UpdateGold(fs)
+    if ns.Money and GetMoney then fs:SetText(T("Dein Gold: ", "Your gold: ") .. ns.Money(GetMoney())) end
+end
+function ns.HeaderGold(frame)
+    if not frame or goldTexts[frame] then return frame and goldTexts[frame] end
+    local name = frame.GetName and frame:GetName()
+    if name and GOLD_SKIP[name] then return nil end
+    local fs = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    fs:SetPoint("LEFT", frame, "TOPLEFT", 10, -12)
+    goldTexts[frame] = fs
+    frame:HookScript("OnShow", function() UpdateGold(fs) end)
+    UpdateGold(fs)
+    return fs
+end
+local goldEvents = CreateFrame("Frame")
+goldEvents:RegisterEvent("PLAYER_MONEY")
+goldEvents:RegisterEvent("PLAYER_LOGIN")
+goldEvents:SetScript("OnEvent", function()
+    for frame, fs in pairs(goldTexts) do
+        if frame:IsShown() then UpdateGold(fs) end
+    end
+end)
+
 -- Fenster: dunkle Fläche, Titelleiste mit goldener Linie (wie alle Forever-Fenster); Blizzards Rahmen,
 -- Hintergrund, Porträt und Titel-Grafik unsichtbar, der Titeltext bleibt
 -- keep (optional): Texturen, die bleiben sollen. light = true: NICHT alle Grafiken des Fensters ausblenden, nur
@@ -187,6 +214,7 @@ function ns.SkinWindow(frame, keep, light)
         end
     end
     ns.SkinClose(frame.CloseButton or (name and _G[name .. "CloseButton"]))
+    ns.HeaderGold(frame) -- Kontostand links in der Titelleiste (Stilregel)
 end
 
 -- Gliederung wie bei Blizzard, aber flach: abgesetzter Kasten für den Inhalt (wie die Abschnitts-Kästen der

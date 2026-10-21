@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverSkin: every restyled window shows "Your gold: …" on the left of its title bar (NPC dialog, quest dialog, merchant, trainer, flight map, macros, trade, mailbox, tabard) – updated whenever your gold changes; the merchant footer now only lists special currencies.
+
 - **ForeverSkin: tabard design (guild tabard) in the Forever look** – NPC card at the top, the greeting below it, the model in a flat inner area, the five design rows as grey bars with flat arrows, cost on the left and the buttons on the right in the footer bar, your gold in the title bar. Switch: /fskin » "Tabard design".
 
 

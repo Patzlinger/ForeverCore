@@ -67,19 +67,14 @@ local function SkinRow(i)
     ns.SkinArrowButton(G(name .. "RightButton"), false)
 end
 
-local balance
 local function Place(f)
     -- Größe wie das Gesprächsfenster
     local gossip = G("GossipFrame")
     local w, h = gossip and gossip:GetWidth() or 384, gossip and gossip:GetHeight() or 512
     if math.abs(f:GetWidth() - w) > 0.5 then f:SetWidth(w) end
     if math.abs(f:GetHeight() - h) > 0.5 then f:SetHeight(h) end
-    -- Kontostand links in der Titelleiste; Blizzards Gold-Anzeige unten (doppelt) unsichtbar
-    if not balance then
-        balance = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-        balance:SetPoint("LEFT", f, "TOPLEFT", 10, -12)
-    end
-    if ns.Money and GetMoney then balance:SetText(T("Dein Gold: ", "Your gold: ") .. ns.Money(GetMoney())) end
+    -- Kontostand links in der Titelleiste (ns.HeaderGold über ns.SkinWindow); Blizzards Gold-Anzeige unten
+    -- (doppelt) unsichtbar
     for _, n in ipairs({ "TabardFrameMoneyFrame", "TabardFrameMoneyInset", "TabardFrameMoneyBg" }) do
         local obj = G(n)
         if obj and not Forbidden(obj) and obj:GetAlpha() > 0 then obj:SetAlpha(0) end

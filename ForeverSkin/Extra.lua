@@ -501,6 +501,12 @@ local function GrowUp(f)
             trade:SetSize(104, 24)
         end
     end
+    -- Kontostand (ns.HeaderGold) mit der Titelleiste nach oben
+    local gold = ns.HeaderGold and ns.HeaderGold(f)
+    if gold then
+        gold:ClearAllPoints()
+        gold:SetPoint("LEFT", f, "TOPLEFT", 10, -12 + SHIFT)
+    end
     local close = f.CloseButton or G("TradeFrameCloseButton")
     if close and not Forbidden(close) then
         local points = {}

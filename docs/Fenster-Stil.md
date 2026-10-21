@@ -19,7 +19,9 @@ Werte in Punkten des Fensters (vor `ns.Scaled`).
 - **Größe wie das Gesprächsfenster** (`GossipFrame`, Grundmaß 384 × 512), danach `ns.Scaled(f)` (Regler „Größe“).
   Kleinere Blizzard-Fenster auf diese Größe setzen und laufend halten (siehe Lehrer, Briefkasten).
 - **Titelleiste** 23 hoch mit goldener Linie (`ns.SkinWindow`), Titel mittig, Schließen-Kreuz rechts.
-  Kurze Zusatzinfos (z. B. „Dein Gold: …“) links in der Titelleiste.
+  **Links immer „Dein Gold: …“** – kommt automatisch mit `ns.SkinWindow` (`ns.HeaderGold`, aktualisiert sich bei
+  jeder Gold-Änderung). Eigenes Gold dann nirgends sonst im Fenster (Blizzards Gold-Anzeigen ausblenden); wächst die
+  Titelleiste nach oben, die Anzeige mitversetzen. Ausnahmen: Beute-Fenster (zu schmal), Optionen-Fenster.
 - **Visitenkarte** unter der Titelleiste (wie `ns.NpcCard`): rundes Bild mit goldenem Ring (48 Ring / 45 Fuge /
   43 Bild, Mitte bei (36, −56)), daneben Name groß in Gold (`GameFontNormalLarge` bei (68, −37)), darunter Unterzeile
   (`GameFontHighlightSmall`, 0.85 grau) und Info (`GameFontDisableSmall`). Ohne NPC ein passendes Symbol (Briefkasten:

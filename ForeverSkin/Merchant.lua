@@ -467,7 +467,8 @@ function Refresh()
             x = x + b:GetWidth() + 6
         end
     end
-    -- Geld und die Sonderwährungen, die dieser Händler verlangt (Bestand mit Symbol), wie unten bei Blizzard
+    -- Sonderwährungen, die dieser Händler verlangt (Bestand mit Symbol), wie unten bei Blizzard – das eigene Gold
+    -- steht in der Titelleiste (Stilregel, ns.HeaderGold), hier nicht doppelt
     local parts = {}
     if GetMerchantCurrencies and C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo then
         for _, id in ipairs({ GetMerchantCurrencies() }) do
@@ -477,7 +478,6 @@ function Refresh()
             end
         end
     end
-    parts[#parts + 1] = Money(GetMoney())
     panel.money:SetText(table.concat(parts, "    "))
 end
 ns.RefreshMerchant = Refresh
