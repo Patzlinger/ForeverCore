@@ -10,7 +10,9 @@ eintragen; behobene mit Datum und Ursache nach „Erledigt“ verschieben.
 
 **Ausgelagerte Details** (nur bei Bedarf lesen, damit diese Datei kurz bleibt): [docs/Hub.md](docs/Hub.md) (alle
 Hub-Funktionen, Einstellungs-Verwaltung), [docs/Menues.md](docs/Menues.md) (Maße der Einstellungsfenster),
-[docs/Wechselwirkungen.md](docs/Wechselwirkungen.md) (Addons untereinander, Blizzard, Questie, Details …).
+[docs/Wechselwirkungen.md](docs/Wechselwirkungen.md) (Addons untereinander, Blizzard, Questie, Details …),
+[docs/Fenster-Stil.md](docs/Fenster-Stil.md) (Stilregeln für umgestaltete Blizzard-Fenster in ForeverSkin – **vor jedem
+neuen Fenster lesen und beim ersten Versuch anwenden**).
 Neue Einzelheiten dort eintragen, hier nur Regeln.
 
 ## 1. Projekt und Philosophie
