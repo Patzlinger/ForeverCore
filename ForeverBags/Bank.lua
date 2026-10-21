@@ -81,6 +81,7 @@ function ns.LayoutBank()
         bank:SetSize(math.max(width + 2 * PAD, 330), HEADER + TOOLBAR + height + FOOTER + 2 * PAD)
     end
     freeText:SetText(L("FREE_SLOTS", total - used, total))
+    if ns.UpdateBankPurchase then ns.UpdateBankPurchase() end
 end
 
 -- /fbags bankcheck: Zustand des ersten Bankplatzes und was unter der Maus liegt (zur Fehlersuche)
@@ -129,6 +130,67 @@ function ns.BankCheck()
     end
 end
 
+---------------------------------------------------------------------------
+-- Weiteren Bankplatz kaufen (wie Blizzards "Taschenplätze … Kosten … Kaufen"): der Forever-Client nutzt dafür
+-- Blizzards Bankfächer (C_Bank). Unten rechts: Preis und "Kaufen" – mit Rückfrage; danach erscheint der neue
+-- Platz von selbst (BANK_TABS_CHANGED). Nur sichtbar, wenn das Spiel einen Kauf erlaubt.
+---------------------------------------------------------------------------
+local buyButton, buyText
+local COIN = "|TInterface\\MoneyFrame\\UI-%sIcon:12:12:2:0|t"
+local function Money(copper)
+    copper = math.floor(copper or 0)
+    local g, s, c = math.floor(copper / 10000), math.floor(copper / 100) % 100, copper % 100
+    local parts = {}
+    if g > 0 then parts[#parts + 1] = g .. COIN:format("Gold") end
+    if s > 0 then parts[#parts + 1] = s .. COIN:format("Silver") end
+    if c > 0 or #parts == 0 then parts[#parts + 1] = c .. COIN:format("Copper") end
+    return table.concat(parts, " ")
+end
+
+local function BankType() return Enum and Enum.BankType and Enum.BankType.Character end
+
+-- nächster kaufbarer Platz: kann man kaufen? Preis (Kupfer)?
+local function NextPurchase()
+    if not (C_Bank and C_Bank.CanPurchaseBankTab and BankType()) then return false end
+    local ok, can = pcall(C_Bank.CanPurchaseBankTab, BankType())
+    if not (ok and can) then return false end
+    local cost
+    if C_Bank.FetchNextPurchasableBankTabData then
+        local okData, data = pcall(C_Bank.FetchNextPurchasableBankTabData, BankType())
+        if okData and type(data) == "table" then cost = data.tabCost or data.cost end
+    end
+    return true, cost
+end
+
+StaticPopupDialogs["FOREVERBAGS_BUY_BANK_TAB"] = {
+    text = L("BUY_BANK_CONFIRM"),
+    button1 = YES or "Ja",
+    button2 = NO or "Nein",
+    OnAccept = function()
+        if C_Bank and C_Bank.PurchaseBankTab and BankType() then
+            local ok = pcall(C_Bank.PurchaseBankTab, BankType())
+            if not ok then ns.Print(L("BUY_BANK_FAILED")) end
+        end
+    end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+}
+
+function ns.UpdateBankPurchase()
+    if not buyButton then return end
+    local can, cost = NextPurchase()
+    buyButton:SetShown(can)
+    buyText:SetShown(can)
+    if can then
+        buyText:SetText(L("BUY_BANK_NEXT") .. " " .. (cost and Money(cost) or "?"))
+        local affordable = not cost or (GetMoney and GetMoney() >= cost)
+        buyButton:SetEnabled(affordable)
+        buyButton:SetAlpha(affordable and 1 or 0.45)
+        buyText:SetTextColor(affordable and 1 or 1, affordable and 1 or 0.35, affordable and 1 or 0.35)
+    end
+end
+
 local function CloseBank()
     if C_Bank and C_Bank.CloseBankFrame then pcall(C_Bank.CloseBankFrame)
     elseif CloseBankFrame then CloseBankFrame() end
@@ -161,6 +223,22 @@ local function CreateBank()
     content:SetSize(1, 1)
     freeText = bank:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     freeText:SetPoint("BOTTOMLEFT", PAD, PAD + 2)
+
+    -- unten rechts: weiteren Bankplatz kaufen (Preis, Knopf) – rechte untere Ecke bleibt für den Größen-Griff frei
+    buyButton = UI.Button(bank, L("BUY_BANK"), 70, function()
+        local can, cost = NextPurchase()
+        if not can then return end
+        local dialog = StaticPopup_Show("FOREVERBAGS_BUY_BANK_TAB", cost and Money(cost) or "?")
+        if not dialog then ns.Print(L("BUY_BANK_FAILED")) end
+    end)
+    buyButton:SetHeight(18)
+    buyButton:SetPoint("BOTTOMRIGHT", -PAD - 16, PAD)
+    buyButton:HookScript("OnEnter", function(self) ns.SimpleTip(self, L("TIP_BUY_BANK")) end)
+    buyButton:HookScript("OnLeave", ns.HideTip)
+    buyText = bank:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    buyText:SetPoint("RIGHT", buyButton, "LEFT", -6, 0)
+    buyButton:Hide()
+    buyText:Hide()
 
     bank:HookScript("OnShow", ns.LayoutBank)
     -- Taschen bleiben rechts angedockt: nach dem Verschieben und wenn die Bank ihre Größe ändert
@@ -207,7 +285,7 @@ local queued = false
 local events = CreateFrame("Frame")
 for _, event in ipairs({ "BANKFRAME_OPENED", "BANKFRAME_CLOSED", "PLAYERBANKSLOTS_CHANGED", "BAG_UPDATE_DELAYED",
     "ITEM_LOCK_CHANGED", "BAG_UPDATE_COOLDOWN", "INVENTORY_SEARCH_UPDATE", "PLAYERREAGENTBANKSLOTS_CHANGED",
-    "BANK_TABS_CHANGED" }) do
+    "BANK_TABS_CHANGED", "PLAYER_MONEY", "BANK_TAB_SETTINGS_UPDATED", "PLAYERBANKBAGSLOTS_CHANGED" }) do
     pcall(events.RegisterEvent, events, event)
 end
 events:SetScript("OnEvent", function(_, event)
