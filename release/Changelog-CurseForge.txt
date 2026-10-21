@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- ForeverQuests: click the "Quests" title of the tracker to open the quest log.
 - ForeverQuests with Questie, quest items in the tooltip: items the quest giver hands you (e.g. a horn to summon a quest target) and other items a quest needs now show their quest too.
 - ForeverQuests with Questie, **quest items in the tooltip:** quest items now show which quest they belong to and whether you still have it – "in your log", "completed – no longer needed" or "not in your log" (items that start a quest: "Starts: …"). With ForeverAlts, your alts with the same quest are listed below. Can be turned off in /fq.
 - ForeverSpellbook: new entry "Macros" at the bottom of the tab list – opens the macro window.

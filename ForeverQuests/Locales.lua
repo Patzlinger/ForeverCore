@@ -16,6 +16,7 @@ local STRINGS = {
 
         -- Tracker
         TRACKER_TITLE = "Quests",
+        TIP_OPEN_QUESTLOG = "Klick: Questlog öffnen",
         LOG_READY = "|cff00ff00Abgabebereit:|r %d Quest(s)", LOG_READY_NONE = "Keine Quest abgabebereit",
         LOG_XP = "EP",
         DNGSRC_NONE = "Questie ist nicht geladen (oder noch nicht fertig) – das Dungeonfenster ist leer.",
@@ -263,6 +264,7 @@ local STRINGS = {
         FONT_STANDARD = "Default",
 
         TRACKER_TITLE = "Quests",
+        TIP_OPEN_QUESTLOG = "Click: open the quest log",
         LOG_READY = "|cff00ff00Ready to turn in:|r %d quest(s)", LOG_READY_NONE = "No quest ready to turn in",
         LOG_XP = "XP",
         DNGSRC_NONE = "Questie is not loaded (or not ready yet) – the dungeon window is empty.",
