@@ -480,6 +480,36 @@ local function EnsureGroups(v, kind, groups, prefix, showCooldown)
     return c
 end
 
+-- Debuffs, die nie angezeigt werden (keine echten Schwächungen): "Boosted Rest" vom Lagern (Forever). Blizzards
+-- Anzeige kann einzelne Zauber nur per Zauber-ID ausschließen, die ID kennt man vorab nicht – deshalb wird sie
+-- außerhalb des Kampfs am Namen erkannt (Namen sind dann lesbar) und in ForeverFramesDB._ignoredDebuffs gemerkt
+-- ("_" = gehört nicht ins Profil). Danach fehlt der Debuff überall, auch im Kampf.
+local IGNORE_DEBUFF_NAMES = { ["Boosted Rest"] = true }
+local function IgnoredDebuffs()
+    local db = GetDB()
+    if type(db._ignoredDebuffs) ~= "table" then db._ignoredDebuffs = {} end
+    return db._ignoredDebuffs
+end
+
+-- true = diesen Debuff überspringen; lernt nebenbei die ID (dann Blizzard-Anzeige neu aufbauen)
+local function SkipDebuff(aura)
+    if not aura or IsSecret(aura) then return false end
+    local spellID, name = aura.spellId, aura.name
+    if IsSecret(spellID) or IsSecret(name) then return false end
+    local ignored = IgnoredDebuffs()
+    if spellID and ignored[spellID] then return true end
+    if name and IGNORE_DEBUFF_NAMES[name] and spellID then
+        ignored[spellID] = true
+        C_Timer.After(0, function()
+            for _, b in ipairs(ns.buttons or {}) do
+                if b.ff and b.ff.debuffs then pcall(engine.Layout, b) end
+            end
+        end)
+        return true
+    end
+    return false
+end
+
 local function DebuffEngineFilter()
     return GetDB().debuffMode == "dispellable" and "HARMFUL|RAID" or "HARMFUL"
 end
@@ -575,7 +605,8 @@ function engine.Layout(b)
     end
     local specs = {
         { kind = "debuff", prefix = "debuff", on = db.debuffMode ~= "off", cd = db.debuffCooldown,
-          groups = { { key = "ff_debuffs", filter = DebuffEngineFilter(), max = debuffNum } } },
+          groups = { { key = "ff_debuffs", filter = DebuffEngineFilter(), max = debuffNum,
+              candidates = next(IgnoredDebuffs()) and { excludeSpellIDs = IgnoredDebuffs() } or nil } } },
         { kind = "buff", prefix = "buff", on = db.buffMode ~= "off", cd = db.buffCooldown,
           groups = spellIDCache.groups },
     }
@@ -855,7 +886,9 @@ local function UpdateDebuffs(b)
     ids = ids or {}
     local dispellable, others = {}, {}
     for _, id in ipairs(ids) do
-        if IsDispellable(unit, id) then
+        if SkipDebuff(GetAura(unit, id)) then
+            -- z. B. "Boosted Rest": keine echte Schwächung, nie anzeigen
+        elseif IsDispellable(unit, id) then
             dispellable[#dispellable + 1] = id
         else
             others[#others + 1] = id
