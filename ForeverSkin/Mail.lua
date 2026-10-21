@@ -205,7 +205,7 @@ local function Anchor(obj, point, rel, relPoint, x, y)
     obj:SetPoint(point, rel, relPoint, x, y)
 end
 
-local balance, postage
+local balance
 local function Place(f)
     -- Größe wie das Gesprächsfenster (wie Händler und Lehrer) – Blizzards Postfenster ist kleiner, dann reichten
     -- die Nachrichten bis in die untere Leiste
@@ -219,14 +219,18 @@ local function Place(f)
         balance:SetPoint("LEFT", f, "TOPLEFT", 10, -12)
     end
     if ns.Money and GetMoney then balance:SetText(ns.T("Dein Gold: ", "Your gold: ") .. ns.Money(GetMoney())) end
-    -- Porto beim Senden beschriften (sonst sah die Zahl aus wie das eigene Gold)
-    local cost = G("SendMailCostMoneyFrame")
-    if cost and not Forbidden(cost) then
-        if not postage then
-            postage = cost:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-            postage:SetPoint("RIGHT", cost, "LEFT", -4, 0)
-            postage:SetText(ns.T("Porto:", "Postage:"))
-        end
+    -- Blizzards Gold-Anzeige unten beim Senden: doppelt zum Kontostand oben – unsichtbar (nur Grafik/Text, sie
+    -- bleibt sonst, wie sie ist)
+    for _, n in ipairs({ "SendMailMoneyFrame", "SendMailMoneyInset", "SendMailMoneyBg" }) do
+        local obj = G(n)
+        if obj and not Forbidden(obj) and obj:GetAlpha() > 0 then obj:SetAlpha(0) end
+    end
+    -- Brieftext-Feld bis kurz über die Anhänge (das Fenster ist höher als Blizzards, sonst blieb ein leerer Streifen)
+    local scroll, attach = G("SendMailScrollFrame"), G("SendMailAttachment1")
+    if scroll and attach and not Forbidden(scroll) and scroll:IsVisible() and scroll:GetTop() and attach:GetTop() then
+        local s = attach:GetEffectiveScale() / scroll:GetEffectiveScale()
+        local h = scroll:GetTop() - attach:GetTop() * s - 14
+        if h > 40 and math.abs(scroll:GetHeight() - h) > 0.5 then scroll:SetHeight(h) end
     end
     local inbox = G("InboxFrame")
     local inInbox = inbox and inbox:IsShown()
@@ -264,8 +268,6 @@ local function Place(f)
     local send, cancel = G("SendMailMailButton"), G("SendMailCancelButton")
     Anchor(cancel, "RIGHT", f, "BOTTOMRIGHT", -10, y)
     if cancel then Anchor(send, "RIGHT", cancel, "LEFT", -8, 0) end
-    -- Porto links neben "Senden" (mit Beschriftung "Porto:")
-    if send then Anchor(cost, "RIGHT", send, "LEFT", -12, 0) end
     -- zweiter Reiter mit Abstand neben dem ersten
     local tab1 = G("MailFrameTab1")
     if tab1 then Anchor(G("MailFrameTab2"), "LEFT", tab1, "RIGHT", 8, 0) end
