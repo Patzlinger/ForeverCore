@@ -179,6 +179,9 @@ end
 -- Seltenheitsfarbe (Maus drauf = gold). Hat der andere (bzw. du) "Handeln" gedrückt, wird der Rand seines
 -- Kastens grün (statt Blizzards grünem Leuchten). Geld-Eingabe und Knöpfe flach.
 local GREEN = { 0.30, 0.85, 0.30 }
+local SHIFT = 34 -- so viel wächst das Fenster nach oben (Platz für die Visitenkarten)
+local DOWN = 16  -- so viel wächst das Fenster nach unten (Platz für die Knöpfe)
+local tradeOurs = setmetatable({}, { __mode = "k" }) -- eigene Texturen (Visitenkarten), bleiben sichtbar
 local slotState = setmetatable({}, { __mode = "k" }) -- [Platz] = zuletzt gesetzte Randfarbe (als Text)
 
 local function SkinTradeSlot(button)
@@ -201,29 +204,64 @@ local function SkinTradeSlot(button)
     slotState[button] = ""
 end
 
--- Randfarbe eines Platzes: Maus drauf = gold, sonst Seltenheit (ab "selten"), sonst grau
-local function TradeSlotEdge(button, link)
-    if not button or slotState[button] == nil then return end
-    local c, key = C.border, "border"
-    if button:IsMouseOver() then
-        c, key = C.accent, "accent"
-    elseif link then
-        local quality = select(3, GetItemInfo(link))
-        if type(quality) == "number" and quality >= 2 and GetItemQualityColor then
-            local r, g, b = GetItemQualityColor(quality)
-            c, key = { r, g, b }, "q" .. quality
-        end
+-- Zeilen wie im Händler-Fenster: flacher Kasten über die ganze Spaltenbreite (Maus drauf = goldener Rand), links
+-- das Symbol mit Rand in Seltenheitsfarbe, daneben der Name in Seltenheitsfarbe und darunter klein die Art
+-- ("Stoff", "Trank" …). Der Kasten ist ein eigener Rahmen hinter Blizzards Zeile.
+local rowLooks = {} -- [Platz-Knopf] = { box, sub, name }
+local function TradeRow(f, row, button, nameText, column)
+    if not (row and button) or rowLooks[button] then return end
+    -- im Spalten-Kasten über dessen Fläche, aber unter Blizzards Zeile (Symbol, Name)
+    local parent = column or f
+    local box = CreateFrame("Frame", nil, parent)
+    local level = parent:GetFrameLevel() + 1
+    box:SetFrameLevel(level)
+    if row:GetFrameLevel() <= level then row:SetFrameLevel(level + 1) end
+    if button:GetFrameLevel() <= level + 1 then button:SetFrameLevel(level + 2) end
+    box:SetPoint("TOP", button, "TOP", 0, 3)
+    box:SetPoint("BOTTOM", button, "BOTTOM", 0, -3)
+    box:SetPoint("LEFT", column or row, "LEFT", 4, 0)
+    box:SetPoint("RIGHT", column or row, "RIGHT", -4, 0)
+    tradeOurs[box] = true
+    ns.Flat(box, C.button)
+    local sub = box:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    sub:SetPoint("BOTTOMLEFT", button, "BOTTOMRIGHT", 8, 2)
+    sub:SetPoint("RIGHT", box, "RIGHT", -6, 0)
+    sub:SetJustifyH("LEFT")
+    sub:SetWordWrap(false)
+    if nameText then
+        nameText:ClearAllPoints()
+        nameText:SetPoint("TOPLEFT", button, "TOPRIGHT", 8, -2)
+        nameText:SetPoint("RIGHT", box, "RIGHT", -6, 0)
+        nameText:SetJustifyH("LEFT")
+        nameText:SetWordWrap(false)
     end
+    rowLooks[button] = { box = box, sub = sub, name = nameText }
+end
+
+-- Zeile auffrischen: Seltenheitsfarbe für Symbol-Rand und Namen, Art darunter, goldener Rand bei Maus darüber
+local function UpdateTradeRow(button, link)
+    local look = button and rowLooks[button]
+    if not look or slotState[button] == nil then return end
+    local quality, kind
+    if link then
+        local _, _, q, _, _, itemType, subType = GetItemInfo(link)
+        quality, kind = q, (subType ~= "" and subType) or itemType
+    end
+    local r, g, b = 1, 1, 1
+    if type(quality) == "number" and GetItemQualityColor then r, g, b = GetItemQualityColor(quality) end
+    local over = look.box:IsMouseOver()
+    local key = tostring(link) .. (over and "+" or "-")
     if slotState[button] == key then return end
     slotState[button] = key
-    ns.EdgeColor(button, c, 1)
+    ns.EdgeColor(button, link and { r * 0.8, g * 0.8, b * 0.8 } or C.border, (link and quality and quality >= 2) and 1 or 0.6)
+    ns.EdgeColor(look.box, over and C.accent or C.border, 1)
+    if look.name and link then look.name:SetTextColor(r, g, b) end
+    look.sub:SetText(link and kind or "")
 end
 
 -- Blizzards Handels-Grafiken im ganzen Fenster unsichtbar (auch in Unter-Rahmen wie dem Porträt des anderen):
 -- alles mit "Portrait", "TradeFrame", Platz-Hintergrund oder Namensfeld im Namen, Schlüssel oder in der Datei.
 -- Münz-Symbole, Gegenstands-Symbole und unsere eigenen Flächen bleiben.
-local SHIFT = 34 -- so viel wächst das Fenster nach oben (Platz für die Visitenkarten)
-local tradeOurs = setmetatable({}, { __mode = "k" }) -- eigene Texturen (Visitenkarten), bleiben sichtbar
 local ART = { "portrait", "tradeframe", "slot%-background", "questitemnameframe", "nameframe", "ui%-frame", "recipient" }
 local function IsTradeArt(holder, r)
     local name = (r:GetName() or ""):lower()
@@ -349,11 +387,37 @@ end
 -- und Schließen-Kreuz rücken hoch). Blizzards Inhalt bleibt, wo er ist – die Gold-Eingabe ist geschützt und
 -- ließe sich ohnehin nicht mitverschieben.
 local function GrowUp(f)
-    local look = ns.Flat(f, C.background, { 0, -SHIFT, 0, 0 })
+    local look = ns.Flat(f, C.background, { 0, -SHIFT, 0, -DOWN })
     if look and look.head then
         look.head:ClearAllPoints()
         look.head:SetPoint("TOPLEFT", look.fill, "TOPLEFT", 1, -1)
         look.head:SetPoint("TOPRIGHT", look.fill, "TOPRIGHT", -1, -1)
+    end
+    -- untere Leiste mit feiner goldener Linie (wie ns.ContentBox), bis unter die neue Fläche
+    if look then
+        local foot = f:CreateTexture(nil, "BACKGROUND", nil, -7)
+        foot:SetColorTexture(C.header[1], C.header[2], C.header[3], 1)
+        foot:SetPoint("BOTTOMLEFT", look.fill, "BOTTOMLEFT", 1, 1)
+        foot:SetPoint("BOTTOMRIGHT", look.fill, "BOTTOMRIGHT", -1, 1)
+        foot:SetHeight(DOWN + 22)
+        local footLine = f:CreateTexture(nil, "BORDER", nil, -6)
+        footLine:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 0.35)
+        footLine:SetPoint("BOTTOMLEFT", foot, "TOPLEFT")
+        footLine:SetPoint("BOTTOMRIGHT", foot, "TOPRIGHT")
+        footLine:SetHeight(1)
+        tradeOurs[foot], tradeOurs[footLine] = true, true
+    end
+    -- Knöpfe mittig in die Leiste, mit Luft dazwischen und zum Rand
+    local trade, cancel = G("TradeFrameTradeButton"), G("TradeFrameCancelButton")
+    if cancel and not Forbidden(cancel) then
+        cancel:ClearAllPoints()
+        cancel:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -10, -DOWN + 8)
+        cancel:SetSize(104, 24)
+        if trade and not Forbidden(trade) then
+            trade:ClearAllPoints()
+            trade:SetPoint("RIGHT", cancel, "LEFT", -8, 0)
+            trade:SetSize(104, 24)
+        end
     end
     local close = f.CloseButton or G("TradeFrameCloseButton")
     if close and not Forbidden(close) then
@@ -381,6 +445,13 @@ local function GrowUp(f)
         if fn then fn(f) end
     end)
     tradeOurs[grip] = true
+    -- ebenso unten
+    local bottomGrip = CreateFrame("Frame", nil, f)
+    bottomGrip:SetPoint("TOPLEFT", f, "BOTTOMLEFT", 0, 0)
+    bottomGrip:SetPoint("TOPRIGHT", f, "BOTTOMRIGHT", 0, 0)
+    bottomGrip:SetHeight(DOWN)
+    bottomGrip:EnableMouse(true)
+    tradeOurs[bottomGrip] = true
 end
 -- eigener flacher Kasten hinter einem Blizzard-Knopf (als Geschwister-Rahmen darunter – unabhängig davon, was
 -- Blizzard mit den Grafiken des Knopfs macht); Maus drauf = goldener Rand
@@ -450,8 +521,7 @@ local function SkinTrade()
             else geterrorhandler()(err) end
         end
     end
-    ns.SkinWindow(f)
-    ns.ContentBox(f, 27, nil, true) -- untere Leiste mit goldener Linie für die Knöpfe
+    ns.SkinWindow(f) -- (untere Leiste mit den Knöpfen: GrowUp)
     -- eigener Titel ("Handel"); Namen und Porträts stehen als Visitenkarten über den Spalten
     local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     title:SetPoint("TOP", f, "TOP", 0, -6 + SHIFT)
@@ -506,7 +576,12 @@ local function SkinTrade()
                     ns.Hide(G(side .. i .. "SlotTexture")) -- Blizzards Platz-Hintergrund (goldener Rahmen um den Platz)
                     if row.NameFrame then ns.Hide(row.NameFrame) end
                     if row.SlotTexture then ns.Hide(row.SlotTexture) end
-                    SkinTradeSlot(G(side .. i .. "ItemButton") or row.ItemButton)
+                    local button = G(side .. i .. "ItemButton") or row.ItemButton
+                    SkinTradeSlot(button)
+                    -- Spalte: Plätze 1-6 im Gegenstands-Kasten, der 7. im Kasten "wird nicht gehandelt"
+                    local who = side == "TradePlayerItem" and "Player" or "Recipient"
+                    local column = G("Trade" .. who .. (i == (MAX_TRADE_ITEMS or 7) and "EnchantInset" or "ItemsInset"))
+                    TradeRow(f, row, button, G(side .. i .. "Name") or row.Name, column)
                 end
             end
         end
@@ -525,8 +600,8 @@ local function SkinTrade()
     local watch = CreateFrame("Frame", nil, f)
     watch:SetScript("OnUpdate", function()
         for i = 1, (MAX_TRADE_ITEMS or 7) do
-            TradeSlotEdge(G("TradePlayerItem" .. i .. "ItemButton"), GetTradePlayerItemLink and GetTradePlayerItemLink(i))
-            TradeSlotEdge(G("TradeRecipientItem" .. i .. "ItemButton"), GetTradeTargetItemLink and GetTradeTargetItemLink(i))
+            UpdateTradeRow(G("TradePlayerItem" .. i .. "ItemButton"), GetTradePlayerItemLink and GetTradePlayerItemLink(i))
+            UpdateTradeRow(G("TradeRecipientItem" .. i .. "ItemButton"), GetTradeTargetItemLink and GetTradeTargetItemLink(i))
         end
         for _, h in ipairs(highlights) do
             local frame, box = G(h[1]), boxes[h[2]]
