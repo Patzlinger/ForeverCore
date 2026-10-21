@@ -408,7 +408,8 @@ local function FindTradeButtons(frame, depth)
     end
 end
 
--- Geld-Eingabe: flache Eingabefelder wie in den Forever-Menüs, das Münz-Symbol bleibt rechts darin
+-- Geld-Eingabe: flache Eingabefelder wie in den Forever-Menüs, das Münz-Symbol bleibt rechts darin.
+-- Im Forever-Client sind diese Felder geschützt (für Addons gesperrt) – dann greift das nicht.
 local moneyBoxes, coinKeep = {}, {}
 local function SkinMoneyBox(box)
     for _, r in ipairs({ box:GetRegions() }) do
@@ -501,7 +502,8 @@ local function SkinTrade()
     Step("money", function()
         for _, coin in ipairs({ "Gold", "Silver", "Copper" }) do
             local box = G("TradePlayerInputMoneyFrame" .. coin)
-            if box then SkinMoneyBox(box) end
+            -- (in Forever sind die Gold-Eingabefelder geschützt – dann bleiben sie, wie Blizzard sie zeichnet)
+            if box and not Forbidden(box) then SkinMoneyBox(box) end
         end
     end)
     ns.Watch(f)
