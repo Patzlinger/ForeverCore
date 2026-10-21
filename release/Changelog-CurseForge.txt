@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-- ForeverBars: the pet bar now sits directly on top of the highest action bar by default, left-aligned with it (the stance bar above it for pet classes). Bars you moved yourself stay where they are.
+- ForeverSkin, profession trainers: the skill rank row above the list ("Apprentice Cook" etc.) is as tall as the other rows, looks like them and can be clicked again.
+
+- ForeverBars: the pet bar now sits left-aligned with the highest action bar by default, with a small gap above it (the stance bar above it for pet classes). Bars you moved yourself stay where they are.
 
 - ForeverUnits: player and target frame now line up perfectly by default – same height, same line, same distance from the screen center (target of target moves along). Frames you moved yourself stay where they are.
 - ForeverQuests: **shared quests ("Together") survive /reload and logging in again** – they are only cleared when the group is disbanded or you leave it. After reloading, everyone's progress is fetched again.

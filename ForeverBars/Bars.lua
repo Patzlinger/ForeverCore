@@ -98,7 +98,7 @@ local STATUS_TOP_GAP = 0 -- zusätzlicher Abstand zur Aktionsleiste 1: keiner �
 local BAR_GAP = 1.5    -- Abstand zwischen aneinanderliegenden Leisten (wie "Abstand" der Knöpfe)
 local SIDE_GAP = 24    -- Abstand von Berufe-/Verpflegungsleiste zu den Aktionsleisten (Platz für den Einklapp-Pfeil)
 local FRAME_SPACE = 4  -- Rand des Rahmens um eine Leiste (siehe UpdateBarFrame)
-local PET_GAP = 8     -- Abstand von "Fahrzeug verlassen" zur Begleiter-/Haltungsreihe darunter
+local PET_GAP = 8     -- kleiner Abstand der Begleiter-/Haltungsleiste zu den Aktionsleisten (Flächen berühren sich nicht)
 local PET_CLASSES = { HUNTER = true, WARLOCK = true, DEATHKNIGHT = true } -- Klassen mit dauerhaftem Begleiter
 
 -- Tatsächliche Größe einer Leiste. Aktionsleisten: "100 %" im Menü sind 105 % der Blizzard-Knopfgröße
@@ -159,16 +159,16 @@ local function DefaultPosition(key)
     end
     local stackTop = BarCenter(topRow) + barHeight / 2              -- Oberkante der obersten Aktionsleiste
     local smallRow = ACTION_SIZE * Scale("pet")                    -- Höhe der Begleiter-/Haltungsreihe
-    -- Begleiterleiste direkt auf der obersten Aktionsleiste (Abstand wie zwischen den Aktionsleisten) und
-    -- linksbündig mit ihr – mit deren tatsächlicher Breite (sie kann anders skaliert sein als Leiste 1)
-    local smallBottom = stackTop + BAR_GAP                          -- Unterkante der Begleiter-/Haltungsreihe
+    -- Begleiterleiste mit kleinem Abstand über der obersten Aktionsleiste und linksbündig mit ihr – mit deren
+    -- tatsächlicher Breite (sie kann anders skaliert sein als Leiste 1)
+    local smallBottom = stackTop + PET_GAP                          -- Unterkante der Begleiter-/Haltungsreihe
     local topCfg = bars[topKey] or bars.bar1
     local topWidth = (12 * ACTION_SIZE + 11 * ns.ButtonGap(topCfg)) * Scale(topKey)
     local topLeft = width / 2 - topWidth / 2
     -- Haltungsleiste links über der Begleiterleiste; bei Klassen ohne Begleiter (Krieger, Schurke, Druide …) ist die
     -- Begleiterleiste meist ausgeblendet, dann rückt die Haltungsleiste an ihren Platz
     local _, playerClass = UnitClass("player")
-    local stanceBottom = PET_CLASSES[playerClass] and (smallBottom + smallRow + BAR_GAP) or smallBottom
+    local stanceBottom = PET_CLASSES[playerClass] and (smallBottom + smallRow + PET_GAP) or smallBottom
     local aboveSmall = stanceBottom + smallRow + PET_GAP            -- darüber: Fahrzeug verlassen
     local microHeight = HolderHeight("micro", 40)
     -- Mikromenü unter der Minimap angedockt: die Taschen sitzen allein unten rechts in der Ecke

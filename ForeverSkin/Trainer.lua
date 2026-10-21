@@ -75,7 +75,7 @@ local function SkinTrainer()
             ns.HideTextures(obj, { [obj.icon or false] = true })
         end
     end
-    if type(f.skillStepButton) == "table" then ns.Flat(f.skillStepButton, C.panel, 1) end
+    -- (Fertigkeitsstufe "Kochlehrling" o. Ä. über der Liste: gestaltet wie eine Zeile, siehe Place)
     -- Blizzards Filter ("Optionen") unsichtbar und nicht anklickbar – statt dessen oben "Zauberbuch" und unten der
     -- Haken "Nicht verfügbare ausblenden" (dieselbe Einstellung wie im Filter)
     local filter = f.FilterDropdown or f.FilterDropDown or G("ClassTrainerFrameFilterDropDown")
@@ -191,12 +191,23 @@ local function SkinTrainer()
         end
         local step = f.skillStepButton
         local stepShown = type(step) == "table" and step:IsShown()
+        local list = f.ScrollBox or G("ClassTrainerListScrollFrame")
         if stepShown then
             step:ClearAllPoints()
             step:SetPoint("TOPLEFT", f, "TOPLEFT", LEFT, TOP)
             step:SetPoint("RIGHT", f, "RIGHT", RIGHT, 0)
+            -- so hoch wie die Zeilen der Liste und wie sie gestaltet (Maus-Rand, Auswahl); über Innenfläche und
+            -- Liste, damit sie Klicks bekommt
+            local rowH
+            if list and list.ForEachFrame then
+                list:ForEachFrame(function(row) rowH = rowH or (row:GetHeight() > 10 and row:GetHeight()) or nil end)
+            end
+            if rowH and math.abs(step:GetHeight() - rowH) > 0.5 then step:SetHeight(rowH) end
+            local level = math.max(inset and inset:GetFrameLevel() or 0, list and list:GetFrameLevel() or 0) + 2
+            if step:GetFrameLevel() < level then step:SetFrameLevel(level) end
+            if step.EnableMouse then step:EnableMouse(true) end
+            SkinRow(step)
         end
-        local list = f.ScrollBox or G("ClassTrainerListScrollFrame")
         if list then
             list:ClearAllPoints()
             if stepShown then
