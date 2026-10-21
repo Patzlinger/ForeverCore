@@ -1,4 +1,4 @@
--- ForeverSkin – Extra.lua: Flugkarte und Beute-Fenster im Forever-Stil.
+-- ForeverSkin – Extra.lua: Flugkarte, Beute- und Handelsfenster im Forever-Stil.
 --  * Flugkarte (TaxiFrame): flaches Fenster mit Titelleiste; die Karte selbst (Flugpunkte, Routen) bleibt unverändert
 --  * Beute (LootFrame): flaches Fenster, jeder Gegenstand ein flacher Knopf (Symbol und Qualitätsfarbe bleiben)
 -- Wie überall: Blizzards Grafiken nur unsichtbar, eigene darunter, nichts in Blizzards Tabellen.
@@ -172,6 +172,141 @@ local function SkinLoot()
     watch:SetScript("OnUpdate", function() pcall(SkinLootRows) end)
 end
 
+---------------------------------------------------------------------------
+-- Handel
+---------------------------------------------------------------------------
+-- Flaches Fenster; deine und die Gegenstände des anderen in flachen Kästen. Gegenstands-Plätze: flach mit Rand in
+-- Seltenheitsfarbe (Maus drauf = gold). Hat der andere (bzw. du) "Handeln" gedrückt, wird der Rand seines
+-- Kastens grün (statt Blizzards grünem Leuchten). Geld-Eingabe und Knöpfe flach.
+local GREEN = { 0.30, 0.85, 0.30 }
+local slotState = setmetatable({}, { __mode = "k" }) -- [Platz] = zuletzt gesetzte Randfarbe (als Text)
+
+local function SkinTradeSlot(button)
+    if not button or slotState[button] ~= nil then return end
+    local icon = button.icon or button.Icon or (button:GetName() and _G[button:GetName() .. "IconTexture"])
+    local keep = {}
+    if icon then keep[icon] = true end
+    ns.HideTextures(button, keep)
+    if button.IconBorder then ns.Hide(button.IconBorder) end
+    for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetHighlightTexture" }) do
+        if button[get] then ns.Hide(button[get](button)) end
+    end
+    if icon and icon.SetTexCoord then
+        icon:ClearAllPoints()
+        icon:SetPoint("TOPLEFT", 2, -2)
+        icon:SetPoint("BOTTOMRIGHT", -2, 2)
+        icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    end
+    ns.Flat(button, C.button)
+    slotState[button] = ""
+end
+
+-- Randfarbe eines Platzes: Maus drauf = gold, sonst Seltenheit (ab "selten"), sonst grau
+local function TradeSlotEdge(button, link)
+    if not button or slotState[button] == nil then return end
+    local c, key = C.border, "border"
+    if button:IsMouseOver() then
+        c, key = C.accent, "accent"
+    elseif link then
+        local quality = select(3, GetItemInfo(link))
+        if type(quality) == "number" and quality >= 2 and GetItemQualityColor then
+            local r, g, b = GetItemQualityColor(quality)
+            c, key = { r, g, b }, "q" .. quality
+        end
+    end
+    if slotState[button] == key then return end
+    slotState[button] = key
+    ns.EdgeColor(button, c, 1)
+end
+
+local function SkinTrade()
+    local f = G("TradeFrame")
+    if not f then return end
+    ns.SkinWindow(f)
+    -- Rahmenteile, Porträts und Hintergründe (Retail und ältere Fassungen)
+    for _, n in ipairs({ "TradeFramePlayerPortrait", "TradeFrameRecipientPortrait", "TradeRecipientPortraitFrame",
+        "TradeRecipientBG", "TradeRecipientLeftBorder", "TradeRecipientBotLeftCorner", "TradeRecipientBottomBorder",
+        "TradeRecipientMoneyBg", "TradeFrameBG" }) do
+        ns.Hide(G(n))
+    end
+    -- Kästen: deine Gegenstände, die des anderen, "wird nicht gehandelt" und die Geldfelder
+    local boxes = {}
+    for _, n in ipairs({ "TradePlayerItemsInset", "TradeRecipientItemsInset", "TradePlayerEnchantInset",
+        "TradeRecipientEnchantInset", "TradePlayerInputMoneyInset", "TradeRecipientMoneyInset" }) do
+        local inset = G(n)
+        if inset then
+            ns.SkinInset(inset)
+            boxes[n] = inset
+        end
+    end
+    -- Blizzards grünes Leuchten nur weg, wenn es den Kasten gibt, dessen Rand stattdessen grün wird
+    local highlights = {
+        { "TradeHighlightPlayer", "TradePlayerItemsInset" }, { "TradeHighlightPlayerEnchant", "TradePlayerEnchantInset" },
+        { "TradeHighlightRecipient", "TradeRecipientItemsInset" },
+        { "TradeHighlightRecipientEnchant", "TradeRecipientEnchantInset" },
+    }
+    for _, h in ipairs(highlights) do
+        local frame = G(h[1])
+        if frame and boxes[h[2]] then
+            ns.HideTextures(frame)
+            for _, child in ipairs({ frame:GetChildren() }) do ns.HideTextures(child) end
+        end
+    end
+    -- Gegenstands-Plätze (7 je Seite; der 7. ist "wird nicht gehandelt")
+    for i = 1, (MAX_TRADE_ITEMS or 7) do
+        for _, side in ipairs({ "TradePlayerItem", "TradeRecipientItem" }) do
+            local row = G(side .. i)
+            if row then
+                ns.Hide(G(side .. i .. "NameFrame"))
+                if row.NameFrame then ns.Hide(row.NameFrame) end
+                SkinTradeSlot(G(side .. i .. "ItemButton") or row.ItemButton)
+            end
+        end
+    end
+    -- Geld-Eingabe: Blizzards Eingabe-Rahmen weg (die Münz-Symbole bleiben), flache Felder
+    for _, coin in ipairs({ "Gold", "Silver", "Copper" }) do
+        local box = G("TradePlayerInputMoneyFrame" .. coin)
+        if box then
+            local keep = {}
+            for _, r in ipairs({ box:GetRegions() }) do
+                if r:IsObjectType("Texture") then
+                    local atlas = r.GetAtlas and r:GetAtlas()
+                    local tex = r.GetTexture and r:GetTexture()
+                    local path = ((type(atlas) == "string" and atlas or "") .. (type(tex) == "string" and tex or "")):lower()
+                    if path:find("coin") or path:find("money") then keep[r] = true end
+                end
+            end
+            for _, key in ipairs({ "Left", "Middle", "Right" }) do ns.Hide(box[key]) end
+            ns.HideTextures(box, keep)
+            ns.Flat(box, C.input or C.panel, { -4, 1, 0, 1 })
+        end
+    end
+    for _, n in ipairs({ "TradeFrameTradeButton", "TradeFrameCancelButton" }) do
+        local b = G(n)
+        if b then ns.SkinButton(b) end
+    end
+    ns.Watch(f)
+    -- Solange das Fenster offen ist: Seltenheitsfarben und "hat Handeln gedrückt" (grüner Rand)
+    local accepted = setmetatable({}, { __mode = "k" })
+    local watch = CreateFrame("Frame", nil, f)
+    watch:SetScript("OnUpdate", function()
+        for i = 1, (MAX_TRADE_ITEMS or 7) do
+            TradeSlotEdge(G("TradePlayerItem" .. i .. "ItemButton"), GetTradePlayerItemLink and GetTradePlayerItemLink(i))
+            TradeSlotEdge(G("TradeRecipientItem" .. i .. "ItemButton"), GetTradeTargetItemLink and GetTradeTargetItemLink(i))
+        end
+        for _, h in ipairs(highlights) do
+            local frame, box = G(h[1]), boxes[h[2]]
+            if frame and box then
+                local on = frame:IsShown() and true or false
+                if accepted[box] ~= on then
+                    accepted[box] = on
+                    ns.EdgeColor(box, on and GREEN or C.border, 1)
+                end
+            end
+        end
+    end)
+end
+
 -- Prüfbefehl /fskin taxi: welche Grafiken hat die Flugkarte (Name, Datei/Atlas, Größe, Sichtbarkeit) – im Chat
 function ns.DumpTaxi()
     local f = G("TaxiFrame")
@@ -208,7 +343,7 @@ events:RegisterEvent("PLAYER_LOGIN")
 events:SetScript("OnEvent", function(self)
     self:UnregisterAllEvents()
     local db = ns.GetDB()
-    for _, w in ipairs({ { "taxi", SkinTaxi }, { "loot", SkinLoot } }) do
+    for _, w in ipairs({ { "taxi", SkinTaxi }, { "loot", SkinLoot }, { "trade", SkinTrade } }) do
         if db[w[1]] then
             local ok, err = pcall(w[2])
             if not ok and ns.UI.ReportError then ns.UI.ReportError("ForeverSkin", w[1], err) end
