@@ -26,14 +26,19 @@ if (@(git -C $root status --porcelain 2>$null).Count -gt 0) {
 $result = & (Join-Path $PSScriptRoot 'session-sync.ps1') | Out-String
 if ($result -notmatch 'aktuell mit GitHub') { Log $result.Trim() }
 
-# neue Addon-Ordner verknüpfen (nur wo im AddOns-Ordner noch nichts liegt)
-$addOns = Join-Path (Split-Path $root -Parent) 'AddOns'
-if (Test-Path $addOns) {
+# neue Addon-Ordner verknüpfen (nur wo im AddOns-Ordner noch nichts liegt) – im AddOns-Ordner neben dem Repository
+# und in weiteren Spiel-Clients dieses Rechners (je Zeile ein AddOns-Pfad in .git\forever-addon-dirs.txt, nur lokal,
+# z. B. ein Stresstest-Client; einmalig verknüpfen mit tools\link-addons.ps1 -AddOnsDir "<Pfad>")
+$dirs = @(Join-Path (Split-Path $root -Parent) 'AddOns')
+$extra = Join-Path $git 'forever-addon-dirs.txt'
+if (Test-Path $extra) { $dirs += Get-Content $extra | Where-Object { $_.Trim() -and $_ -notmatch '^\s*#' } | ForEach-Object { $_.Trim() } }
+foreach ($addOns in $dirs) {
+    if (-not (Test-Path $addOns)) { continue }
     Get-ChildItem $root -Directory | Where-Object { Test-Path (Join-Path $_.FullName ($_.Name + '.toc')) } | ForEach-Object {
         $target = Join-Path $addOns $_.Name
         if (!(Test-Path $target)) {
             New-Item -ItemType Junction -Path $target -Target $_.FullName | Out-Null
-            Log "neues Addon verknüpft: $($_.Name)"
+            Log "neues Addon verknüpft: $($_.Name) in $addOns"
         }
     }
 }

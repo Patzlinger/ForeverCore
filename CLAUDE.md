@@ -311,7 +311,9 @@ gilt für **beide** (und deren Claude) genau dieser Ablauf:
 - **Automatischer Abgleich (empfohlen, je Rechner einmal):** `pwsh -File tools/auto-sync-install.ps1` richtet die
   Windows-Aufgabe „Forever Core Abgleich“ ein: alle 5 Minuten `tools/auto-sync.ps1` (wie session-sync, nur bei
   sauberem Arbeitsstand, verknüpft neue Addon-Ordner), Protokoll `.git/forever-auto-sync.log`; entfernen mit `-Remove`.
-  Seit 2026-10-20 bei Patzlinger eingerichtet. Im Spiel danach `/reload`.
+  Seit 2026-10-20 bei Patzlinger eingerichtet. Im Spiel danach `/reload`. Weitere Spiel-Clients auf demselben
+  Rechner (z. B. ein Stresstest): einmal `tools/link-addons.ps1 -AddOnsDir "<Pfad>"` und den Pfad als Zeile in
+  `.git/forever-addon-dirs.txt` eintragen – dann verknüpft der Abgleich neue Addons auch dort.
 
 **Während der Arbeit – kleine Schritte, sofort teilen**
 - Je fertige, im Prüflauf (`tools/check.ps1`) fehlerfreie Änderung **ein** Commit (kurze deutsche Nachricht, vorne das Addon:
