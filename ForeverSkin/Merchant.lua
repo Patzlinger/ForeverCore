@@ -88,6 +88,7 @@ local function Collect()
                     index = i, name = info.name, icon = info.texture, link = link, quality = Quality(link),
                     stack = info.stackCount or 1, available = info.numAvailable or -1, usable = info.isUsable ~= false,
                     ext = info.hasExtendedCost, price = PriceText(i, info.price, info.hasExtendedCost),
+                    copper = info.price or 0, -- (Preis je Kauf in Kupfer, für den Gesamtpreis im Mengen-Fenster)
                 }
             end
         end
@@ -164,16 +165,146 @@ end
 ---------------------------------------------------------------------------
 -- Kaufen
 ---------------------------------------------------------------------------
+-- Menge kaufen (in Stück, wie Blizzards Mengen-Fenster): das Spiel erlaubt je Kauf höchstens einen Stapel – größere
+-- Mengen darum in mehreren Schritten mit kurzer Pause
+local function BuyUnits(index, units)
+    local maxStack = math.max(1, GetMerchantItemMaxStack and GetMerchantItemMaxStack(index) or 1)
+    local remaining = units
+    local function Step()
+        if remaining <= 0 or not (panel and panel:IsShown()) then return end
+        local n = math.min(remaining, maxStack)
+        BuyMerchantItem(index, n)
+        remaining = remaining - n
+        if remaining > 0 then C_Timer.After(0.25, Step) end
+    end
+    Step()
+end
+
 StaticPopupDialogs["FOREVERSKIN_MERCHANT_BUY"] = {
     text = "%s",
     button1 = YES or "Ja", button2 = NO or "Nein",
     OnAccept = function(_, data)
         if not data then return end
-        BuyMerchantItem(data.index, data.qty)
+        if data.units then BuyUnits(data.index, data.units) else BuyMerchantItem(data.index) end
         Flash(data.row, data.amount)
     end,
     timeout = 0, hideOnEscape = true, whileDead = true,
 }
+
+-- Kauf ausführen (units = nil: ein Kauf wie bei Blizzards Rechtsklick); Sonderwährung vorher fragen
+local function Purchase(e, units, row)
+    local amount = units or math.max(1, e.stack or 1)
+    if e.ext then
+        -- Sonderwährung (Ehre, Marken …): Rückmeldung erst nach dem Ja
+        StaticPopup_Show("FOREVERSKIN_MERCHANT_BUY", string.format(T("%s für %s kaufen?", "Buy %s for %s?"),
+            (e.link or e.name) .. (amount > 1 and (" ×" .. amount) or ""), e.price), nil,
+            { index = e.index, units = units, row = row, amount = amount })
+    else
+        if units then BuyUnits(e.index, units) else BuyMerchantItem(e.index) end
+        Flash(row, amount)
+    end
+end
+
+---------------------------------------------------------------------------
+-- Menge wählen (Umschalt + Rechtsklick): kleines Fenster im Forever-Stil
+---------------------------------------------------------------------------
+local amountFrame
+local function AmountFrame()
+    if amountFrame then return amountFrame end
+    local a = CreateFrame("Frame", nil, panel, "BackdropTemplate")
+    a:SetSize(250, 138)
+    a:SetPoint("CENTER", panel, "CENTER", 0, 20)
+    a:SetFrameLevel(panel:GetFrameLevel() + 60)
+    a:EnableMouse(true)
+    UI.SetFlat(a, C.background)
+    local head = a:CreateTexture(nil, "BORDER")
+    head:SetPoint("TOPLEFT", 1, -1)
+    head:SetPoint("TOPRIGHT", -1, -1)
+    head:SetHeight(22)
+    head:SetColorTexture(C.header[1], C.header[2], C.header[3], 1)
+    local line = a:CreateTexture(nil, "ARTWORK")
+    line:SetPoint("TOPLEFT", head, "BOTTOMLEFT")
+    line:SetPoint("TOPRIGHT", head, "BOTTOMRIGHT")
+    line:SetHeight(1)
+    line:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 0.6)
+    a.title = a:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    a.title:SetPoint("LEFT", head, "LEFT", 8, 0)
+    a.title:SetPoint("RIGHT", head, "RIGHT", -8, 0)
+    a.title:SetJustifyH("LEFT")
+    a.title:SetWordWrap(false)
+    -- Menge: −  [Zahl]  +   Max
+    a.minus = UI.Button(a, "−", 26)
+    a.minus:SetPoint("TOPLEFT", 12, -36)
+    a.edit = UI.EditBox(a, 80, 22)
+    a.edit:SetPoint("LEFT", a.minus, "RIGHT", 6, 0)
+    a.edit:SetNumeric(true)
+    a.edit:SetJustifyH("CENTER")
+    a.plus = UI.Button(a, "+", 26)
+    a.plus:SetPoint("LEFT", a.edit, "RIGHT", 6, 0)
+    a.max = UI.Button(a, T("Max", "Max"), 60)
+    a.max:SetPoint("LEFT", a.plus, "RIGHT", 10, 0)
+    a.total = a:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    a.total:SetPoint("TOPLEFT", a.minus, "BOTTOMLEFT", 0, -12)
+    a.total:SetPoint("RIGHT", a, "RIGHT", -12, 0)
+    a.total:SetJustifyH("LEFT")
+    a.buy = UI.Button(a, T("Kaufen", "Buy"), 100)
+    a.buy:SetPoint("BOTTOMRIGHT", -12, 10)
+    a.cancel = UI.Button(a, CANCEL or T("Abbrechen", "Cancel"), 100)
+    a.cancel:SetPoint("RIGHT", a.buy, "LEFT", -10, 0)
+    a:Hide()
+
+    local function Value() return tonumber(a.edit:GetText()) or 0 end
+    local function Clamp(v)
+        local step = a.step or 1
+        v = math.floor(v / step + 0.5) * step
+        return math.max(step, math.min(v, a.limit or v))
+    end
+    local function Update()
+        local e = a.entry
+        if not e then return end
+        local v = Value()
+        local cost = (e.copper or 0) * v / math.max(1, e.stack or 1)
+        local text = (e.copper and e.copper > 0) and Money(cost, cost > GetMoney() and "|cffff5555" or nil) or e.price
+        a.total:SetText(T("Gesamt: ", "Total: ") .. (text or ""))
+        a.buy:SetEnabled(v > 0)
+    end
+    local function Set(v)
+        a.edit:SetText(tostring(Clamp(v)))
+        Update()
+    end
+    a.minus:SetScript("OnClick", function() Set(Value() - (a.step or 1)) end)
+    a.plus:SetScript("OnClick", function() Set(Value() + (a.step or 1)) end)
+    a.max:SetScript("OnClick", function() Set(a.limit or Value()) end)
+    a.edit:SetScript("OnTextChanged", function(_, user) if user then Update() end end)
+    local function Confirm()
+        local e, v = a.entry, Clamp(Value())
+        a:Hide()
+        if e and v > 0 then Purchase(e, v, a.row) end
+    end
+    a.buy:SetScript("OnClick", Confirm)
+    a.cancel:SetScript("OnClick", function() a:Hide() end)
+    a.edit:SetScript("OnEnterPressed", Confirm)
+    a.edit:SetScript("OnEscapePressed", function() a:Hide() end)
+    a.Update, a.Set = Update, Set
+    amountFrame = a
+    return a
+end
+
+local function AskAmount(e, row)
+    local a = AmountFrame()
+    a.entry, a.row = e, row
+    local step = math.max(1, e.stack or 1)
+    -- Obergrenze: so viel, wie das Geld erlaubt (bei Gold-Preis), und der Vorrat des Händlers
+    local limit = 999 * step
+    if e.copper and e.copper > 0 then limit = math.min(limit, math.floor(GetMoney() / e.copper) * step) end
+    if e.available and e.available >= 0 then limit = math.min(limit, e.available * step) end
+    a.step, a.limit = step, math.max(step, limit)
+    a.title:SetText(e.link or e.name)
+    a:Show()
+    a.Set(math.max(step, GetMerchantItemMaxStack and GetMerchantItemMaxStack(e.index) or step))
+    a.edit:SetFocus()
+    a.edit:HighlightText()
+end
 
 local function Buy(e, stack, row)
     if e.buyback then
@@ -181,20 +312,10 @@ local function Buy(e, stack, row)
         Flash(row, e.stack or 1)
         return
     end
-    local qty = 1
     if stack then
-        local max = GetMerchantItemMaxStack and GetMerchantItemMaxStack(e.index) or 1
-        qty = math.max(1, math.floor((max or 1) / math.max(1, e.stack)))
-    end
-    local amount = qty * math.max(1, e.stack or 1)
-    if e.ext then
-        -- Sonderwährung (Ehre, Marken …): vorher fragen; Rückmeldung erst nach dem Ja
-        StaticPopup_Show("FOREVERSKIN_MERCHANT_BUY", string.format(T("%s für %s kaufen?", "Buy %s for %s?"),
-            (e.link or e.name) .. (qty > 1 and (" ×" .. qty) or ""), e.price), nil,
-            { index = e.index, qty = qty, row = row, amount = amount })
+        AskAmount(e, row) -- Umschalt: Menge wählen
     else
-        BuyMerchantItem(e.index, qty)
-        Flash(row, amount)
+        Purchase(e, nil, row)
     end
 end
 
