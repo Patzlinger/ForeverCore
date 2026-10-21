@@ -296,20 +296,24 @@ end)
 ---------------------------------------------------------------------------
 -- Gemeinsame Einstellungs-Verwaltung (ForeverCore): Profile je Charakter, Zuruecksetzen, Export/Import
 ---------------------------------------------------------------------------
--- Version 2: Ziel spiegelbildlich zum Spieler (vorher 14 px näher an der Mitte, 13 px tiefer, 1 px höher). Nur
--- Rahmen, die noch auf dem alten Standardplatz stehen, werden umgesetzt – das Ziel an die Spiegelung des Spielers
--- (wie er jetzt steht), das Ziel des Ziels relativ dazu mit; selbst verschobene Rahmen bleiben, wo sie sind.
+-- Version 2: Ziel spiegelbildlich zum Spieler (vorher 14 px näher an der Mitte, 13 px tiefer, 1 px höher).
+-- Umgesetzt wird das Ziel, wenn es noch auf dem alten Standardplatz steht oder fast spiegelbildlich (höchstens
+-- 20 px daneben): dann genau an die Spiegelung des Spielers (wie er jetzt steht); das Ziel des Ziels wandert um
+-- denselben Betrag mit. Weiter weg verschobene Rahmen bleiben, wo sie sind.
 UI.RegisterSettings({ addon = "ForeverUnits", sv = "ForeverUnitsDB", defaults = ns.DEFAULTS, version = 2,
     migrate = function(data, from)
         if from >= 2 or type(data.frames) ~= "table" then return end
         local p, t, tt = data.frames.player, data.frames.target, data.frames.targettarget
         if type(p) ~= "table" or type(t) ~= "table" then return end
         local px, py = p.x or -238, p.y or -154
-        if (t.x == nil or t.x == 224) and (t.y == nil or t.y == -167) then
-            t.x, t.y = -px, py
-            if t.height == nil or t.height == 46 then t.height = p.height or 45 end
-            if type(tt) == "table" and (tt.x == nil or tt.x == 395) and (tt.y == nil or tt.y == -190) then
-                tt.x, tt.y = t.x + 171, t.y - 23
-            end
+        local tx, ty = t.x or 224, t.y or -167
+        local oldDefault = tx == 224 and ty == -167
+        local nearMirror = math.abs(tx + px) <= 20 and math.abs(ty - py) <= 20
+        if not (oldDefault or nearMirror) then return end
+        local dx, dy = -px - tx, py - ty
+        t.x, t.y = -px, py
+        if t.height == nil or t.height == 46 then t.height = p.height or 45 end
+        if type(tt) == "table" then
+            tt.x, tt.y = (tt.x or 395) + dx, (tt.y or -190) + dy
         end
     end })
