@@ -51,7 +51,37 @@ function ns.DumpMouse()
     local foci = GetMouseFoci and GetMouseFoci() or { GetMouseFocus and GetMouseFocus() }
     local frame = foci and foci[1]
     if not frame then
-        ns.UI.Chat("ForeverSkin", ns.T("Unter der Maus liegt kein Fenster.", "No frame under the mouse."))
+        -- nichts, das Mausklicks annimmt (z. B. Zier-Rahmen): alle sichtbaren Fenster unter dem Mauszeiger suchen und
+        -- die kleinsten zeigen (je mit Name und Eltern-Kette)
+        local hits = {}
+        if EnumerateFrames then
+            local f = EnumerateFrames()
+            while f do
+                local forbidden = f.IsForbidden and f:IsForbidden()
+                if not forbidden and f:IsVisible() and f.IsMouseOver and f:IsMouseOver() and f ~= UIParent and f ~= WorldFrame then
+                    hits[#hits + 1] = { frame = f, area = (f:GetWidth() or 0) * (f:GetHeight() or 0) }
+                end
+                f = EnumerateFrames(f)
+            end
+        end
+        if #hits == 0 then
+            ns.UI.Chat("ForeverSkin", ns.T("Unter der Maus liegt kein Fenster.", "No frame under the mouse."))
+            return
+        end
+        table.sort(hits, function(a, b) return a.area < b.area end)
+        ns.UI.Chat("ForeverSkin", ns.T("Kein klickbares Fenster – sichtbare Fenster unter der Maus (kleinste zuerst):",
+            "No clickable frame – visible frames under the mouse (smallest first):"))
+        for i = 1, math.min(6, #hits) do
+            local h = hits[i].frame
+            local chain, p, d = {}, h, 0
+            while p and d < 4 do
+                chain[#chain + 1] = (p.GetName and p:GetName()) or "-"
+                p = p.GetParent and p:GetParent()
+                d = d + 1
+            end
+            ns.UI.Chat("ForeverSkin", i .. ". " .. table.concat(chain, " < ") ..
+                string.format(" [%dx%d]", h:GetWidth() or 0, h:GetHeight() or 0))
+        end
         return
     end
     local depth = 0
