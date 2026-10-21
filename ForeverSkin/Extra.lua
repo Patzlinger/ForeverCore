@@ -241,8 +241,13 @@ local function IsTradeArt(holder, r)
     return false
 end
 
+-- Geschützte Blizzard-Rahmen (z. B. für Kauf-/Bezahlfunktionen) dürfen Addons nicht einmal ansehen: überspringen
+local function Forbidden(obj)
+    return obj and obj.IsForbidden and obj:IsForbidden()
+end
+
 local function HideTradeArt(frame, depth)
-    if not frame or not frame.GetRegions then return end
+    if not frame or Forbidden(frame) or not frame.GetRegions then return end
     for _, r in ipairs({ frame:GetRegions() }) do
         if r:IsObjectType("Texture") and not ns.IsMine(frame, r) and not tradeOurs[r] and IsTradeArt(frame, r) then
             r:SetAlpha(0)
@@ -262,13 +267,19 @@ local function TradeCard(f, column, unit)
     local card = cards[unit]
     if not card then
         card = {}
+        -- Streifen zwischen Titelleiste und Geldfeld der Spalte: die Karte sitzt darin mittig (gleich viel Luft
+        -- zur goldenen Linie oben wie zum Kasten unten)
+        local band = CreateFrame("Frame", nil, f)
+        band:SetPoint("TOP", f, "TOP", 0, -24)
+        band:SetPoint("BOTTOMLEFT", column, "TOPLEFT", 0, 0)
+        band:SetPoint("BOTTOMRIGHT", column, "TOPRIGHT", 0, 0)
+        card.band = band
         local function Disk(size, sub, c)
             local t = f:CreateTexture(nil, "ARTWORK", nil, sub)
             t:SetTexture(WHITE)
             t:SetVertexColor(c[1], c[2], c[3], 1)
             t:SetSize(size, size)
-            -- (Mitte auf derselben Höhe wie bei den Dialogen: Luft zur goldenen Linie oben wie zum Kasten unten)
-            t:SetPoint("CENTER", column, "TOPLEFT", 22, 31)
+            t:SetPoint("CENTER", band, "LEFT", 22, 0)
             local mask = f:CreateMaskTexture()
             mask:SetTexture(CIRCLE, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
             mask:SetAllPoints(t)
@@ -280,7 +291,8 @@ local function TradeCard(f, column, unit)
         card.gap = Disk(37, 2, C.background)
         card.portrait = Disk(35, 3, { 1, 1, 1 })
         card.name = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        card.name:SetPoint("TOPLEFT", column, "TOPLEFT", 48, 46)
+        card.name:SetPoint("LEFT", band, "LEFT", 48, 0)
+        card.name:SetPoint("TOP", band, "CENTER", 0, 17)
         card.name:SetPoint("RIGHT", column, "RIGHT", -2, 0)
         card.name:SetJustifyH("LEFT")
         card.name:SetWordWrap(false)
@@ -332,9 +344,47 @@ local function UpdateTradeCards()
     if right then TradeCard(G("TradeFrame"), right, "NPC") end
 end
 
+-- Mehr Platz oben für die Visitenkarten: Fenster um SHIFT höher, alles, was oben am Fenster hängt, rückt um
+-- SHIFT nach unten (einmalig; unten Hängendes wie die Knöpfe bleibt)
+local SHIFT = 34
+local function MakeRoom(f)
+    local function Shift(obj)
+        if obj == f.CloseButton or tradeOurs[obj] or Forbidden(obj) or not obj.GetNumPoints then return end
+        local points, changed = {}, false
+        for i = 1, obj:GetNumPoints() do
+            local p, rel, rp, x, y = obj:GetPoint(i)
+            if rel == f and type(rp) == "string" and rp:find("TOP") then
+                y = (y or 0) - SHIFT
+                changed = true
+            end
+            points[i] = { p, rel, rp, x or 0, y or 0 }
+        end
+        if not changed then return end
+        obj:ClearAllPoints()
+        for _, pt in ipairs(points) do obj:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5]) end
+    end
+    for _, child in ipairs({ f:GetChildren() }) do Shift(child) end
+    for _, r in ipairs({ f:GetRegions() }) do
+        if not ns.IsMine(f, r) and r:IsObjectType("FontString") then Shift(r) end
+    end
+    f:SetHeight(f:GetHeight() + SHIFT)
+end
+
+-- eigener flacher Kasten hinter einem Blizzard-Knopf (als Geschwister-Rahmen darunter – unabhängig davon, was
+-- Blizzard mit den Grafiken des Knopfs macht); Maus drauf = goldener Rand
+local buttonBoxes = {}
+local function ButtonBox(f, b)
+    local box = CreateFrame("Frame", nil, f)
+    box:SetAllPoints(b)
+    box:SetFrameLevel(math.max(0, b:GetFrameLevel() - 1))
+    tradeOurs[box] = true
+    ns.Flat(box, C.button)
+    buttonBoxes[b] = box
+end
+
 -- Blizzards Grafiken eines Rahmens samt Unter-Rahmen unsichtbar (keep = Texturen, die bleiben)
 local function HideDeep(frame, keep, depth)
-    if not frame or not frame.GetRegions then return end
+    if not frame or Forbidden(frame) or not frame.GetRegions then return end
     ns.HideTextures(frame, keep)
     if depth < 2 then
         for _, child in ipairs({ frame:GetChildren() }) do HideDeep(child, keep, depth + 1) end
@@ -345,7 +395,9 @@ end
 local tradeButtons = {}
 local function FindTradeButtons(frame, depth)
     for _, child in ipairs({ frame:GetChildren() }) do
-        if child:IsObjectType("Button") then
+        if Forbidden(child) then
+            -- (nicht anfassen)
+        elseif child:IsObjectType("Button") then
             local label = child.GetText and child:GetText()
             if type(label) == "string" and label ~= "" and child ~= frame.CloseButton then
                 tradeButtons[#tradeButtons + 1] = child
@@ -394,8 +446,13 @@ local function SkinTrade()
     -- Knöpfe zuerst (hängen von nichts anderem ab)
     Step("buttons", function()
         FindTradeButtons(f, 1)
-        for _, b in ipairs(tradeButtons) do ns.SkinButton(b) end
+        for _, b in ipairs(tradeButtons) do
+            ns.SkinButton(b)
+            ButtonBox(f, b)
+        end
     end)
+    Step("room", function() MakeRoom(f) end)
+    ns.Scaled(f) -- so groß wie Gespräch, Händler und Co.
     Step("art", function() HideTradeArt(f, 1) end)
     Step("cards", UpdateTradeCards)
     f:HookScript("OnShow", function()
@@ -470,6 +527,15 @@ local function SkinTrade()
         for _, b in ipairs(tradeButtons) do
             HideDeep(b, nil, 1)
             for _, key in ipairs({ "Left", "Middle", "Right" }) do ns.Hide(b[key]) end
+            local box = buttonBoxes[b]
+            if box then
+                box:SetShown(b:IsShown())
+                local over = b:IsMouseOver() and b:IsEnabled()
+                if box.over ~= over then
+                    box.over = over
+                    ns.EdgeColor(box, over and C.accent or C.border, 1)
+                end
+            end
         end
         for _, box in ipairs(moneyBoxes) do HideDeep(box, coinKeep, 1) end
     end)
