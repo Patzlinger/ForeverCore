@@ -5,7 +5,6 @@ local addonName, ns = ...
 local window
 local listScroll, listContent, searchBox
 local detailTitle, detailExtra, detailEmpty, questScroll, questContent, pillRow, atlasButton, shareAllButton, groupButton
-local mapButton -- "Karte": Blizzards Dungeonkarte in der Weltkarte (DungeonMaps.lua)
 local listButtons = {}
 local questEntries = {}
 local pills = {}
@@ -1461,12 +1460,9 @@ RefreshDetail = function()
     shareAllButton:SetShown(#GetQuestsInLog(dungeon) > 0)
     shareAllButton:SetAlpha(IsInGroup() and 1 or 0.45)
     groupButton:SetShown(dungeon ~= nil and IsInGroup())
-    -- "Karte": immer bei einem gewählten Dungeon, ausgegraut ohne Karte im Client
-    mapButton:SetShown(dungeon ~= nil)
-    mapButton:SetAlpha((dungeon and ns.DungeonMapID and ns.DungeonMapID(dungeon)) and 1 or 0.45)
-    -- Sichtbare Knöpfe von rechts nach links anordnen: [Gruppe] [Alle teilen] [Karte] [Bosse & Beute]
+    -- Sichtbare Knöpfe von rechts nach links anordnen: [Gruppe] [Alle teilen] [Bosse & Beute]
     local headerAnchor
-    for _, button in ipairs({ atlasButton, mapButton, shareAllButton, groupButton }) do
+    for _, button in ipairs({ atlasButton, shareAllButton, groupButton }) do
         if button:IsShown() then
             button:ClearAllPoints()
             if headerAnchor then
@@ -2315,17 +2311,6 @@ local function CreateWindow()
     end, function(tooltip) tooltip:AddLine(ns.L("TIP_ATLASLOOT")) end)
     atlasButton:SetPoint("TOPRIGHT", -16, -16)
     atlasButton:Hide()
-
-    -- Knopf "Karte": Blizzards Dungeonkarte in der Weltkarte (ausgegraut, wenn der Client keine kennt)
-    mapButton = ns.Style.CreateButton(detailPanel, ns.L("BTN_DUNGEON_MAP"), 60, 22, function()
-        if selectedDungeon and ns.DungeonMapID and ns.DungeonMapID(selectedDungeon) then
-            ns.OpenDungeonMap(selectedDungeon)
-        end
-    end, function(tooltip)
-        local has = selectedDungeon and ns.DungeonMapID and ns.DungeonMapID(selectedDungeon)
-        tooltip:AddLine(ns.L(has and "TIP_DUNGEON_MAP" or "NO_DUNGEON_MAP"), 1, 1, 1, true)
-    end)
-    mapButton:Hide()
 
     -- Knopf "Alle teilen": nur sichtbar, wenn Quests dieses Dungeons im Questlog stehen
     shareAllButton = ns.Style.CreateButton(detailPanel, ns.L("BTN_SHARE_ALL"), 90, 22, function()

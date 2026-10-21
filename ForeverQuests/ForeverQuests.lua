@@ -145,9 +145,6 @@ SlashCmdList.FOREVERQUESTS = function(msg)
     elseif msg == "check" then
         -- Quest-IDs der Dungeon-Daten beim Spiel prüfen
         ns.CheckQuestIDs()
-    elseif (msg == "karten" or msg == "maps") and ns.ListDungeonMaps then
-        -- Prüfbefehl: wie viele Dungeonkarten kennt der Client (DungeonMaps.lua)
-        ns.ListDungeonMaps()
     elseif msg == "maus" or msg == "mouse" then
         -- Fehlersuche: welches Fenster bekommt die Maus?
         ns.DebugMouse()
