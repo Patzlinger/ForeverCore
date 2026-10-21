@@ -68,6 +68,41 @@ local function SkinRow(i)
     ns.SkinArrowOnly(G(name .. "RightButton"), "right")
 end
 
+-- Kasten nur so breit wie die längste Beschriftung (+ Luft), mittig in der Zeile; Pfeile AUSSERHALB davon, 3 neben
+-- dem Kasten, senkrecht mittig. Breite für alle Zeilen gleich (bündig untereinander).
+local boxInsets = {} -- [Zeile] = zuletzt gesetzter Einzug
+local function RowText(row)
+    local text = G(row:GetName() .. "Text") or row.Text
+    if not text then
+        for _, r in ipairs({ row:GetRegions() }) do
+            if r:IsObjectType("FontString") then text = r break end
+        end
+    end
+    return text
+end
+local function FitRows()
+    local widest = 0
+    for i = 1, ROWS do
+        local row = G("TabardFrameCustomization" .. i)
+        local text = row and not Forbidden(row) and RowText(row)
+        if text then widest = math.max(widest, text:GetStringWidth() or 0) end
+    end
+    local boxW = math.floor(widest + 28)
+    for i = 1, ROWS do
+        local row = G("TabardFrameCustomization" .. i)
+        if row and not Forbidden(row) and row:GetWidth() and row:GetWidth() > boxW then
+            local inset = math.floor((row:GetWidth() - boxW) / 2)
+            if boxInsets[row] ~= inset then
+                boxInsets[row] = inset
+                ns.Flat(row, C.button, { inset, 0, inset, 0 })
+            end
+            local name = row:GetName()
+            Anchor(G(name .. "LeftButton"), "RIGHT", row, "CENTER", -boxW / 2 - 3, 0)
+            Anchor(G(name .. "RightButton"), "LEFT", row, "CENTER", boxW / 2 + 3, 0)
+        end
+    end
+end
+
 -- Beschriftung ("Symbol", "Rand" …) genau mittig im Balken
 local function CenterRowText(i)
     local row = G("TabardFrameCustomization" .. i)
@@ -133,6 +168,7 @@ local function Place(f)
             Anchor(G("TabardFrameCustomization" .. i), "TOP", G("TabardFrameCustomization" .. (i - 1)), "BOTTOM", 0, -4)
         end
         for i = 1, ROWS do CenterRowText(i) end
+        FitRows()
     end
     -- Dreh-Knöpfe unten links in der Innenfläche (mit Luft zur goldenen Linie)
     if inset then Anchor(G("TabardCharacterModelRotateLeftButton"), "BOTTOMLEFT", inset, "BOTTOMLEFT", 10, 14) end
