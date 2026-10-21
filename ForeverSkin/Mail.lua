@@ -142,17 +142,12 @@ local function Shift(obj, dx, dy)
     for _, pt in ipairs(points) do obj:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5]) end
 end
 
--- Mehr Luft: das Fenster wächst optisch um UP nach oben und um DOWN nach unten (eigene Fläche; Titelleiste,
--- Schließen-Kreuz und die Reiter darunter rücken mit). Blizzards Inhalt bleibt, wo er ist – unten kommt eine
--- Leiste mit feiner goldener Linie (wie beim Handel), die Knöpfe darin rücken etwas nach unten.
-local UP, DOWN, FOOT = 12, 10, 31
+-- Mehr Luft unten: das Fenster wächst optisch um DOWN nach unten (eigene Fläche, die Reiter darunter rücken mit).
+-- Unten eine Leiste mit feiner goldener Linie (FOOT über dem alten Fensterrand, wie beim Handel), darin feste Plätze
+-- für die Knöpfe; Blizzards Innenfläche endet darüber.
+local DOWN, FOOT = 14, 24
 local function Grow(f)
-    local look = ns.Flat(f, C.background, { 0, -UP, 0, -DOWN })
-    if look and look.head then
-        look.head:ClearAllPoints()
-        look.head:SetPoint("TOPLEFT", look.fill, "TOPLEFT", 1, -1)
-        look.head:SetPoint("TOPRIGHT", look.fill, "TOPRIGHT", -1, -1)
-    end
+    local look = ns.Flat(f, C.background, { 0, 0, 0, -DOWN })
     if look then
         local foot = f:CreateTexture(nil, "BACKGROUND", nil, -7)
         foot:SetColorTexture(C.header[1], C.header[2], C.header[3], 1)
@@ -166,19 +161,28 @@ local function Grow(f)
         line:SetHeight(1)
         ours[foot], ours[line] = true, true
     end
-    Shift(f.CloseButton or G(f:GetName() .. "CloseButton"), 0, UP)
-    -- eigener Titel der Titelleiste (Blizzards Titeltext rückt mit hoch)
-    local title = f.TitleContainer and f.TitleContainer.TitleText or G(f:GetName() .. "TitleText")
-    Shift(title, 0, UP)
-    -- die neuen Flächen fangen die Maus ab (sonst klickt man ins Spiel durch)
-    for _, side in ipairs({ { "BOTTOMLEFT", "TOPLEFT", "BOTTOMRIGHT", "TOPRIGHT", UP },
-        { "TOPLEFT", "BOTTOMLEFT", "TOPRIGHT", "BOTTOMRIGHT", DOWN } }) do
-        local grip = CreateFrame("Frame", nil, f)
-        grip:SetPoint(side[1], f, side[2], 0, 0)
-        grip:SetPoint(side[3], f, side[4], 0, 0)
-        grip:SetHeight(side[5])
-        grip:EnableMouse(true)
-        ours[grip] = true
+    -- die neue Fläche fängt die Maus ab (sonst klickt man ins Spiel durch)
+    local grip = CreateFrame("Frame", nil, f)
+    grip:SetPoint("TOPLEFT", f, "BOTTOMLEFT", 0, 0)
+    grip:SetPoint("TOPRIGHT", f, "BOTTOMRIGHT", 0, 0)
+    grip:SetHeight(DOWN)
+    grip:EnableMouse(true)
+    ours[grip] = true
+    -- Blizzards Innenfläche (Posteingang) endet über der Leiste – sie lag sonst darüber und die Linie lief
+    -- durch die Knöpfe
+    local inset = f.Inset or G(f:GetName() .. "Inset")
+    if inset and not Forbidden(inset) then
+        local points = {}
+        for i = 1, inset:GetNumPoints() do
+            local p, rel, rp, x, y = inset:GetPoint(i)
+            -- untere Ankerpunkte: am Fenster, 6 px über der goldenen Linie der Leiste
+            if type(p) == "string" and p:find("BOTTOM") then
+                rel, rp, y = f, p, FOOT + 6
+            end
+            points[i] = { p, rel, rp, x or 0, y or 0 }
+        end
+        inset:ClearAllPoints()
+        for _, pt in ipairs(points) do inset:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5]) end
     end
 end
 
@@ -241,20 +245,29 @@ local function SkinSend()
         if box and not Forbidden(box) then SkinEdit(box, { -4, 0, -2, 0 }) end
     end
     SkinButtons({ "SendMailMailButton", "SendMailCancelButton" })
-    -- "Nachnahme" etwas unter "Geld senden" (die Kästchen klebten aneinander)
+    -- mehr Luft zwischen "Geld senden" und "Nachnahme" (die Kästchen klebten aneinander): das obere etwas hoch,
+    -- das untere etwas tiefer – unten bleibt durch die tiefer gesetzten Knöpfe trotzdem Platz
+    Shift(G("SendMailSendMoneyButton"), 0, 3)
     Shift(G("SendMailCODButton"), 0, -3)
 end
 
 -- Knöpfe unten in die neue Leiste (etwas tiefer), "Senden" mit Abstand neben "Abbrechen", Reiter unter das
 -- gewachsene Fenster
 local function PlaceBottom(f)
-    for _, n in ipairs({ "InboxPrevPageButton", "InboxNextPageButton", "OpenAllMail", "InboxFrameOpenAllButton",
-        "SendMailCancelButton", "SendMailCostMoneyFrame" }) do
-        -- nur, was direkt am Fenster hängt (hängt es an einem anderen Knopf, wandert es mit dem ohnehin mit)
-        local obj = G(n)
-        local _, rel = obj and not Forbidden(obj) and obj.GetPoint and obj:GetPoint(1)
-        if rel and not (rel.IsObjectType and rel:IsObjectType("Button")) then Shift(obj, 0, -6) end
+    -- feste Plätze in der unteren Leiste (mittig in deren Höhe): Zurück links, Weiter rechts, "Alle öffnen" mittig;
+    -- beim Senden "Abbrechen" rechts, "Senden" 8 px links daneben
+    local y = -DOWN + 5
+    local function Put(name, point, x)
+        local b = G(name)
+        if not b or Forbidden(b) then return end
+        b:ClearAllPoints()
+        b:SetPoint(point, f, point, x, y)
     end
+    Put("InboxPrevPageButton", "BOTTOMLEFT", 10)
+    Put("InboxNextPageButton", "BOTTOMRIGHT", -10)
+    Put("OpenAllMail", "BOTTOM", 0)
+    Put("InboxFrameOpenAllButton", "BOTTOM", 0)
+    Put("SendMailCancelButton", "BOTTOMRIGHT", -10)
     local send, cancel = G("SendMailMailButton"), G("SendMailCancelButton")
     if send and cancel and not Forbidden(send) and not Forbidden(cancel) then
         send:ClearAllPoints()
