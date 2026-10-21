@@ -124,10 +124,24 @@ local function Place(f)
     local y = FOOTER / 2
     local cost = G("TabardFrameCostFrame")
     if cost and not Forbidden(cost) then
+        -- Beschriftung über ihren Text suchen ("Kosten:"), im Kosten-Feld, dessen Unter-Rahmen und im Fenster
         local label
-        for _, r in ipairs({ cost:GetRegions() }) do
-            if r:IsObjectType("FontString") and (r:GetText() or "") ~= "" then label = r break end
+        local wanted = _G.COSTS_LABEL
+        local function Find(frame)
+            if label or not frame or Forbidden(frame) or not frame.GetRegions then return end
+            for _, r in ipairs({ frame:GetRegions() }) do
+                if r:IsObjectType("FontString") then
+                    local s = r:GetText()
+                    if type(s) == "string" and (s == wanted or s:find("^Kosten") or s:find("^Cost")) then
+                        label = r
+                        return
+                    end
+                end
+            end
         end
+        Find(cost)
+        for _, child in ipairs({ cost:GetChildren() }) do Find(child) end
+        Find(f)
         local money = G("TabardFrameCostMoneyFrame")
         if label then
             Anchor(label, "LEFT", f, "BOTTOMLEFT", 10, y)
@@ -182,10 +196,7 @@ local function SkinTabard()
     Step("buttons", function()
         SkinTextButton(G("TabardFrameAcceptButton"))
         SkinTextButton(G("TabardFrameCancelButton"))
-        for _, n in ipairs({ "TabardCharacterModelRotateLeftButton", "TabardCharacterModelRotateRightButton" }) do
-            local b = G(n)
-            if b and not Forbidden(b) then ns.SkinIconButton(b) end
-        end
+        -- (Dreh-Knöpfe bleiben ohne eigenen Kasten – nur Blizzards Pfeil-Symbole, auf Wunsch)
     end)
     Step("place", function() Place(f) end)
     ns.Watch(f)
