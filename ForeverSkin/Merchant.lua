@@ -13,7 +13,7 @@ local UI = ns.UI
 
 local W, H = 384, 520                 -- Größe (wie das Gesprächsfenster)
 local ROW_H, ICON = 40, 34
-local LIST_TOP, FOOT = 141, 54        -- Liste ab hier (unter Visitenkarte, Reitern, Filter), Höhe der unteren Leiste
+local LIST_TOP, FOOT = 141, 68        -- Liste ab hier (unter Visitenkarte, Reitern, Filter), Höhe der unteren Leiste
 local panel, rows, list, scrollBar = nil, {}, nil, nil
 local tab = "buy"                     -- "buy" oder "buyback"
 local offset, filter = 0, ""
@@ -436,10 +436,10 @@ function Refresh()
     end
     panel.empty:SetShown(#entries == 0)
     panel.help:SetText(tab == "buy"
-        and T("Rechtsklick: kaufen · Umschalt+Rechtsklick: Menge · Umschalt+Linksklick: Link · Strg+Klick: Anprobe",
-            "Right-click: buy · Shift+right-click: amount · Shift+left-click: link · Ctrl+click: try on")
-        or T("Rechtsklick: zurückkaufen · Umschalt+Linksklick: Link in den Chat · Strg+Klick: Anprobe",
-            "Right-click: buy back · Shift+left-click: link to chat · Ctrl+click: try on"))
+        and T("Rechtsklick: kaufen · Umschalt+Rechtsklick: Menge wählen\nUmschalt+Linksklick: Link in den Chat · Strg+Klick: Anprobe",
+            "Right-click: buy · Shift+right-click: choose amount\nShift+left-click: link to chat · Ctrl+click: try on")
+        or T("Rechtsklick: zurückkaufen\nUmschalt+Linksklick: Link in den Chat · Strg+Klick: Anprobe",
+            "Right-click: buy back\nShift+left-click: link to chat · Ctrl+click: try on"))
     -- Reiter, Reparieren, Geld
     for _, t in ipairs(panel.tabs) do
         local on = t.key == tab
@@ -639,10 +639,11 @@ local function Build(f)
     panel.money:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -12, 13)
     -- kurzer Hinweis zur Bedienung oben in der Fußleiste
     panel.help = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    panel.help:SetPoint("BOTTOMLEFT", panel, "BOTTOMLEFT", 10, FOOT - 14)
-    panel.help:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -10, FOOT - 14)
+    panel.help:SetPoint("BOTTOMLEFT", panel, "BOTTOMLEFT", 10, 40)
+    panel.help:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -10, 40)
     panel.help:SetJustifyH("CENTER")
-    panel.help:SetWordWrap(false)
+    panel.help:SetWordWrap(true) -- zwei Zeilen (eine war zu lang und wurde abgeschnitten)
+    panel.help:SetSpacing(2)
 
     -- Blizzards Reiter unter dem Fenster werden nicht gebraucht
     for i = 1, 2 do
