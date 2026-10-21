@@ -241,7 +241,8 @@ end
 -- Plätze zeigen ein Schloss – der erste kauft per Klick (mit Rückfrage).
 ---------------------------------------------------------------------------
 local bagBar, bagButtons = nil, {}
-local LOCK = "Interface\\LFGFrame\\UI-LFG-ICON-LOCK"
+-- (Schloss aus den Haustierkämpfen: sitzt mittig in seinem Bild – das LFG-Schloss hatte einen ungleichen Rand)
+local LOCK = "Interface\\PetBattles\\PetBattle-LockIcon"
 local EMPTY_BAG = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Bag"
 
 local function PurchasedTabIDs()
