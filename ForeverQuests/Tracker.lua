@@ -1746,6 +1746,7 @@ function ns.UpdateTracker()
         end)
 
     title:SetText(ns.L("TRACKER_TITLE") .. "  |cff8a8a8a" .. count .. "|r")
+    if title.button then title.button:SetWidth(math.max(40, title:GetStringWidth() + 8)) end
     -- Titelleiste folgt der eingestellten Hintergrund-Transparenz
     local headerColor = ns.Style.COLOR.header
     headerBar:SetBackdropColor(headerColor[1], headerColor[2], headerColor[3], math.max(alpha, 0.15))
@@ -2078,6 +2079,29 @@ function ns.CreateTracker()
     title:SetJustifyH("LEFT")
     title:SetWordWrap(false)
     title:SetTextColor(1, 1, 1)
+
+    -- Klick auf den Schriftzug "Quests": Questlog öffnen/schließen (Fläche so breit wie der Text, siehe UpdateTracker)
+    local titleButton = CreateFrame("Button", nil, headerBar)
+    titleButton:SetPoint("LEFT", title, "LEFT", -4, 0)
+    titleButton:SetHeight(18)
+    titleButton:SetWidth(60)
+    titleButton:RegisterForClicks("LeftButtonUp")
+    titleButton:SetScript("OnClick", function()
+        if InCombatLockdown() then return end -- im Kampf öffnet Blizzard das Questlog nicht
+        if ToggleQuestLog then ToggleQuestLog() elseif ToggleWorldMap then ToggleWorldMap() end
+    end)
+    titleButton:SetScript("OnEnter", function(self)
+        title:SetTextColor(1, 0.82, 0)
+        local tooltip = ns.Style.GetTooltip()
+        tooltip:SetOwner(self, "ANCHOR_TOP")
+        tooltip:AddLine(ns.L("TIP_OPEN_QUESTLOG"))
+        tooltip:Show()
+    end)
+    titleButton:SetScript("OnLeave", function()
+        title:SetTextColor(1, 1, 1)
+        ns.Style.GetTooltip():Hide()
+    end)
+    title.button = titleButton
 
     -- Scrollbereich: Inhalt, der nicht in die Höhe passt, ist per Mausrad erreichbar
     scrollFrame = CreateFrame("ScrollFrame", nil, tracker)
