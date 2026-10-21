@@ -274,6 +274,21 @@ local function Place(f)
         if button and button:GetLeft() and first:GetLeft() then dx = button:GetLeft() - first:GetLeft() end
         Anchor(first, "TOPLEFT", f, "TOPLEFT", 14 - dx, TOP - 6)
     end
+    -- Blätter-Pfeile: Blizzard setzt ihre Grafiken beim Blättern bzw. An-/Ausgrauen neu – immer wieder unsichtbar
+    -- (unsere flache Fläche und unser Pfeil bleiben); ausgegraut etwas blasser
+    for _, n in ipairs({ "InboxPrevPageButton", "InboxNextPageButton" }) do
+        local b = G(n)
+        if b and not Forbidden(b) then
+            ns.HideTextures(b)
+            for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetHighlightTexture", "GetDisabledTexture" }) do
+                if b[get] then ns.Hide(b[get](b)) end
+            end
+            for _, child in ipairs({ b:GetChildren() }) do
+                if not Forbidden(child) and not ours[child] then ns.HideTextures(child) end
+            end
+            b:SetAlpha(b:IsEnabled() and 1 or 0.45)
+        end
+    end
     -- untere Leiste: Knöpfe mittig in ihrer Höhe, 10 px vom Rand
     local y = FOOTER / 2
     Anchor(G("InboxPrevPageButton"), "LEFT", f, "BOTTOMLEFT", 10, y)
