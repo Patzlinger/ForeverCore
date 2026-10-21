@@ -366,6 +366,8 @@ end
 
 local function CreateBank()
     bank = ns.CreateBagWindow("ForeverBagsBank", L("BANK_TITLE"), "bankPos", DEFAULT_POS)
+    -- standardmäßig 5 % größer (eine mit dem Griff unten rechts selbst gesetzte Größe übernimmt der Hub beim Öffnen)
+    bank:SetScale(1.05)
 
     -- Werkzeugzeile: Sortieren, Reagenzien einlagern (falls das Spiel das kann)
     local sort = UI.Button(bank, L("SORT"), 70, function()
