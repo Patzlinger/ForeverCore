@@ -252,13 +252,8 @@ function ns.SuggestQuest(questID)
     local title = QuestTitle(questID)
     AddQuest(questID, title)
     -- auch auf Blizzards Weg teilen, damit die anderen die Quest annehmen können
-    if C_QuestLog.IsPushableQuest and C_QuestLog.IsPushableQuest(questID) then
-        if QuestMapQuestOptions_ShareQuest then
-            pcall(QuestMapQuestOptions_ShareQuest, questID)
-        elseif QuestLogPushQuest then
-            C_QuestLog.SetSelectedQuest(questID)
-            QuestLogPushQuest()
-        end
+    if C_QuestLog.IsPushableQuest and C_QuestLog.IsPushableQuest(questID) and ns.PushQuest then
+        ns.PushQuest(questID) -- Tracker.lua: im Kampf erst danach
     end
     Send("S|" .. questID .. "|" .. title:sub(1, 200))
     ns.SendGroupProgress(questID)

@@ -781,12 +781,7 @@ local function ShareQuest(quest)
         print(prefix .. ns.L("SHARE_NOT_PUSHABLE"))
         return
     end
-    if QuestMapQuestOptions_ShareQuest then
-        QuestMapQuestOptions_ShareQuest(quest.id)
-    else
-        C_QuestLog.SetSelectedQuest(quest.id)
-        QuestLogPushQuest()
-    end
+    ns.PushQuest(quest.id) -- Tracker.lua: im Kampf erst danach
 end
 
 -- Quests eines Dungeons, die im eigenen Questlog stehen (jede Quest-ID nur einmal)

@@ -377,7 +377,19 @@ local function AbandonQuest(questID)
     end
 end
 
+-- Quest teilen (Blizzards Weg). Das Spiel sperrt das für Addons im Kampf (ADDON_ACTION_BLOCKED "QuestLogPushQuest")
+-- – dann nach dem Kampf teilen und das im Chat sagen. Alle Teilen-Knöpfe (Tracker, Questlog, Dungeonfenster,
+-- "Zusammen") laufen hierüber.
 local function ShareQuest(questID)
+    if not questID then return end
+    if InCombatLockdown() then
+        local hub = _G.ForeverHub and _G.ForeverHub.UI
+        if hub and hub.AfterCombat then
+            hub.AfterCombat("ForeverQuests:share" .. questID, function() ShareQuest(questID) end, addonName)
+            print(ns.ChatPrefix() .. ": " .. ns.L("SHARE_AFTER_COMBAT"))
+        end
+        return
+    end
     if QuestMapQuestOptions_ShareQuest then
         QuestMapQuestOptions_ShareQuest(questID)
     else
@@ -385,6 +397,7 @@ local function ShareQuest(questID)
         QuestLogPushQuest()
     end
 end
+ns.PushQuest = ShareQuest
 
 local function TogglePinned(questID)
     if ns.db.pinned[questID] then
