@@ -209,11 +209,11 @@ local function SkinTradeSlot(button)
     slotState[button] = ""
 end
 
--- Zeilen wie im Händler-Fenster, aber ohne durchgehende Balken: links das Symbol mit Rand in Seltenheitsfarbe,
--- daneben der Name in Seltenheitsfarbe und darunter klein die Art ("Stoff", "Trank" …). Leere Plätze zeigen
--- keinen Kasten, sondern (auf deiner Seite) den Hinweis "Gegenstand hierher ziehen" – hältst du einen Gegenstand
--- am Mauszeiger, leuchten die freien Plätze gold auf. Maus über einer Zeile: feiner goldener Rand.
-local rowLooks = {}  -- [Platz-Knopf] = { box, boxLook, slotLook, sub, name, hint, player }
+-- Zeilen wie im Händler-Fenster: grauer Balken je Zeile, links das Symbol mit Rand in Seltenheitsfarbe, daneben
+-- der Name in Seltenheitsfarbe und darunter klein die Art ("Stoff", "Trank" …). Leere Plätze ohne eigenes Kästchen
+-- (nur der Balken). Maus über einer Zeile – oder ein Gegenstand am Mauszeiger über einem freien Platz deiner Seite:
+-- goldener Rand. Ablegen geht auf der ganzen Zeile.
+local rowLooks = {}  -- [Platz-Knopf] = { box, boxLook, slotLook, sub, name, player }
 local function TradeRow(f, row, button, nameText, column, player, index)
     if not (row and button) or rowLooks[button] then return end
     -- im Spalten-Kasten über dessen Fläche, aber unter Blizzards Zeile (Symbol, Name)
@@ -228,19 +228,20 @@ local function TradeRow(f, row, button, nameText, column, player, index)
     box:SetPoint("LEFT", column or row, "LEFT", 4, 0)
     box:SetPoint("RIGHT", column or row, "RIGHT", -4, 0)
     tradeOurs[box] = true
-    local boxLook = ns.Flat(box, C.accent)
+    local boxLook = ns.Flat(box, C.button)
     local sub = box:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     sub:SetPoint("BOTTOMLEFT", button, "BOTTOMRIGHT", 8, 2)
     sub:SetPoint("RIGHT", box, "RIGHT", -6, 0)
     sub:SetJustifyH("LEFT")
     sub:SetWordWrap(false)
-    local hint
-    if player then
-        hint = box:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-        hint:SetPoint("LEFT", button, "LEFT", 4, 0)
-        hint:SetPoint("RIGHT", box, "RIGHT", -6, 0)
-        hint:SetJustifyH("LEFT")
-        hint:SetText(ns.T("+  Gegenstand hierher ziehen", "+  Drag an item here"))
+    if player and index then
+        -- auf die ganze Zeile ablegen (nicht nur genau auf den Platz) – wie Blizzards Platz-Knopf
+        box:EnableMouse(true)
+        local function Drop()
+            if CursorHasItem and CursorHasItem() and ClickTradeButton then ClickTradeButton(index) end
+        end
+        box:SetScript("OnReceiveDrag", Drop)
+        box:SetScript("OnMouseUp", Drop)
     end
     if nameText then
         nameText:ClearAllPoints()
@@ -250,7 +251,7 @@ local function TradeRow(f, row, button, nameText, column, player, index)
         nameText:SetWordWrap(false)
     end
     rowLooks[button] = { box = box, boxLook = boxLook, slotLook = slotLooks[button], sub = sub, name = nameText,
-        hint = hint, player = player }
+        player = player }
 end
 
 local function Alpha(look, fill, edge, c)
@@ -289,25 +290,13 @@ local function UpdateTradeRow(button, link)
     end
     local r, g, b = 1, 1, 1
     if type(quality) == "number" and GetItemQualityColor then r, g, b = GetItemQualityColor(quality) end
-    -- Kasten der Zeile: nur beim Darüberfahren (feiner goldener Rand) bzw. als Ablage-Hinweis beim Ziehen
-    if dragging then
-        Alpha(look.boxLook, 0.08, 0.8)
-    else
-        Alpha(look.boxLook, 0, over and 0.6 or 0)
-    end
+    -- grauer Balken der Zeile; Maus drauf bzw. Gegenstand am Mauszeiger über freiem Platz: goldener Rand
+    Alpha(look.boxLook, 1, 1, (over or dragging) and C.accent or C.border)
     -- Platz: mit Gegenstand flach mit Rand in Seltenheitsfarbe, leer unsichtbar
     if link then
         Alpha(look.slotLook, 1, (quality and quality >= 2) and 1 or 0.6, { r * 0.8, g * 0.8, b * 0.8 })
     else
         Alpha(look.slotLook, 0, 0)
-    end
-    if look.hint then
-        look.hint:SetShown(not link)
-        if dragging then
-            look.hint:SetTextColor(C.accent[1], C.accent[2], C.accent[3])
-        else
-            look.hint:SetTextColor(0.5, 0.5, 0.5)
-        end
     end
     if look.name and link then look.name:SetTextColor(r, g, b) end
     look.sub:SetText(link and kind or "")
@@ -585,6 +574,20 @@ local function SkinTrade()
         end
     end)
     Step("grow", function() GrowUp(f) end)
+    -- Blizzards große Innenfläche des Fensters (lag als grauer Balken unter und zwischen den Kästen): unsichtbar –
+    -- die Kästen der Spalten haben ihre eigene Fläche
+    Step("inset", function()
+        local inset = f.Inset or G("TradeFrameInset")
+        if inset and not Forbidden(inset) then
+            ns.HideTextures(inset)
+            if inset.NineSlice then ns.Hide(inset.NineSlice) end
+            local look = ns.Flat(inset, C.panel)
+            if look then
+                look.fill:SetAlpha(0)
+                for _, e in ipairs(look.edges) do e:SetAlpha(0) end
+            end
+        end
+    end)
     ns.Scaled(f) -- so groß wie Gespräch, Händler und Co.
     Step("art", function() HideTradeArt(f, 1) end)
     Step("cards", UpdateTradeCards)
