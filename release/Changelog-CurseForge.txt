@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Forever Core: turning on Blizzard's quick keybind mode now ends "Move all" automatically (frames get locked again), so you don't drag frames by accident while binding keys.
+
 - ForeverMinimap: your own buttons (mail, tracking, calendar, settings) now sit in the top bar by default – also switched once for existing settings.
 - ForeverPlates, **as a tank:** instead of your own "100 %", the plate shows how close the next player is to taking aggro from you ("Next 85 %") – only from 60 %, so with many enemies only the critical ones show text.
 - ForeverPlates: new option "Enemies out of range fainter" – plates of enemies outside the range of your class spell fade (off by default; line of sight cannot be checked in advance).

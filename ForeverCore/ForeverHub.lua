@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 63
+local VERSION = 64
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -1844,6 +1844,29 @@ function UI.MoveAll(lock)
         UI.Chat("Forever", string.format(T("Entsperrt: %s – ziehen zum Verschieben, /fmove sperrt wieder.",
             "Unlocked: %s – drag to move, /fmove locks again."), table.concat(names, ", ")))
     end
+end
+
+-- Schnelltastenbelegung (Blizzards Modus "Tasten per Maus belegen") beendet den Verschiebe-Modus (v64): entsperrte
+-- Rahmen fangen sonst die Maus ab, und beim Belegen würde man aus Versehen Rahmen verschieben. Gilt für jeden Weg in
+-- den Modus (ForeverBars, Blizzards Menü, Befehl).
+do
+    local function EndMoveForKeybind()
+        if _G.ForeverHub ~= hub or InCombatLockdown() or not UI.AnyUnlocked() then return end
+        UI.MoveAll(true)
+        UI.Chat("Forever", T("Schnelltastenbelegung: Verschieben beendet.", "Quick keybind mode: moving ended."))
+    end
+    if EventRegistry and EventRegistry.RegisterCallback then
+        local owner = {}
+        pcall(EventRegistry.RegisterCallback, EventRegistry, "QuickKeybindFrame.QuickKeybindModeEnabled",
+            function() pcall(EndMoveForKeybind) end, owner)
+    end
+    -- (Rückfall, falls der Modus ohne diese Meldung aufgeht)
+    local f = CreateFrame("Frame")
+    f:RegisterEvent("PLAYER_LOGIN")
+    f:SetScript("OnEvent", function()
+        local qk = _G.QuickKeybindFrame
+        if qk and qk.HookScript then qk:HookScript("OnShow", function() pcall(EndMoveForKeybind) end) end
+    end)
 end
 
 SLASH_FOREVERMOVE1 = "/fmove"
