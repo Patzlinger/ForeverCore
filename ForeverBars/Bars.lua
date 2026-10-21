@@ -353,6 +353,11 @@ local BLIZZARD_BUTTON = 45 -- Kantenlänge, für die Blizzard seine Knopf-Effekt
 -- gebaut – unsere Knöpfe sind kleiner, darum lagen die Effekte über den Rahmen hinaus. Auf die Knopfgröße
 -- verkleinern und mittig setzen. keepSize: Blizzard hat die Größe schon passend zum Knopf gesetzt (Proc-Leuchten,
 -- Breite × 1,4) – dann die Größe auf 45 px umrechnen, damit die festen Teile darin mitschrumpfen.
+-- Die Effekte hängen bei Blizzard mit allen Ecken am Knopf (also ohne eigene Größe). Nur mittig angehängt hatten
+-- sie danach keine feste Größe mehr, und Blizzard hängt sie beim Abspielen teils neu an – dann lagen sie versetzt.
+-- Darum: feste Größe (45 bzw. 45 × 1,4), Maßstab passend zum Knopf, mittig – und das bei jedem Anzeigen und
+-- jeder Größenänderung des Knopfs erneut.
+local fitHooked = setmetatable({}, { __mode = "k" }) -- [Effekt] = { button, keepSize } (nichts in Blizzards Tabellen)
 local function FitEffect(button, effect, keepSize)
     if not (effect and effect.SetScale and button) then return end
     if InCombatLockdown() and effect.IsProtected and effect:IsProtected() then return end
@@ -360,10 +365,25 @@ local function FitEffect(button, effect, keepSize)
     if not w or w < 10 then return end
     local s = w / BLIZZARD_BUTTON
     -- (Blizzard setzt die Größe des Leuchtens bei jedem Aufleuchten neu – darum jedes Mal fest auf 45 × 1,4)
-    if keepSize then effect:SetSize(BLIZZARD_BUTTON * 1.4, BLIZZARD_BUTTON * 1.4) end
+    local size = keepSize and BLIZZARD_BUTTON * 1.4 or BLIZZARD_BUTTON
+    effect:SetSize(size, size)
     if math.abs((effect:GetScale() or 1) - s) > 0.01 then effect:SetScale(s) end
     effect:ClearAllPoints()
     effect:SetPoint("CENTER", button, "CENTER", 0, 0)
+    if not fitHooked[effect] and effect.HookScript then
+        fitHooked[effect] = { button = button, keepSize = keepSize }
+        effect:HookScript("OnShow", function(self)
+            local info = fitHooked[self]
+            if info then FitEffect(info.button, self, info.keepSize) end
+        end)
+        if not fitHooked[button] then
+            fitHooked[button] = { effects = {} }
+            button:HookScript("OnSizeChanged", function(self)
+                for e, k in pairs(fitHooked[self].effects) do FitEffect(self, e, k) end
+            end)
+        end
+    end
+    if fitHooked[button] and fitHooked[button].effects then fitHooked[button].effects[effect] = keepSize or false end
 end
 ns.FitEffect = FitEffect
 
