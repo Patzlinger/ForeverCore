@@ -20,7 +20,8 @@ local DEFAULTS = {
     itemLevel = true,     -- Gegenstandsstufe bei Ausrüstung
     showTarget = true,    -- "Ziel: …" bei Einheiten
     showIDs = false,      -- Gegenstands-/Zauber-ID
-    flatHealth = true,    -- Lebensbalken flach in Klassen-/Reaktionsfarbe
+    flatHealth = true,    -- Lebensbalken flach in Klassen-/Reaktionsfarbe (falls er angezeigt wird)
+    showHealthBar = false, -- Lebensbalken unter dem Tooltip (Standard: aus, unnötig)
     atCursor = true,      -- am Mauszeiger statt am Ankerplatz (Standard)
     scale = 1,
     bgAlpha = 75,         -- Deckkraft der Tooltip-Fläche in Prozent (etwas durchsichtig)
@@ -149,6 +150,13 @@ local function ApplyHealthBar()
         bar:SetStatusBarTexture(bar.ftBlizzTexture)
     end
     bar.ftBg:SetShown(on and true or false)
+    -- Lebensbalken unter dem Tooltip standardmäßig weg (unnötig, das Leben zeigen Rahmen und Plaketten):
+    -- nur unsichtbar (Alpha 0, gegen Zurücksetzen abgesichert), kein Hide an Blizzards Rahmen
+    if GetDB().showHealthBar then
+        if UI.ShowBlizzard then UI.ShowBlizzard(bar) end
+    elseif UI.HideBlizzard then
+        UI.HideBlizzard(bar, { when = function() return not GetDB().showHealthBar end })
+    end
 end
 
 ---------------------------------------------------------------------------
@@ -386,8 +394,8 @@ end
 ---------------------------------------------------------------------------
 local ToggleOptions
 do
-    local options = UI.SettingsPanel("ForeverTooltipOptions", T("ForeverTooltip – Einstellungen (Prototyp)",
-        "ForeverTooltip – Settings (prototype)"), 360, 530,
+    local options = UI.SettingsPanel("ForeverTooltipOptions", T("ForeverTooltip – Einstellungen",
+        "ForeverTooltip – Settings"), 360, 530,
         { key = "ForeverTooltip", group = UI.SETTINGS_GROUPS.comfort, label = "Tooltip" })
     local W = 326
     local checks = {}
@@ -404,7 +412,7 @@ do
     Check(-54, T("Forever-Stil (dunkel, feiner Rand, Goldlinie)", "Forever style (dark, fine border, gold line)"), "skin")
     Check(-78, T("Rahmen in Qualitäts-/Klassenfarbe", "Border in quality/class color"), "colorBorder")
     Check(-102, T("Spielernamen in Klassenfarbe", "Player names in class color"), "classNames")
-    Check(-126, T("Lebensbalken flach in Klassenfarbe", "Flat health bar in class color"), "flatHealth")
+    Check(-126, T("Lebensbalken unter dem Tooltip", "Health bar below the tooltip"), "showHealthBar")
     Check(-150, T("Rahmen rundum gold (sonst grau mit Goldlinie)", "Gold border all around (else grey with gold line)"), "goldEdge")
 
     UI.Header(options, 18, -172, T("Mehr Infos", "More info"), W)
