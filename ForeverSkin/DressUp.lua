@@ -64,6 +64,52 @@ local function Portrait(f)
     if SetPortraitTexture then SetPortraitTexture(portrait.image, "player") end
 end
 
+-- alle Text-Knöpfe und Auswahlfelder im Fenster finden (unabhängig von Blizzards Namen)
+local function FindControls(frame, depth, found)
+    for _, child in ipairs({ frame:GetChildren() }) do
+        if not Forbidden(child) then
+            local isDropdown = (child.IsObjectType and child:IsObjectType("DropdownButton"))
+                or (type(child.Arrow) == "table" and type(child.Text) == "table" and not child:IsObjectType("CheckButton"))
+            if isDropdown then
+                found.dropdowns[#found.dropdowns + 1] = child
+            elseif child:IsObjectType("Button") then
+                local label = child.GetText and child:GetText()
+                if type(label) == "string" and label ~= "" then found.buttons[#found.buttons + 1] = child end
+            elseif depth < 3 then
+                FindControls(child, depth + 1, found)
+            end
+        end
+    end
+    return found
+end
+
+-- Liste der Teile rechts: Blizzards verzierter Rahmen weg, flache Fläche – die Einträge (in der Laufliste) bleiben
+local function SkinDetails(f)
+    local panel = f.OutfitDetailsPanel
+    if not panel then
+        -- (ohne bekannten Namen: der große Kasten rechts neben dem Fenster)
+        for _, child in ipairs({ f:GetChildren() }) do
+            if not Forbidden(child) and child:GetLeft() and f:GetRight() and child:GetLeft() >= f:GetRight() - 10
+                and (child:GetHeight() or 0) > 150 then
+                panel = child
+                break
+            end
+        end
+    end
+    if not panel or Forbidden(panel) then return end
+    ns.HideTextures(panel)
+    if panel.NineSlice then ns.Hide(panel.NineSlice) end
+    for _, child in ipairs({ panel:GetChildren() }) do
+        local isList = child.ScrollTarget or child.ForEachFrame or child:IsObjectType("ScrollFrame")
+        if not Forbidden(child) and not isList and not child:IsObjectType("Button") then
+            ns.HideTextures(child)
+            if child.NineSlice then ns.Hide(child.NineSlice) end
+        end
+    end
+    ns.Flat(panel, C.background)
+    if panel.ScrollBar then ns.SkinScrollBar(panel.ScrollBar) end
+end
+
 local function SkinDressUp()
     local f = G("DressUpFrame")
     if not f or ns.dressUpSkinned or Forbidden(f) then return end
@@ -114,24 +160,24 @@ local function SkinDressUp()
             if b then SkinTextButton(b) end
         end
     end)
-    -- rechts: Liste der Teile – Rahmen und Verzierung weg, flache Fläche (Einträge mit Symbolen bleiben)
-    Step("details", function()
-        local panel = f.OutfitDetailsPanel
-        if panel and not Forbidden(panel) then
-            ns.HideTextures(panel)
-            if panel.NineSlice then ns.Hide(panel.NineSlice) end
-            for _, key in ipairs({ "BorderFrame", "Border", "TopBorder", "Background" }) do
-                local obj = panel[key]
-                if type(obj) == "table" and obj.SetAlpha then
-                    if obj.GetRegions then ns.HideTextures(obj) else obj:SetAlpha(0) end
-                end
-            end
-            ns.Flat(panel, C.background)
-            if panel.ScrollBar then ns.SkinScrollBar(panel.ScrollBar) end
-        end
+    -- alle übrigen Text-Knöpfe und Auswahlfelder (Blizzard benennt sie je nach Fassung anders)
+    Step("controls", function()
+        local found = FindControls(f, 1, { buttons = {}, dropdowns = {} })
+        for _, b in ipairs(found.buttons) do SkinTextButton(b) end
+        for _, d in ipairs(found.dropdowns) do ns.SkinDropdown(d) end
     end)
+    -- rechts: Liste der Teile – Rahmen und Verzierung weg, flache Fläche (Einträge mit Symbolen bleiben)
+    Step("details", function() SkinDetails(f) end)
     ns.Watch(f)
-    f:HookScript("OnShow", function() Step("portrait", function() Portrait(f) end) end)
+    f:HookScript("OnShow", function()
+        Step("portrait", function() Portrait(f) end)
+        -- (die Liste rechts entsteht teils erst beim ersten Aufklappen)
+        C_Timer.After(0, function() Step("details", function() SkinDetails(f) end) end)
+    end)
+    local details = f.ToggleOutfitDetailsButton
+    if type(details) == "table" and details.HookScript and not Forbidden(details) then
+        details:HookScript("OnClick", function() C_Timer.After(0, function() Step("details", function() SkinDetails(f) end) end) end)
+    end
     -- solange offen: Blizzards Knopf-Grafiken unsichtbar halten, aufgeklappte Auswahlliste flach
     local watch = CreateFrame("Frame", nil, f)
     watch:SetScript("OnUpdate", function()
