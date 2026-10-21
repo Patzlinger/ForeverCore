@@ -484,7 +484,7 @@ end
 -- Anzeige kann einzelne Zauber nur per Zauber-ID ausschließen, die ID kennt man vorab nicht – deshalb wird sie
 -- außerhalb des Kampfs am Namen erkannt (Namen sind dann lesbar) und in ForeverFramesDB._ignoredDebuffs gemerkt
 -- ("_" = gehört nicht ins Profil). Danach fehlt der Debuff überall, auch im Kampf.
-local IGNORE_DEBUFF_NAMES = { ["Boosted Rest"] = true }
+local IGNORE_DEBUFF_NAMES = { ["boosted rest"] = true } -- klein geschrieben (Vergleich ohne Groß/klein)
 local function IgnoredDebuffs()
     local db = GetDB()
     if type(db._ignoredDebuffs) ~= "table" then db._ignoredDebuffs = {} end
@@ -498,7 +498,7 @@ local function SkipDebuff(aura)
     if IsSecret(spellID) or IsSecret(name) then return false end
     local ignored = IgnoredDebuffs()
     if spellID and ignored[spellID] then return true end
-    if name and IGNORE_DEBUFF_NAMES[name] and spellID then
+    if type(name) == "string" and IGNORE_DEBUFF_NAMES[strtrim(name):lower()] and spellID then
         ignored[spellID] = true
         C_Timer.After(0, function()
             for _, b in ipairs(ns.buttons or {}) do
@@ -508,6 +508,23 @@ local function SkipDebuff(aura)
         return true
     end
     return false
+end
+
+-- Eigene Debuffs außerhalb des Kampfs mitprüfen: die eigenen Auren sind immer lesbar, bei Gruppenmitgliedern
+-- kann der Name gesperrt sein – so wird die ID spätestens gelernt, sobald man selbst am Lagerfeuer sitzt.
+do
+    local ev = CreateFrame("Frame")
+    ev:RegisterEvent("PLAYER_ENTERING_WORLD")
+    ev:RegisterEvent("PLAYER_REGEN_ENABLED")
+    ev:RegisterUnitEvent("UNIT_AURA", "player")
+    ev:SetScript("OnEvent", function()
+        if InCombatLockdown() or not C_UnitAuras.GetAuraDataByIndex then return end
+        for i = 1, 40 do
+            local ok, aura = pcall(C_UnitAuras.GetAuraDataByIndex, "player", i, "HARMFUL")
+            if not ok or not HasAura(aura) then break end
+            pcall(SkipDebuff, aura)
+        end
+    end)
 end
 
 local function DebuffEngineFilter()
