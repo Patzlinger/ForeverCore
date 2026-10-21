@@ -145,6 +145,7 @@ do
     Check(T("Bedrohung anzeigen", "Show threat"), "threat")
     Check(T("Prozent neben der Leiste", "Percent next to the bar"), "threatText", true)
     Check(T("Leiste in Bedrohungsfarbe (nach Rolle)", "Bar in threat color (by role)"), "threatColorBar", true)
+    Check(T("nur als Tank in einer Gruppe", "only as tank in a group"), "threatColorTankOnly", true)
     Check(T("Immer als Tank werten", "Always count me as tank"), "threatTank", true)
     Check(T("Nur in Gruppen (solo aus)", "Only in groups (off when solo)"), "threatGroupOnly", true)
     Hint(T("Schaden/Heilung: grün = sicher, gelb = knapp, orange = Aggro wackelt, rot = du hast Aggro. "

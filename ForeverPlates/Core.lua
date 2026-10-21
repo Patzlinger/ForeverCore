@@ -39,6 +39,7 @@ ns.DEFAULTS = {
     threat = true,            -- Bedrohung
     threatText = true,        --   Prozent neben der Leiste
     threatColorBar = true,    --   Leiste in Bedrohungsfarbe
+    threatColorTankOnly = true, --   … nur als Tank in einer Gruppe (solo und als Schaden/Heiler ohne Farben)
     threatTank = false,       --   immer als Tank werten (sonst: Gruppenrolle)
     -- eigene Farben je Bedrohungsstufe (statt der Farben nach Rolle); gelten dann für alle Rollen und alle Stufen
     threatCustom = false,
@@ -896,7 +897,11 @@ local function UpdateThreat(fp)
             end
             -- Schadensklassen: Leiste erst färben, wenn es eng wird; Tanks: immer (rot = Aggro verloren)
             -- eigene Farben: jede Stufe färbt (auch "keine Aggro")
-            if d.threatColorBar and c and (d.threatCustom or IsTank() or status > 0) then col = c end
+            -- Standard (threatColorTankOnly): Farben nur, wenn man in einer Gruppe als Tank eingetragen ist (oder
+            -- "Immer als Tank werten"); solo und als Schaden/Heiler bleibt die Leiste ohne Bedrohungsfarbe
+            local colorsOn = d.threatColorBar and (not d.threatColorTankOnly or (IsInGroup() and IsTank()))
+            if colorsOn and c and (d.threatCustom or IsTank() or status > 0) then col = c end
+            if not colorsOn and d.threatText then fp.threatText:SetTextColor(0.9, 0.9, 0.9) end
         end
     end
     fp.threatBadge:SetShown(show)

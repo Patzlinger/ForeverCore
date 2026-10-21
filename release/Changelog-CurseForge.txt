@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- ForeverPlates: threat colors on the health bar now only show by default when you are listed as **tank in a group** – solo and as damage dealer or healer the bar keeps its normal color (the threat percent stays). Turn it off with "only as tank in a group" (Display » Threat).
 - ForeverPlates: **your own threat colors** for the health bar – pick a color for "you have aggro", "aggro slipping", "about to pull aggro" and "no aggro" (Display tab » "Colors by threat"). Off by default; the role-based colors stay as they are until you switch it on.
 - ForeverQuests: click the "Quests" title of the tracker to open the quest log.
 - ForeverQuests with Questie, quest items in the tooltip: items the quest giver hands you (e.g. a horn to summon a quest target) and other items a quest needs now show their quest too.
