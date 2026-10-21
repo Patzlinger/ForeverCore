@@ -124,21 +124,22 @@ local function Place(f)
     -- Dreh-Knöpfe unten links in der Innenfläche (mit Luft zur goldenen Linie)
     if inset then Anchor(G("TabardCharacterModelRotateLeftButton"), "BOTTOMLEFT", inset, "BOTTOMLEFT", 10, 14) end
     -- untere Leiste: Kosten links, "Abbrechen" rechts, "Annehmen" 8 daneben (alles auf halber Höhe).
-    -- Blizzards Kosten-Feld ist breit und schreibt rechtsbündig: so setzen, dass sein sichtbarer Text 10 vom Rand
-    -- beginnt
+    -- Blizzards Kosten-Feld ist breit und schreibt rechtsbündig: darum Beschriftung ("Kosten:") und Betrag einzeln
+    -- setzen – Beschriftung 10 vom linken Rand, der Betrag 4 dahinter (Blizzard passt dessen Breite selbst an)
     local y = FOOTER / 2
     local cost = G("TabardFrameCostFrame")
     if cost and not Forbidden(cost) then
-        local left, minLeft = cost:GetLeft(), nil
-        local function Check(obj)
-            if obj:IsShown() and obj.GetLeft and obj:GetLeft() and not (obj.GetText and (obj:GetText() or "") == "" and obj:IsObjectType("FontString")) then
-                minLeft = math.min(minLeft or obj:GetLeft(), obj:GetLeft())
-            end
+        local label
+        for _, r in ipairs({ cost:GetRegions() }) do
+            if r:IsObjectType("FontString") and (r:GetText() or "") ~= "" then label = r break end
         end
-        for _, r in ipairs({ cost:GetRegions() }) do if r:IsObjectType("FontString") then Check(r) end end
-        for _, child in ipairs({ cost:GetChildren() }) do if not Forbidden(child) then Check(child) end end
-        local offset = (left and minLeft) and (minLeft - left) or 0
-        Anchor(cost, "LEFT", f, "BOTTOMLEFT", 10 - offset, y)
+        local money = G("TabardFrameCostMoneyFrame")
+        if label then
+            Anchor(label, "LEFT", f, "BOTTOMLEFT", 10, y)
+            if money then Anchor(money, "LEFT", label, "RIGHT", 4, 0) end
+        else
+            Anchor(cost, "LEFT", f, "BOTTOMLEFT", 10, y)
+        end
     end
     local cancel, accept = G("TabardFrameCancelButton"), G("TabardFrameAcceptButton")
     Anchor(cancel, "RIGHT", f, "BOTTOMRIGHT", -10, y)
@@ -163,6 +164,26 @@ local function SkinTabard()
         for _, n in ipairs({ "TabardFrameBackground", "TabardFrameCostFrameBackground" }) do ns.Hide(G(n)) end
     end)
     Step("rows", function() for i = 1, ROWS do SkinRow(i) end end)
+    -- Blizzards Rahmen um die Gestaltungs-Zeilen (dunkler Kasten dahinter) und sein NPC-Name oben (lag über dem
+    -- Namen der Visitenkarte) unsichtbar
+    Step("rowFrame", function()
+        local first = G("TabardFrameCustomization1")
+        local holder = first and first:GetParent()
+        if holder and holder ~= f and not Forbidden(holder) then
+            ns.HideTextures(holder)
+            if holder.NineSlice then ns.Hide(holder.NineSlice) end
+        end
+        -- (Rahmen nur ohne Grafiken – NICHT ganz unsichtbar, darin liegen die Zeilen)
+        for _, n in ipairs({ "TabardFrameCustomizationFrame", "TabardFrameCustomizationBorder" }) do
+            local obj = G(n)
+            if obj and not Forbidden(obj) then
+                if obj.GetRegions then ns.HideTextures(obj) end
+                if obj.NineSlice then ns.Hide(obj.NineSlice) end
+            end
+        end
+        local nameText = G("TabardFrameNameText")
+        if nameText and not Forbidden(nameText) then nameText:SetAlpha(0) end
+    end)
     Step("buttons", function()
         SkinTextButton(G("TabardFrameAcceptButton"))
         SkinTextButton(G("TabardFrameCancelButton"))
