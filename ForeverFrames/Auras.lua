@@ -484,10 +484,14 @@ end
 -- Anzeige kann einzelne Zauber nur per Zauber-ID ausschließen, die ID kennt man vorab nicht – deshalb wird sie
 -- außerhalb des Kampfs am Namen erkannt (Namen sind dann lesbar) und in ForeverFramesDB._ignoredDebuffs gemerkt
 -- ("_" = gehört nicht ins Profil). Danach fehlt der Debuff überall, auch im Kampf.
-local IGNORE_DEBUFF_NAMES = { ["boosted rest"] = true } -- klein geschrieben (Vergleich ohne Groß/klein)
+-- Bekannte IDs stehen fest drin (immer ausgeschlossen, auch ohne vorheriges Lernen):
+-- 1229451 = Boosted Rest (Lagerfeuer), 24755 = Tricked or Treated (Schlotternächte)
+local IGNORE_DEBUFF_IDS = { [1229451] = true, [24755] = true }
+local IGNORE_DEBUFF_NAMES = { ["boosted rest"] = true, ["tricked or treated"] = true } -- klein geschrieben
 local function IgnoredDebuffs()
     local db = GetDB()
     if type(db._ignoredDebuffs) ~= "table" then db._ignoredDebuffs = {} end
+    for id in pairs(IGNORE_DEBUFF_IDS) do db._ignoredDebuffs[id] = true end
     return db._ignoredDebuffs
 end
 
