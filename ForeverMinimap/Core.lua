@@ -106,17 +106,21 @@ end
 ---------------------------------------------------------------------------
 -- Gemeinsame Einstellungs-Verwaltung (ForeverCore): Profile je Charakter, Zuruecksetzen, Export/Import
 ---------------------------------------------------------------------------
-UI.RegisterSettings({ addon = ADDON_NAME, sv = "ForeverMinimapDB", defaults = ns.DEFAULTS, version = 3,
-    -- Version 2: statt "buttons" (Leiste/links/rechts) eine senkrechte Knopfleiste; eigene Knoepfe raus aus der Leiste
+UI.RegisterSettings({ addon = ADDON_NAME, sv = "ForeverMinimapDB", defaults = ns.DEFAULTS, version = 4,
+    -- Version 2: statt "buttons" (Leiste/links/rechts) eine senkrechte Knopfleiste
     -- Version 3: Knopfleiste standardmaessig immer sichtbar (vorher nur bei Maus ueber der Minimap)
+    -- Version 4: eigene Knoepfe (Post, Verfolgung, Kalender, Einstellungen) standardmaessig oben in der Leiste –
+    --            einmalig auch fuer bestehende Profile (Version 2 hatte sie seitlich gestellt)
     migrate = function(data, from)
         if from < 2 then
             data.strip = data.buttons == "RIGHT" and "RIGHT" or "LEFT"
             data.stripMouseover = data.buttonsMouseover ~= false
-            data.toolsInBar = false
             data.buttons, data.buttonsMouseover, data.edgeMouseover = nil, nil, nil
         end
         if from < 3 then
             data.stripMouseover = false
+        end
+        if from < 4 then
+            data.toolsInBar = true
         end
     end })
