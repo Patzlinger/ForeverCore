@@ -574,6 +574,48 @@ local function FindTradeButtons(frame, depth)
     end
 end
 
+-- Geld des Handelspartners: Blizzard zeigt es als einzelnes Feld (bei 0 leer). Stattdessen drei Felder Gold,
+-- Silber, Kupfer mit Münz-Symbol wie auf deiner Seite – nur Anzeige (GetTargetTradeMoney). Ist Blizzards Anzeige
+-- gesperrt (geschützt), bleibt sie, wie sie ist, und es gibt keine eigenen Felder (sonst stünde alles doppelt).
+local recipientCoins
+local function RecipientMoney(f)
+    local inset, blizz = G("TradeRecipientMoneyInset"), G("TradeRecipientMoneyFrame")
+    if recipientCoins or not inset or Forbidden(inset) or (blizz and Forbidden(blizz)) then return end
+    if blizz then blizz:SetAlpha(0) end
+    recipientCoins = {}
+    local prev
+    for i, coin in ipairs({ { "Gold", 68 }, { "Silver", 41 }, { "Copper" } }) do
+        local box = CreateFrame("Frame", nil, inset, "BackdropTemplate")
+        box:SetHeight(18)
+        if prev then box:SetPoint("LEFT", prev, "RIGHT", 4, 0) else box:SetPoint("LEFT", inset, "LEFT", 6, 0) end
+        if coin[2] then box:SetWidth(coin[2]) else box:SetPoint("RIGHT", inset, "RIGHT", -6, 0) end
+        box:SetBackdrop({ bgFile = WHITE, edgeFile = WHITE, edgeSize = 1 })
+        local c = C.input or C.button
+        box:SetBackdropColor(c[1], c[2], c[3], c[4] or 1)
+        box:SetBackdropBorderColor(C.border[1], C.border[2], C.border[3], 1)
+        local icon = box:CreateTexture(nil, "OVERLAY")
+        icon:SetSize(13, 13)
+        icon:SetPoint("RIGHT", box, "RIGHT", -3, 0)
+        icon:SetTexture("Interface\\MoneyFrame\\UI-" .. coin[1] .. "Icon")
+        local text = box:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        text:SetPoint("RIGHT", icon, "LEFT", -3, 0)
+        text:SetJustifyH("RIGHT")
+        tradeOurs[box] = true
+        recipientCoins[i] = text
+        prev = box
+    end
+    -- jedes Mal, wenn der andere den Betrag ändert (im Takt des Fensters)
+    local watch = CreateFrame("Frame", nil, inset)
+    watch:SetScript("OnUpdate", function()
+        local copper = GetTargetTradeMoney and GetTargetTradeMoney() or 0
+        if watch.last == copper then return end
+        watch.last = copper
+        recipientCoins[1]:SetText(math.floor(copper / 10000))
+        recipientCoins[2]:SetText(math.floor(copper / 100) % 100)
+        recipientCoins[3]:SetText(copper % 100)
+    end)
+end
+
 -- Geld-Eingabe: flache Eingabefelder wie in den Forever-Menüs, das Münz-Symbol bleibt rechts darin.
 -- Im Forever-Client sind diese Felder geschützt (für Addons gesperrt) – dann greift das nicht.
 local moneyBoxes, coinKeep = {}, {}
@@ -683,6 +725,7 @@ local function SkinTrade()
             end
         end
     end)
+    Step("recipientMoney", function() RecipientMoney(f) end)
     Step("money", function()
         for _, coin in ipairs({ "Gold", "Silver", "Copper" }) do
             local box = G("TradePlayerInputMoneyFrame" .. coin)

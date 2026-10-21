@@ -69,7 +69,7 @@ local function BagSlot(button)
 end
 
 -- Eingabefeld (Empfänger, Betreff …): Blizzards Rahmen weg, flache dunkle Fläche
-local function SkinEdit(edit, inset)
+local function SkinEdit(edit, inset, money)
     if not edit or Forbidden(edit) or slots[edit] then return end
     slots[edit] = true
     for _, key in ipairs({ "Left", "Middle", "Right", "Mid" }) do ns.Hide(edit[key]) end
@@ -77,7 +77,22 @@ local function SkinEdit(edit, inset)
     if name then
         for _, suffix in ipairs({ "Left", "Middle", "Right", "Mid" }) do ns.Hide(G(name .. suffix)) end
     end
-    ns.HideTextures(edit)
+    -- Münz-Symbole der Geldfelder (Gold, Silber, Kupfer) bleiben sichtbar
+    local keep = {}
+    for _, r in ipairs({ edit:GetRegions() }) do
+        if r:IsObjectType("Texture") then
+            local atlas = r.GetAtlas and r:GetAtlas()
+            local tex = r.GetTexture and r:GetTexture()
+            local s = ((type(atlas) == "string" and atlas or "") .. "|" .. (type(tex) == "string" and tex or "")):lower()
+            -- (Geldfeld: auch jede kleine Grafik in Münzgröße, falls das Spiel die Münze nur als Datei-Nummer meldet)
+            if s:find("coin") or s:find("money") or s:find("gold") or s:find("silver") or s:find("copper")
+                or (money and (r:GetWidth() or 99) <= 20) then
+                keep[r] = true
+                r:SetAlpha(1)
+            end
+        end
+    end
+    ns.HideTextures(edit, keep)
     ns.Flat(edit, C.input or C.button, inset or { -4, 1, 0, 1 })
 end
 
@@ -338,7 +353,7 @@ local function SkinSend()
     -- Geld-Eingabe: nur, wenn das Spiel sie nicht sperrt
     for _, coin in ipairs({ "Gold", "Silver", "Copper" }) do
         local box = G("SendMailMoney" .. coin)
-        if box and not Forbidden(box) then SkinEdit(box, { -4, 0, -2, 0 }) end
+        if box and not Forbidden(box) then SkinEdit(box, { -4, 0, -2, 0 }, true) end
     end
     SkinButtons({ "SendMailMailButton", "SendMailCancelButton" })
     -- mehr Luft zwischen "Geld senden" und "Nachnahme" (die Kästchen klebten aneinander): das obere etwas hoch,
