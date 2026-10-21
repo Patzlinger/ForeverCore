@@ -688,3 +688,54 @@ function ns.RestoreColors()
     db.savedColors = nil
     ns.Chat(T("Vorherige Chatfarben wiederhergestellt.", "Previous chat colors restored."))
 end
+
+---------------------------------------------------------------------------
+-- Hauptchat standardmäßig ganz unten links (Einstellung "chatCorner"): Blizzards Standardplatz liegt deutlich höher.
+-- Den Chat verwaltet Blizzards Bearbeitungsmodus – solange er dort auf dem Standardplatz steht
+-- (IsInDefaultPosition), setzen wir ihn in die Ecke: 4 px vom Rand (Platz für den feinen Rahmen der Chat-Fläche),
+-- unten so hoch, dass die Eingabezeile darunter im Bild bleibt. Wer ihn im Bearbeitungsmodus verschiebt, behält
+-- seine Lage. Nur SetPoint (keine eigenen Skripte am Chat); setzt Blizzard ihn neu, kommt er im nächsten Bild wieder.
+---------------------------------------------------------------------------
+do
+    local EDGE = 4
+    local function InDefault(frame)
+        if frame.IsInDefaultPosition then
+            local ok, yes = pcall(frame.IsInDefaultPosition, frame)
+            if ok then return yes end
+        end
+        return false -- ohne Bearbeitungsmodus nichts anfassen
+    end
+
+    local function Place()
+        local frame = _G.ChatFrame1
+        if not frame or not ns.GetDB().chatCorner or not InDefault(frame) then return end
+        if InCombatLockdown() and frame:IsProtected() then return end
+        local edit = frame.editBox or _G.ChatFrame1EditBox
+        local below = (edit and edit:GetHeight() or 28) + 4 -- Eingabezeile hängt unter dem Chat
+        frame.fcCornerPlacing = true
+        frame:ClearAllPoints()
+        frame:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", EDGE, below)
+        frame.fcCornerPlacing = nil
+    end
+    ns.PlaceChatCorner = Place
+
+    local hooked = false
+    local ev = CreateFrame("Frame")
+    ev:RegisterEvent("PLAYER_ENTERING_WORLD")
+    pcall(ev.RegisterEvent, ev, "EDIT_MODE_LAYOUTS_UPDATED")
+    ev:SetScript("OnEvent", function()
+        local frame = _G.ChatFrame1
+        if frame and not hooked then
+            hooked = true
+            hooksecurefunc(frame, "SetPoint", function(self)
+                if self.fcCornerPlacing or self.fcCornerPending or not ns.GetDB().chatCorner then return end
+                self.fcCornerPending = true
+                C_Timer.After(0, function()
+                    self.fcCornerPending = nil
+                    pcall(Place)
+                end)
+            end)
+        end
+        C_Timer.After(0.5, function() pcall(Place) end)
+    end)
+end

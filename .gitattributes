@@ -5,3 +5,6 @@
 *.png binary
 *.blp binary
 *.zip binary
+
+# Changelog: gleichzeitige Einträge beider Seiten automatisch behalten (keine Konflikte beim Rebase)
+release/Changelog-CurseForge.txt merge=union

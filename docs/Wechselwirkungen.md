@@ -114,7 +114,10 @@ Blizzard auch benutzt (Leisten, Minimap, Taschen, Chat, Tracker, Bearbeitungsmod
   - **Nie** `AddMessage`, `GetColoredName`, `SetItemRef` o. Ä. ersetzen und nie `ChatTypeInfo` oder
     `CHAT_TIMESTAMP_FORMAT` beschreiben – das lässt Blizzards Chat-Code danach "verunreinigt" laufen
   - Eigene klickbare Links: `|Haddon:<Addonname>:…|h…|h`; Klicks kommen über `EventRegistry` "SetItemRef"
-  - Den Hauptchat (`ChatFrame1`) verwaltet der Bearbeitungsmodus – nicht selbst verschieben
+  - Den Hauptchat (`ChatFrame1`) verwaltet der Bearbeitungsmodus – nicht selbst verschieben. Einzige Ausnahme
+    (2026-10-21, `chatCorner`): steht er dort auf dem Standardplatz (`IsInDefaultPosition`), setzt ForeverChat ihn per
+    SetPoint ganz nach unten links (SetPoint-Hook setzt nach). Gleiches Muster: ForeverMinimap rückt so Blizzards
+    Buff-/Debuff-Leiste neben die Karte (`auraBesideMap`). Nach eigenem Verschieben gilt immer der Bearbeitungsmodus.
   - Nur Blizzard-Grafiken unsichtbar machen (`UI.HideBlizzard`), eigene Flächen daneben/als Zusatz-Texturen
   - Blizzards Eingabefeld und den Merker für "Antworten" (`ChatFrameUtil.SetLastTellTarget`) nie aus Addon-Code
     setzen: ein verunreinigtes Eingabefeld kann danach Befehle wie `/cast` blockieren. Der Messenger hat deshalb

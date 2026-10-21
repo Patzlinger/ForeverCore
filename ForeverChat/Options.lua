@@ -76,6 +76,8 @@ local lockCheck = UI.Check(options, L - 4, -396, T("Chatfenster sperren", "Lock 
     ns.SetLocked(checked)
 end)
 loaders[#loaders + 1] = function() lockCheck:SetChecked(ns.IsLocked()) end
+-- Hauptchat ganz unten links, solange er im Bearbeitungsmodus nicht verschoben wurde (Skin.lua)
+Check(L + 150, -396, T("Ganz unten links", "Bottom left corner"), "chatCorner", function() if ns.PlaceChatCorner then ns.PlaceChatCorner() end end)
 local editBtn = UI.Button(options, T("Im Bearbeitungsmodus verschieben", "Move in Edit Mode"), 230, function()
     options:Hide()
     ns.OpenEditMode()

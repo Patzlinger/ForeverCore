@@ -24,6 +24,7 @@ ns.DEFAULTS = {
     styleTabs = true,        -- Reiter im Forever-Stil
     styleEditBox = true,     -- Eingabefeld im Forever-Stil
     autoHideEditBox = true,  -- Eingabezeile nur beim Schreiben bzw. mit der Maus darueber zeigen
+    chatCorner = true,       -- Hauptchat ganz unten links (solange im Bearbeitungsmodus nicht verschoben)
     hideSideButtons = true,  -- Blizzards Knopfleiste neben dem Chat ausblenden (Ersatz: eigene Knopfleiste)
     toolbar = true,          -- eigene kleine Knopfleiste ueber dem Chat
     ttsButton = false,       -- Knopf "Vorlesen" (Text zu Sprache) in der Knopfleiste
