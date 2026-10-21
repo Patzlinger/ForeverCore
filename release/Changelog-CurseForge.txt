@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **ForeverSkin: the mailbox in the Forever look** – inbox and send tab with flat tabs, each message in a flat box, item and attachment slots like the ForeverBags slots, flat input fields, light letter text on a dark background instead of parchment, flat buttons; the opened message too. Switch: /fskin » "Mailbox".
+
 - ForeverBags: when a trade starts, the bags open and dock to the right of the trade window (top edges aligned, also with the ForeverSkin look); they close again afterwards if they weren't open before. Drag them away and they stay put until the trade ends.
 
 - ForeverChat: the main chat now sits right in the bottom left corner by default (only while it is on Blizzard's default spot in Edit Mode; turn it off with "Bottom left corner" in /fchat » Position and lock).
