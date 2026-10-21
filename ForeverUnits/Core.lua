@@ -87,10 +87,12 @@ ns.DEFAULTS = {
     snap = true,                   -- beim Ziehen an anderen Rahmen / am Raster einrasten
 
     frames = {
+        -- Spieler und Ziel spiegelbildlich: gleiche Größe, gleiche Höhe, gleicher Abstand zur Bildschirmmitte
+        -- (Spieler = Bezug); das Ziel des Ziels sitzt wie bisher rechts unten am Ziel (+171 / −23)
         player = FrameDefaults({ width = 212, height = 45, x = -238, y = -154 }),
-        target = FrameDefaults({ width = 212, height = 46, x = 224, y = -167, portraitSide = "RIGHT", levelShow = true,
+        target = FrameDefaults({ width = 212, height = 45, x = 238, y = -154, portraitSide = "RIGHT", levelShow = true,
             buffs = true, debuffs = true, dotBars = true }),
-        targettarget = FrameDefaults({ width = 110, height = 24, x = 395, y = -190, powerHeight = 0,
+        targettarget = FrameDefaults({ width = 110, height = 24, x = 409, y = -177, powerHeight = 0,
             fontSize = 10, portrait = "none", portraitSide = "RIGHT", hpFormat = "percent", powerText = false }),
         focus = FrameDefaults({ width = 160, height = 30, x = -426, y = -147, powerHeight = 5, fontSize = 11,
             portrait = "none", levelShow = true, hpFormat = "percent", powerText = false, debuffs = true, auraSize = 18, auraNum = 6,
@@ -294,4 +296,20 @@ end)
 ---------------------------------------------------------------------------
 -- Gemeinsame Einstellungs-Verwaltung (ForeverCore): Profile je Charakter, Zuruecksetzen, Export/Import
 ---------------------------------------------------------------------------
-UI.RegisterSettings({ addon = "ForeverUnits", sv = "ForeverUnitsDB", defaults = ns.DEFAULTS, version = 1 })
+-- Version 2: Ziel spiegelbildlich zum Spieler (vorher 14 px näher an der Mitte, 13 px tiefer, 1 px höher). Nur
+-- Rahmen, die noch auf dem alten Standardplatz stehen, werden umgesetzt – das Ziel an die Spiegelung des Spielers
+-- (wie er jetzt steht), das Ziel des Ziels relativ dazu mit; selbst verschobene Rahmen bleiben, wo sie sind.
+UI.RegisterSettings({ addon = "ForeverUnits", sv = "ForeverUnitsDB", defaults = ns.DEFAULTS, version = 2,
+    migrate = function(data, from)
+        if from >= 2 or type(data.frames) ~= "table" then return end
+        local p, t, tt = data.frames.player, data.frames.target, data.frames.targettarget
+        if type(p) ~= "table" or type(t) ~= "table" then return end
+        local px, py = p.x or -238, p.y or -154
+        if (t.x == nil or t.x == 224) and (t.y == nil or t.y == -167) then
+            t.x, t.y = -px, py
+            if t.height == nil or t.height == 46 then t.height = p.height or 45 end
+            if type(tt) == "table" and (tt.x == nil or tt.x == 395) and (tt.y == nil or tt.y == -190) then
+                tt.x, tt.y = t.x + 171, t.y - 23
+            end
+        end
+    end })

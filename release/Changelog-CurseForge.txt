@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- ForeverUnits: player and target frame now line up perfectly by default – same height, same line, same distance from the screen center (target of target moves along). Frames you moved yourself stay where they are.
 - ForeverQuests: **shared quests ("Together") survive /reload and logging in again** – they are only cleared when the group is disbanded or you leave it. After reloading, everyone's progress is fetched again.
 - ForeverSkin, trade window: no more grey bars and empty boxes – empty slots on your side say "+ Drag an item here" and light up in gold while you hold an item; you can drop it anywhere on the row.
 - ForeverBars: Blizzard's button effects (cast ring, target marker, interrupt, cooldown flash, proc glow) sit exactly on the button again – they are re-fitted every time they show and whenever a button changes size.
