@@ -98,7 +98,7 @@ local STATUS_TOP_GAP = 0 -- zusätzlicher Abstand zur Aktionsleiste 1: keiner �
 local BAR_GAP = 1.5    -- Abstand zwischen aneinanderliegenden Leisten (wie "Abstand" der Knöpfe)
 local SIDE_GAP = 24    -- Abstand von Berufe-/Verpflegungsleiste zu den Aktionsleisten (Platz für den Einklapp-Pfeil)
 local FRAME_SPACE = 4  -- Rand des Rahmens um eine Leiste (siehe UpdateBarFrame)
-local PET_GAP = 8     -- kleiner Abstand der Begleiter-/Haltungsleiste zu den Aktionsleisten (Flächen berühren sich nicht)
+local PET_GAP = 8     -- Abstand von "Fahrzeug verlassen" zur Begleiter-/Haltungsreihe darunter
 local PET_CLASSES = { HUNTER = true, WARLOCK = true, DEATHKNIGHT = true } -- Klassen mit dauerhaftem Begleiter
 
 -- Tatsächliche Größe einer Leiste. Aktionsleisten: "100 %" im Menü sind 105 % der Blizzard-Knopfgröße
@@ -153,17 +153,22 @@ local function DefaultPosition(key)
     -- obersten eingeschalteten davon (ApplyLayout rechnet das bei jeder Anordnung neu, solange man sie nicht selbst
     -- verschoben hat)
     local ROWS = { bar1 = 0, bar2 = 1, bar3 = 2, bar6 = 3, bar7 = 4, bar8 = 5 }
-    local topRow = 0
+    local topRow, topKey = 0, "bar1"
     for key, row in pairs(ROWS) do
-        if bars[key] and bars[key].enabled and row > topRow then topRow = row end
+        if bars[key] and bars[key].enabled and row > topRow then topRow, topKey = row, key end
     end
     local stackTop = BarCenter(topRow) + barHeight / 2              -- Oberkante der obersten Aktionsleiste
     local smallRow = ACTION_SIZE * Scale("pet")                    -- Höhe der Begleiter-/Haltungsreihe
-    local smallBottom = stackTop + PET_GAP                          -- Unterkante der Begleiter-/Haltungsreihe
+    -- Begleiterleiste direkt auf der obersten Aktionsleiste (Abstand wie zwischen den Aktionsleisten) und
+    -- linksbündig mit ihr – mit deren tatsächlicher Breite (sie kann anders skaliert sein als Leiste 1)
+    local smallBottom = stackTop + BAR_GAP                          -- Unterkante der Begleiter-/Haltungsreihe
+    local topCfg = bars[topKey] or bars.bar1
+    local topWidth = (12 * ACTION_SIZE + 11 * ns.ButtonGap(topCfg)) * Scale(topKey)
+    local topLeft = width / 2 - topWidth / 2
     -- Haltungsleiste links über der Begleiterleiste; bei Klassen ohne Begleiter (Krieger, Schurke, Druide …) ist die
     -- Begleiterleiste meist ausgeblendet, dann rückt die Haltungsleiste an ihren Platz
     local _, playerClass = UnitClass("player")
-    local stanceBottom = PET_CLASSES[playerClass] and (smallBottom + smallRow + PET_GAP) or smallBottom
+    local stanceBottom = PET_CLASSES[playerClass] and (smallBottom + smallRow + BAR_GAP) or smallBottom
     local aboveSmall = stanceBottom + smallRow + PET_GAP            -- darüber: Fahrzeug verlassen
     local microHeight = HolderHeight("micro", 40)
     -- Mikromenü unter der Minimap angedockt: die Taschen sitzen allein unten rechts in der Ecke
@@ -174,9 +179,9 @@ local function DefaultPosition(key)
         bar1 = { width / 2, BarCenter(0) }, bar2 = { width / 2, BarCenter(1) }, bar3 = { width / 2, BarCenter(2) },
         bar6 = { width / 2, BarCenter(3) }, bar7 = { width / 2, BarCenter(4) }, bar8 = { width / 2, BarCenter(5) },
         bar4 = { width - 30, height / 2 }, bar5 = { width - 30 - ACTION_SIZE - 8, height / 2 },
-        pet = { left, smallBottom },     -- BOTTOMLEFT
-        totem = { left, smallBottom },   -- BOTTOMLEFT, beim Schamanen statt der Begleiterleiste
-        stance = { left, stanceBottom }, -- BOTTOMLEFT, über der Begleiterleiste
+        pet = { topLeft, smallBottom },     -- BOTTOMLEFT
+        totem = { topLeft, smallBottom },   -- BOTTOMLEFT, beim Schamanen statt der Begleiterleiste
+        stance = { topLeft, stanceBottom }, -- BOTTOMLEFT, über der Begleiterleiste
         prof = { left - SIDE_GAP - FRAME_SPACE, statusBase + FRAME_SPACE }, -- BOTTOMRIGHT (Rahmen eingerechnet)
         food = { right + SIDE_GAP + FRAME_SPACE, statusBase + FRAME_SPACE }, -- BOTTOMLEFT, gespiegelt zur Berufeleiste
         xp = { width / 2, statusCenter.xp or (EDGE + 9) }, rep = { width / 2, statusCenter.rep or (EDGE + 30) },
