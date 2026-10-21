@@ -163,7 +163,12 @@ local function Place(f)
     local first = G("TabardFrameCustomization1")
     if first and inset then
         local rowH = first:GetHeight() or 22
-        Anchor(first, "BOTTOMRIGHT", inset, "BOTTOMRIGHT", -10, 14 + (ROWS - 1) * (rowH + 4))
+        FitRows()
+        -- Blizzards Zeile ist breiter als unser Kasten samt Pfeilen: so weit nach rechts, dass der rechte Pfeil 10 vor
+        -- dem Rand der Innenfläche endet (das Modell bleibt frei)
+        local rightArrow = G("TabardFrameCustomization1RightButton")
+        local extra = (boxInsets[first] or 0) - 3 - (rightArrow and rightArrow:GetWidth() or 16)
+        Anchor(first, "BOTTOMRIGHT", inset, "BOTTOMRIGHT", -10 + math.max(0, extra), 14 + (ROWS - 1) * (rowH + 4))
         for i = 2, ROWS do
             Anchor(G("TabardFrameCustomization" .. i), "TOP", G("TabardFrameCustomization" .. (i - 1)), "BOTTOM", 0, -4)
         end
