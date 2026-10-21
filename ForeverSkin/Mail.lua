@@ -286,6 +286,15 @@ local function RowBox(row, button)
     box:SetPoint("RIGHT", row, "RIGHT", 0, 0)
     ns.Flat(box, C.button)
     ours[box] = true
+    -- dunkles Feld für das Symbol, auch ohne Nachricht (wie die Plätze im Handelsfenster); liegt unter Blizzards
+    -- Symbol-Knopf, darum genau so groß wie dieser
+    local well = CreateFrame("Frame", nil, box, "BackdropTemplate")
+    well:SetAllPoints(button)
+    well:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8", edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 })
+    well:SetBackdropColor(0.06, 0.06, 0.08, 0.85)
+    well:SetBackdropBorderColor(C.border[1], C.border[2], C.border[3], 1)
+    well:EnableMouse(false)
+    ours[well] = true
     rowBoxes[row] = box
 end
 
