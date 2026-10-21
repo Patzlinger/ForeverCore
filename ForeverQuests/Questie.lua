@@ -575,3 +575,90 @@ for _, key in ipairs({ "GetQuestieActions", "AddQuestieMenuItems", "QuestieHover
     end
     ns[key] = function(...) return Finish(pcall(fn, ...)) end
 end
+
+---------------------------------------------------------------------------
+-- Questgegenstände im Tooltip (mit Questie): zu welcher Quest ein Gegenstand gehört und ob man sie noch hat –
+-- "Für: Quest" bzw. "Startet: Quest" mit Zustand (im Questlog / abgeschlossen / nicht im Questlog), darunter
+-- Twinks mit derselben Quest (ForeverAlts). Den Fortschritt laufender Quests zeigt Questie selbst (nicht doppelt).
+-- Nur echte Questgegenstände (Klasse "Quest") und Gegenstände, die eine Quest starten – Stoffe, Erze usw. gehören
+-- zu vielen Quests und würden den Tooltip fluten. Einstellung "itemQuestTooltip" (Menü » Aussehen).
+---------------------------------------------------------------------------
+local MAX_ITEM_QUESTS = 4
+local QUEST_ITEM_CLASS = (Enum and Enum.ItemClass and Enum.ItemClass.Questitem) or 12
+
+local function QuestState(questID)
+    if C_QuestLog.GetLogIndexForQuestID and C_QuestLog.GetLogIndexForQuestID(questID) then return "log" end
+    if C_QuestLog.IsQuestFlaggedCompleted and C_QuestLog.IsQuestFlaggedCompleted(questID) then return "done" end
+    return "missing"
+end
+
+local STATE_TEXT = {
+    log = { "TIP_ITEM_INLOG", 0.3, 1, 0.3 },
+    done = { "TIP_ITEM_DONE", 0.55, 0.55, 0.55 },
+    missing = { "TIP_ITEM_MISSING", 1, 0.82, 0 },
+}
+
+local function AddAlts(tooltip, questID)
+    local hub = _G.ForeverHub and _G.ForeverHub.UI
+    local alts = hub and hub.API and hub.API.ForeverAlts
+    if not (alts and alts.CharsWithQuest) then return end
+    local ok, list = pcall(alts.CharsWithQuest, questID)
+    if not ok or type(list) ~= "table" then return end
+    for i, alt in ipairs(list) do
+        if i > 3 then break end
+        local state = alt.complete and ns.L("READY_TO_TURN_IN")
+            or ((alt.total and alt.total > 0) and (alt.done .. "/" .. alt.total)) or ns.L("DETAIL_IN_LOG")
+        tooltip:AddDoubleLine("   " .. (alt.coloredName or alt.name or "?"), state, 1, 1, 1, 0.7, 0.7, 0.7)
+    end
+end
+
+local function AddItemQuestLines(tooltip, itemID)
+    if not (ns.db and ns.db.itemQuestTooltip ~= false and ns.HasQuestie()) then return end
+    if type(itemID) ~= "number" or (issecretvalue and issecretvalue(itemID)) then return end
+    local db = Module("QuestieDB")
+    if not (db and db.QueryItemSingle) then return end
+    local okS, starts = pcall(db.QueryItemSingle, itemID, "startQuest")
+    if not okS or starts == 0 then starts = nil end
+    local classID = GetItemInfoInstant and select(6, GetItemInfoInstant(itemID))
+    if not starts and classID ~= QUEST_ITEM_CLASS then return end
+    local okR, related = pcall(db.QueryItemSingle, itemID, "relatedQuests")
+    local quests, seen = {}, {}
+    if starts then quests[1], seen[starts] = { id = starts, starts = true }, true end
+    if okR and type(related) == "table" then
+        for _, id in ipairs(related) do
+            if type(id) == "number" and not seen[id] then
+                seen[id] = true
+                quests[#quests + 1] = { id = id }
+            end
+        end
+    end
+    if #quests == 0 then return end
+    tooltip:AddLine(" ")
+    for i, q in ipairs(quests) do
+        if i > MAX_ITEM_QUESTS then
+            tooltip:AddLine(ns.L("TIP_ITEM_MORE", #quests - MAX_ITEM_QUESTS), 0.55, 0.55, 0.55)
+            break
+        end
+        local okN, name = pcall(db.QueryQuestSingle, q.id, "name")
+        name = (okN and name) or (C_QuestLog.GetTitleForQuestID and C_QuestLog.GetTitleForQuestID(q.id)) or ("Quest " .. q.id)
+        local state = QuestState(q.id)
+        local st = STATE_TEXT[state]
+        local label = ns.L(q.starts and "TIP_ITEM_STARTS" or "TIP_ITEM_FOR") .. " " .. name
+        if ns.db.showQuestIDs then label = label .. "  |cff6a6a6a#" .. q.id .. "|r" end
+        local stateText = ns.L(q.starts and state == "missing" and "TIP_ITEM_NOTTAKEN" or st[1])
+        tooltip:AddDoubleLine(label, stateText, 1, 0.82, 0, st[2], st[3], st[4])
+        if state ~= "done" then AddAlts(tooltip, q.id) end
+    end
+end
+
+if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall and Enum and Enum.TooltipDataType then
+    TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, function(tooltip, data)
+        if tooltip ~= GameTooltip and tooltip ~= ItemRefTooltip then return end
+        local id = data and data.id
+        if not id or (issecretvalue and issecretvalue(id)) then return end
+        local ok, err = pcall(AddItemQuestLines, tooltip, id)
+        if not ok and _G.ForeverHub and _G.ForeverHub.UI then
+            _G.ForeverHub.UI.ReportError("ForeverQuests", "Questgegenstand-Tooltip", err)
+        end
+    end)
+end

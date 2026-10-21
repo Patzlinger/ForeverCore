@@ -5,7 +5,7 @@ local options
 local controls = {}
 
 local PANEL_WIDTH = 322
-local PANEL_HEIGHT = 370
+local PANEL_HEIGHT = 394
 local DROPDOWN_X = 150
 
 ---------------------------------------------------------------------------
@@ -169,7 +169,7 @@ end
 local function CreateOptions()
     -- Seite im zentralen Einstellungsfenster von Forever Core (verhält sich wie das bisherige eigene Fenster)
     local HUB = _G.ForeverHub.UI
-    options = HUB.SettingsPanel("ForeverQuestsOptions", L("OPT_TITLE"), 680, 620,
+    options = HUB.SettingsPanel("ForeverQuestsOptions", L("OPT_TITLE"), 680, 644,
         { key = "ForeverQuests", group = HUB.SETTINGS_GROUPS.nav, label = HUB.T("Quest- und Dungeontracker", "Quest & dungeon tracker"), kind = "menu" })
     options.subText:SetText(L("ADDON_NAME"))
     -- Beim Schließen des Menüs wird der Tracker wieder gesperrt
@@ -248,6 +248,8 @@ local function CreateOptions()
     -- Dungeonfenster: Klick auf "Kartenpunkt" öffnet auch gleich die Weltkarte an dieser Stelle
     CreateSettingCheckbox(looks, L("OPT_WAYPOINT_MAP"), 14, -318, "waypointOpensMap")
     -- Quest-IDs (Tracker, Questlog, Dungeonfenster); danach alles neu zeichnen
+    -- Questgegenstände: zugehörige Quest und Zustand im Tooltip (Questie.lua)
+    CreateSettingCheckbox(looks, L("OPT_ITEM_QUESTS"), 14, -366, "itemQuestTooltip")
     CreateSettingCheckbox(looks, L("OPT_QUEST_IDS"), 14, -342, "showQuestIDs", function()
         if ns.RequestUpdate then ns.RequestUpdate() end
         if ns.RequestDungeonRefresh then ns.RequestDungeonRefresh() end

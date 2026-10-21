@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- ForeverQuests with Questie, **quest items in the tooltip:** quest items now show which quest they belong to and whether you still have it – "in your log", "completed – no longer needed" or "not in your log" (items that start a quest: "Starts: …"). With ForeverAlts, your alts with the same quest are listed below. Can be turned off in /fq.
 - ForeverSpellbook: new entry "Macros" at the bottom of the tab list – opens the macro window.
 
 - ForeverPlates, **damage numbers above the nameplate:** Blizzard's damage numbers over your target now start higher, so the nameplate no longer hides them – same style and motion as before ("Damage text" tab in /fplates, with a slider for the height). Extras you can switch on there: size, duration, arc, sideways spread and the classic style.
