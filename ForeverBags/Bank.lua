@@ -9,6 +9,7 @@ local L = ns.L
 local UI = ForeverHub.UI
 
 local PAD, HEADER, TOOLBAR, FOOTER = 8, 27, 28, 24
+local BAGBAR, BAGSLOT = 38, 26 -- Zeile "Taschenplätze" unter den Bankplätzen (Höhe, Kantenlänge eines Platzes)
 local DEFAULT_POS = "CENTER" -- noch nie verschoben: Bildschirmmitte; danach die gemerkte Lage (Ziehen speichert sie)
 
 local bank, content, freeText
@@ -78,10 +79,11 @@ function ns.LayoutBank()
     local height = rows * SLOT + (rows - 1) * gap
     if not InCombatLockdown() then
         content:SetSize(width, height)
-        bank:SetSize(math.max(width + 2 * PAD, 330), HEADER + TOOLBAR + height + FOOTER + 2 * PAD)
+        bank:SetSize(math.max(width + 2 * PAD, 330), HEADER + TOOLBAR + height + BAGBAR + FOOTER + 2 * PAD)
     end
     freeText:SetText(L("FREE_SLOTS", total - used, total))
     if ns.UpdateBankPurchase then ns.UpdateBankPurchase() end
+    if ns.UpdateBankBagBar then ns.UpdateBankBagBar() end
 end
 
 -- /fbags bankcheck: Zustand des ersten Bankplatzes und was unter der Maus liegt (zur Fehlersuche)
@@ -208,6 +210,16 @@ StaticPopupDialogs["FOREVERBAGS_BUY_BANK_TAB"] = {
     hideOnEscape = true,
 }
 
+ns.BankMoney = Money
+
+-- nächsten Platz kaufen (Rückfrage mit Preis)
+function ns.BuyBankSlot()
+    local can, cost = NextPurchase()
+    if not can then return end
+    local dialog = StaticPopup_Show("FOREVERBAGS_BUY_BANK_TAB", cost and Money(cost) or "?")
+    if not dialog then ns.Print(L("BUY_BANK_FAILED")) end
+end
+
 function ns.UpdateBankPurchase()
     if not buyButton then return end
     local can, cost = NextPurchase()
@@ -220,6 +232,124 @@ function ns.UpdateBankPurchase()
         buyButton:SetAlpha(affordable and 1 or 0.45)
         buyText:SetTextColor(affordable and 1 or 1, affordable and 1 or 0.35, affordable and 1 or 0.35)
     end
+end
+
+---------------------------------------------------------------------------
+-- Taschenleiste der Bank ("Taschenplätze", wie bei Blizzard): der Forever-Client führt die klassischen
+-- Bank-Taschenplätze als Bankfächer (C_Bank). Fach 1 ("Reiter 1") ist die Grundbank; jedes weitere gekaufte Fach ist
+-- ein Taschenplatz, in den eine Tasche gehört (Ausrüstungsplatz über C_Bank.BankBagTypeAndIDToInvSlot). Gesperrte
+-- Plätze zeigen ein Schloss – der erste kauft per Klick (mit Rückfrage).
+---------------------------------------------------------------------------
+local bagBar, bagButtons = nil, {}
+local LOCK = "Interface\\LFGFrame\\UI-LFG-ICON-LOCK"
+local EMPTY_BAG = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Bag"
+
+local function PurchasedTabIDs()
+    local ids = {}
+    if C_Bank and C_Bank.FetchPurchasedBankTabIDs and BankType() then
+        local ok, list = pcall(C_Bank.FetchPurchasedBankTabIDs, BankType())
+        if ok and type(list) == "table" then ids = list end
+    end
+    return ids
+end
+
+local function MaxTabs()
+    if C_Bank and C_Bank.FetchMaxNumBankTabs and BankType() then
+        local ok, n = pcall(C_Bank.FetchMaxNumBankTabs, BankType())
+        if ok and type(n) == "number" then return n end
+    end
+    return 9 -- (Grundfach + 8 Taschenplätze wie in Blizzards Fenster)
+end
+
+local function InvSlotFor(tabID)
+    if not (tabID and C_Bank and C_Bank.BankBagTypeAndIDToInvSlot) then return nil end
+    local ok, slot = pcall(C_Bank.BankBagTypeAndIDToInvSlot, BankType(), tabID)
+    if ok and type(slot) == "number" then return slot end
+end
+
+local function BagButton(i)
+    local b = bagButtons[i]
+    if b then return b end
+    b = CreateFrame("Button", nil, bagBar)
+    b:SetSize(BAGSLOT, BAGSLOT)
+    b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    b:RegisterForDrag("LeftButton")
+    b.icon = b:CreateTexture(nil, "ARTWORK")
+    b.icon:SetPoint("TOPLEFT", 1, -1)
+    b.icon:SetPoint("BOTTOMRIGHT", -1, 1)
+    b:SetScript("OnClick", function(self)
+        if self.locked then
+            if self.buyable and ns.BuyBankSlot then ns.BuyBankSlot() end
+            return
+        end
+        if not self.invSlot then return end
+        if CursorHasItem and CursorHasItem() then
+            if PutItemInBag then PutItemInBag(self.invSlot) end
+        elseif PickupInventoryItem then
+            PickupInventoryItem(self.invSlot)
+        end
+    end)
+    b:SetScript("OnReceiveDrag", function(self)
+        if not self.locked and self.invSlot and PutItemInBag then PutItemInBag(self.invSlot) end
+    end)
+    b:SetScript("OnDragStart", function(self)
+        if not self.locked and self.invSlot and PickupInventoryItem then PickupInventoryItem(self.invSlot) end
+    end)
+    b:SetScript("OnEnter", function(self)
+        local tip = GameTooltip
+        tip:SetOwner(self, "ANCHOR_TOP")
+        if self.locked then
+            tip:AddLine(L("BANKBAG_LOCKED"), 1, 0.82, 0)
+            if self.buyable then
+                tip:AddLine(L("BUY_BANK_NEXT") .. " " .. (self.cost and ns.BankMoney(self.cost) or "?"), 1, 1, 1)
+                tip:AddLine(L("BANKBAG_CLICK_BUY"), 0.7, 0.7, 0.7)
+            end
+        elseif self.invSlot and GetInventoryItemLink("player", self.invSlot) then
+            tip:SetInventoryItem("player", self.invSlot)
+        else
+            tip:AddLine(L("BANKBAG_EMPTY"), 1, 0.82, 0)
+            tip:AddLine(L("BANKBAG_DROP"), 0.7, 0.7, 0.7, true)
+        end
+        tip:Show()
+    end)
+    b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    -- erst nach den Skripten: dunkle Fläche, feiner Rand, Maus = gold (wie die Taschenplätze; hängt sich an)
+    if ns.AddForeverLook then ns.AddForeverLook(b) end
+    bagButtons[i] = b
+    return b
+end
+
+function ns.UpdateBankBagBar()
+    if not bagBar then return end
+    local ids = PurchasedTabIDs()
+    local count = math.max(0, MaxTabs() - 1)
+    local canBuy, cost = NextPurchase()
+    local firstLocked = true
+    for i = 1, count do
+        local b = BagButton(i)
+        b:ClearAllPoints()
+        b:SetPoint("LEFT", bagBar.label, "RIGHT", 8 + (i - 1) * (BAGSLOT + 4), 0)
+        local tabID = ids[i + 1] -- (ids[1] = Grundfach)
+        b.invSlot = InvSlotFor(tabID)
+        b.locked = tabID == nil
+        b.buyable = b.locked and firstLocked and canBuy
+        b.cost = cost
+        if b.locked then
+            firstLocked = false
+            b.icon:SetTexture(LOCK)
+            b.icon:SetTexCoord(0, 1, 0, 1)
+            b.icon:SetDesaturated(not b.buyable)
+            b.icon:SetAlpha(b.buyable and 1 or 0.6)
+        else
+            local tex = b.invSlot and GetInventoryItemTexture("player", b.invSlot)
+            b.icon:SetTexture(tex or EMPTY_BAG)
+            b.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+            b.icon:SetDesaturated(false)
+            b.icon:SetAlpha(tex and 1 or 0.5)
+        end
+        b:Show()
+    end
+    for i = count + 1, #bagButtons do bagButtons[i]:Hide() end
 end
 
 local function CloseBank()
@@ -255,15 +385,18 @@ local function CreateBank()
     freeText = bank:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     freeText:SetPoint("BOTTOMLEFT", PAD, PAD + 2)
 
-    -- unten rechts: weiteren Bankplatz kaufen (Preis, Knopf) – rechte untere Ecke bleibt für den Größen-Griff frei
-    buyButton = UI.Button(bank, L("BUY_BANK"), 70, function()
-        local can, cost = NextPurchase()
-        if not can then return end
-        local dialog = StaticPopup_Show("FOREVERBAGS_BUY_BANK_TAB", cost and Money(cost) or "?")
-        if not dialog then ns.Print(L("BUY_BANK_FAILED")) end
-    end)
-    buyButton:SetHeight(18)
-    buyButton:SetPoint("BOTTOMRIGHT", -PAD - 16, PAD)
+    -- Taschenleiste unter den Bankplätzen: "Taschenplätze:" und die Plätze, rechts daneben Preis und "Kaufen"
+    bagBar = CreateFrame("Frame", nil, bank)
+    bagBar:SetHeight(BAGSLOT)
+    bagBar:SetPoint("TOPLEFT", content, "BOTTOMLEFT", 0, -8)
+    bagBar:SetPoint("RIGHT", bank, "RIGHT", -PAD, 0)
+    bagBar.label = bagBar:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    bagBar.label:SetPoint("LEFT", 0, 0)
+    bagBar.label:SetText(L("BANKBAG_LABEL"))
+
+    buyButton = UI.Button(bank, L("BUY_BANK"), 70, function() ns.BuyBankSlot() end)
+    buyButton:SetHeight(20)
+    buyButton:SetPoint("RIGHT", bagBar, "RIGHT", 0, 0)
     buyButton:HookScript("OnEnter", function(self) ns.SimpleTip(self, L("TIP_BUY_BANK")) end)
     buyButton:HookScript("OnLeave", ns.HideTip)
     buyText = bank:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
@@ -316,7 +449,8 @@ local queued = false
 local events = CreateFrame("Frame")
 for _, event in ipairs({ "BANKFRAME_OPENED", "BANKFRAME_CLOSED", "PLAYERBANKSLOTS_CHANGED", "BAG_UPDATE_DELAYED",
     "ITEM_LOCK_CHANGED", "BAG_UPDATE_COOLDOWN", "INVENTORY_SEARCH_UPDATE", "PLAYERREAGENTBANKSLOTS_CHANGED",
-    "BANK_TABS_CHANGED", "PLAYER_MONEY", "BANK_TAB_SETTINGS_UPDATED", "PLAYERBANKBAGSLOTS_CHANGED" }) do
+    "BANK_TABS_CHANGED", "PLAYER_MONEY", "BANK_TAB_SETTINGS_UPDATED", "PLAYERBANKBAGSLOTS_CHANGED",
+    "BAG_CONTAINER_UPDATE", "PLAYER_EQUIPMENT_CHANGED" }) do
     pcall(events.RegisterEvent, events, event)
 end
 events:SetScript("OnEvent", function(_, event)
