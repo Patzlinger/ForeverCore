@@ -40,6 +40,12 @@ ns.DEFAULTS = {
     threatText = true,        --   Prozent neben der Leiste
     threatColorBar = true,    --   Leiste in Bedrohungsfarbe
     threatTank = false,       --   immer als Tank werten (sonst: Gruppenrolle)
+    -- eigene Farben je Bedrohungsstufe (statt der Farben nach Rolle); gelten dann für alle Rollen und alle Stufen
+    threatCustom = false,
+    threatColAggro = { 0.78, 0.26, 0.26 },   -- du hast sicher Aggro (Stufe 3)
+    threatColLosing = { 0.86, 0.48, 0.2 },   -- du hast Aggro, verlierst sie gleich (Stufe 2)
+    threatColGaining = { 0.85, 0.72, 0.3 },  -- keine Aggro, ziehst sie gleich (Stufe 1)
+    threatColNone = { 0.45, 0.68, 0.45 },    -- keine Aggro (Stufe 0)
     threatGroupOnly = false,  --   nur in Gruppen (solo aus)
     stack = true,             -- Plaketten stapeln statt überlappen (Blizzard-Schalter)
     noShrink = true,          -- nicht mit der Entfernung verkleinern (sonst wird kleine Schrift unleserlich)
@@ -874,7 +880,14 @@ local function UpdateThreat(fp)
                 show = true
             end
         elseif status then
-            local c = (IsTank() and THREAT_TANK or THREAT_DPS)[status]
+            local c
+            if d.threatCustom then
+                -- eigene Farben: Stufe 0 keine Aggro, 1 Aggro droht, 2 Aggro wackelt, 3 Aggro
+                local key = ({ [0] = "threatColNone", "threatColGaining", "threatColLosing", "threatColAggro" })[status]
+                c = key and type(d[key]) == "table" and d[key] or nil
+            else
+                c = (IsTank() and THREAT_TANK or THREAT_DPS)[status]
+            end
             if d.threatText and c then
                 if Has(pct) then fp.threatText:SetFormattedText("%.0f%%", pct) else fp.threatText:SetText("") end
                 -- Text etwas heller als die Leistenfarbe, damit er neben der Leiste lesbar bleibt
@@ -882,7 +895,8 @@ local function UpdateThreat(fp)
                 show = true
             end
             -- Schadensklassen: Leiste erst färben, wenn es eng wird; Tanks: immer (rot = Aggro verloren)
-            if d.threatColorBar and c and (IsTank() or status > 0) then col = c end
+            -- eigene Farben: jede Stufe färbt (auch "keine Aggro")
+            if d.threatColorBar and c and (d.threatCustom or IsTank() or status > 0) then col = c end
         end
     end
     fp.threatBadge:SetShown(show)

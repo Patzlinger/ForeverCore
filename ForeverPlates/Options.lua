@@ -177,6 +177,20 @@ do
     Check(T("Stärkungen anzeigen", "Show buffs"), "buffs")
     Check(T("nur entfernbare (Purge)", "only purgeable"), "buffsPurgeable", true)
     Slider(T("Größe", "Size"), "buffSize", 10, 28, 1, " px", true)
+    Gap()
+    -- Bedrohungsfarben: eigene Farbe je Stufe (gilt, wenn "Leiste in Bedrohungsfarbe" an ist)
+    Header(T("Farben nach Bedrohung", "Colors by threat"))
+    Check(T("Eigene Farben (statt nach Rolle)", "Own colors (instead of by role)"), "threatCustom")
+    local function ColorRow(label, key)
+        local fs = UI.Text(parent, "label", label)
+        fs:SetPoint("TOPLEFT", col.x + 18, col.y - 4)
+        ColorSwatch(key)
+        col.y = col.y - 24
+    end
+    ColorRow(T("Du hast Aggro", "You have aggro"), "threatColAggro")
+    ColorRow(T("Aggro wackelt (du verlierst sie)", "Aggro slipping (you're losing it)"), "threatColLosing")
+    ColorRow(T("Aggro droht (du ziehst sie gleich)", "Aggro close (you're about to pull)"), "threatColGaining")
+    ColorRow(T("Keine Aggro", "No aggro"), "threatColNone")
 
     ---------------------------------------------------------------------------
     -- Reiter 2: Aussehen

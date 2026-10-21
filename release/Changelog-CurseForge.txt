@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- ForeverPlates: **your own threat colors** for the health bar – pick a color for "you have aggro", "aggro slipping", "about to pull aggro" and "no aggro" (Display tab » "Colors by threat"). Off by default; the role-based colors stay as they are until you switch it on.
 - ForeverQuests: click the "Quests" title of the tracker to open the quest log.
 - ForeverQuests with Questie, quest items in the tooltip: items the quest giver hands you (e.g. a horn to summon a quest target) and other items a quest needs now show their quest too.
 - ForeverQuests with Questie, **quest items in the tooltip:** quest items now show which quest they belong to and whether you still have it – "in your log", "completed – no longer needed" or "not in your log" (items that start a quest: "Starts: …"). With ForeverAlts, your alts with the same quest are listed below. Can be turned off in /fq.
