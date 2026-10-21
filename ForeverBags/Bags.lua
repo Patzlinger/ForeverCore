@@ -867,64 +867,6 @@ local function HeaderButton(texture, tip, onClick)
     return b
 end
 
--- Eigene Berufe als kleine Symbole in der Titelleiste (links neben dem Zahnrad): Klick öffnet das Berufsfenster,
--- noch ein Klick schließt es. Hauptberufe und Kochen – Archäologie und Angeln haben kein Berufsfenster.
-local profButtons = {}
-local function OpenProfession(entry)
-    local frame = _G.ProfessionsFrame
-    if frame and frame:IsShown() and C_TradeSkillUI and C_TradeSkillUI.GetBaseProfessionInfo then
-        local ok, info = pcall(C_TradeSkillUI.GetBaseProfessionInfo)
-        if ok and info and info.professionID == entry.skillLine then
-            if HideUIPanel then HideUIPanel(frame) else frame:Hide() end
-            return
-        end
-    end
-    if C_TradeSkillUI and C_TradeSkillUI.OpenTradeSkill and pcall(C_TradeSkillUI.OpenTradeSkill, entry.skillLine) then return end
-    print("|cffffd200ForeverBags|r: " .. L("PROF_CANT_OPEN", entry.name))
-end
-
-function ns.UpdateProfessionButtons()
-    if not (window and window.gear) then return end
-    local list = {}
-    if GetProfessions and GetProfessionInfo then
-        local prof1, prof2, _, _, cooking = GetProfessions()
-        for _, index in ipairs({ prof1 or false, prof2 or false, cooking or false }) do
-            if index then
-                local name, icon, rank, maxRank, _, _, skillLine = GetProfessionInfo(index)
-                if name and skillLine then
-                    list[#list + 1] = { name = name, icon = icon, rank = rank, maxRank = maxRank, skillLine = skillLine }
-                end
-            end
-        end
-    end
-    local anchor = window.gear
-    for i, entry in ipairs(list) do
-        local b = profButtons[i]
-        if not b then
-            b = HeaderButton(entry.icon, "", function(self) if self.entry then OpenProfession(self.entry) end end)
-            b:SetScript("OnEnter", function(self)
-                self.icon:SetAlpha(1)
-                local e = self.entry
-                if not e then return end
-                local tip = Tip()
-                tip:SetOwner(self, "ANCHOR_BOTTOM")
-                tip:AddLine(e.name, 1, 0.82, 0)
-                if e.rank and e.maxRank then tip:AddLine(e.rank .. " / " .. e.maxRank, 1, 1, 1) end
-                tip:AddLine(L("TIP_PROFESSION"), 0.7, 0.7, 0.7)
-                tip:Show()
-            end)
-            profButtons[i] = b
-        end
-        b.entry = entry
-        b.icon:SetTexture(entry.icon)
-        b:ClearAllPoints()
-        b:SetPoint("RIGHT", anchor, "LEFT", i == 1 and -10 or -4, 0)
-        b:Show()
-        anchor = b
-    end
-    for i = #list + 1, #profButtons do profButtons[i]:Hide() end
-end
-
 local function CreateWindow()
     window = UI.Window("ForeverBagsFrame", L("WINDOW_TITLE"), 400, 300)
     window:SetFrameStrata("HIGH") -- über den Leisten, unter Menüs und Dialogen
@@ -939,7 +881,6 @@ local function CreateWindow()
     local gear = HeaderButton("Interface\\Icons\\INV_Misc_Gear_01", L("TIP_GEAR"), function() ns.ToggleOptions() end)
     gear:SetPoint("RIGHT", window.CloseButton, "LEFT", -4, 0)
     window.gear = gear
-    ns.UpdateProfessionButtons()
 
     -- Werkzeugzeile: Ansicht (welcher Charakter, Taschen/Bank), Suche, Taschenleiste, Sortieren
     viewButton = UI.Button(window, "", 120, function(self) ViewMenu(self) end)
@@ -1344,12 +1285,6 @@ function ns.SetupBags()
         "QUEST_REMOVED" }) do
         pcall(events.RegisterEvent, events, event)
     end
-    -- Berufs-Symbole: neu gelernt/verlernt, gestiegene Fertigkeit (Tooltip), beim Öffnen
-    local prof = CreateFrame("Frame")
-    for _, event in ipairs({ "SKILL_LINES_CHANGED", "PLAYER_ENTERING_WORLD", "LEARNED_SPELL_IN_TAB" }) do
-        pcall(prof.RegisterEvent, prof, event)
-    end
-    prof:SetScript("OnEvent", function() pcall(ns.UpdateProfessionButtons) end)
     -- Handel: Taschen öffnen und rechts ans Handelsfenster hängen; beim Schließen des Handels wieder zu, wenn wir
     -- sie geöffnet hatten
     local trade = CreateFrame("Frame")
@@ -1367,19 +1302,19 @@ function ns.SetupBags()
             openedForTrade = false
         end
     end)
-    window:HookScript("OnShow", function() pcall(ns.UpdateProfessionButtons) end)
 end
 
 ---------------------------------------------------------------------------
--- Berufe am Rand: kleine Knöpfe links am Taschenfenster öffnen die Berufsfenster (je Beruf das erste Fenster,
--- dazu Gifte/Wildtierausbildung). Ein schmaler Pfeil am Fensterrand klappt sie ein/aus (ns.db.profCollapsed).
+-- Berufe am Rand: eine schmale Leiste bündig am rechten Fensterrand (gleicher Rahmen wie das Fenster) mit
+-- Knöpfen für die Berufsfenster (je Beruf das erste Fenster, dazu Gifte/Wildtierausbildung). Ein Knopf in der
+-- Titelleiste (links neben dem Zahnrad) klappt sie ein/aus (ns.db.profCollapsed).
 -- Öffnen ist ein Zauber -> geschützte Knöpfe (SecureActionButtonTemplate). Solche Knöpfe (und ihr Halter) dürfen
 -- im Kampf nicht ein-/ausgeblendet werden: der Halter hängt deshalb NICHT am Fenster, sondern ist eigenständig;
 -- zu Kampfbeginn (PLAYER_REGEN_DISABLED, kurz bevor die Sperre greift) wird er ausgeblendet und fest an den
 -- Bildschirm gehängt, nach dem Kampf wieder angezeigt. Aufbau nur außerhalb des Kampfs.
 ---------------------------------------------------------------------------
 do
-    local SIZE, GAP = 22, 2
+    local SIZE, GAP, INSET = 22, 2, 3
     local CLASS_TRADES = { 2842, 5149 } -- Gifte (Schurke), Wildtierausbildung (Jäger)
     local holder, tab
     local buttons = {}
@@ -1461,8 +1396,9 @@ do
     end
 
     local function Anchor()
+        -- 1 px überlappend: Leiste und Fenster teilen sich den Rand, unter der Titelleiste
         holder:ClearAllPoints()
-        holder:SetPoint("TOPRIGHT", tab, "TOPLEFT", -1, 0)
+        holder:SetPoint("TOPLEFT", window, "TOPRIGHT", -1, -HEADER + 1)
     end
 
     -- Knöpfe neu belegen (nur außerhalb des Kampfs)
@@ -1475,48 +1411,44 @@ do
             b.icon:SetTexture(entry.icon)
             b.fbName = entry.name
             b:ClearAllPoints()
-            b:SetPoint("TOP", holder, "TOP", 0, -(i - 1) * (SIZE + GAP))
+            b:SetPoint("TOP", holder, "TOP", 0, -INSET - (i - 1) * (SIZE + GAP))
             b:Show()
         end
         for i = #list + 1, #buttons do buttons[i]:Hide() end
-        holder:SetSize(SIZE, math.max(1, #list * (SIZE + GAP) - GAP))
+        holder:SetSize(SIZE + 2 * INSET, math.max(1, #list * (SIZE + GAP) - GAP) + 2 * INSET)
         holder.count = #list
+        if list[1] then tab.icon:SetTexture(list[1].icon) end -- Schalter zeigt das Symbol des ersten Berufs
         dirty = false
     end
 
     local function Update()
         if not (holder and tab) then return end
         local open = window and window:IsShown()
-        tab:SetShown(open and (holder.count or 0) > 0 and true or false)
-        tab.arrow:SetText(ns.db.profCollapsed and ">" or "<")
+        tab:SetShown((holder.count or 0) > 0)
+        tab.icon:SetDesaturated(ns.db.profCollapsed and true or false) -- eingeklappt: grau
         if InCombatLockdown() then return end -- im Kampf nichts an geschützten Rahmen ändern
         if dirty then Rebuild() end
         Anchor()
         holder:SetShown(open and not ns.db.profCollapsed and (holder.count or 0) > 0 and true or false)
     end
-    ns.UpdateProfessionEdge = Update -- (ns.UpdateProfessionButtons = Symbole in der Titelleiste, oben)
+    ns.UpdateProfessionEdge = Update
 
     local function Setup()
         if holder or not window or InCombatLockdown() then return end
-        holder = CreateFrame("Frame", "ForeverBagsProfessions", UIParent)
+        holder = CreateFrame("Frame", "ForeverBagsProfessions", UIParent, "BackdropTemplate")
         holder:SetFrameStrata(window:GetFrameStrata())
+        UI.SetFlat(holder, C.background) -- wie das Fenster selbst
         holder:Hide()
-        -- schmaler Griff am linken Fensterrand: Pfeil zum Ein-/Ausklappen (gehört zum Fenster, nicht geschützt)
-        tab = CreateFrame("Button", nil, window, "BackdropTemplate")
-        tab:SetSize(12, SIZE)
-        tab:SetPoint("TOPRIGHT", window, "TOPLEFT", 1, -HEADER - 4)
-        Flat(tab)
-        tab.arrow = tab:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-        tab.arrow:SetPoint("CENTER", 0, 0)
-        tab:SetScript("OnClick", function()
+        -- Schalter in der Titelleiste links neben dem Zahnrad (gehört zum Fenster, nicht geschützt)
+        tab = HeaderButton("Interface\\Icons\\INV_Misc_Book_09", "", function()
             ns.db.profCollapsed = not ns.db.profCollapsed
             Update()
         end)
+        tab:SetPoint("RIGHT", window.gear, "LEFT", -6, 0)
         tab:SetScript("OnEnter", function(self)
-            Flat(self, true)
+            self.icon:SetAlpha(1)
             SimpleTip(self, ns.db.profCollapsed and L("PROF_SHOW") or L("PROF_HIDE"))
         end)
-        tab:SetScript("OnLeave", function(self) Flat(self) HideTip() end)
         window:HookScript("OnShow", Update)
         window:HookScript("OnHide", Update)
         Rebuild()
