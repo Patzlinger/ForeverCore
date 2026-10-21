@@ -4,6 +4,7 @@
 
 - Forever Core: turning on Blizzard's quick keybind mode now ends "Move all" automatically (frames get locked again), so you don't drag frames by accident while binding keys.
 - **ForeverQuests: quest items in the tracker can be used** – click the item icon next to the quest (Shift-click links it in chat). The icons are a bit bigger, show their cooldown and give the same feedback as the merchant window (darker when pressed, gold flash when used). In combat the buttons stay where they were when the fight started.
+- ForeverQuests: in the tooltip of enemies and objects, quest progress of group members for quests **you don't have yourself** is now grey and marked "not in your quest log", so you don't mistake it for your own.
 
 - ForeverMinimap: your own buttons (mail, tracking, calendar, settings) now sit in the top bar by default – also switched once for existing settings.
 - ForeverPlates, **as a tank:** instead of your own "100 %", the plate shows how close the next player is to taking aggro from you ("Next 85 %") – only from 60 %, so with many enemies only the critical ones show text.
