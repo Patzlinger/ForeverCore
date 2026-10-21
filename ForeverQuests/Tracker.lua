@@ -29,6 +29,7 @@ local ICON_SIZE = 12
 local REWARD_ICON_ATLAS = "VignetteLoot"
 local REWARD_ICON_TEXTURE = "Interface\\Icons\\INV_Box_02"
 local REWARD_ICON_SIZE = 14
+local QUEST_ITEM_SIZE = 20 -- Questgegenstand (anklickbar, darum etwas größer als die Truhe)
 local BOX_GAP = 8     -- Abstand zwischen den Fenstern der Gebiete
 local BOX_PADDING = 6 -- Innenabstand in den Fenstern
 
@@ -800,6 +801,145 @@ local function HideOwnTooltip(self)
     if tip:GetOwner() == self then tip:Hide() end
 end
 
+---------------------------------------------------------------------------
+-- Questgegenstände benutzen
+---------------------------------------------------------------------------
+-- Gegenstände benutzen geht nur über geschützte Blizzard-Knöpfe (SecureActionButtonTemplate). Diese liegen
+-- unsichtbar über dem Symbol der Zeile; das Symbol zeichnet weiter Bild, Abklingzeit und Rückmeldung.
+-- Geschützte Knöpfe darf man im Kampf nicht verschieben, zeigen oder verstecken: darum werden sie nur außerhalb
+-- des Kampfes nachgeführt (alle 0,1 s), im Kampf bleiben sie, wo sie zuletzt waren.
+local QuestItemButtons = {}
+do
+    local slots = setmetatable({}, { __mode = "k" }) -- alle Gegenstand-Symbole der Zeilen
+    local pool = {}
+    local driver = CreateFrame("Frame")
+
+    local function NewButton(index)
+        local b = CreateFrame("Button", "ForeverQuestsItemButton" .. index, UIParent, "SecureActionButtonTemplate")
+        b:RegisterForClicks("AnyUp", "AnyDown")
+        b:SetAttribute("type", "item")
+        -- Shift-Klick verlinkt nur im Chat (siehe PostClick), statt den Gegenstand zu benutzen
+        b:SetAttribute("shift-type1", "forever_link")
+        b:SetAttribute("shift-type2", "forever_link")
+        b:Hide()
+        b:SetScript("OnEnter", function(self)
+            if self.slot then
+                self.slot.hover:Show()
+                ShowQuestItemTooltip(self, self.slot)
+            end
+        end)
+        b:SetScript("OnLeave", function(self)
+            if self.slot then self.slot.hover:Hide() end
+            HideOwnTooltip(self)
+        end)
+        -- gedrückt = kurz dunkler
+        b:SetScript("OnMouseDown", function(self) if self.slot then self.slot.press:Show() end end)
+        b:SetScript("OnMouseUp", function(self) if self.slot then self.slot.press:Hide() end end)
+        b:SetScript("PostClick", function(self, _, down)
+            local slot = self.slot
+            -- (Klicks kommen beim Drücken und Loslassen; nur einmal reagieren, wie die Aktionsleisten)
+            if not slot or down ~= GetCVarBool("ActionButtonUseKeyDown") then return end
+            if slot.link and IsModifiedClick("CHATLINK") then
+                HandleModifiedItemClick(slot.link)
+                return
+            end
+            -- benutzt: kurzes goldenes Aufleuchten
+            slot.glow:Stop()
+            slot.glow:Play()
+        end)
+        return b
+    end
+
+    -- Liegt das Symbol im sichtbaren Bereich der Liste? (Zeilen außerhalb sind nur abgeschnitten, nicht versteckt)
+    local function InView(slot)
+        local clip = slot.clip
+        if clip == nil then
+            clip = false
+            local parent = slot:GetParent()
+            while parent do
+                if parent:GetObjectType() == "ScrollFrame" then clip = parent break end
+                parent = parent:GetParent()
+            end
+            slot.clip = clip
+        end
+        if not clip then return true end
+        local x, y = slot:GetCenter()
+        local left, bottom, width, height = clip:GetRect()
+        if not (x and left) then return false end
+        local s = slot:GetEffectiveScale() / clip:GetEffectiveScale()
+        x, y = x * s, y * s
+        return x >= left and x <= left + width and y >= bottom and y <= bottom + height
+    end
+
+    function QuestItemButtons.Sync()
+        if InCombatLockdown() then return end
+        local used = 0
+        local uiScale = UIParent:GetEffectiveScale()
+        for slot in pairs(slots) do
+            local itemID = slot.link and tonumber(slot.link:match("item:(%d+)"))
+            local left, bottom, width, height = slot:GetRect()
+            if itemID and left and slot:IsVisible() and slot:GetEffectiveAlpha() > 0.05 and InView(slot) then
+                used = used + 1
+                local b = pool[used] or NewButton(used)
+                pool[used] = b
+                local s = slot:GetEffectiveScale() / uiScale
+                local key = string.format("%.1f:%.1f:%.1f:%.1f", left * s, bottom * s, width * s, height * s)
+                if b.key ~= key then
+                    b.key = key
+                    b:ClearAllPoints()
+                    b:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", left * s, bottom * s)
+                    b:SetSize(width * s, height * s)
+                end
+                b:SetFrameStrata(slot:GetFrameStrata())
+                b:SetFrameLevel(slot:GetFrameLevel() + 5)
+                if b.itemID ~= itemID then
+                    b.itemID = itemID
+                    b:SetAttribute("item", "item:" .. itemID)
+                end
+                if b.slot ~= slot then
+                    if b.slot then b.slot.hover:Hide() end
+                    b.slot = slot
+                end
+                b:Show()
+            end
+        end
+        for i = used + 1, #pool do
+            local b = pool[i]
+            if b.slot then b.slot.hover:Hide() end
+            b.slot = nil
+            b:Hide()
+        end
+    end
+
+    -- Abklingzeit der Questgegenstände (auch im Kampf, das Symbol ist kein geschützter Knopf)
+    function QuestItemButtons.UpdateCooldown(slot)
+        if not (slot:IsShown() and slot.logIndex and GetQuestLogSpecialItemCooldown) then
+            slot.cooldown:Clear()
+            return
+        end
+        local ok, start, duration, enable = pcall(GetQuestLogSpecialItemCooldown, slot.logIndex)
+        if ok and start and CooldownFrame_Set then
+            pcall(CooldownFrame_Set, slot.cooldown, start, duration, enable)
+        end
+    end
+
+    function QuestItemButtons.Register(slot)
+        slots[slot] = true
+    end
+
+    local elapsed = 0
+    driver:SetScript("OnUpdate", function(_, delta)
+        elapsed = elapsed + delta
+        if elapsed < 0.1 then return end
+        elapsed = 0
+        QuestItemButtons.Sync()
+    end)
+    driver:RegisterEvent("BAG_UPDATE_COOLDOWN")
+    driver:SetScript("OnEvent", function()
+        for slot in pairs(slots) do QuestItemButtons.UpdateCooldown(slot) end
+    end)
+end
+
 local function GetLine(index)
     local line = view.lines[index]
     if not line then
@@ -859,15 +999,50 @@ local function GetLine(index)
         highlight:SetColorTexture(1, 1, 1, 0.07)
         line.highlight = highlight
 
-        -- Questgegenstand: kleines Symbol rechts (nur Hinweis mit Tooltip, kein Knopf -
-        -- Gegenstände benutzen geht im Kampf nur über geschützte Blizzard-Knöpfe)
+        -- Questgegenstand: Symbol rechts. Benutzt wird er über einen unsichtbaren geschützten Knopf darüber
+        -- (siehe QuestItemButtons); dieses Symbol zeichnet Bild, Rand, Abklingzeit und die Rückmeldung.
         -- Mit Namen, damit es im Blizzard-Werkzeug /fstack erkennbar ist
         local item = CreateFrame("Button", prefix .. "Item" .. index, line)
-        item:SetSize(REWARD_ICON_SIZE, REWARD_ICON_SIZE)
-        item:SetHitRectInsets(-3, -3, -3, -3) -- etwas größere Fläche für die Maus
+        item:SetSize(QUEST_ITEM_SIZE, QUEST_ITEM_SIZE)
+        local border = item:CreateTexture(nil, "BACKGROUND")
+        border:SetAllPoints()
+        border:SetColorTexture(0, 0, 0, 0.9)
         item.icon = item:CreateTexture(nil, "ARTWORK")
-        item.icon:SetAllPoints()
+        item.icon:SetPoint("TOPLEFT", 1, -1)
+        item.icon:SetPoint("BOTTOMRIGHT", -1, 1)
         item.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+        item.cooldown = CreateFrame("Cooldown", nil, item, "CooldownFrameTemplate")
+        item.cooldown:SetPoint("TOPLEFT", 1, -1)
+        item.cooldown:SetPoint("BOTTOMRIGHT", -1, 1)
+        item.cooldown:SetHideCountdownNumbers(true)
+        -- Rückmeldung wie beim Händler: Maus drauf = heller, gedrückt = kurz dunkler, benutzt = goldenes Aufleuchten
+        local itemAccent = ns.Style.COLOR.accent
+        item.hover = item:CreateTexture(nil, "OVERLAY", nil, 5)
+        item.hover:SetPoint("TOPLEFT", 1, -1)
+        item.hover:SetPoint("BOTTOMRIGHT", -1, 1)
+        item.hover:SetColorTexture(1, 1, 1, 0.15)
+        item.hover:Hide()
+        item.press = item:CreateTexture(nil, "OVERLAY", nil, 6)
+        item.press:SetPoint("TOPLEFT", 1, -1)
+        item.press:SetPoint("BOTTOMRIGHT", -1, 1)
+        item.press:SetColorTexture(0, 0, 0, 0.3)
+        item.press:Hide()
+        local glow = item:CreateTexture(nil, "OVERLAY", nil, 7)
+        glow:SetAllPoints()
+        glow:SetColorTexture(itemAccent[1], itemAccent[2], itemAccent[3], 1)
+        glow:SetAlpha(0)
+        item.glow = glow:CreateAnimationGroup()
+        local fade = item.glow:CreateAnimation("Alpha")
+        fade:SetFromAlpha(0.45)
+        fade:SetToAlpha(0)
+        fade:SetDuration(0.5)
+        fade:SetSmoothing("OUT")
+        item.glow:SetScript("OnFinished", function() glow:SetAlpha(0) end)
+        item:SetScript("OnHide", function(self)
+            self.hover:Hide()
+            self.press:Hide()
+        end)
+        QuestItemButtons.Register(item)
         item:SetScript("OnEnter", function(self) ShowQuestItemTooltip(self, self) end)
         item:SetScript("OnLeave", HideOwnTooltip)
         -- Shift-Klick: Gegenstand im Chat verlinken
@@ -959,21 +1134,22 @@ local function AddLine(index, y, x, width, text, fontObject, r, g, b, opts)
     width = math.max(1, width)
     -- Mit Truhe und/oder Questgegenstand bleibt rechts etwas Platz frei
     local iconCount = (opts.reward and 1 or 0) + (opts.questItem and 1 or 0)
-    local textWidth = math.max(1, width - iconCount * (REWARD_ICON_SIZE + 4) - (iconCount > 0 and 2 or 0))
+    local iconsWidth = (opts.reward and REWARD_ICON_SIZE + 4 or 0) + (opts.questItem and QUEST_ITEM_SIZE + 4 or 0)
+    local textWidth = math.max(1, width - iconsWidth - (iconCount > 0 and 2 or 0))
     line.text:SetFontObject(fontObject)
     line.text:SetTextColor(r, g, b)
     line.text:SetWidth(textWidth)
     line.text:SetText(text)
     local height = line.text:GetStringHeight() + 2
     if iconCount > 0 then
-        height = math.max(height, REWARD_ICON_SIZE)
+        height = math.max(height, opts.questItem and QUEST_ITEM_SIZE or REWARD_ICON_SIZE)
     end
 
     -- Hervorhebung nur bis vor die Symbole rechts (Truhe, Questgegenstand)
     line.highlight:ClearAllPoints()
     line.highlight:SetPoint("TOPLEFT", line, "TOPLEFT", -(ICON_SIZE + 5), 1)
     line.highlight:SetPoint("BOTTOMRIGHT", line, "BOTTOMRIGHT",
-        iconCount > 0 and -(iconCount * (REWARD_ICON_SIZE + 4) + 2) or 3, -1)
+        iconCount > 0 and -(iconsWidth + 2) or 3, -1)
 
     -- Questgegenstand: ganz rechts bzw. links neben der Truhe
     if opts.questItem then
@@ -985,6 +1161,7 @@ local function AddLine(index, y, x, width, text, fontObject, r, g, b, opts)
         item:SetPoint("TOPRIGHT", line, "TOPRIGHT", opts.reward and -(REWARD_ICON_SIZE + 4) or 0, 0)
         item:SetFrameLevel(line:GetFrameLevel() + 2)
         item:Show()
+        QuestItemButtons.UpdateCooldown(item)
     else
         line.questItem:Hide()
     end
@@ -2195,6 +2372,9 @@ function ns.CreateTracker()
             -- Kampfbeginn
             ns.inCombat = true
             ns.UpdateVisibility()
+            -- Gegenstand-Knöpfe ein letztes Mal nachführen (geht hier noch, die Kampfsperre greift erst danach),
+            -- damit sie z. B. bei "im Kampf ausblenden" mit dem Tracker verschwinden
+            QuestItemButtons.Sync()
             return
         elseif event == "PLAYER_REGEN_ENABLED" then
             -- Kampfende
