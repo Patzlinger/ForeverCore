@@ -9,7 +9,7 @@ local L = ns.L
 local UI = ForeverHub.UI
 
 local PAD, HEADER, TOOLBAR, FOOTER = 8, 27, 28, 24
-local BAGBAR, BAGSLOT = 38, 26 -- Zeile "Taschenplätze" unter den Bankplätzen (Höhe, Kantenlänge eines Platzes)
+local BAGBAR, BAGSLOT = 48, 30 -- Zeile "Taschenplätze" unter den Bankplätzen (Höhe samt Luft, Kantenlänge eines Platzes)
 local DEFAULT_POS = "CENTER" -- noch nie verschoben: Bildschirmmitte; danach die gemerkte Lage (Ziehen speichert sie)
 
 local bank, content, freeText
@@ -334,13 +334,19 @@ function ns.UpdateBankBagBar()
         b.locked = tabID == nil
         b.buyable = b.locked and firstLocked and canBuy
         b.cost = cost
+        b.icon:ClearAllPoints()
         if b.locked then
             firstLocked = false
+            -- Schloss als kleines Symbol genau in der Mitte des Platzes
+            b.icon:SetSize(16, 16)
+            b.icon:SetPoint("CENTER")
             b.icon:SetTexture(LOCK)
             b.icon:SetTexCoord(0, 1, 0, 1)
             b.icon:SetDesaturated(not b.buyable)
             b.icon:SetAlpha(b.buyable and 1 or 0.6)
         else
+            b.icon:SetPoint("TOPLEFT", 1, -1)
+            b.icon:SetPoint("BOTTOMRIGHT", -1, 1)
             local tex = b.invSlot and GetInventoryItemTexture("player", b.invSlot)
             b.icon:SetTexture(tex or EMPTY_BAG)
             b.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
@@ -388,15 +394,15 @@ local function CreateBank()
     -- Taschenleiste unter den Bankplätzen: "Taschenplätze:" und die Plätze, rechts daneben Preis und "Kaufen"
     bagBar = CreateFrame("Frame", nil, bank)
     bagBar:SetHeight(BAGSLOT)
-    bagBar:SetPoint("TOPLEFT", content, "BOTTOMLEFT", 0, -8)
+    bagBar:SetPoint("TOPLEFT", content, "BOTTOMLEFT", 0, -10)
     bagBar:SetPoint("RIGHT", bank, "RIGHT", -PAD, 0)
     bagBar.label = bagBar:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     bagBar.label:SetPoint("LEFT", 0, 0)
     bagBar.label:SetText(L("BANKBAG_LABEL"))
 
     buyButton = UI.Button(bank, L("BUY_BANK"), 70, function() ns.BuyBankSlot() end)
-    buyButton:SetHeight(20)
-    buyButton:SetPoint("RIGHT", bagBar, "RIGHT", 0, 0)
+    buyButton:SetHeight(22)
+    buyButton:SetPoint("RIGHT", bagBar, "RIGHT", 0, 0) -- (auf halber Höhe der Zeile, ganz im Fenster)
     buyButton:HookScript("OnEnter", function(self) ns.SimpleTip(self, L("TIP_BUY_BANK")) end)
     buyButton:HookScript("OnLeave", ns.HideTip)
     buyText = bank:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
