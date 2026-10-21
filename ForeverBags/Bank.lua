@@ -403,7 +403,12 @@ local function CreateBank()
 
     buyButton = UI.Button(bank, L("BUY_BANK"), 90, function() ns.BuyBankSlot() end)
     -- unten rechts in der Fußzeile (auf Höhe von "… frei"); die Ecke rechts bleibt für den Größen-Griff frei
-    buyButton:SetPoint("BOTTOMRIGHT", bank, "BOTTOMRIGHT", -PAD - 16, PAD)
+    -- genau aufs Bildschirmraster (auf halben Pixeln fiel die feine Linie oben weg)
+    if PixelUtil and PixelUtil.SetPoint then
+        PixelUtil.SetPoint(buyButton, "BOTTOMRIGHT", bank, "BOTTOMRIGHT", -PAD - 16, PAD)
+    else
+        buyButton:SetPoint("BOTTOMRIGHT", bank, "BOTTOMRIGHT", -PAD - 16, PAD)
+    end
     buyButton:HookScript("OnEnter", function(self) ns.SimpleTip(self, L("TIP_BUY_BANK")) end)
     buyButton:HookScript("OnLeave", ns.HideTip)
     buyText = bank:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
