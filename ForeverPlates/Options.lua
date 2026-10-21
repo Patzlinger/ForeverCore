@@ -146,6 +146,7 @@ do
     Check(T("Prozent neben der Leiste", "Percent next to the bar"), "threatText", true)
     Check(T("Leiste in Bedrohungsfarbe (nach Rolle)", "Bar in threat color (by role)"), "threatColorBar", true)
     Check(T("nur als Tank in einer Gruppe", "only as tank in a group"), "threatColorTankOnly", true)
+    Check(T("Als Tank: wie nah der Nächste ist (ab 60 %)", "As tank: how close the next one is (from 60 %)"), "threatLead", true)
     Check(T("Immer als Tank werten", "Always count me as tank"), "threatTank", true)
     Check(T("Nur in Gruppen (solo aus)", "Only in groups (off when solo)"), "threatGroupOnly", true)
     Hint(T("Schaden/Heilung: grün = sicher, gelb = knapp, orange = Aggro wackelt, rot = du hast Aggro. "
@@ -209,6 +210,7 @@ do
     Check(T("Stufe neben dem Namen", "Level next to the name"), "showLevel")
     Check(T("Symbol für Elite, Rar und Boss", "Icon for elite, rare and boss"), "classIcon")
     Check(T("Andere dämpfen, solange ein Ziel gewählt ist", "Dim the others while you have a target"), "dimOthers")
+    Check(T("Gegner außer Reichweite blasser (Zauber der Klasse)", "Enemies out of range fainter (class spell)"), "rangeFade")
     Gap()
     Header(T("Verbündete", "Allies"))
     Check(T("Nur Name in Klassenfarbe", "Name only, in class color"), "friendlySimple", false,

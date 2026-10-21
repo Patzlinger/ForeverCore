@@ -40,6 +40,8 @@ ns.DEFAULTS = {
     threatText = true,        --   Prozent neben der Leiste
     threatColorBar = true,    --   Leiste in Bedrohungsfarbe
     threatColorTankOnly = true, --   … nur als Tank in einer Gruppe (solo und als Schaden/Heiler ohne Farben)
+    threatLead = true,        --   als Tank: Abstand des Nächsten ("Nächster 85 %") statt der eigenen 100 %
+    rangeFade = false,        -- Gegner außerhalb der Reichweite des eigenen Zaubers blasser (Reichweiten-Takt)
     threatTank = false,       --   immer als Tank werten (sonst: Gruppenrolle)
     -- eigene Farben je Bedrohungsstufe (statt der Farben nach Rolle); gelten dann für alle Rollen und alle Stufen
     threatCustom = false,
@@ -868,9 +870,51 @@ local function PlaceThreatText(fp)
     end
 end
 
+-- Deckkraft einer Plakette: andere leicht gedämpft, solange ein Ziel gewählt ist (dimOthers), und außerhalb der
+-- Reichweite des eigenen Zaubers deutlich blasser (rangeFade). fp.inRange setzt der Reichweiten-Takt (unten);
+-- ist der Wert gesperrt (secret), entscheidet Blizzard über SetAlphaFromBoolean.
+local RANGE_ALPHA = 0.45
+function ns.ApplyPlateAlpha(fp)
+    local dim = db.dimOthers and not fp.isTarget and Yes(UnitExists("target"))
+    local a = dim and 0.7 or 1
+    local inRange = fp.inRange
+    if not db.rangeFade or inRange == nil or not fp.enemy then
+        fp.root:SetAlpha(a)
+    elseif IsSecret(inRange) then
+        if fp.root.SetAlphaFromBoolean then fp.root:SetAlphaFromBoolean(inRange, a, a * RANGE_ALPHA) else fp.root:SetAlpha(a) end
+    else
+        fp.root:SetAlpha(inRange and a or a * RANGE_ALPHA)
+    end
+end
+
+-- Tank-Vorsprung: wie nah ist der Mitspieler (oder Begleiter) mit der meisten Bedrohung daran, mir die Aggro zu
+-- nehmen? Das Spiel liefert für jeden die Prozent bis zum Übernehmen (110 %/130 % schon eingerechnet; 100 = zieht).
+-- Rückgabe: höchster Wert (0, wenn keiner), oder nil, wenn ein Wert gesperrt ist (dann bleibt die eigene Anzeige).
+local LEAD_SHOW = 60 -- darunter keine Anzeige (bei vielen Gegnern nur die kritischen)
+local function GroupLead(unit)
+    local best = 0
+    local function Check(u)
+        if not UnitExists(u) or UnitIsUnit(u, "player") then return true end
+        local ok, _, _, pct = pcall(UnitDetailedThreatSituation, u, unit)
+        if not ok then return true end
+        if IsSecret(pct) then return false end
+        if pct and pct > best then best = pct end
+        return true
+    end
+    local raid = IsInRaid()
+    local n = raid and GetNumGroupMembers() or GetNumSubgroupMembers()
+    for i = 1, n do
+        if not Check((raid and "raid" or "party") .. i) then return nil end
+        if not Check((raid and "raidpet" or "partypet") .. i) then return nil end
+    end
+    if not Check("pet") then return nil end
+    return best
+end
+
 local function UpdateThreat(fp)
     local d = db
     local col, show = nil, false
+    fp.threatBadge.label:SetText("Aggro")
     if d.threat and fp.enemy and not fp.isPlayer and (not d.threatGroupOnly or IsInGroup()) then
         local status, pct = ThreatInfo(fp.unit)
         if IsSecret(status) then
@@ -902,6 +946,22 @@ local function UpdateThreat(fp)
             local colorsOn = d.threatColorBar and (not d.threatColorTankOnly or (IsInGroup() and IsTank()))
             if colorsOn and c and (d.threatCustom or IsTank() or status > 0) then col = c end
             if not colorsOn and d.threatText then fp.threatText:SetTextColor(0.9, 0.9, 0.9) end
+            -- Als Tank (in einer Gruppe, ich habe die Aggro): statt der eigenen 100 % der Abstand des Nächsten –
+            -- "Nächster 85 %"; unter LEAD_SHOW gar nichts (wenig Text an der Seite, auch bei vielen Gegnern)
+            if d.threatLead and d.threatText and status >= 2 and IsInGroup() and IsTank() then
+                local lead = GroupLead(fp.unit)
+                if lead then
+                    if lead >= LEAD_SHOW then
+                        local lc = THREAT_DPS[lead >= 100 and 3 or (lead >= 85 and 2 or 1)]
+                        fp.threatBadge.label:SetText(T("Nächster", "Next"))
+                        fp.threatText:SetFormattedText("%.0f%%", lead)
+                        fp.threatText:SetTextColor(math.min(1, lc[1] + 0.15), math.min(1, lc[2] + 0.15), math.min(1, lc[3] + 0.15))
+                        show = true
+                    else
+                        show = false
+                    end
+                end
+            end
         end
     end
     fp.threatBadge:SetShown(show)
@@ -1341,8 +1401,7 @@ local function ApplyLook(fp)
     SetEdgesColor(fp.edges, e[1], e[2], e[3], (forever or fp.isTarget) and 1 or 0.8)
     -- Ziel etwas größer, die anderen leicht gedämpft (solange ein Ziel gewählt ist)
     fp.root:SetScale(UIScale() * (fp.isTarget and (db.targetScale / 100) or 1))
-    local dim = db.dimOthers and not fp.isTarget and Yes(UnitExists("target"))
-    fp.root:SetAlpha(dim and 0.7 or 1)
+    ns.ApplyPlateAlpha(fp)
     -- Status-Textur kann neu sein: Finishing-Farbe und Glanz wieder daran
     tex = fp.bar:GetStatusBarTexture()
     local ec = type(db.executeColor) == "table" and db.executeColor or ns.DEFAULTS.executeColor
@@ -1536,6 +1595,51 @@ function ns.ApplyWorldText()
             end
         end
     end, "ForeverPlates")
+end
+
+---------------------------------------------------------------------------
+-- Reichweite (rangeFade): alle 0,2 s über den gemeinsamen Takt des Hubs, nur für sichtbare Gegner-Plaketten.
+-- Maßstab ist ein Zauber der eigenen Klasse (Name -> höchster bekannter Rang), Nahkämpfer: automatischer Angriff.
+-- Die Sichtlinie kann das Spiel vorab nicht prüfen – nur die Entfernung.
+---------------------------------------------------------------------------
+local RANGE_SPELLS = {
+    MAGE = { 133, 116, 5143 }, WARLOCK = { 686, 172 }, PRIEST = { 585, 589 }, DRUID = { 5176, 8921 },
+    SHAMAN = { 403, 8042 }, HUNTER = { 75, 3044 },
+}
+local MELEE_SPELL = 6603 -- automatischer Angriff
+local rangeSpell
+local function FindRangeSpell()
+    rangeSpell = nil
+    local _, class = UnitClass("player")
+    for _, id in ipairs(RANGE_SPELLS[class] or {}) do
+        local known = (C_SpellBook and C_SpellBook.IsSpellKnown and C_SpellBook.IsSpellKnown(id)) or (IsSpellKnown and IsSpellKnown(id))
+        local name = C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(id)
+        if known and name then rangeSpell = name return end
+    end
+    rangeSpell = C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(MELEE_SPELL) or nil
+end
+local function InRange(unit)
+    if not (rangeSpell and C_Spell and C_Spell.IsSpellInRange) then return nil end
+    local ok, r = pcall(C_Spell.IsSpellInRange, rangeSpell, unit)
+    if not ok then return nil end
+    return r -- true/false, nil = nicht prüfbar (dann nicht dämpfen), evtl. geheim
+end
+UI.Every(0.2, function()
+    for _, fp in pairs(plates) do
+        if fp.enemy and fp.unit then
+            local r = InRange(fp.unit)
+            if IsSecret(r) or r ~= fp.inRange then
+                fp.inRange = r
+                ns.ApplyPlateAlpha(fp)
+            end
+        end
+    end
+end, { addon = "ForeverPlates", name = "Reichweite", when = function() return db and db.rangeFade and next(plates) ~= nil end })
+do
+    local f = CreateFrame("Frame")
+    f:RegisterEvent("PLAYER_LOGIN")
+    f:RegisterEvent("SPELLS_CHANGED")
+    f:SetScript("OnEvent", function() pcall(FindRangeSpell) end)
 end
 
 ---------------------------------------------------------------------------
