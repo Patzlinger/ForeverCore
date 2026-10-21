@@ -63,8 +63,25 @@ local function SkinRow(i)
     local name = row:GetName()
     for _, suffix in ipairs({ "Left", "Middle", "Right", "Background" }) do ns.Hide(G(name .. suffix)) end
     ns.Flat(row, C.button)
-    ns.SkinArrowButton(G(name .. "LeftButton"), true)
-    ns.SkinArrowButton(G(name .. "RightButton"), false)
+    -- Pfeile ohne eigenen Kasten (grau, Maus drauf = gold)
+    ns.SkinArrowOnly(G(name .. "LeftButton"), "left")
+    ns.SkinArrowOnly(G(name .. "RightButton"), "right")
+end
+
+-- Beschriftung ("Symbol", "Rand" …) genau mittig im Balken
+local function CenterRowText(i)
+    local row = G("TabardFrameCustomization" .. i)
+    if not row or Forbidden(row) then return end
+    local text = G(row:GetName() .. "Text") or row.Text
+    if not text then
+        for _, r in ipairs({ row:GetRegions() }) do
+            if r:IsObjectType("FontString") then text = r break end
+        end
+    end
+    if text then
+        Anchor(text, "CENTER", row, "CENTER", 0, 0)
+        text:SetJustifyH("CENTER")
+    end
 end
 
 local function Place(f)
@@ -115,6 +132,7 @@ local function Place(f)
         for i = 2, ROWS do
             Anchor(G("TabardFrameCustomization" .. i), "TOP", G("TabardFrameCustomization" .. (i - 1)), "BOTTOM", 0, -4)
         end
+        for i = 1, ROWS do CenterRowText(i) end
     end
     -- Dreh-Knöpfe unten links in der Innenfläche (mit Luft zur goldenen Linie)
     if inset then Anchor(G("TabardCharacterModelRotateLeftButton"), "BOTTOMLEFT", inset, "BOTTOMLEFT", 10, 14) end
