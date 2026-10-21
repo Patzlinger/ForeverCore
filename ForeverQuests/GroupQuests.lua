@@ -11,7 +11,9 @@ local addonName, ns = ...
 --   D|<questID>           macht nicht mit
 --   P|<questID>|<Stand>   eigener Stand: "-" = Quest nicht im Questlog, "+" = fertig, sonst "3/8,1/1" je Ziel
 --   L|<questID>           macht nicht mehr mit (früher "R": wird genauso behandelt)
--- Nur für diese Sitzung (verlässt man die Gruppe, ist alles leer).
+--   Q|<questID>           bitte Stand schicken (nach /reload oder neuem Einloggen: die anderen antworten mit "P")
+-- Bleibt über /reload und Neu-Einloggen erhalten (je Charakter in ForeverQuestsCharDB), solange man in derselben
+-- Gruppe ist. Erst wenn die Gruppe aufgelöst wird (oder man sie verlässt), ist alles leer.
 
 local L = ns.L
 local PREFIX = "FQGRP"
@@ -303,10 +305,64 @@ end
 ---------------------------------------------------------------------------
 -- Ereignisse
 ---------------------------------------------------------------------------
+-- Alles leeren (Gruppe aufgelöst bzw. verlassen)
+function ns.ClearGroupQuests()
+    wipe(ns.groupQuests)
+    wipe(lastSent)
+    wipe(invites)
+    if dialog then dialog.invite = nil dialog:Hide() end
+    Refresh()
+end
+
+-- Ist ein Spieler (Vorname) gerade in meiner Gruppe?
+local function InMyGroup(name)
+    local prefix, count = "party", GetNumSubgroupMembers and GetNumSubgroupMembers() or 0
+    if IsInRaid() then prefix, count = "raid", GetNumGroupMembers() end
+    for i = 1, count do
+        local unitName = UnitName(prefix .. i)
+        if unitName and not issecret(unitName) and ShortName(unitName) == name then return true end
+    end
+    return false
+end
+
+-- Nach /reload bzw. Einloggen: gespeicherte gemeinsame Quests zurückholen. Gilt nur, wenn man noch in einer
+-- Gruppe ist, in der mindestens einer der Mitmachenden steckt – sonst war es eine andere (alte) Gruppe.
+function ns.RestoreGroupQuests()
+    if type(_G.ForeverQuestsCharDB) ~= "table" then _G.ForeverQuestsCharDB = {} end
+    local store = _G.ForeverQuestsCharDB
+    local saved = type(store.groupQuests) == "table" and store.groupQuests or {}
+    for questID, q in pairs(saved) do
+        if type(questID) == "number" and type(q) == "table" and type(q.members) == "table" then
+            ns.groupQuests[questID] = q
+            order = math.max(order, tonumber(q.order) or 0)
+        end
+    end
+    store.groupQuests = ns.groupQuests -- (dieselbe Tabelle: jede Änderung wird beim Ausloggen mitgespeichert)
+    if not next(ns.groupQuests) then return end
+    C_Timer.After(3, function()
+        if not IsInGroup() then ns.ClearGroupQuests() return end
+        local me, known = MyName(), false
+        for _, q in pairs(ns.groupQuests) do
+            for name in pairs(q.members) do
+                if name ~= me and InMyGroup(name) then known = true end
+            end
+        end
+        if not known then ns.ClearGroupQuests() return end
+        -- eigenen Stand schicken und die anderen nach ihrem fragen
+        for questID in pairs(ns.groupQuests) do
+            ns.SendGroupProgress(questID)
+            Send("Q|" .. questID)
+        end
+        Refresh()
+    end)
+    Refresh()
+end
+
 local events = CreateFrame("Frame")
 events:RegisterEvent("CHAT_MSG_ADDON")
 events:RegisterEvent("QUEST_LOG_UPDATE")
 events:RegisterEvent("GROUP_ROSTER_UPDATE")
+events:RegisterEvent("PLAYER_LOGIN")
 
 local progressQueued = false
 local function QueueProgress()
@@ -325,13 +381,11 @@ events:SetScript("OnEvent", function(_, event, prefix, message, _, sender)
         QueueProgress()
         return
     elseif event == "GROUP_ROSTER_UPDATE" then
-        if not IsInGroup() then
-            wipe(ns.groupQuests)
-            wipe(lastSent)
-            wipe(invites)
-            if dialog then dialog.invite = nil dialog:Hide() end
-            Refresh()
-        end
+        -- (kurz warten: beim Laden meldet das Spiel die Gruppe manchmal erst einen Augenblick später)
+        if not IsInGroup() then C_Timer.After(2, function() if not IsInGroup() then ns.ClearGroupQuests() end end) end
+        return
+    elseif event == "PLAYER_LOGIN" then
+        ns.RestoreGroupQuests()
         return
     end
     -- CHAT_MSG_ADDON
@@ -360,6 +414,12 @@ events:SetScript("OnEvent", function(_, event, prefix, message, _, sender)
         end
     elseif kind == "D" then
         if q then Print(L("GQ_DECLINED", name, q.title)) end
+    elseif kind == "Q" then
+        -- jemand hat neu geladen und fragt nach dem Stand: wer mitmacht, antwortet (und kennt ihn wieder)
+        if q then
+            SetMember(questID, name, nil, ClassOf(name))
+            ns.SendGroupProgress(questID)
+        end
     elseif kind == "P" then
         -- nur von Mitmachenden (wer nur gefragt wurde, sendet keinen Stand)
         if q then SetMember(questID, name, rest, ClassOf(name)) end

@@ -12,6 +12,7 @@
 ## OptionalDeps: Questie
 ## Group: ForeverCore
 ## SavedVariables: ForeverQuestsDB, ForeverHubDB
+## SavedVariablesPerCharacter: ForeverQuestsCharDB
 
 Locales.lua
 ForeverQuests.lua

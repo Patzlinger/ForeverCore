@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverQuests: **shared quests ("Together") survive /reload and logging in again** – they are only cleared when the group is disbanded or you leave it. After reloading, everyone's progress is fetched again.
+
 - ForeverTooltip: the health bar below the tooltip is gone by default (turn it back on with "Health bar below the tooltip" in /ftip).
 - ForeverQuests: sharing a quest in combat no longer causes a "blocked action" error – the game blocks sharing in combat, so the quest is now shared right after combat (with a short chat note).
 - ForeverMinimap: Blizzard's buff and debuff bars move a little to the left by default, so they no longer reach into the bigger minimap and its button bar (only while you haven't moved them in Edit Mode; option "Move Blizzard's buffs next to the minimap" in /fmm » Comfort).
