@@ -61,7 +61,8 @@ foreach ($addon in $targets) {
         $warn = (& $lls --check $dir --checklevel=Warning 2>&1 | Out-String) -replace "\e\[[0-9;]*m", ""
         foreach ($m in [regex]::Matches($warn, '([\w\\/.-]+\.lua:\d+:\d+)[^\n]*Undefined global `([A-Za-z_][A-Za-z0-9_]*)`')) {
             $name = $m.Groups[2].Value
-            if ($ownFunctions.Contains($name)) {
+            # auch die üblichen Kurz-Namen (T = UI.T, L = ns.L …): fehlt ihr "local" in der Datei, ist das ein Fehler
+            if ($ownFunctions.Contains($name) -or @('T', 'L', 'C', 'UI', 'ns', 'Safe', 'IsSecret', 'GetDB', 'HUB') -ccontains $name) {
                 $errors.Add("$addon – eigene Funktion '$name' hier nicht sichtbar (vor der Definition aufgerufen?): $($m.Groups[1].Value)")
             }
         }

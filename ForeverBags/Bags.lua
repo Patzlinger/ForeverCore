@@ -1342,3 +1342,183 @@ function ns.SetupBags()
     prof:SetScript("OnEvent", function() pcall(ns.UpdateProfessionButtons) end)
     window:HookScript("OnShow", function() pcall(ns.UpdateProfessionButtons) end)
 end
+
+---------------------------------------------------------------------------
+-- Berufe am Rand: kleine Knöpfe links am Taschenfenster öffnen die Berufsfenster (je Beruf das erste Fenster,
+-- dazu Gifte/Wildtierausbildung). Ein schmaler Pfeil am Fensterrand klappt sie ein/aus (ns.db.profCollapsed).
+-- Öffnen ist ein Zauber -> geschützte Knöpfe (SecureActionButtonTemplate). Solche Knöpfe (und ihr Halter) dürfen
+-- im Kampf nicht ein-/ausgeblendet werden: der Halter hängt deshalb NICHT am Fenster, sondern ist eigenständig;
+-- zu Kampfbeginn (PLAYER_REGEN_DISABLED, kurz bevor die Sperre greift) wird er ausgeblendet und fest an den
+-- Bildschirm gehängt, nach dem Kampf wieder angezeigt. Aufbau nur außerhalb des Kampfs.
+---------------------------------------------------------------------------
+do
+    local SIZE, GAP = 22, 2
+    local CLASS_TRADES = { 2842, 5149 } -- Gifte (Schurke), Wildtierausbildung (Jäger)
+    local holder, tab
+    local buttons = {}
+    local dirty = true
+
+    local function Known(spellID)
+        if C_SpellBook and C_SpellBook.IsSpellKnown then
+            local ok, known = pcall(C_SpellBook.IsSpellKnown, spellID)
+            if ok and known then return true end
+        end
+        return IsPlayerSpell and IsPlayerSpell(spellID) or false
+    end
+
+    local function BookSpell(slot)
+        if C_SpellBook and C_SpellBook.GetSpellBookItemInfo and Enum and Enum.SpellBookSpellBank then
+            local info = C_SpellBook.GetSpellBookItemInfo(slot, Enum.SpellBookSpellBank.Player)
+            if info and info.spellID and not info.isPassive then return info.spellID end
+        end
+    end
+
+    -- je Beruf das Berufsfenster (erste aktive Fähigkeit des Berufs), Sammelberufe ohne Fenster fallen weg
+    local function Professions()
+        local list = {}
+        if GetProfessions and GetProfessionInfo then
+            local indices = { GetProfessions() }
+            for i = 1, 6 do
+                local index = indices[i]
+                if index then
+                    local name, icon, _, _, numSpells, offset = GetProfessionInfo(index)
+                    local spellID = (numSpells or 0) > 0 and BookSpell((offset or 0) + 1)
+                    if spellID and i ~= 4 then -- 4 = Angeln (kein Berufsfenster)
+                        list[#list + 1] = { spell = spellID, name = name, icon = icon }
+                    end
+                end
+            end
+        end
+        for _, id in ipairs(CLASS_TRADES) do
+            if Known(id) then
+                local name = C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(id)
+                local icon = C_Spell and C_Spell.GetSpellTexture and C_Spell.GetSpellTexture(id)
+                list[#list + 1] = { spell = id, name = name, icon = icon }
+            end
+        end
+        return list
+    end
+
+    local function Flat(f, hover)
+        f:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8", edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 })
+        f:SetBackdropColor(C.panel[1], C.panel[2], C.panel[3], 0.95)
+        local e = hover and C.accent or C.border
+        f:SetBackdropBorderColor(e[1], e[2], e[3], hover and 0.9 or 1)
+    end
+
+    local function Button(i)
+        local b = buttons[i]
+        if b then return b end
+        b = CreateFrame("Button", "ForeverBagsProfession" .. i, holder, "SecureActionButtonTemplate,BackdropTemplate")
+        b:SetSize(SIZE, SIZE)
+        b:RegisterForClicks("AnyUp", "AnyDown")
+        b:SetAttribute("type", "spell")
+        Flat(b)
+        b.icon = b:CreateTexture(nil, "ARTWORK")
+        b.icon:SetPoint("TOPLEFT", 2, -2)
+        b.icon:SetPoint("BOTTOMRIGHT", -2, 2)
+        b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+        b.icon:SetAlpha(0.85)
+        b:HookScript("OnEnter", function(self)
+            Flat(self, true)
+            self.icon:SetAlpha(1)
+            if self.fbName then SimpleTip(self, self.fbName) end
+        end)
+        b:HookScript("OnLeave", function(self)
+            Flat(self)
+            self.icon:SetAlpha(0.85)
+            HideTip()
+        end)
+        buttons[i] = b
+        return b
+    end
+
+    local function Anchor()
+        holder:ClearAllPoints()
+        holder:SetPoint("TOPRIGHT", tab, "TOPLEFT", -1, 0)
+    end
+
+    -- Knöpfe neu belegen (nur außerhalb des Kampfs)
+    local function Rebuild()
+        if InCombatLockdown() or not holder then return end
+        local list = Professions()
+        for i, entry in ipairs(list) do
+            local b = Button(i)
+            b:SetAttribute("spell", entry.spell)
+            b.icon:SetTexture(entry.icon)
+            b.fbName = entry.name
+            b:ClearAllPoints()
+            b:SetPoint("TOP", holder, "TOP", 0, -(i - 1) * (SIZE + GAP))
+            b:Show()
+        end
+        for i = #list + 1, #buttons do buttons[i]:Hide() end
+        holder:SetSize(SIZE, math.max(1, #list * (SIZE + GAP) - GAP))
+        holder.count = #list
+        dirty = false
+    end
+
+    local function Update()
+        if not (holder and tab) then return end
+        local open = window and window:IsShown()
+        tab:SetShown(open and (holder.count or 0) > 0 and true or false)
+        tab.arrow:SetText(ns.db.profCollapsed and ">" or "<")
+        if InCombatLockdown() then return end -- im Kampf nichts an geschützten Rahmen ändern
+        if dirty then Rebuild() end
+        Anchor()
+        holder:SetShown(open and not ns.db.profCollapsed and (holder.count or 0) > 0 and true or false)
+    end
+    ns.UpdateProfessionButtons = Update
+
+    local function Setup()
+        if holder or not window or InCombatLockdown() then return end
+        holder = CreateFrame("Frame", "ForeverBagsProfessions", UIParent)
+        holder:SetFrameStrata(window:GetFrameStrata())
+        holder:Hide()
+        -- schmaler Griff am linken Fensterrand: Pfeil zum Ein-/Ausklappen (gehört zum Fenster, nicht geschützt)
+        tab = CreateFrame("Button", nil, window, "BackdropTemplate")
+        tab:SetSize(12, SIZE)
+        tab:SetPoint("TOPRIGHT", window, "TOPLEFT", 1, -HEADER - 4)
+        Flat(tab)
+        tab.arrow = tab:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+        tab.arrow:SetPoint("CENTER", 0, 0)
+        tab:SetScript("OnClick", function()
+            ns.db.profCollapsed = not ns.db.profCollapsed
+            Update()
+        end)
+        tab:SetScript("OnEnter", function(self)
+            Flat(self, true)
+            SimpleTip(self, ns.db.profCollapsed and L("PROF_SHOW") or L("PROF_HIDE"))
+        end)
+        tab:SetScript("OnLeave", function(self) Flat(self) HideTip() end)
+        window:HookScript("OnShow", Update)
+        window:HookScript("OnHide", Update)
+        Rebuild()
+        Update()
+    end
+
+    local ev = CreateFrame("Frame")
+    for _, e in ipairs({ "PLAYER_LOGIN", "SKILL_LINES_CHANGED", "SPELLS_CHANGED", "LEARNED_SPELL_IN_TAB",
+        "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED" }) do
+        pcall(ev.RegisterEvent, ev, e)
+    end
+    ev:SetScript("OnEvent", function(_, event)
+        if event == "PLAYER_REGEN_DISABLED" then
+            -- kurz vor der Kampfsperre: ausblenden und vom Fenster lösen (das Fenster darf im Kampf weiter wandern)
+            if holder then
+                local l, t = holder:GetLeft(), holder:GetTop()
+                holder:Hide()
+                if l and t then
+                    holder:ClearAllPoints()
+                    holder:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", l, t)
+                end
+            end
+            return
+        end
+        if event ~= "PLAYER_REGEN_ENABLED" then dirty = true end
+        if not holder then
+            C_Timer.After(1, function() pcall(Setup) end)
+        else
+            C_Timer.After(0.2, function() pcall(Update) end)
+        end
+    end)
+end
