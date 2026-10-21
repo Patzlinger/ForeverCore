@@ -10,7 +10,7 @@ local C = ns.C
 local function G(name) return _G[name] end
 local function Forbidden(obj) return obj and obj.IsForbidden and obj:IsForbidden() end
 local CIRCLE = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
-local FOOTER = 28
+local FOOTER = 36
 
 local function Step(what, fn)
     local ok, err = pcall(fn)
@@ -72,6 +72,8 @@ local function FindControls(frame, depth, found)
                 or (type(child.Arrow) == "table" and type(child.Text) == "table" and not child:IsObjectType("CheckButton"))
             if isDropdown then
                 found.dropdowns[#found.dropdowns + 1] = child
+                -- (im Auswahlfeld kann ein Knopf stecken, z. B. "Speichern")
+                if depth < 3 then FindControls(child, depth + 1, found) end
             elseif child:IsObjectType("Button") then
                 local label = child.GetText and child:GetText()
                 if type(label) == "string" and label ~= "" then found.buttons[#found.buttons + 1] = child end
@@ -97,15 +99,18 @@ local function SkinDetails(f)
         end
     end
     if not panel or Forbidden(panel) then return end
-    ns.HideTextures(panel)
-    if panel.NineSlice then ns.Hide(panel.NineSlice) end
-    for _, child in ipairs({ panel:GetChildren() }) do
-        local isList = child.ScrollTarget or child.ForEachFrame or child:IsObjectType("ScrollFrame")
-        if not Forbidden(child) and not isList and not child:IsObjectType("Button") then
-            ns.HideTextures(child)
-            if child.NineSlice then ns.Hide(child.NineSlice) end
+    -- Rahmen-Teile mehrere Ebenen tief (die Verzierung oben liegt verschachtelt) – nicht in der Liste selbst und
+    -- nicht in Knöpfen (dort sind die Symbole der Teile)
+    local function Strip(frame, depth)
+        ns.HideTextures(frame)
+        if frame.NineSlice then ns.Hide(frame.NineSlice) end
+        if depth >= 4 then return end
+        for _, child in ipairs({ frame:GetChildren() }) do
+            local isList = child.ScrollTarget or child.ForEachFrame or child:IsObjectType("ScrollFrame")
+            if not Forbidden(child) and not isList and not child:IsObjectType("Button") then Strip(child, depth + 1) end
         end
     end
+    Strip(panel, 1)
     ns.Flat(panel, C.background)
     if panel.ScrollBar then ns.SkinScrollBar(panel.ScrollBar) end
 end
@@ -153,11 +158,34 @@ local function SkinDressUp()
             end
         end
     end)
-    -- unten: Set verlinken, Zurücksetzen, Schließen
+    -- unten: Set verlinken, Zurücksetzen, Schließen – flach, mittig in der Leiste, 10 vom Rand, 8 auseinander;
+    -- die Innenfläche (Modell) endet darüber
     Step("bottom", function()
-        for _, b in ipairs({ f.LinkButton or false, f.ResetButton or G("DressUpFrameResetButton") or false,
-            f.CancelButton or G("DressUpFrameCancelButton") or false }) do
+        local link = f.LinkButton
+        local reset = f.ResetButton or G("DressUpFrameResetButton")
+        local cancel = f.CancelButton or G("DressUpFrameCancelButton")
+        for _, b in ipairs({ link or false, reset or false, cancel or false }) do
             if b then SkinTextButton(b) end
+        end
+        local y = FOOTER / 2
+        local function Put(b, point, rel, relPoint, x, yy)
+            if not b or Forbidden(b) then return end
+            b:ClearAllPoints()
+            b:SetPoint(point, rel, relPoint, x, yy)
+        end
+        Put(link, "LEFT", f, "BOTTOMLEFT", 10, y)
+        Put(cancel, "RIGHT", f, "BOTTOMRIGHT", -10, y)
+        if cancel then Put(reset, "RIGHT", cancel, "LEFT", -8, 0) end
+        local inset = f.Inset or G("DressUpFrameInset")
+        if inset and not Forbidden(inset) then
+            local points = {}
+            for i = 1, inset:GetNumPoints() do
+                local p, rel, rp, x, yy = inset:GetPoint(i)
+                if type(p) == "string" and p:find("BOTTOM") then rel, rp, yy = f, p, FOOTER + 4 end
+                points[i] = { p, rel, rp, x or 0, yy or 0 }
+            end
+            inset:ClearAllPoints()
+            for _, pt in ipairs(points) do inset:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5]) end
         end
     end)
     -- alle übrigen Text-Knöpfe und Auswahlfelder (Blizzard benennt sie je nach Fassung anders)
