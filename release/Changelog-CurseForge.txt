@@ -6,6 +6,7 @@
 
 - ForeverHelpers, loot rolls: a main switch turns the loot roll window off completely (settings, or /floot on | off) – Blizzard's own roll frames are unaffected.
 - ForeverSkin: talents window – the frame in the Forever look (title bar with gold line) and flat "Primary"/"Secondary" tabs (selected one gold); the talent trees stay as they are. Switch: /fskin » "Talents window".
+- ForeverSkin: window size slider – the former 110 % is now shown as 100 % (windows keep their size; existing settings are converted).
 - ForeverSkin: chat settings window in the Forever look (flat frame and boxes, check boxes, sliders, dropdowns, buttons; color swatches stay), plus the chat channels window (flat frame and lists, headers and buttons). Switch: /fskin » "Chat settings and chat channels".
 - ForeverSkin: group finder ("Looking for Group") – flat frame with the eye in the title bar and flat buttons at the bottom (background and category graphics stay); a new side tab opens the ForeverQuests dungeon window. Switch: /fskin » "Group finder".
 - ForeverQuests: interface for other Forever addons to open the dungeon window.

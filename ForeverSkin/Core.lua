@@ -30,14 +30,16 @@ ns.DEFAULTS = {
     menus = true,    -- aufgeklappte Menüs überall (Rechtsklick auf Einheiten, Auswahllisten)
     groupFinder = true, -- Suche nach Gruppe (mit Reiter zum Dungeonfenster)
     chatConfig = true, -- Chat-Einstellungen und Chat-Channels
-    scale = 110,     -- Größe von Gespräch, Quest, Händler und Lehrer in Prozent
+    size = 100,      -- Größe von Gespräch, Quest, Händler und Lehrer in Prozent (100 = Grundgröße SIZE_BASE)
 }
 
 -- Größe der umgestalteten Fenster (Gespräch, Quest, Händler, Lehrer): als Ganzes, weil Blizzard den Inhalt mit
 -- festen Breiten baut – nur breiter gäbe rechts leeren Rand
+-- Grundgröße: die früheren 110 % gelten jetzt als 100 % (auf Wunsch) – der Regler zeigt die Größe relativ dazu
+local SIZE_BASE = 1.1
 local scaled = {} -- [Fenster] = eigener Faktor (z. B. Makro-Fenster 5 % größer als die übrigen)
 local function ApplyScale(frame)
-    local s = (tonumber(ns.GetDB().scale) or 100) / 100 * (scaled[frame] or 1)
+    local s = (tonumber(ns.GetDB().size) or 100) / 100 * SIZE_BASE * (scaled[frame] or 1)
     if not InCombatLockdown() or not frame:IsProtected() then frame:SetScale(s) end
 end
 function ns.Scaled(frame, factor)
@@ -53,6 +55,11 @@ end
 function ns.GetDB()
     if type(_G.ForeverSkinDB) ~= "table" then _G.ForeverSkinDB = {} end
     local db = _G.ForeverSkinDB
+    -- frühere Einstellung "scale" (absolute Prozent) einmalig umrechnen: 110 % von früher = 100 % jetzt
+    if db.size == nil and tonumber(db.scale) then
+        db.size = math.floor(tonumber(db.scale) / 1.1 / 5 + 0.5) * 5
+    end
+    db.scale = nil
     for k, v in pairs(ns.DEFAULTS) do
         if db[k] == nil then db[k] = v end
     end
@@ -1082,8 +1089,8 @@ local function Build()
     Check(-494, T("Suche nach Gruppe (Reiter zum Dungeonfenster)", "Group finder (tab to dungeon window)"), "groupFinder")
     Check(-518, T("Chat-Einstellungen und Chat-Channels", "Chat settings and chat channels"), "chatConfig")
     local size = UI.Slider(options, 22, -548, T("Größe von Gespräch, Quest, Händler, Lehrer", "Size of dialog, quest, vendor, trainer"),
-        90, 130, 5, function(v)
-            ns.GetDB().scale = v
+        80, 120, 5, function(v)
+            ns.GetDB().size = v
             ns.RescaleAll()
         end, { unit = " %", width = 220 })
     UI.Hint(options, 22, -592, W - 12, T("Änderungen gelten nach dem Neuladen. Gefällt dir der Stil nicht, schalte " ..
@@ -1096,7 +1103,7 @@ local function Build()
     options:HookScript("OnShow", function()
         local db = ns.GetDB()
         for _, c in ipairs(checks) do c.cb:SetChecked(db[c.key] and true or false) end
-        size:SetValue(tonumber(db.scale) or 100)
+        size:SetValue(tonumber(db.size) or 100)
     end)
 end
 
