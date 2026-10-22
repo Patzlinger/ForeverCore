@@ -28,6 +28,14 @@ local function HideFrameArt(f)
     end
     ns.Hide(f.portrait)
     ns.Hide(f.Portrait)
+    -- Ring des Auges ("groupfinder-eye-frame" im Rahmen LFGParentFramePortrait) – unser kleines Auge sitzt in der
+    -- Titelleiste
+    local portrait = G("LFGParentFramePortrait")
+    if type(portrait) == "table" and not Forbidden(portrait) then
+        ns.Hide(portrait)
+        if portrait.GetRegions then ns.HideTextures(portrait) end
+    end
+    ns.Hide(f.TopTileStreaks)
     -- Streifen hinter den Rollen-Symbolen (oben): "groupfinder-roles-background" und darunter der dunkle Hintergrund
     -- der Seite ("Bg") – weg, auf Wunsch; dort zeigt sich unsere Fläche. Das Bild der Innenfläche bleibt
     ns.Hide(G("LFGListingFrameRoleBackground"))
@@ -48,6 +56,14 @@ local function HideFrameArt(f)
             -- Rollenbereich oben: seine Hintergrund-Grafiken weg (die Rollen-Knöpfe sind eigene Rahmen und bleiben)
             local roles = page.RolesSection
             if type(roles) == "table" and not Forbidden(roles) then ns.HideTextures(roles) end
+            -- braune Trennlinie mit Rauten (DividerFrame, "common-framedivider") und die Streifen unter der Titelleiste
+            -- (TopTileStreaks) – zusammen wirkte das wie ein Kasten (laut /fskin lfg)
+            local divider = page.DividerFrame
+            if type(divider) == "table" and not Forbidden(divider) then
+                ns.Hide(divider)
+                ns.HideTextures(divider)
+            end
+            ns.Hide(page.TopTileStreaks)
             -- Innenfläche: Bild ("groupfinder-background") und verzierter Rahmen ("common-insideframe", mit der Linie
             -- samt Rauten oben) weg – flache Fläche mit feinem Rand wie überall; die Kategorie-Knöpfe bleiben
             local inset = page.Inset
