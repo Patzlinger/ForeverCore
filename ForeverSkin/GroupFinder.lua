@@ -45,6 +45,17 @@ local function HideFrameArt(f)
                     ns.HideTextures(obj)
                 end
             end
+            -- Rollenbereich oben: seine Hintergrund-Grafiken weg (die Rollen-Knöpfe sind eigene Rahmen und bleiben)
+            local roles = page.RolesSection
+            if type(roles) == "table" and not Forbidden(roles) then ns.HideTextures(roles) end
+            -- Innenfläche: Bild ("groupfinder-background") und verzierter Rahmen ("common-insideframe", mit der Linie
+            -- samt Rauten oben) weg – flache Fläche mit feinem Rand wie überall; die Kategorie-Knöpfe bleiben
+            local inset = page.Inset
+            if type(inset) == "table" and not Forbidden(inset) then
+                for _, key in ipairs({ "CustomBG", "Border", "Bg", "NineSlice" }) do ns.Hide(inset[key]) end
+                ns.HideTextures(inset)
+                ns.Flat(inset, ns.C.panel)
+            end
         end
     end
 end
