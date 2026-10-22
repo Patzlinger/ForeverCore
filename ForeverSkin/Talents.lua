@@ -46,6 +46,8 @@ end
 -- Blizzards Metallrahmen (NineSlice, samt braunem Balken und goldenen Ecken) und das Porträt: Blizzard blendet sie
 -- beim Öffnen wieder ein – darum jedes Teil einzeln unsichtbar, bei offenem Fenster immer wieder
 local function HideFrameArt(f)
+    -- Blizzards Fensterhintergrund (liegt über unserer flachen Fläche)
+    ns.Hide(f.Bg)
     for _, key in ipairs({ "NineSlice", "PortraitContainer" }) do
         local obj = f[key]
         if type(obj) == "table" and not Forbidden(obj) then
