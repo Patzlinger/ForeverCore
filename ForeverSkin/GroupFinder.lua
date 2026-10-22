@@ -14,6 +14,26 @@ local function Step(what, fn)
 end
 
 local footerHeight -- Höhe unserer Fußleiste (sobald angelegt) – der Kasten der Innenfläche endet darüber
+-- Seiten des Fensters: "Anmelden", "Durchsuchen", "Wer ist da" – alle gleich umgestaltet
+local PAGES = { "LFGListingFrame", "LFGBrowseFrame", "LFGWhoListFrame" }
+
+local function KeyOf(parent, child)
+    for k, v in pairs(parent) do if v == child and type(k) == "string" then return k end end
+end
+
+-- Innenfläche: Bild ("groupfinder-background") und verzierter Rahmen ("common-insideframe") weg – flache Fläche mit
+-- feinem Rand; endet 6 über unserer Fußleiste (Blizzards Innenfläche reicht bis fast nach unten)
+local function SkinInset(f, inset)
+    for _, key in ipairs({ "CustomBG", "Border", "Bg", "NineSlice" }) do ns.Hide(inset[key]) end
+    ns.HideTextures(inset)
+    local cut = 0
+    if footerHeight and inset:GetBottom() and f:GetBottom() then
+        local s = inset:GetEffectiveScale() / f:GetEffectiveScale()
+        local footTop = f:GetBottom() + footerHeight + 6
+        cut = math.max(0, (footTop - inset:GetBottom() * s) / s)
+    end
+    ns.Flat(inset, ns.C.panel, { 0, 0, 0, cut })
+end
 
 -- Blizzards Rahmen und das runde Porträt: Blizzard blendet sie teils wieder ein – darum jedes Teil einzeln, immer wieder
 local function HideFrameArt(f)
@@ -41,13 +61,13 @@ local function HideFrameArt(f)
     -- Streifen hinter den Rollen-Symbolen (oben): "groupfinder-roles-background" und darunter der dunkle Hintergrund
     -- der Seite ("Bg") – weg, auf Wunsch; dort zeigt sich unsere Fläche. Das Bild der Innenfläche bleibt
     ns.Hide(G("LFGListingFrameRoleBackground"))
-    ns.Hide(G("LFGListingFrameBg"))
-    ns.Hide(G("LFGBrowseFrameBg"))
-    -- die Seiten ("Anmelden" = LFGListingFrame, "Durchsuchen" = LFGBrowseFrame) haben einen eigenen Metallrahmen mit
-    -- Kopf oben (laut /fskin grafik: NineSlice mit "UI-Frame-PortraitMetal-…") – weg; Hintergrund und der Streifen
-    -- hinter den Rollen bleiben
-    for _, page in ipairs({ G("LFGListingFrame") or false, G("LFGBrowseFrame") or false }) do
+    -- die Seiten haben einen eigenen Metallrahmen mit Kopf oben (laut /fskin grafik: NineSlice mit
+    -- "UI-Frame-PortraitMetal-…") und einen dunklen Seitenhintergrund ("Bg") – weg
+    for _, pageName in ipairs(PAGES) do
+        local page = G(pageName)
         if page and not Forbidden(page) then
+            ns.Hide(page.Bg)
+            ns.Hide(G(pageName .. "Bg"))
             for _, key in ipairs({ "NineSlice", "TitleContainer", "PortraitContainer" }) do
                 local obj = page[key]
                 if type(obj) == "table" and not Forbidden(obj) then
@@ -66,20 +86,10 @@ local function HideFrameArt(f)
                 ns.HideTextures(divider)
             end
             ns.Hide(page.TopTileStreaks)
-            -- Innenfläche: Bild ("groupfinder-background") und verzierter Rahmen ("common-insideframe", mit der Linie
-            -- samt Rauten oben) weg – flache Fläche mit feinem Rand wie überall; die Kategorie-Knöpfe bleiben
-            local inset = page.Inset
-            if type(inset) == "table" and not Forbidden(inset) then
-                for _, key in ipairs({ "CustomBG", "Border", "Bg", "NineSlice" }) do ns.Hide(inset[key]) end
-                ns.HideTextures(inset)
-                -- (Blizzards Innenfläche reicht bis fast nach unten: unser Kasten endet 6 über der Fußleiste)
-                local cut = 0
-                if footerHeight and inset:GetBottom() and f:GetBottom() then
-                    local s = inset:GetEffectiveScale() / f:GetEffectiveScale()
-                    local footTop = f:GetBottom() + footerHeight + 6
-                    cut = math.max(0, (footTop - inset:GetBottom() * s) / s)
-                end
-                ns.Flat(inset, ns.C.panel, { 0, 0, 0, cut })
+            -- Innenflächen (Schlüssel "Inset", "ListInset" …): flach; die Kategorie-Knöpfe darin bleiben
+            for _, child in ipairs({ page:GetChildren() }) do
+                local key = KeyOf(page, child)
+                if key and key:lower():find("inset") and not Forbidden(child) then SkinInset(f, child) end
             end
         end
     end
@@ -278,14 +288,23 @@ local function SkinBottomButtons(f, frame, depth)
     end
 end
 
--- Seite "Durchsuchen" (LFGBrowseFrame): Auswahllisten ("Kategorie", "Nach Aktivität filtern") flach, der Knopf
--- "Aktualisieren" daneben nur als helles Symbol; Blizzards braune Trennlinien ("…divider…", "…ScrollLine") weg
+-- Bedienelemente aller Seiten wie in den übrigen Forever-Fenstern: Auswahllisten und "Filter" flach, Suchleiste als
+-- flaches Eingabefeld, Symbol-Knöpfe ("Aktualisieren", Lupe) nur als helles Symbol, Laufleisten gold; Blizzards braune
+-- Trennlinien ("…divider…", "…ScrollLine") weg
 local browseDone = setmetatable({}, { __mode = "k" })
-local function KeyOf(parent, child)
-    for k, v in pairs(parent) do if v == child and type(k) == "string" then return k end end
+local function SkinSearch(box)
+    local keep = {}
+    for _, key in ipairs({ "searchIcon", "SearchIcon", "Instructions", "clearButton" }) do
+        local t = box[key]
+        if type(t) == "table" and t.IsObjectType and t:IsObjectType("Texture") then keep[t] = true end
+    end
+    ns.HideTextures(box, keep)
+    for _, key in ipairs({ "Left", "Middle", "Right", "Mid" }) do ns.Hide(box[key]) end
+    ns.Flat(box, ns.C.input, { -4, 2, 0, 2 })
 end
 local function SkinRefresh(b)
-    local icon = b.Icon or b.icon
+    -- (Symbol: eigene Grafik "Icon" – sonst ist das Bild des Knopfs selbst das Symbol, z. B. die Lupe)
+    local icon = b.Icon or b.icon or (b.GetNormalTexture and b:GetNormalTexture())
     ns.HideTextures(b, icon and { [icon] = true } or nil)
     for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetHighlightTexture", "GetDisabledTexture" }) do
         local t = b[get] and b[get](b)
@@ -323,12 +342,23 @@ local function SkinBrowse(frame, depth)
             local key = ((KeyOf(frame, child) or "") .. "|" .. (child:GetName() or "")):lower()
             local isDropdown = child:IsObjectType("DropdownButton")
                 or (type(child.Arrow) == "table" and type(child.Text) == "table" and not child:IsObjectType("CheckButton"))
-            if isDropdown then
+            local text = child.GetText and child:GetText()
+            if type(child.Track) == "table" and (child.Track.Thumb or child.Back) then
+                browseDone[child] = true
+                ns.SkinScrollBar(child) -- (Laufleiste gold)
+            elseif isDropdown then
                 browseDone[child] = true
                 ns.SkinDropdown(child)
-            elseif child:IsObjectType("Button") and key:find("refresh") then
+            elseif child:IsObjectType("EditBox") then
                 browseDone[child] = true
-                SkinRefresh(child)
+                SkinSearch(child)
+            elseif child:IsObjectType("Button") and key:find("filter") and type(text) == "string" and text ~= "" then
+                browseDone[child] = true
+                ns.SkinButton(child) -- ("Filter" als Text-Knopf)
+            elseif child:IsObjectType("Button") and (key:find("refresh") or key:find("search"))
+                and not (type(text) == "string" and text ~= "") then
+                browseDone[child] = true
+                SkinRefresh(child) -- (Aktualisieren, Lupe: nur das Symbol)
             elseif not child:IsObjectType("Button") and depth < 4 then
                 SkinBrowse(child, depth + 1)
             end
@@ -376,10 +406,12 @@ local function SkinGroupFinder()
         pcall(PlaceDungeonTab, f)
         pcall(SkinBottomButtons, f, f, 1)
         pcall(AddFooter, f)
-        local browse = G("LFGBrowseFrame")
-        if browse and browse:IsVisible() and not Forbidden(browse) then
-            pcall(SkinBrowse, browse, 1)
-            pcall(GoldDividers, browse, 1)
+        for _, pageName in ipairs(PAGES) do
+            local page = G(pageName)
+            if page and page:IsVisible() and not Forbidden(page) then
+                pcall(SkinBrowse, page, 1)
+                pcall(GoldDividers, page, 1)
+            end
         end
         if ns.SkinOpenMenu then pcall(ns.SkinOpenMenu) end
     end)
