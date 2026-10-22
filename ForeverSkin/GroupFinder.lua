@@ -28,6 +28,20 @@ local function HideFrameArt(f)
     end
     ns.Hide(f.portrait)
     ns.Hide(f.Portrait)
+    -- die Seiten ("Anmelden" = LFGListingFrame, "Durchsuchen" = LFGBrowseFrame) haben einen eigenen Metallrahmen mit
+    -- Kopf oben (laut /fskin grafik: NineSlice mit "UI-Frame-PortraitMetal-…") – weg; Hintergrund und der Streifen
+    -- hinter den Rollen bleiben
+    for _, page in ipairs({ G("LFGListingFrame") or false, G("LFGBrowseFrame") or false }) do
+        if page and not Forbidden(page) then
+            for _, key in ipairs({ "NineSlice", "TitleContainer", "PortraitContainer" }) do
+                local obj = page[key]
+                if type(obj) == "table" and not Forbidden(obj) then
+                    ns.Hide(obj)
+                    ns.HideTextures(obj)
+                end
+            end
+        end
+    end
 end
 
 -- das Auge klein links in der Titelleiste (erstes Bild der Augen-Animation, wie im Quest-Tracker)
