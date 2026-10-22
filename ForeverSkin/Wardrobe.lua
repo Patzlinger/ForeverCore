@@ -84,10 +84,12 @@ local function HideCorners(frame, depth)
     end
 end
 
-local function SkinWardrobe()
-    local f = G("WardrobeFrame")
-    if not f or ns.wardrobeSkinned or Forbidden(f) then return end
-    ns.wardrobeSkinned = true
+-- im Forever-Client heißt das Fenster "CollectionsJournal" (Sammlungen, darin WardrobeCollectionFrame); beim
+-- Transmogrifizierer ggf. "WardrobeFrame" – beide, jedes einmal
+local skinned = {}
+local function SkinWardrobe(f)
+    if not f or skinned[f] or Forbidden(f) then return end
+    skinned[f] = true
     ns.SkinWindow(f, nil, true)
     ns.Hide(f.Bg)
     Step("scan", function() Scan(f, 1) end)
@@ -116,6 +118,9 @@ local events = CreateFrame("Frame")
 events:RegisterEvent("PLAYER_LOGIN")
 events:RegisterEvent("ADDON_LOADED")
 events:SetScript("OnEvent", function()
-    if ns.wardrobeSkinned or not ns.GetDB().wardrobe or not G("WardrobeFrame") then return end
-    Step("skin", SkinWardrobe)
+    if not ns.GetDB().wardrobe then return end
+    for _, name in ipairs({ "CollectionsJournal", "WardrobeFrame" }) do
+        local f = G(name)
+        if f and not skinned[f] then Step("skin", function() SkinWardrobe(f) end) end
+    end
 end)
