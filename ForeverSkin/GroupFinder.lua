@@ -13,6 +13,8 @@ local function Step(what, fn)
     if not ok and ns.UI.ReportError then ns.UI.ReportError("ForeverSkin", "groupfinder/" .. what, err) end
 end
 
+local footerHeight -- Höhe unserer Fußleiste (sobald angelegt) – der Kasten der Innenfläche endet darüber
+
 -- Blizzards Rahmen und das runde Porträt: Blizzard blendet sie teils wieder ein – darum jedes Teil einzeln, immer wieder
 local function HideFrameArt(f)
     for _, key in ipairs({ "NineSlice", "PortraitContainer", "PortraitFrame" }) do
@@ -70,7 +72,14 @@ local function HideFrameArt(f)
             if type(inset) == "table" and not Forbidden(inset) then
                 for _, key in ipairs({ "CustomBG", "Border", "Bg", "NineSlice" }) do ns.Hide(inset[key]) end
                 ns.HideTextures(inset)
-                ns.Flat(inset, ns.C.panel)
+                -- (Blizzards Innenfläche reicht bis fast nach unten: unser Kasten endet 6 über der Fußleiste)
+                local cut = 0
+                if footerHeight and inset:GetBottom() and f:GetBottom() then
+                    local s = inset:GetEffectiveScale() / f:GetEffectiveScale()
+                    local footTop = f:GetBottom() + footerHeight + 6
+                    cut = math.max(0, (footTop - inset:GetBottom() * s) / s)
+                end
+                ns.Flat(inset, ns.C.panel, { 0, 0, 0, cut })
             end
         end
     end
@@ -269,6 +278,62 @@ local function SkinBottomButtons(f, frame, depth)
     end
 end
 
+-- Seite "Durchsuchen" (LFGBrowseFrame): Auswahllisten ("Kategorie", "Nach Aktivität filtern") flach, der Knopf
+-- "Aktualisieren" daneben flach mit hellem Symbol; Blizzards braune Trennlinien ("…divider…") gold gefärbt
+local browseDone = setmetatable({}, { __mode = "k" })
+local function KeyOf(parent, child)
+    for k, v in pairs(parent) do if v == child and type(k) == "string" then return k end end
+end
+local function SkinRefresh(b)
+    local icon = b.Icon or b.icon
+    ns.HideTextures(b, icon and { [icon] = true } or nil)
+    for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetHighlightTexture", "GetDisabledTexture" }) do
+        local t = b[get] and b[get](b)
+        if t and t ~= icon then ns.Hide(t) end
+    end
+    ns.Flat(b, ns.C.button)
+    if icon and icon.SetDesaturated then
+        icon:SetDesaturated(true)
+        icon:SetVertexColor(0.85, 0.85, 0.87)
+    end
+    ns.Hover(b)
+end
+local function GoldDividers(frame, depth)
+    for _, r in ipairs({ frame:GetRegions() }) do
+        if r:IsObjectType("Texture") and not ns.IsMine(frame, r) then
+            local atlas = r.GetAtlas and r:GetAtlas()
+            local key = KeyOf(frame, r) or r:GetName() or ""
+            if (type(atlas) == "string" and atlas:lower():find("divider")) or key:lower():find("divider") then
+                r:SetDesaturated(true)
+                r:SetVertexColor(ns.C.accent[1], ns.C.accent[2], ns.C.accent[3], 1)
+            end
+        end
+    end
+    if depth < 4 then
+        for _, child in ipairs({ frame:GetChildren() }) do
+            if not Forbidden(child) then GoldDividers(child, depth + 1) end
+        end
+    end
+end
+local function SkinBrowse(frame, depth)
+    for _, child in ipairs({ frame:GetChildren() }) do
+        if not Forbidden(child) and not browseDone[child] then
+            local key = ((KeyOf(frame, child) or "") .. "|" .. (child:GetName() or "")):lower()
+            local isDropdown = child:IsObjectType("DropdownButton")
+                or (type(child.Arrow) == "table" and type(child.Text) == "table" and not child:IsObjectType("CheckButton"))
+            if isDropdown then
+                browseDone[child] = true
+                ns.SkinDropdown(child)
+            elseif child:IsObjectType("Button") and key:find("refresh") then
+                browseDone[child] = true
+                SkinRefresh(child)
+            elseif not child:IsObjectType("Button") and depth < 4 then
+                SkinBrowse(child, depth + 1)
+            end
+        end
+    end
+end
+
 -- Fußleiste mit feiner goldener Linie hinter den Knöpfen unten (wie bei allen Forever-Fenstern, ns.ContentBox):
 -- Höhe nach den Knöpfen (deren Oberkante + 7), einmal sobald die Knöpfe da sind
 local footerDone
@@ -280,7 +345,8 @@ local function AddFooter(f)
     end
     if not top then return end
     footerDone = true
-    ns.ContentBox(f, math.floor(top + 7.5), nil, true)
+    footerHeight = math.floor(top + 7.5)
+    ns.ContentBox(f, footerHeight, nil, true)
 end
 
 local function SkinGroupFinder()
@@ -308,6 +374,12 @@ local function SkinGroupFinder()
         pcall(PlaceDungeonTab, f)
         pcall(SkinBottomButtons, f, f, 1)
         pcall(AddFooter, f)
+        local browse = G("LFGBrowseFrame")
+        if browse and browse:IsVisible() and not Forbidden(browse) then
+            pcall(SkinBrowse, browse, 1)
+            pcall(GoldDividers, browse, 1)
+        end
+        if ns.SkinOpenMenu then pcall(ns.SkinOpenMenu) end
     end)
 end
 
