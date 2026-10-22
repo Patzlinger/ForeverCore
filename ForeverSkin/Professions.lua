@@ -97,6 +97,13 @@ local function SkinSpell(button)
     end
     local pushed = button.GetPushedTexture and button:GetPushedTexture()
     if pushed and pushed ~= icon then pushed:SetAlpha(0) end
+    -- runde Maske eckig machen (z. B. "CircleMask" am herzustellenden Gegenstand): ihr Bild durch ein volles Quadrat
+    -- ersetzen – wirkt auch, wenn Blizzard die Maske neu anbringt (nur lesen, welche Masken der Knopf hat)
+    for _, v in pairs(button) do
+        if type(v) == "table" and v.IsObjectType and v:IsObjectType("MaskTexture") then
+            pcall(v.SetTexture, v, "Interface\\Buttons\\WHITE8x8", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+        end
+    end
     -- runde Maske entfernen: das Bild eckig wie in den übrigen Plätzen (rund im eckigen Kasten passte nicht)
     for _, t in ipairs({ icon or false, normal or false }) do
         if t and t.GetNumMaskTextures and t.GetMaskTexture and t.RemoveMaskTexture then
