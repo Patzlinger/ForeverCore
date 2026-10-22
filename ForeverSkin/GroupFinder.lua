@@ -54,12 +54,22 @@ local function SideTabs(f)
     local list, seen = {}, {}
     local function Consider(b)
         if b and b ~= dungeonTab and not seen[b] and not Forbidden(b) and b.IsObjectType and b:IsObjectType("Button")
-            and b:IsShown() and b:GetLeft() and b:GetTop() and f:GetRight() and b:GetLeft() >= f:GetRight() - 10 then
+            and b:IsShown() and b:GetLeft() and b:GetTop() and f:GetRight() and b:GetLeft() >= f:GetRight() - 20
+            and (b:GetWidth() or 0) >= 30 and (b:GetWidth() or 0) <= 80 then
             seen[b] = true
             list[#list + 1] = b
         end
     end
-    for _, child in ipairs({ f:GetChildren() }) do Consider(child) end
+    -- (die Reiter hängen teils in Unter-Rahmen – darum bis in die dritte Ebene suchen)
+    local function Walk(frame, depth)
+        for _, child in ipairs({ frame:GetChildren() }) do
+            if not Forbidden(child) then
+                Consider(child)
+                if depth < 3 and not child:IsObjectType("Button") then Walk(child, depth + 1) end
+            end
+        end
+    end
+    Walk(f, 1)
     local name = f:GetName()
     for i = 1, 8 do Consider(name and G(name .. "Tab" .. i)) end
     table.sort(list, function(a, b) return a:GetTop() > b:GetTop() end)
