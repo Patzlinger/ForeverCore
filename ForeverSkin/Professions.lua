@@ -156,6 +156,71 @@ end
 -- Blizzards Leiste hinter den Knöpfen unten ("Alle erstellen", Menge, "Erstellen"): breite, flache Grafik direkt am
 -- unteren Rand – unsichtbar; dahinter liegt unsere Fußleiste (ns.ContentBox, feine goldene Linie)
 local FOOTER = 30
+local bottomControls = setmetatable({}, { __mode = "k" }) -- Bedienelemente der unteren Reihe (über unsere Leiste)
+
+-- Eigene Ebenen ÜBER Blizzards Inhalt: die goldene Linie der Titelleiste (Blizzards Fortschrittsbalken lag darüber)
+-- und die Fußleiste unten (Blizzards Leiste hinter den Knöpfen ließ sich nicht sicher ausblenden). Die Knöpfe der
+-- unteren Reihe werden darüber gehoben, damit sie sichtbar und klickbar bleiben.
+local overlay
+local function Overlays(f)
+    if not overlay then
+        overlay = {}
+        overlay.top = CreateFrame("Frame", nil, f)
+        overlay.top:SetPoint("TOPLEFT", f, "TOPLEFT", 1, -24)
+        overlay.top:SetPoint("TOPRIGHT", f, "TOPRIGHT", -1, -24)
+        overlay.top:SetHeight(1)
+        local line = overlay.top:CreateTexture(nil, "OVERLAY")
+        line:SetAllPoints()
+        line:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 0.6)
+        overlay.foot = CreateFrame("Frame", nil, f)
+        overlay.foot:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 1, 1)
+        overlay.foot:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -1, 1)
+        overlay.foot:SetHeight(FOOTER)
+        overlay.foot:EnableMouse(false)
+        local fill = overlay.foot:CreateTexture(nil, "BACKGROUND")
+        fill:SetAllPoints()
+        fill:SetColorTexture(C.header[1], C.header[2], C.header[3], 1)
+        local fline = overlay.foot:CreateTexture(nil, "BORDER")
+        fline:SetPoint("BOTTOMLEFT", overlay.foot, "TOPLEFT")
+        fline:SetPoint("BOTTOMRIGHT", overlay.foot, "TOPRIGHT")
+        fline:SetHeight(1)
+        fline:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 0.35)
+    end
+    -- Ebenen: Linie oben über allem; Fußleiste über Blizzards Inhalt, die Bedienelemente der unteren Reihe darüber
+    -- (angehobene Bedienelemente und ihre Kästen zählen nicht mit – sonst schaukelte sich die Ebene hoch)
+    local skip = {}
+    for b, box in pairs(textButtons) do skip[b], skip[box] = true, true end
+    for c in pairs(bottomControls) do skip[c] = true end
+    local highest = f:GetFrameLevel()
+    local function Walk(frame, depth)
+        for _, child in ipairs({ frame:GetChildren() }) do
+            if not Forbidden(child) and child ~= overlay.top and child ~= overlay.foot and not skip[child] then
+                highest = math.max(highest, child:GetFrameLevel())
+                if depth < 3 then Walk(child, depth + 1) end
+            end
+        end
+    end
+    Walk(f, 1)
+    overlay.top:SetFrameLevel(highest + 5)
+    overlay.foot:SetFrameLevel(highest + 1)
+    local fb = f:GetBottom()
+    local controls = {}
+    for b in pairs(textButtons) do controls[b] = true end
+    for c in pairs(bottomControls) do controls[c] = true end
+    for c in pairs(controls) do
+        if c:IsVisible() and fb and c:GetBottom() and (c:GetBottom() - fb) < FOOTER then
+            if c:GetFrameLevel() <= highest + 1 then c:SetFrameLevel(highest + 3) end
+            local box = textButtons[c]
+            if box and box:GetFrameLevel() ~= c:GetFrameLevel() - 1 then box:SetFrameLevel(c:GetFrameLevel() - 1) end
+        end
+    end
+    -- nur im Herstellungsfenster (dort gibt es die untere Reihe); im Berufsbuch keine Fußleiste
+    local any = false
+    for c in pairs(controls) do
+        if c:IsVisible() and fb and c:GetBottom() and (c:GetBottom() - fb) < FOOTER then any = true break end
+    end
+    overlay.foot:SetShown(any)
+end
 local function HideBottomBar(frame)
     local f = headerFrame
     if not f or not f:GetBottom() then return end
@@ -201,13 +266,15 @@ local function Scan(frame, depth)
                 KeepBelowHeader(child)
             elseif child:IsObjectType("EditBox") then
                 SkinEdit(child) -- (Menge beim Herstellen)
+                bottomControls[child] = true
                 -- die Pfeile der Menge stecken im Eingabefeld selbst
                 for _, sub in ipairs({ child:GetChildren() }) do
                     if not Forbidden(sub) and sub:IsObjectType("Button") then
                         local subKey = ((KeyOf(child, sub) or "") .. "|" .. (sub:GetName() or "")):lower()
                         local left = subKey:find("decrement") or subKey:find("minus") or subKey:find("left")
                             or (sub:GetLeft() and child:GetLeft() and sub:GetLeft() < child:GetLeft() + 5)
-                        ns.SkinArrowButton(sub, left and true or false)
+                        ns.SkinArrowOnly(sub, left and "left" or "right") -- (nur der Pfeil, ohne Kasten)
+                        bottomControls[sub] = true
                     end
                 end
             elseif isDropdown then
@@ -224,8 +291,9 @@ local function Scan(frame, depth)
                 elseif key:find("spell") or (hasIcon and w >= 28 and w <= 56 and h >= 28 and h <= 56) then
                     SkinSpell(child)
                 elseif key:find("increment") or key:find("decrement") or key:find("plus") or key:find("minus") then
-                    -- Pfeile neben der Menge
-                    ns.SkinArrowButton(child, key:find("decrement") or key:find("minus"))
+                    -- Pfeile neben der Menge (nur der Pfeil, ohne Kasten)
+                    ns.SkinArrowOnly(child, (key:find("decrement") or key:find("minus")) and "left" or "right")
+                    bottomControls[child] = true
                 end
             else
                 HideBottomBar(child)
@@ -242,7 +310,7 @@ local function SkinBook()
     ns.professionsSkinned = true
     headerFrame = f
     ns.SkinWindow(f)
-    ns.ContentBox(f, FOOTER, nil, true) -- Fußleiste hinter den Knöpfen unten (feine goldene Linie)
+    -- (Fußleiste und goldene Linie oben als eigene Ebenen: siehe Overlays)
     Step("sections", function()
         for _, n in ipairs({ "PrimaryProfession1", "PrimaryProfession2", "SecondaryProfession1", "SecondaryProfession2",
             "SecondaryProfession3", "SecondaryProfession4" }) do
@@ -266,6 +334,7 @@ local function SkinBook()
         if waited >= 0.5 then
             waited = 0
             pcall(Scan, f, 1)
+            pcall(Overlays, f)
         end
     end)
 end
