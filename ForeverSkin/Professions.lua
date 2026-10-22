@@ -97,6 +97,16 @@ local function SkinSpell(button)
     end
     local pushed = button.GetPushedTexture and button:GetPushedTexture()
     if pushed and pushed ~= icon then pushed:SetAlpha(0) end
+    -- runde Maske entfernen: das Bild eckig wie in den übrigen Plätzen (rund im eckigen Kasten passte nicht)
+    for _, t in ipairs({ icon or false, normal or false }) do
+        if t and t.GetNumMaskTextures and t.GetMaskTexture and t.RemoveMaskTexture then
+            for m = t:GetNumMaskTextures(), 1, -1 do
+                local mask = t:GetMaskTexture(m)
+                if mask then t:RemoveMaskTexture(mask) end
+            end
+        end
+        if t and t.SetTexCoord then t:SetTexCoord(0.07, 0.93, 0.07, 0.93) end
+    end
     if icon and icon.SetTexCoord then
         icon:ClearAllPoints()
         icon:SetPoint("TOPLEFT", 1, -1)
