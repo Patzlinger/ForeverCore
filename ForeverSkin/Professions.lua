@@ -281,7 +281,20 @@ end
 -- Im Forever-Client heißt das Fenster "ProfessionsFrame" und seine Teile tragen andere Namen als bei Blizzard –
 -- darum allgemein nach Art und Rolle suchen: Fortschrittsbalken, "Verlernen"-Knöpfe, Zauber-Symbole, Berufs-Kästen
 -- (großer Rahmen mit Fortschrittsbalken darin oder "Profession" im Namen)
+-- Blizzards Hintergrundbild der Herstellungsseite ("Profession-Background-Template…", laut /fskin grafik in der
+-- CraftingPage): enthält den dunklen Streifen oben hinter dem Fortschrittsbalken und die Leiste unten – unsichtbar,
+-- darunter liegt unsere flache Fläche (die Zeichnung im Rezeptbereich ist eine eigene Grafik und bleibt)
+local function HidePageBackground(frame)
+    for _, r in ipairs({ frame:GetRegions() }) do
+        if r:IsObjectType("Texture") and r:GetAlpha() > 0 then
+            local atlas = r.GetAtlas and r:GetAtlas()
+            if type(atlas) == "string" and atlas:find("^Profession%-Background") then r:SetAlpha(0) end
+        end
+    end
+end
+
 local function Scan(frame, depth)
+    HidePageBackground(frame)
     for _, child in ipairs({ frame:GetChildren() }) do
         if not Forbidden(child) then
             local key = ((KeyOf(frame, child) or "") .. "|" .. (child:GetName() or "")):lower()
