@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverSkin: talents window – the frame in the Forever look (title bar with gold line) and flat "Primary"/"Secondary" tabs (selected one gold); the talent trees stay as they are. Switch: /fskin » "Talents window".
+
 - ForeverAlts: its own tab on the right side of the professions window, lined up with Blizzard's profession tabs (same size and frame, ForeverAlts icon) – opens the overview of your alts with their professions and recipes.
 - ForeverSkin, crafting window: scroll bar, filter and its reset button, "Create"/"Create all", the amount field and its arrows in the Forever look; the rank bar at the top sits below the title bar's gold line.
 

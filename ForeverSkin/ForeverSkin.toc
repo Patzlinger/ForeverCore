@@ -25,3 +25,4 @@ Mail.lua
 Tabard.lua
 DressUp.lua
 Professions.lua
+Talents.lua
