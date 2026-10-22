@@ -27,6 +27,49 @@ local function IsHeader(entry)
     return false
 end
 
+-- Einträge der Listen: alle gleich breit (so breit wie die Liste, rechts ENTRY_RIGHT Abstand zur Laufleiste) und mit
+-- ENTRY_GAP Luft dazwischen – der flache Balken wird dafür an der Liste statt am Eintrag ausgerichtet
+local ENTRY_RIGHT, ENTRY_GAP = 6, 1
+local function EvenEntry(entry, target)
+    local look = ns.Flat(entry, ns.C.button)
+    if not look or not look.fill then return end
+    look.fill:ClearAllPoints()
+    look.fill:SetPoint("TOP", entry, "TOP", 0, -ENTRY_GAP)
+    look.fill:SetPoint("BOTTOM", entry, "BOTTOM", 0, ENTRY_GAP)
+    look.fill:SetPoint("LEFT", target, "LEFT", 2, 0)
+    look.fill:SetPoint("RIGHT", target, "RIGHT", -ENTRY_RIGHT, 0)
+end
+
+-- Knöpfe unten ("Hinzufügen", "Optionen"): BUTTON_IN nach innen, BUTTON_UP höher – einmal
+local BUTTON_IN, BUTTON_UP, LIST_ABOVE = 6, 4, 8
+local bottomButtons = setmetatable({}, { __mode = "k" })
+local function NudgeButton(f, b)
+    if bottomButtons[b] or b:GetNumPoints() ~= 1 or not (b:GetCenter() and f:GetCenter()) then return end
+    bottomButtons[b] = true
+    local p, rel, rp, x, y = b:GetPoint(1)
+    local inward = b:GetCenter() < f:GetCenter() and BUTTON_IN or -BUTTON_IN
+    b:SetPoint(p, rel, rp, (x or 0) + inward, (y or 0) + BUTTON_UP)
+end
+
+-- Listen (Innenflächen) enden LIST_ABOVE über den Knöpfen unten: untere Ankerpunkte hoch (gemessen, nur wenn nötig)
+local function KeepAboveButtons(frame)
+    local top
+    for b in pairs(bottomButtons) do
+        if b:IsShown() and b:GetTop() then top = math.max(top or 0, b:GetTop()) end
+    end
+    if not top or not frame:GetBottom() then return end
+    local delta = top + LIST_ABOVE - frame:GetBottom()
+    if delta <= 0.5 then return end
+    local points = {}
+    for i = 1, frame:GetNumPoints() do
+        local p, rel, rp, x, y = frame:GetPoint(i)
+        if p:find("BOTTOM") then y = (y or 0) + delta end
+        points[i] = { p, rel, rp, x or 0, y or 0 }
+    end
+    frame:ClearAllPoints()
+    for _, pt in ipairs(points) do frame:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5]) end
+end
+
 local done = setmetatable({}, { __mode = "k" })
 local function Scan(f, frame, depth)
     for _, child in ipairs({ frame:GetChildren() }) do
@@ -35,13 +78,17 @@ local function Scan(f, frame, depth)
                 if not done[child] then
                     done[child] = true
                     ns.SkinScrollBar(child)
+                    -- kein Kasten hinter der Laufleiste: ihre eigenen Hintergrund-Grafiken weg (Schiene/Schieber bleiben)
+                    ns.HideTextures(child)
+                    for _, key in ipairs({ "Background", "NineSlice", "Bg" }) do ns.Hide(child[key]) end
                 end
             elseif child.GetScrollTarget then
                 local target = child:GetScrollTarget()
                 for _, entry in ipairs(target and { target:GetChildren() } or {}) do
-                    if not done[entry] and not Forbidden(entry) and entry:IsObjectType("Button") and IsHeader(entry) then
+                    if not done[entry] and not Forbidden(entry) and entry:IsObjectType("Button") then
                         done[entry] = true
-                        ns.SkinButton(entry) -- (Überschrift als flacher Balken; das +/− bleibt)
+                        ns.SkinButton(entry) -- (Überschriften, Channels, Namen – je ein flacher Balken)
+                        EvenEntry(entry, target)
                     end
                 end
             elseif child:IsObjectType("Button") then
@@ -49,6 +96,10 @@ local function Scan(f, frame, depth)
                 if not done[child] and type(text) == "string" and text ~= "" then
                     done[child] = true
                     ns.SkinButton(child) -- ("Hinzufügen", "Optionen")
+                end
+                -- Knöpfe unten am Fenster: etwas nach innen und höher
+                if frame == f and child:GetBottom() and f:GetBottom() and child:GetBottom() - f:GetBottom() < 30 then
+                    NudgeButton(f, child)
                 end
             elseif depth < 4 then
                 Scan(f, child, depth + 1)
@@ -77,6 +128,9 @@ local function SkinChannels()
             if type(f[key]) == "table" then ns.Hide(f[key]) end
         end
         pcall(Scan, f, f, 1)
+        for _, key in ipairs({ "LeftInset", "RightInset", "Inset" }) do
+            if type(f[key]) == "table" and not Forbidden(f[key]) then pcall(KeepAboveButtons, f[key]) end
+        end
     end)
 end
 
