@@ -303,7 +303,9 @@ local function GoldDividers(frame, depth)
         if r:IsObjectType("Texture") and not ns.IsMine(frame, r) then
             local atlas = r.GetAtlas and r:GetAtlas()
             local key = KeyOf(frame, r) or r:GetName() or ""
-            if (type(atlas) == "string" and atlas:lower():find("divider")) or key:lower():find("divider") then
+            -- (Trennlinien heißen hier "LFGBrowseFrameBarTop/-Middle" mit der Grafik "groupfinder-ScrollLine")
+            local a = type(atlas) == "string" and atlas:lower() or ""
+            if a:find("divider") or a:find("scrollline") or key:lower():find("divider") then
                 r:SetDesaturated(true)
                 r:SetVertexColor(ns.C.accent[1], ns.C.accent[2], ns.C.accent[3], 1)
             end
