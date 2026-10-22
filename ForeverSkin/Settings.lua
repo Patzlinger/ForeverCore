@@ -280,10 +280,13 @@ local function SkinMenuFrame(menu)
     back:SetFrameLevel(math.max(0, menu:GetFrameLevel() - 1))
     back:Show()
 end
-local function IsMenuFrame(frame)
+-- Untermenü: wie das Hauptmenü gebaut – kein Knopf (Auswahllisten-Knöpfe tragen ebenfalls eine Menü-Beschreibung!),
+-- gleicher Eltern-Rahmen und gleiche Bildschirmebene wie das offene Hauptmenü
+local function IsMenuFrame(frame, root)
     if type(frame) ~= "table" or (frame.IsForbidden and frame:IsForbidden()) then return false end
-    return frame.GetRegions ~= nil
-        and (type(frame.menuDescription) == "table" or type(frame.GetMenuDescription) == "function")
+    if not (frame.GetObjectType and frame:GetObjectType() == "Frame") then return false end
+    if not (type(frame.menuDescription) == "table" or type(frame.GetMenuDescription) == "function") then return false end
+    return frame:GetParent() == root:GetParent() and frame:GetFrameStrata() == root:GetFrameStrata()
 end
 local lastSearch = 0
 function ns.SkinOpenMenu()
@@ -298,7 +301,7 @@ function ns.SkinOpenMenu()
             lastSearch = now
             local frame = EnumerateFrames()
             while frame do
-                if not knownMenus[frame] and IsMenuFrame(frame) and frame:IsShown() then knownMenus[frame] = true end
+                if not knownMenus[frame] and IsMenuFrame(frame, root) and frame:IsShown() then knownMenus[frame] = true end
                 frame = EnumerateFrames(frame)
             end
         end
