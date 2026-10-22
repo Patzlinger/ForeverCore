@@ -428,6 +428,7 @@ end
 -- Knöpfe rücken um ENTRY_RIGHT mit nach links
 local ENTRY_RIGHT, ENTRY_GAP = 8, 2
 local BUTTON_GAP, TEXT_PAD = 9, 4 -- Abstand Balken–Knopf; Text endet so weit vor der Balkenkante
+local CONTENT_UP = 4               -- Inhalt so viel höher im Balken
 local entryButtons = setmetatable({}, { __mode = "k" }) -- [Eintrag] = { Knöpfe ohne Text }
 local function SkinEntry(entry)
     if type(entry.NineSlice) == "table" then ns.Hide(entry.NineSlice) end
@@ -467,11 +468,61 @@ local function FitEntryTexts(entry)
     local cut = math.floor(entry:GetRight() - left + BUTTON_GAP + 0.5)
     if entry.foreverCut ~= cut then
         entry.foreverCut = cut
-        ns.Flat(entry, ns.C.button, { 0, ENTRY_GAP, cut, ENTRY_GAP })
+        -- (Balken CONTENT_UP tiefer als der Eintrag: der Inhalt sitzt darin höher; Abstand zwischen den Balken bleibt)
+        ns.Flat(entry, ns.C.button, { 0, ENTRY_GAP + CONTENT_UP, cut, ENTRY_GAP - CONTENT_UP })
     end
     -- Text nur im Balken: endet TEXT_PAD vor dessen rechter Kante (gekürzt mit "…"); was erst kurz davor beginnt,
     -- wird ausgeblendet. Beim nächsten Füllen durch Blizzard wieder zurückgesetzt, wenn der Text passt
     local limit = entry:GetRight() - cut - TEXT_PAD
+    -- Zeilen mit mehreren Texten (z. B. "Stufe 26 | Volk | Klasse"): ragt der letzte hinaus, wird der breiteste andere
+    -- gekürzt – hängen die Texte aneinander, rückt der letzte (die Klasse) dadurch ganz in den Balken
+    local function Gather(frame, out)
+        for _, r in ipairs({ frame:GetRegions() }) do
+            if r:IsObjectType("FontString") and r:IsShown() and r:GetLeft() and r:GetTop() then
+                -- neuer Text (Blizzard hat den Eintrag neu gefüllt): zurück auf Blizzards Breite, dann neu messen
+                local text = r:GetText()
+                if r.foreverFit and r.foreverText ~= text then
+                    r:SetWidth(0)
+                    r.foreverFit = nil
+                end
+                r.foreverText = text
+                if r.foreverHidden and r.foreverHiddenText ~= text then
+                    r:SetAlpha(1)
+                    r.foreverHidden = nil
+                end
+                out[#out + 1] = r
+            end
+        end
+    end
+    local texts = {}
+    Gather(entry, texts)
+    for _, child in ipairs({ entry:GetChildren() }) do
+        if not Forbidden(child) and not child:IsObjectType("Button") then Gather(child, texts) end
+    end
+    local lines = {}
+    for _, r in ipairs(texts) do
+        local key = math.floor(r:GetTop() / 4 + 0.5)
+        lines[key] = lines[key] or {}
+        table.insert(lines[key], r)
+    end
+    for _, line in pairs(lines) do
+        if #line > 1 then
+            table.sort(line, function(a, b) return a:GetLeft() < b:GetLeft() end)
+            local last = line[#line]
+            local over = (last:GetRight() or 0) - limit
+            if over > 0.5 then
+                local widest
+                for i = 1, #line - 1 do
+                    if not widest or line[i]:GetWidth() > widest:GetWidth() then widest = line[i] end
+                end
+                if widest and widest:GetWidth() - over >= 30 then
+                    widest:SetWordWrap(false)
+                    widest:SetWidth(widest:GetWidth() - over)
+                    widest.foreverFit = true
+                end
+            end
+        end
+    end
     local function Fit(frame)
         for _, r in ipairs({ frame:GetRegions() }) do
             if r:IsObjectType("FontString") and r:IsShown() and r:GetLeft() then
@@ -481,19 +532,14 @@ local function FitEntryTexts(entry)
                     if full > 0 then
                         r:SetAlpha(0)
                         r.foreverHidden = true
+                        r.foreverHiddenText = r:GetText()
                     end
                 else
-                    if r.foreverHidden then
-                        r:SetAlpha(1)
-                        r.foreverHidden = nil
-                    end
-                    if full > maxW + 0.5 then
+                    -- (nur, wenn der Text selbst noch hinausragt – sonst bleibt die Kürzung von oben)
+                    if (r:GetRight() or 0) > limit + 0.5 and full > maxW + 0.5 then
                         r:SetWordWrap(false)
                         r:SetWidth(maxW)
                         r.foreverFit = true
-                    elseif r.foreverFit then
-                        r:SetWidth(0) -- (passt wieder: Breite wie von Blizzard, nach dem Text)
-                        r.foreverFit = nil
                     end
                 end
             end
