@@ -424,21 +424,58 @@ local function SkinEntryButton(b)
     ns.Flat(b, ns.C.button)
     ns.Hover(b)
 end
+-- Balken: rechts ENTRY_RIGHT Abstand zur Laufleiste, oben/unten je ENTRY_GAP (= Luft zwischen den Einträgen); die
+-- Knöpfe rücken um ENTRY_RIGHT mit nach links
+local ENTRY_RIGHT, ENTRY_GAP = 8, 2
+local entryButtons = setmetatable({}, { __mode = "k" }) -- [Eintrag] = { Knöpfe ohne Text }
 local function SkinEntry(entry)
     if type(entry.NineSlice) == "table" then ns.Hide(entry.NineSlice) end
     HideBackdrop(entry)
-    ns.Flat(entry, ns.C.button)
+    ns.Flat(entry, ns.C.button, { 0, ENTRY_GAP, ENTRY_RIGHT, ENTRY_GAP })
     if entry:IsObjectType("Button") then ns.Hover(entry) end
+    local list = {}
     for _, child in ipairs({ entry:GetChildren() }) do
         if not Forbidden(child) then
             if type(child.NineSlice) == "table" then ns.Hide(child.NineSlice) end
             local text = child.GetText and child:GetText()
             if child:IsObjectType("Button") and not (type(text) == "string" and text ~= "") then
                 SkinEntryButton(child)
+                list[#list + 1] = child
+                -- (einmal um ENTRY_RIGHT nach links – gleicher Abstand zum rechten Rand des Balkens wie vorher)
+                if child:GetNumPoints() == 1 then
+                    local p, rel, rp, x, y = child:GetPoint(1)
+                    child:SetPoint(p, rel, rp, (x or 0) - ENTRY_RIGHT, y or 0)
+                end
             elseif not child:IsObjectType("Button") then
                 HideBackdrop(child) -- (Rahmen-Teile in Unter-Rahmen des Eintrags)
             end
         end
+    end
+    entryButtons[entry] = list
+end
+
+-- Text eines Eintrags nicht unter die Knöpfe laufen lassen: Zeilen, die über den linken Rand des ersten Knopfs
+-- reichen, enden 6 davor (einzeilig, mit "…") – bei jedem Durchgang (Blizzard füllt die Einträge beim Blättern neu)
+local function FitEntryTexts(entry)
+    local left
+    for _, b in ipairs(entryButtons[entry] or {}) do
+        if b:IsShown() and b:GetLeft() then left = math.min(left or b:GetLeft(), b:GetLeft()) end
+    end
+    if not left then return end
+    local function Fit(frame)
+        for _, r in ipairs({ frame:GetRegions() }) do
+            if r:IsObjectType("FontString") and r:IsShown() and r:GetLeft() and r:GetLeft() < left then
+                local maxW = left - 6 - r:GetLeft()
+                if maxW > 20 and (r:GetStringWidth() or 0) > maxW then
+                    r:SetWordWrap(false)
+                    r:SetWidth(maxW)
+                end
+            end
+        end
+    end
+    Fit(entry)
+    for _, child in ipairs({ entry:GetChildren() }) do
+        if not Forbidden(child) and not child:IsObjectType("Button") then Fit(child) end
     end
 end
 local function SkinResults(frame, depth)
@@ -448,9 +485,12 @@ local function SkinResults(frame, depth)
                 local target = child:GetScrollTarget()
                 if target then
                     for _, entry in ipairs({ target:GetChildren() }) do
-                        if not entryDone[entry] and not Forbidden(entry) then
-                            entryDone[entry] = true
-                            SkinEntry(entry)
+                        if not Forbidden(entry) then
+                            if not entryDone[entry] then
+                                entryDone[entry] = true
+                                SkinEntry(entry)
+                            end
+                            if entry:IsVisible() then FitEntryTexts(entry) end
                         end
                     end
                 end
