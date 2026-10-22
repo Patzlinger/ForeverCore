@@ -105,7 +105,8 @@ local function Scan(f, frame, depth)
                             ns.SkinButton(entry) -- (Überschriften, Channels, Namen – je ein flacher Balken)
                             EvenEntry(entry, target)
                         end
-                        HideBars(entry)
+                        -- (nur Überschriften – bei den Channels ist eine breite Grafik die Markierung des gewählten)
+                        if IsHeader(entry) then HideBars(entry) end
                     end
                 end
             elseif child:IsObjectType("Button") then
