@@ -81,6 +81,7 @@ local function HideBars(entry)
 end
 
 local done = setmetatable({}, { __mode = "k" })
+local headers = setmetatable({}, { __mode = "k" }) -- bekannte Überschriften: Leisten in jedem Bild weg (kein Aufblitzen)
 local function Scan(f, frame, depth)
     for _, child in ipairs({ frame:GetChildren() }) do
         if not Forbidden(child) then
@@ -109,7 +110,10 @@ local function Scan(f, frame, depth)
                             EvenEntry(entry, target)
                         end
                         -- (nur Überschriften – bei den Channels ist eine breite Grafik die Markierung des gewählten)
-                        if IsHeader(entry) then HideBars(entry) end
+                        if IsHeader(entry) then
+                            headers[entry] = true
+                            HideBars(entry)
+                        end
                     end
                 end
             elseif child:IsObjectType("Button") then
@@ -142,8 +146,12 @@ local function SkinChannels()
     local watch = CreateFrame("Frame", nil, f)
     local waited = 0
     watch:SetScript("OnUpdate", function(_, elapsed)
+        -- jedes Bild: Leisten der Überschriften weg (Blizzard zeichnet sie beim Umschalten neu – sonst kurz sichtbar)
+        for h in pairs(headers) do
+            if h:IsVisible() then pcall(HideBars, h) end
+        end
         waited = waited + elapsed
-        if waited < 0.3 then return end
+        if waited < 0.1 then return end
         waited = 0
         for _, key in ipairs({ "NineSlice", "PortraitContainer" }) do
             if type(f[key]) == "table" then ns.Hide(f[key]) end
