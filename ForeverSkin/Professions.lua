@@ -153,6 +153,20 @@ local function KeepBelowHeader(bar)
     for _, pt in ipairs(points) do bar:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5]) end
 end
 
+-- Blizzards Leiste hinter den Knöpfen unten ("Alle erstellen", Menge, "Erstellen"): breite, flache Grafik direkt am
+-- unteren Rand – unsichtbar; dahinter liegt unsere Fußleiste (ns.ContentBox, feine goldene Linie)
+local FOOTER = 30
+local function HideBottomBar(frame)
+    local f = headerFrame
+    if not f or not f:GetBottom() then return end
+    for _, r in ipairs({ frame:GetRegions() }) do
+        if r:IsObjectType("Texture") and not ns.IsMine(frame, r) and r:GetBottom() then
+            local w, h = r:GetWidth() or 0, r:GetHeight() or 0
+            if w > 250 and h >= 14 and h <= 44 and (r:GetBottom() - f:GetBottom()) < 12 then r:SetAlpha(0) end
+        end
+    end
+end
+
 -- Schlüssel eines Unter-Rahmens in seinem Eltern-Rahmen ("UnlearnButton", "SpellButtonTop" …) – nur lesen
 local function KeyOf(parent, child)
     for k, v in pairs(parent) do
@@ -214,6 +228,7 @@ local function Scan(frame, depth)
                     ns.SkinArrowButton(child, key:find("decrement") or key:find("minus"))
                 end
             else
+                HideBottomBar(child)
                 if w > 200 and h > 60 and (key:find("profession") or HasStatusBar(child)) then SkinSection(child) end
                 if depth < 4 then Scan(child, depth + 1) end
             end
@@ -227,6 +242,7 @@ local function SkinBook()
     ns.professionsSkinned = true
     headerFrame = f
     ns.SkinWindow(f)
+    ns.ContentBox(f, FOOTER, nil, true) -- Fußleiste hinter den Knöpfen unten (feine goldene Linie)
     Step("sections", function()
         for _, n in ipairs({ "PrimaryProfession1", "PrimaryProfession2", "SecondaryProfession1", "SecondaryProfession2",
             "SecondaryProfession3", "SecondaryProfession4" }) do
