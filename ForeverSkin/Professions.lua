@@ -97,6 +97,40 @@ local function SkinProfession(frame)
     if icon and icon.SetTexCoord then icon:SetTexCoord(0.07, 0.93, 0.07, 0.93) end
 end
 
+-- Text-Knöpfe ("Erstellen", "Alle erstellen" …) flach, mit eigenem Kasten dahinter (Blizzard setzt seine roten
+-- Grafiken teils neu) – laufend unsichtbar gehalten
+local textButtons = {}
+local function SkinTextButton(b)
+    if not b or Forbidden(b) or textButtons[b] then return end
+    ns.SkinButton(b)
+    local box = CreateFrame("Frame", nil, b:GetParent())
+    box:SetAllPoints(b)
+    box:SetFrameLevel(math.max(0, b:GetFrameLevel() - 1))
+    ns.Flat(box, C.button)
+    textButtons[b] = box
+end
+local function KeepButtonsFlat()
+    for b, box in pairs(textButtons) do
+        ns.HideTextures(b)
+        for _, key in ipairs({ "Left", "Middle", "Right" }) do ns.Hide(b[key]) end
+        box:SetShown(b:IsVisible())
+        local over = b:IsMouseOver() and b:IsEnabled()
+        if box.over ~= over then
+            box.over = over
+            ns.EdgeColor(box, over and C.accent or C.border, 1)
+        end
+    end
+end
+
+-- Eingabefeld (Menge): Blizzards Rahmen weg, flache Fläche
+local function SkinEdit(edit)
+    if not edit or Forbidden(edit) or boxes[edit] then return end
+    boxes[edit] = true
+    for _, key in ipairs({ "Left", "Middle", "Right", "Mid" }) do ns.Hide(edit[key]) end
+    ns.HideTextures(edit)
+    ns.Flat(edit, C.input or C.button, { -4, 0, -2, 0 })
+end
+
 -- Schlüssel eines Unter-Rahmens in seinem Eltern-Rahmen ("UnlearnButton", "SpellButtonTop" …) – nur lesen
 local function KeyOf(parent, child)
     for k, v in pairs(parent) do
@@ -119,13 +153,34 @@ local function Scan(frame, depth)
         if not Forbidden(child) then
             local key = ((KeyOf(frame, child) or "") .. "|" .. (child:GetName() or "")):lower()
             local w, h = child:GetWidth() or 0, child:GetHeight() or 0
-            if child:IsObjectType("StatusBar") then
+            local isBar = (type(child.Track) == "table" and (child.Track.Thumb or child.Back))
+                or (child:IsObjectType("Slider") and key:find("scroll"))
+            local isDropdown = (child.IsObjectType and child:IsObjectType("DropdownButton"))
+                or (type(child.Arrow) == "table" and type(child.Text) == "table" and not child:IsObjectType("CheckButton"))
+            if isBar then
+                -- Laufleiste (Liste der Rezepte, Beschreibung …): gold wie überall
+                ns.SkinScrollBar(child)
+            elseif child:IsObjectType("StatusBar") then
                 SkinBar(child)
-            elseif key:find("unlearn") then
+            elseif child:IsObjectType("EditBox") then
+                SkinEdit(child) -- (Menge beim Herstellen)
+            elseif isDropdown then
+                ns.SkinDropdown(child) -- ("Filter")
+                if depth < 4 then Scan(child, depth + 1) end -- (darin z. B. das rote X "Filter zurücksetzen")
+            elseif key:find("unlearn") or key:find("reset") then
                 ns.SkinClose(child)
             elseif child:IsObjectType("Button") or child:IsObjectType("CheckButton") then
+                local label = child.GetText and child:GetText()
                 local hasIcon = child.iconTexture or child.icon or child.Icon
-                if key:find("spell") or (hasIcon and w >= 28 and w <= 56 and h >= 28 and h <= 56) then SkinSpell(child) end
+                if type(label) == "string" and label ~= "" and child ~= frame.CloseButton
+                    and not child:IsObjectType("CheckButton") then
+                    SkinTextButton(child) -- ("Erstellen", "Alle erstellen")
+                elseif key:find("spell") or (hasIcon and w >= 28 and w <= 56 and h >= 28 and h <= 56) then
+                    SkinSpell(child)
+                elseif key:find("increment") or key:find("decrement") or key:find("plus") or key:find("minus") then
+                    -- Pfeile neben der Menge
+                    ns.SkinArrowButton(child, key:find("decrement") or key:find("minus"))
+                end
             else
                 if w > 200 and h > 60 and (key:find("profession") or HasStatusBar(child)) then SkinSection(child) end
                 if depth < 4 then Scan(child, depth + 1) end
@@ -150,6 +205,19 @@ local function SkinBook()
     -- Blizzard baut Teile beim Öffnen bzw. Lernen/Verlernen neu: dann nochmals (die Zeichnungen bleiben unberührt)
     f:HookScript("OnShow", function()
         C_Timer.After(0, function() Step("sections", function() Scan(f, 1) end) end)
+    end)
+    -- solange offen: Blizzards Knopf-Grafiken unsichtbar halten, aufgeklappte Auswahlliste flach, alle 0,5 s neu
+    -- entstandene Teile suchen (die Rezept-Ansicht baut Blizzard erst beim Wechseln auf)
+    local watch = CreateFrame("Frame", nil, f)
+    local waited = 0
+    watch:SetScript("OnUpdate", function(_, elapsed)
+        pcall(KeepButtonsFlat)
+        if ns.SkinOpenMenu then pcall(ns.SkinOpenMenu) end
+        waited = waited + elapsed
+        if waited >= 0.5 then
+            waited = 0
+            pcall(Scan, f, 1)
+        end
     end)
 end
 
