@@ -427,6 +427,7 @@ end
 -- Balken: rechts ENTRY_RIGHT Abstand zur Laufleiste, oben/unten je ENTRY_GAP (= Luft zwischen den Einträgen); die
 -- Knöpfe rücken um ENTRY_RIGHT mit nach links
 local ENTRY_RIGHT, ENTRY_GAP = 8, 2
+local BUTTON_GAP, TEXT_PAD = 9, 4 -- Abstand Balken–Knopf; Text endet so weit vor der Balkenkante
 local entryButtons = setmetatable({}, { __mode = "k" }) -- [Eintrag] = { Knöpfe ohne Text }
 local function SkinEntry(entry)
     if type(entry.NineSlice) == "table" then ns.Hide(entry.NineSlice) end
@@ -461,22 +462,39 @@ local function FitEntryTexts(entry)
     for _, b in ipairs(entryButtons[entry] or {}) do
         if b:IsShown() and b:GetLeft() then left = math.min(left or b:GetLeft(), b:GetLeft()) end
     end
-    if not left then return end
-    -- Balken endet 4 vor dem ersten Knopf: der Knopf steht frei daneben (auf Wunsch)
-    if entry:GetRight() then
-        local cut = math.floor(entry:GetRight() - left + 4 + 0.5)
-        if entry.foreverCut ~= cut then
-            entry.foreverCut = cut
-            ns.Flat(entry, ns.C.button, { 0, ENTRY_GAP, cut, ENTRY_GAP })
-        end
+    if not left or not entry:GetRight() then return end
+    -- Balken endet BUTTON_GAP vor dem ersten Knopf: der Knopf steht frei daneben (auf Wunsch)
+    local cut = math.floor(entry:GetRight() - left + BUTTON_GAP + 0.5)
+    if entry.foreverCut ~= cut then
+        entry.foreverCut = cut
+        ns.Flat(entry, ns.C.button, { 0, ENTRY_GAP, cut, ENTRY_GAP })
     end
+    -- Text nur im Balken: endet TEXT_PAD vor dessen rechter Kante (gekürzt mit "…"); was erst kurz davor beginnt,
+    -- wird ausgeblendet. Beim nächsten Füllen durch Blizzard wieder zurückgesetzt, wenn der Text passt
+    local limit = entry:GetRight() - cut - TEXT_PAD
     local function Fit(frame)
         for _, r in ipairs({ frame:GetRegions() }) do
-            if r:IsObjectType("FontString") and r:IsShown() and r:GetLeft() and r:GetLeft() < left then
-                local maxW = left - 6 - r:GetLeft()
-                if maxW > 20 and (r:GetStringWidth() or 0) > maxW then
-                    r:SetWordWrap(false)
-                    r:SetWidth(maxW)
+            if r:IsObjectType("FontString") and r:IsShown() and r:GetLeft() then
+                local full = (r.GetUnboundedStringWidth and r:GetUnboundedStringWidth()) or r:GetStringWidth() or 0
+                local maxW = limit - r:GetLeft()
+                if maxW < 12 then
+                    if full > 0 then
+                        r:SetAlpha(0)
+                        r.foreverHidden = true
+                    end
+                else
+                    if r.foreverHidden then
+                        r:SetAlpha(1)
+                        r.foreverHidden = nil
+                    end
+                    if full > maxW + 0.5 then
+                        r:SetWordWrap(false)
+                        r:SetWidth(maxW)
+                        r.foreverFit = true
+                    elseif r.foreverFit then
+                        r:SetWidth(0) -- (passt wieder: Breite wie von Blizzard, nach dem Text)
+                        r.foreverFit = nil
+                    end
                 end
             end
         end
@@ -488,10 +506,10 @@ local function FitEntryTexts(entry)
 end
 -- Liste und Laufleiste enden über unserer Fußleiste (Blizzards reichen bis an den Rand und liefen darunter):
 -- untere Ankerpunkte so weit hoch, dass die Unterkante 6 über der goldenen Linie liegt (gemessen, nur wenn nötig)
-local function AboveFooter(f, frame)
+local function AboveFooter(f, frame, gap)
     if not (footerHeight and frame:GetBottom() and f:GetBottom()) then return end
     local s = frame:GetEffectiveScale() / f:GetEffectiveScale()
-    local delta = (f:GetBottom() + footerHeight + 6 - frame:GetBottom() * s) / s
+    local delta = (f:GetBottom() + footerHeight + (gap or 6) - frame:GetBottom() * s) / s
     if delta <= 0.5 then return end
     local points = {}
     for i = 1, frame:GetNumPoints() do
@@ -504,7 +522,7 @@ local function AboveFooter(f, frame)
 end
 
 -- Listenanfang etwas höher im Kasten (auf Wunsch): obere Ankerpunkte der Liste einmal LIST_UP nach oben
-local LIST_UP = 6
+local LIST_UP = 11
 local function ListHigher(list)
     if list.foreverRaised then return end
     list.foreverRaised = true
@@ -522,7 +540,10 @@ local function SkinResults(frame, depth, f)
     for _, child in ipairs({ frame:GetChildren() }) do
         if not Forbidden(child) then
             local isBar = type(child.Track) == "table" and (child.Track.Thumb or child.Back)
-            if f and (child.GetScrollTarget or isBar) and child:IsVisible() then pcall(AboveFooter, f, child) end
+            -- (die Liste selbst 5 weiter hoch als die Laufleiste – auf Wunsch)
+            if f and (child.GetScrollTarget or isBar) and child:IsVisible() then
+                pcall(AboveFooter, f, child, child.GetScrollTarget and 11 or 6)
+            end
             if child.GetScrollTarget then
                 pcall(ListHigher, child)
                 local target = child:GetScrollTarget()
