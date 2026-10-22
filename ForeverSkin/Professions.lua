@@ -176,6 +176,8 @@ end
 -- unteren Rand – unsichtbar; dahinter liegt unsere Fußleiste (ns.ContentBox, feine goldene Linie)
 local FOOTER = 30
 local bottomControls = setmetatable({}, { __mode = "k" }) -- Bedienelemente der unteren Reihe (über unsere Leiste)
+local movedDown = setmetatable({}, { __mode = "k" })      -- schon in die Leiste unter dem alten Rand verschoben
+local GROW = 30 -- so weit wächst das Herstellungsfenster nach unten (Leiste mit den Knöpfen)
 
 -- Eigene Ebenen ÜBER Blizzards Inhalt: die goldene Linie der Titelleiste (Blizzards Fortschrittsbalken lag darüber)
 -- und die Fußleiste unten (Blizzards Leiste hinter den Knöpfen ließ sich nicht sicher ausblenden). Die Knöpfe der
@@ -233,24 +235,47 @@ local function Overlays(f)
             if box and box:GetFrameLevel() ~= c:GetFrameLevel() - 1 then box:SetFrameLevel(c:GetFrameLevel() - 1) end
         end
     end
-    -- nur im Herstellungsfenster (dort gibt es die untere Reihe); im Berufsbuch keine Fußleiste. Breite: nur unter der
-    -- Reihe der Knöpfe (vom linken Knopf bis zum rechten Rand) – links unter der Rezeptliste nichts
-    local leftmost
+    -- nur im Herstellungsfenster (dort gibt es die untere Reihe); im Berufsbuch keine Fußleiste. Das Fenster wächst
+    -- dafür um GROW nach unten: die feine goldene Linie liegt am alten unteren Rand, die Knöpfe der unteren Reihe
+    -- rutschen (einmalig) um GROW nach unten in die Leiste
+    local any = false
     for c in pairs(controls) do
-        if c:IsVisible() and fb and c:GetBottom() and (c:GetBottom() - fb) < FOOTER and c:GetLeft() then
-            leftmost = math.min(leftmost or c:GetLeft(), c:GetLeft())
+        if c:IsVisible() and fb and c:GetBottom() and (c:GetBottom() - fb) < FOOTER then
+            any = true
+            if not movedDown[c] then
+                movedDown[c] = true
+                local points = {}
+                for i = 1, c:GetNumPoints() do
+                    local p, rel, rp, x, y = c:GetPoint(i)
+                    points[i] = { p, rel, rp, x or 0, (y or 0) - GROW }
+                end
+                -- (hängt der Knopf an einem anderen Knopf der Reihe, wandert er mit diesem – nicht doppelt verschieben)
+                local _, rel = c:GetPoint(1)
+                if not controls[rel] then
+                    c:ClearAllPoints()
+                    for _, pt in ipairs(points) do c:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5]) end
+                end
+            end
         end
     end
-    overlay.foot:SetShown(leftmost ~= nil)
-    if leftmost and f:GetLeft() then
-        local x = math.floor(leftmost - f:GetLeft() - 6)
-        if overlay.footX ~= x then
-            overlay.footX = x
-            overlay.foot:ClearAllPoints()
-            overlay.foot:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", x, 1)
-            overlay.foot:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -1, 1)
-            overlay.foot:SetHeight(FOOTER)
+    overlay.foot:SetShown(any)
+    -- (Berufsbuch und Herstellungsfenster sind derselbe Rahmen: nur mit der unteren Reihe wachsen)
+    if overlay.grown ~= any then
+        overlay.grown = any
+        -- Fläche des Fensters samt neuem Bereich, Leiste über die ganze Breite, neue Fläche fängt die Maus ab
+        ns.Flat(f, C.background, { 0, 0, 0, any and -GROW or 0 })
+        overlay.foot:ClearAllPoints()
+        overlay.foot:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 1, -GROW + 1)
+        overlay.foot:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -1, -GROW + 1)
+        overlay.foot:SetHeight(GROW + 1)
+        if not overlay.grip then
+            overlay.grip = CreateFrame("Frame", nil, f)
+            overlay.grip:SetPoint("TOPLEFT", f, "BOTTOMLEFT", 0, 0)
+            overlay.grip:SetPoint("TOPRIGHT", f, "BOTTOMRIGHT", 0, 0)
+            overlay.grip:SetHeight(GROW)
+            overlay.grip:EnableMouse(true)
         end
+        overlay.grip:SetShown(any)
     end
 end
 local function HideBottomBar(frame)
