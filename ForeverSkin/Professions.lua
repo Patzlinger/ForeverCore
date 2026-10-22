@@ -67,6 +67,12 @@ local function NoBarBackground(bar)
     if f:GetTop() - bar:GetTop() * s > 70 then return end -- (nur oben im Fenster)
     look.fill:SetAlpha(0)
     for _, e in ipairs(look.edges or {}) do e:SetAlpha(0) end
+    -- der Balken liegt teils in einem eigenen kleinen Rahmen mit Hintergrund: dessen Grafiken ebenfalls weg
+    local holder = bar:GetParent()
+    if holder and holder ~= f and not Forbidden(holder) and (holder:GetHeight() or 99) <= 50 then
+        ns.HideTextures(holder)
+        if holder.NineSlice then ns.Hide(holder.NineSlice) end
+    end
 end
 
 -- Zauber-Symbol (geschützter Knopf – nur das Aussehen): wie ein Taschenplatz
@@ -227,12 +233,25 @@ local function Overlays(f)
             if box and box:GetFrameLevel() ~= c:GetFrameLevel() - 1 then box:SetFrameLevel(c:GetFrameLevel() - 1) end
         end
     end
-    -- nur im Herstellungsfenster (dort gibt es die untere Reihe); im Berufsbuch keine Fußleiste
-    local any = false
+    -- nur im Herstellungsfenster (dort gibt es die untere Reihe); im Berufsbuch keine Fußleiste. Breite: nur unter der
+    -- Reihe der Knöpfe (vom linken Knopf bis zum rechten Rand) – links unter der Rezeptliste nichts
+    local leftmost
     for c in pairs(controls) do
-        if c:IsVisible() and fb and c:GetBottom() and (c:GetBottom() - fb) < FOOTER then any = true break end
+        if c:IsVisible() and fb and c:GetBottom() and (c:GetBottom() - fb) < FOOTER and c:GetLeft() then
+            leftmost = math.min(leftmost or c:GetLeft(), c:GetLeft())
+        end
     end
-    overlay.foot:SetShown(any)
+    overlay.foot:SetShown(leftmost ~= nil)
+    if leftmost and f:GetLeft() then
+        local x = math.floor(leftmost - f:GetLeft() - 6)
+        if overlay.footX ~= x then
+            overlay.footX = x
+            overlay.foot:ClearAllPoints()
+            overlay.foot:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", x, 1)
+            overlay.foot:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -1, 1)
+            overlay.foot:SetHeight(FOOTER)
+        end
+    end
 end
 local function HideBottomBar(frame)
     local f = headerFrame
