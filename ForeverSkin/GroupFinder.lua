@@ -250,6 +250,7 @@ local function BuildDungeonTab(f)
     icon:SetSize(49, 49)
     icon:SetPoint("CENTER")
     icon:SetTexture(DUNGEON_ICON)
+    tab.icon = icon
     local mask = tab:CreateMaskTexture()
     mask:SetAllPoints()
     mask:SetAtlas("common-sidetab-mask")
@@ -289,6 +290,16 @@ local function PlaceDungeonTab(f)
         local gap = 4
         if tabs[2] then gap = math.max(0, (tabs[1]:GetBottom() or 0) - (tabs[2]:GetTop() or 0)) end
         dungeonTab:SetPoint("TOP", last, "BOTTOM", 0, -gap)
+        -- Symbol genau wie in Blizzards Reiter: dieselbe Größe und derselbe Versatz zur Mitte (dort etwas nach links –
+        -- gleicht die schräge Form des Reiters aus)
+        local theirs = single and last.Icon
+        if theirs and theirs.GetCenter and theirs:GetCenter() and last:GetCenter() then
+            local ix, iy = theirs:GetCenter()
+            local tx, ty = last:GetCenter()
+            dungeonTab.icon:SetSize(theirs:GetWidth(), theirs:GetHeight())
+            dungeonTab.icon:ClearAllPoints()
+            dungeonTab.icon:SetPoint("CENTER", dungeonTab, "CENTER", ix - tx, iy - ty)
+        end
     else
         dungeonTab:SetPoint("TOPLEFT", f, "TOPRIGHT", 0, -40)
     end
