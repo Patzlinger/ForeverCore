@@ -21,6 +21,19 @@ local function KeyOf(parent, child)
     for k, v in pairs(parent) do if v == child and type(k) == "string" then return k end end
 end
 
+-- ganz verstecken (nicht nur durchsichtig – manche Grafiken setzt Blizzard per Animation wieder sichtbar, z. B. der
+-- Steinstreifen "groupfinder-Stat-StoneBG" oben auf "Durchsuchen") und versteckt halten
+local kept = setmetatable({}, { __mode = "k" })
+local function KeepHidden(tex)
+    if type(tex) ~= "table" or not tex.Hide then return end
+    tex:SetAlpha(0)
+    tex:Hide()
+    if not kept[tex] then
+        kept[tex] = true
+        hooksecurefunc(tex, "Show", function(t) t:Hide() end)
+    end
+end
+
 -- Innenfläche: Bild ("groupfinder-background") und verzierter Rahmen ("common-insideframe") weg – flache Fläche mit
 -- feinem Rand; endet 6 über unserer Fußleiste (Blizzards Innenfläche reicht bis fast nach unten)
 local function SkinInset(f, inset)
@@ -66,8 +79,8 @@ local function HideFrameArt(f)
     for _, pageName in ipairs(PAGES) do
         local page = G(pageName)
         if page and not Forbidden(page) then
-            ns.Hide(page.Bg)
-            ns.Hide(G(pageName .. "Bg"))
+            KeepHidden(page.Bg)
+            KeepHidden(G(pageName .. "Bg"))
             for _, key in ipairs({ "NineSlice", "TitleContainer", "PortraitContainer" }) do
                 local obj = page[key]
                 if type(obj) == "table" and not Forbidden(obj) then
