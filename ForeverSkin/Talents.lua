@@ -58,6 +58,26 @@ local function FindDropdowns(frame, depth)
     end
 end
 
+-- Text-Knöpfe (z. B. "Änderungen anwenden" unten): flach wie überall. Nur Knöpfe mit Beschriftung in Knopfgröße –
+-- die Talent-Symbole haben keinen Text und bleiben unberührt
+local buttons = setmetatable({}, { __mode = "k" })
+local function FindButtons(frame, depth)
+    for _, child in ipairs({ frame:GetChildren() }) do
+        if not Forbidden(child) and not tabs[child] and not dropdowns[child] then
+            if child:IsObjectType("Button") and not child:IsObjectType("CheckButton") then
+                local text = child.GetText and child:GetText()
+                if not buttons[child] and type(text) == "string" and text ~= "" and child:GetHeight() <= 32
+                    and child:GetWidth() >= 60 then
+                    buttons[child] = true
+                    ns.SkinButton(child)
+                end
+            elseif depth < 5 then
+                FindButtons(child, depth + 1)
+            end
+        end
+    end
+end
+
 -- Reiter kleiner (Schrift bleibt gleich groß): Höhe 24, Breite nach Text; danach die Leiste neu anordnen lassen
 local TAB_HEIGHT, TAB_PAD, TAB_MIN = 24, 28, 80
 local function SizeTabs()
@@ -140,6 +160,7 @@ local function SkinTalents()
     Step("frame", function() HideFrameArt(f) end)
     Step("tabs", function() FindTabs(f, 1); SizeTabs(); LiftTabs(f) end)
     Step("dropdowns", function() FindDropdowns(f, 1) end)
+    Step("buttons", function() FindButtons(f, 1) end)
     ns.Watch(f)
     -- Reiter entstehen teils erst beim Öffnen/Umschalten: solange offen, ab und zu nachsehen; Text mittig
     local watch = CreateFrame("Frame", nil, f)
@@ -152,6 +173,7 @@ local function SkinTalents()
         pcall(FindTabs, f, 1)
         pcall(SizeTabs)
         pcall(FindDropdowns, f, 1)
+        pcall(FindButtons, f, 1)
         if ns.SkinOpenMenu then pcall(ns.SkinOpenMenu) end -- aufgeklapptes Menü ("Passive ausblenden" …) flach
         pcall(LiftTabs, f)
         for t in pairs(tabs) do pcall(ns.CenterText, t) end
