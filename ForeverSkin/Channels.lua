@@ -21,7 +21,8 @@ local function IsHeader(entry)
             local atlas = r.GetAtlas and r:GetAtlas()
             local tex = r:GetTexture()
             local s = ((type(atlas) == "string" and atlas or "") .. "|" .. (type(tex) == "string" and tex or "")):lower()
-            if s:find("header") then return true end
+            -- (im Forever-Client: "voicechat-channellist-category-background")
+            if s:find("header") or s:find("category") then return true end
         end
     end
     return false
@@ -85,7 +86,8 @@ local function Scan(f, frame, depth)
         if not Forbidden(child) then
             -- Listen und Laufleisten enden über den Knöpfen unten (die Namensliste hängt direkt am Fenster, nicht an
             -- der Innenfläche – darum hier für jede einzeln)
-            if (child.GetScrollTarget or type(child.Track) == "table") and child:IsVisible() then
+            local isScrollFrame = child:IsObjectType("ScrollFrame") and child:GetScrollChild() ~= nil
+            if (child.GetScrollTarget or isScrollFrame or type(child.Track) == "table") and child:IsVisible() then
                 pcall(KeepAboveButtons, child)
             end
             if type(child.Track) == "table" and (child.Track.Thumb or child.Back) then
@@ -96,8 +98,9 @@ local function Scan(f, frame, depth)
                     ns.HideTextures(child)
                     for _, key in ipairs({ "Background", "NineSlice", "Bg" }) do ns.Hide(child[key]) end
                 end
-            elseif child.GetScrollTarget then
-                local target = child:GetScrollTarget()
+            elseif child.GetScrollTarget or isScrollFrame then
+                -- (moderne Liste: ScrollTarget; ältere wie die Channel-Liste: ScrollFrame mit "Child")
+                local target = child.GetScrollTarget and child:GetScrollTarget() or child:GetScrollChild()
                 for _, entry in ipairs(target and { target:GetChildren() } or {}) do
                     if not Forbidden(entry) and entry:IsObjectType("Button") then
                         if not done[entry] then
