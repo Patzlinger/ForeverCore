@@ -21,10 +21,29 @@ local function IsSpecTabText(text)
     return s:find("prim") or s:find("sekund") or s:find("second")
 end
 
+-- gewählt = wirklich ausgewählter Reiter (nicht "gesperrt": Sekundär ist ohne zweite Talentverteilung deaktiviert)
 local function Selected(b)
-    if b.GetChecked and b:GetChecked() then return true end
-    if b.isSelected or b.selected then return true end
-    return b.IsEnabled and not b:IsEnabled()
+    if type(b.isSelected) == "boolean" then return b.isSelected end
+    if b.IsSelected then
+        local ok, sel = pcall(b.IsSelected, b)
+        if ok and type(sel) == "boolean" then return sel end
+    end
+    if b.GetChecked then return b:GetChecked() and true or false end
+    return b.selected == true
+end
+
+-- Luft unter den Reitern: die Reiterleiste (Elternrahmen der Reiter) etwas nach oben
+local LIFT = 6
+local lifted = {} -- [Leiste] = ursprünglicher y-Versatz
+local function LiftTabs(f)
+    for tab in pairs(tabs) do
+        local bar = tab:GetParent()
+        if bar and bar ~= f and not Forbidden(bar) and bar:GetNumPoints() == 1 then
+            local point, rel, relPoint, x, y = bar:GetPoint(1)
+            if lifted[bar] == nil then lifted[bar] = y end
+            if y ~= lifted[bar] + LIFT then bar:SetPoint(point, rel, relPoint, x, lifted[bar] + LIFT) end
+        end
+    end
 end
 
 local function FindTabs(frame, depth)
@@ -75,7 +94,7 @@ local function SkinTalents()
     -- nur der Rahmen ("leicht": Blizzards Hintergrund mit den Talentbäumen bleibt)
     ns.SkinWindow(f, nil, true)
     Step("frame", function() HideFrameArt(f) end)
-    Step("tabs", function() FindTabs(f, 1) end)
+    Step("tabs", function() FindTabs(f, 1); LiftTabs(f) end)
     ns.Watch(f)
     -- Reiter entstehen teils erst beim Öffnen/Umschalten: solange offen, ab und zu nachsehen; Text mittig
     local watch = CreateFrame("Frame", nil, f)
@@ -86,6 +105,7 @@ local function SkinTalents()
         waited = 0
         pcall(HideFrameArt, f)
         pcall(FindTabs, f, 1)
+        pcall(LiftTabs, f)
         for t in pairs(tabs) do pcall(ns.CenterText, t) end
     end)
 end
