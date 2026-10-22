@@ -32,6 +32,24 @@ local function Selected(b)
     return b.selected == true
 end
 
+-- Reiter kleiner (Schrift bleibt gleich groß): Höhe 24, Breite nach Text; danach die Leiste neu anordnen lassen
+local TAB_HEIGHT, TAB_PAD, TAB_MIN = 24, 28, 80
+local function SizeTabs()
+    local bars = {}
+    for tab in pairs(tabs) do
+        local fs = tab.GetFontString and tab:GetFontString()
+        local w = math.max(TAB_MIN, math.floor((fs and fs:GetStringWidth() or 0) + TAB_PAD + 0.5))
+        if math.abs(tab:GetWidth() - w) > 0.5 or math.abs(tab:GetHeight() - TAB_HEIGHT) > 0.5 then
+            tab:SetSize(w, TAB_HEIGHT)
+            local bar = tab:GetParent()
+            if bar then bars[bar] = true end
+        end
+    end
+    for bar in pairs(bars) do
+        if bar.Layout and not Forbidden(bar) then pcall(bar.Layout, bar) end
+    end
+end
+
 -- Luft unter den Reitern: die Reiterleiste (Elternrahmen der Reiter) etwas nach oben
 local LIFT = 6
 local lifted = {} -- [Leiste] = ursprünglicher y-Versatz
@@ -94,7 +112,7 @@ local function SkinTalents()
     -- nur der Rahmen ("leicht": Blizzards Hintergrund mit den Talentbäumen bleibt)
     ns.SkinWindow(f, nil, true)
     Step("frame", function() HideFrameArt(f) end)
-    Step("tabs", function() FindTabs(f, 1); LiftTabs(f) end)
+    Step("tabs", function() FindTabs(f, 1); SizeTabs(); LiftTabs(f) end)
     ns.Watch(f)
     -- Reiter entstehen teils erst beim Öffnen/Umschalten: solange offen, ab und zu nachsehen; Text mittig
     local watch = CreateFrame("Frame", nil, f)
@@ -105,6 +123,7 @@ local function SkinTalents()
         waited = 0
         pcall(HideFrameArt, f)
         pcall(FindTabs, f, 1)
+        pcall(SizeTabs)
         pcall(LiftTabs, f)
         for t in pairs(tabs) do pcall(ns.CenterText, t) end
     end)
