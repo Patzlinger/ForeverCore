@@ -25,11 +25,9 @@ local function SkinSection(section)
     for _, r in ipairs({ section:GetRegions() }) do
         if r:IsObjectType("Texture") and not ns.IsMine(section, r) then
             local w, h = r:GetWidth() or 0, r:GetHeight() or 0
-            local atlas = r.GetAtlas and r:GetAtlas()
+            -- (die Karte "Profession-overview-Card" bleibt: die Zeichnung des Berufs ist Teil derselben Grafik)
             if w <= BORDER_MAX or h <= BORDER_MAX then
                 r:SetAlpha(0)
-            elseif type(atlas) == "string" and atlas:find("overview%-Card") then
-                r:SetAlpha(0) -- Blizzards Karte hinter der Zeichnung (dunkler Kasten mit hellem Rand): weg, auf Wunsch
             else
                 -- Blizzards Hintergrund des Berufs bleibt (die allgemeine Fenster-Umgestaltung hatte ihn schon
                 -- ausgeblendet – darum wieder sichtbar machen)
