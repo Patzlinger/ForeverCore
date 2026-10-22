@@ -30,3 +30,4 @@ Communities.lua
 Wardrobe.lua
 GroupFinder.lua
 ChatConfig.lua
+Channels.lua

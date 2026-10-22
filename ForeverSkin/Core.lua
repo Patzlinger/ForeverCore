@@ -29,7 +29,7 @@ ns.DEFAULTS = {
     wardrobe = true, -- Vorlagen (Transmogrifikation)
     menus = true,    -- aufgeklappte Menüs überall (Rechtsklick auf Einheiten, Auswahllisten)
     groupFinder = true, -- Suche nach Gruppe (mit Reiter zum Dungeonfenster)
-    chatConfig = true, -- Chat-Einstellungen
+    chatConfig = true, -- Chat-Einstellungen und Chat-Channels
     scale = 110,     -- Größe von Gespräch, Quest, Händler und Lehrer in Prozent
 }
 
@@ -153,7 +153,7 @@ local goldTexts = {} -- [Fenster] = Text
 -- (zu schmal bzw. ohne Bezug zum Gold: Beute, Optionen, Makros)
 local GOLD_SKIP = { LootFrame = true, SettingsPanel = true, MacroFrame = true, ProfessionsBookFrame = true,
     ProfessionsFrame = true, PlayerSpellsFrame = true, CommunitiesFrame = true, CollectionsJournal = true,
-    WardrobeFrame = true, LFGParentFrame = true, ChatConfigFrame = true }
+    WardrobeFrame = true, LFGParentFrame = true, ChatConfigFrame = true, ChannelFrame = true }
 local function UpdateGold(fs)
     if ns.Money and GetMoney then fs:SetText(T("Dein Gold: ", "Your gold: ") .. ns.Money(GetMoney())) end
 end
@@ -1058,7 +1058,7 @@ local function Build()
     Check(-446, T("Vorlagen (Transmogrifikation)", "Appearances (transmogrify)"), "wardrobe")
     Check(-470, T("Menüs (Rechtsklick auf Einheiten)", "Menus (right-click on units)"), "menus")
     Check(-494, T("Suche nach Gruppe (Reiter zum Dungeonfenster)", "Group finder (tab to dungeon window)"), "groupFinder")
-    Check(-518, T("Chat-Einstellungen", "Chat settings"), "chatConfig")
+    Check(-518, T("Chat-Einstellungen und Chat-Channels", "Chat settings and chat channels"), "chatConfig")
     local size = UI.Slider(options, 22, -548, T("Größe von Gespräch, Quest, Händler, Lehrer", "Size of dialog, quest, vendor, trainer"),
         90, 130, 5, function(v)
             ns.GetDB().scale = v
