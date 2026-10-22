@@ -478,9 +478,28 @@ local function FitEntryTexts(entry)
         if not Forbidden(child) and not child:IsObjectType("Button") then Fit(child) end
     end
 end
-local function SkinResults(frame, depth)
+-- Liste und Laufleiste enden über unserer Fußleiste (Blizzards reichen bis an den Rand und liefen darunter):
+-- untere Ankerpunkte so weit hoch, dass die Unterkante 6 über der goldenen Linie liegt (gemessen, nur wenn nötig)
+local function AboveFooter(f, frame)
+    if not (footerHeight and frame:GetBottom() and f:GetBottom()) then return end
+    local s = frame:GetEffectiveScale() / f:GetEffectiveScale()
+    local delta = (f:GetBottom() + footerHeight + 6 - frame:GetBottom() * s) / s
+    if delta <= 0.5 then return end
+    local points = {}
+    for i = 1, frame:GetNumPoints() do
+        local p, rel, rp, x, y = frame:GetPoint(i)
+        if p:find("BOTTOM") then y = (y or 0) + delta end
+        points[i] = { p, rel, rp, x or 0, y or 0 }
+    end
+    frame:ClearAllPoints()
+    for _, pt in ipairs(points) do frame:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5]) end
+end
+
+local function SkinResults(frame, depth, f)
     for _, child in ipairs({ frame:GetChildren() }) do
         if not Forbidden(child) then
+            local isBar = type(child.Track) == "table" and (child.Track.Thumb or child.Back)
+            if f and (child.GetScrollTarget or isBar) and child:IsVisible() then pcall(AboveFooter, f, child) end
             if child.GetScrollTarget then
                 local target = child:GetScrollTarget()
                 if target then
@@ -495,7 +514,7 @@ local function SkinResults(frame, depth)
                     end
                 end
             elseif depth < 4 then
-                SkinResults(child, depth + 1)
+                SkinResults(child, depth + 1, f)
             end
         end
     end
@@ -546,7 +565,7 @@ local function SkinGroupFinder()
             if page and page:IsVisible() and not Forbidden(page) then
                 pcall(SkinBrowse, page, 1)
                 pcall(GoldDividers, page, 1)
-                pcall(SkinResults, page, 1)
+                pcall(SkinResults, page, 1, f)
             end
         end
         if ns.SkinOpenMenu then pcall(ns.SkinOpenMenu) end
