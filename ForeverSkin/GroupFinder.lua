@@ -376,7 +376,8 @@ local function SkinBrowse(frame, depth)
             elseif isDropdown then
                 browseDone[child] = true
                 ns.SkinDropdown(child)
-            elseif child:IsObjectType("EditBox") then
+            elseif child:IsObjectType("EditBox") and not (child.IsMultiLine and child:IsMultiLine()) then
+                -- (mehrzeilige Felder wie die Gruppenbeschreibung: siehe SkinActivityView)
                 browseDone[child] = true
                 SkinSearch(child)
             elseif child:IsObjectType("Button") and key:find("filter") and type(text) == "string" and text ~= "" then
@@ -623,6 +624,58 @@ local function SkinResults(frame, depth, f)
     end
 end
 
+-- "Anmelden" > Aktivitätenauswahl (LFGListingFrame.ActivityView): Häkchen flach (wie überall), das mehrzeilige
+-- Beschreibungsfeld als EIN flaches Eingabefeld (Blizzards heller Rand weg), Bedienelemente unten (z. B. "Voicechat")
+-- über unserer Fußleiste statt auf der Kastenkante
+local viewDone = setmetatable({}, { __mode = "k" })
+local function SkinDescription(view, edit)
+    -- Kasten des Feldes: höchster Rahmen über dem Eingabefeld, der noch feldgroß ist (höchstens 160 hoch)
+    local box, frame = nil, edit:GetParent()
+    while frame and frame ~= view and not Forbidden(frame) and (frame:GetHeight() or 999) <= 160 do
+        if type(frame.NineSlice) == "table" then ns.Hide(frame.NineSlice) end
+        ns.HideTextures(frame)
+        box = frame
+        frame = frame:GetParent()
+    end
+    ns.HideTextures(edit)
+    if box then ns.Flat(box, ns.C.input) end
+end
+local function RaiseAboveFooter(f, frame)
+    if not (footerHeight and frame:GetBottom() and f:GetBottom()) then return end
+    local s = frame:GetEffectiveScale() / f:GetEffectiveScale()
+    local delta = (f:GetBottom() + footerHeight + 10 - frame:GetBottom() * s) / s
+    if delta <= 0.5 or frame:GetNumPoints() == 0 then return end
+    local points = {}
+    for i = 1, frame:GetNumPoints() do
+        local p, rel, rp, x, y = frame:GetPoint(i)
+        points[i] = { p, rel, rp, x or 0, (y or 0) + delta }
+    end
+    frame:ClearAllPoints()
+    for _, pt in ipairs(points) do frame:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5]) end
+end
+local function SkinActivityView(f, view, depth)
+    for _, child in ipairs({ view:GetChildren() }) do
+        if not Forbidden(child) then
+            local isDropdown = child:IsObjectType("DropdownButton")
+                or (type(child.Arrow) == "table" and type(child.Text) == "table" and not child:IsObjectType("CheckButton"))
+            if child:IsObjectType("CheckButton") then
+                if not viewDone[child] then
+                    viewDone[child] = true
+                    ns.SkinCheck(child)
+                end
+            elseif child:IsObjectType("EditBox") and child.IsMultiLine and child:IsMultiLine() then
+                if not viewDone[child] then
+                    viewDone[child] = true
+                    SkinDescription(view, child)
+                end
+            else
+                if isDropdown and depth == 1 then pcall(RaiseAboveFooter, f, child) end
+                if depth < 6 and not isDropdown then SkinActivityView(f, child, depth + 1) end
+            end
+        end
+    end
+end
+
 -- Fußleiste mit feiner goldener Linie hinter den Knöpfen unten (wie bei allen Forever-Fenstern, ns.ContentBox):
 -- Höhe nach den Knöpfen (deren Oberkante + 7), einmal sobald die Knöpfe da sind
 local footerDone
@@ -668,7 +721,13 @@ local function SkinGroupFinder()
             if page and page:IsVisible() and not Forbidden(page) then
                 pcall(SkinBrowse, page, 1)
                 pcall(GoldDividers, page, 1)
-                pcall(SkinResults, page, 1, f)
+                if pageName == "LFGListingFrame" then
+                    -- (keine Ergebnisliste: die Aktivitätenauswahl hat Häkchen statt Einträgen mit Knöpfen)
+                    local view = page.ActivityView
+                    if type(view) == "table" and view:IsVisible() then pcall(SkinActivityView, f, view, 1) end
+                else
+                    pcall(SkinResults, page, 1, f)
+                end
             end
         end
         if ns.SkinOpenMenu then pcall(ns.SkinOpenMenu) end
