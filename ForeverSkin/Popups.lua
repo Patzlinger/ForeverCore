@@ -107,6 +107,61 @@ function ns.DumpMouse()
     end
 end
 
+-- Prüfbefehl /fskin grafik: alle sichtbaren Grafiken unter dem Mauszeiger (kleinste zuerst) – je mit Rahmen,
+-- Schlüssel, Datei/Atlas, Ebene und Größe. Damit lassen sich Blizzard-Grafiken gezielt finden, statt zu raten.
+function ns.DumpTextures()
+    local secret = issecretvalue or function() return false end
+    local function Safe(obj, method, ...)
+        local ok, a, b = pcall(obj[method], obj, ...)
+        if not ok or secret(a) then return nil end
+        return a, b
+    end
+    local function KeyOf(parent, child)
+        if not parent then return nil end
+        for k, v in pairs(parent) do
+            if v == child and type(k) == "string" then return k end
+        end
+    end
+    local hits = {}
+    if EnumerateFrames then
+        local f = EnumerateFrames()
+        while f do
+            local forbidden = f.IsForbidden and f:IsForbidden()
+            if not forbidden and f ~= UIParent and f ~= WorldFrame and Safe(f, "IsVisible") then
+                for _, r in ipairs({ f:GetRegions() }) do
+                    if r:IsObjectType("Texture") and Safe(r, "IsVisible") and (Safe(r, "GetAlpha") or 0) > 0
+                        and Safe(r, "IsMouseOver") then
+                        local w, h = Safe(r, "GetWidth") or 0, Safe(r, "GetHeight") or 0
+                        hits[#hits + 1] = { r = r, frame = f, area = w * h, w = w, h = h }
+                    end
+                end
+            end
+            f = EnumerateFrames(f)
+        end
+    end
+    if #hits == 0 then
+        ns.UI.Chat("ForeverSkin", ns.T("Keine Grafik unter der Maus.", "No texture under the mouse."))
+        return
+    end
+    table.sort(hits, function(a, b) return a.area < b.area end)
+    for i = 1, math.min(12, #hits) do
+        local h = hits[i]
+        local r, f = h.r, h.frame
+        local atlas = r.GetAtlas and Safe(r, "GetAtlas")
+        local file = Safe(r, "GetTexture")
+        local layer = Safe(r, "GetDrawLayer")
+        local chain, p, d = {}, f, 0
+        while p and d < 3 do
+            chain[#chain + 1] = (p.GetName and p:GetName()) or (KeyOf(p.GetParent and p:GetParent(), p)) or "-"
+            p = p.GetParent and p:GetParent()
+            d = d + 1
+        end
+        ns.UI.Chat("ForeverSkin", string.format("%d. %s | Schlüssel %s | %s | %s | %dx%d | in %s", i,
+            r:GetName() or "-", KeyOf(f, r) or "-", tostring(atlas and atlas ~= "" and atlas or file), tostring(layer),
+            h.w, h.h, table.concat(chain, " < ")))
+    end
+end
+
 -- Beim Login gibt es im Forever-Client nicht immer schon alle Rückfrage-Fenster (sie entstehen beim ersten
 -- Anzeigen, z. B. "Handel abschließen?") – darum zusätzlich nach jedem Anzeigen nachsehen (nur angehängt, Blizzards
 -- Funktion bleibt unverändert)

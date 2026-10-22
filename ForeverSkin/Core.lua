@@ -1082,6 +1082,8 @@ SlashCmdList["FOREVERSKIN"] = ns.Safe(T("Befehl", "Command"), function(msg)
         ns.DumpTaxi() -- Prüfbefehl: Grafiken der Flugkarte im Chat
     elseif (msg == "maus" or msg == "mouse") and ns.DumpMouse then
         ns.DumpMouse() -- Prüfbefehl: welches Fenster liegt unter der Maus
+    elseif (msg == "grafik" or msg == "texture") and ns.DumpTextures then
+        ns.DumpTextures() -- Prüfbefehl: welche Grafiken liegen unter der Maus
     else
         ns.ToggleOptions()
     end
