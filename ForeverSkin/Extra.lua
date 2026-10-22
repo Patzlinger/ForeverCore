@@ -325,7 +325,10 @@ local function UpdateTradeRow(button, link)
     slotState[button] = key
     local quality, kind
     if link then
-        local _, _, q, _, _, itemType, subType = GetItemInfo(link)
+        -- (im Forever-Client gibt es nur noch C_Item.GetItemInfo – die alte GetItemInfo fehlt)
+        local info = (C_Item and C_Item.GetItemInfo) or GetItemInfo
+        local _, _, q, _, _, itemType, subType
+        if info then _, _, q, _, _, itemType, subType = info(link) end
         quality, kind = q, (subType ~= "" and subType) or itemType
     end
     local r, g, b = 1, 1, 1
