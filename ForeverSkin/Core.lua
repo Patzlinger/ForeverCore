@@ -141,7 +141,7 @@ function ns.IsMine(frame, texture)
     return look ~= nil and look.mine[texture] == true
 end
 
--- /fskin fenster: alle großen benannten Fenster direkt unter UIParent – umgestaltet (✓) oder nicht (–), offen oder zu.
+-- /fskin fenster: alle großen benannten Fenster direkt unter UIParent – umgestaltet (+) oder nicht (-), offen oder zu.
 -- (Fenster, die Blizzard erst beim ersten Öffnen lädt, erscheinen erst danach.) Forever-eigene Fenster fehlen.
 function ns.DumpWindows()
     local list = {}
@@ -155,9 +155,9 @@ function ns.DumpWindows()
         if a.skinned ~= b.skinned then return not a.skinned end
         return a.name < b.name
     end)
-    print("|cffffcc00ForeverSkin|r: " .. #list .. T(" Fenster (– = noch nicht umgestaltet):", " windows (– = not restyled yet):"))
+    print("|cffffcc00ForeverSkin|r: " .. #list .. T(" Fenster (- = noch nicht umgestaltet, + = fertig):", " windows (- = not restyled yet, + = done):"))
     for _, e in ipairs(list) do
-        print(string.format("  %s %s%s", e.skinned and "|cff33ff99✓|r" or "|cffff7070–|r", e.name,
+        print(string.format("  %s %s%s", e.skinned and "|cff33ff99+|r" or "|cffff7070-|r", e.name,
             e.shown and T(" (offen)", " (open)") or ""))
     end
 end
