@@ -141,6 +141,27 @@ function ns.IsMine(frame, texture)
     return look ~= nil and look.mine[texture] == true
 end
 
+-- /fskin fenster: alle großen benannten Fenster direkt unter UIParent – umgestaltet (✓) oder nicht (–), offen oder zu.
+-- (Fenster, die Blizzard erst beim ersten Öffnen lädt, erscheinen erst danach.) Forever-eigene Fenster fehlen.
+function ns.DumpWindows()
+    local list = {}
+    for _, child in ipairs({ UIParent:GetChildren() }) do
+        local name = not (child.IsForbidden and child:IsForbidden()) and child:GetName()
+        if name and not name:find("^Forever") and (child:GetWidth() or 0) > 200 and (child:GetHeight() or 0) > 150 then
+            list[#list + 1] = { name = name, skinned = looks[child] ~= nil, shown = child:IsShown() }
+        end
+    end
+    table.sort(list, function(a, b)
+        if a.skinned ~= b.skinned then return not a.skinned end
+        return a.name < b.name
+    end)
+    print("|cffffcc00ForeverSkin|r: " .. #list .. T(" Fenster (– = noch nicht umgestaltet):", " windows (– = not restyled yet):"))
+    for _, e in ipairs(list) do
+        print(string.format("  %s %s%s", e.skinned and "|cff33ff99✓|r" or "|cffff7070–|r", e.name,
+            e.shown and T(" (offen)", " (open)") or ""))
+    end
+end
+
 function ns.EdgeColor(frame, c, a)
     local look = looks[frame]
     if not look then return end
@@ -1097,6 +1118,8 @@ SlashCmdList["FOREVERSKIN"] = ns.Safe(T("Befehl", "Command"), function(msg)
         ns.DumpMouse() -- Prüfbefehl: welches Fenster liegt unter der Maus
     elseif (msg == "grafik" or msg == "texture") and ns.DumpTextures then
         ns.DumpTextures() -- Prüfbefehl: welche Grafiken liegen unter der Maus
+    elseif msg == "fenster" or msg == "windows" then
+        ns.DumpWindows() -- Prüfbefehl: welche Fenster sind noch nicht umgestaltet
     elseif msg == "lfg" and ns.DumpGroupFinderTabs then
         ns.DumpGroupFinderTabs() -- Prüfbefehl: Reiter an "Suche nach Gruppe"
     else

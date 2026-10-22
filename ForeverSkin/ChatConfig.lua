@@ -29,6 +29,27 @@ local function IsSwatch(frame, key)
     return false
 end
 
+-- Blizzards Backdrop (Rahmen samt Hintergrund) ganz entfernen und entfernt halten: Blizzard legt ihn beim Öffnen neu
+-- an (darum vorher nur unsichtbar gemacht und doch wieder da). Sperre gegen Schleifen beim eigenen Entfernen
+local cleared = setmetatable({}, { __mode = "k" })
+local function NoBackdrop(frame)
+    if not frame.ClearBackdrop and not frame.SetBackdrop then return end
+    local function Clear()
+        if cleared[frame] == "busy" then return end
+        cleared[frame] = "busy"
+        if frame.ClearBackdrop then pcall(frame.ClearBackdrop, frame) else pcall(frame.SetBackdrop, frame, nil) end
+        cleared[frame] = true
+    end
+    Clear()
+    if not cleared.hooked then cleared.hooked = {} end
+    if not cleared.hooked[frame] then
+        cleared.hooked[frame] = true
+        for _, method in ipairs({ "SetBackdrop", "ApplyBackdrop" }) do
+            if type(frame[method]) == "function" then hooksecurefunc(frame, method, Clear) end
+        end
+    end
+end
+
 local done = setmetatable({}, { __mode = "k" })
 local function Scan(frame, depth)
     for _, child in ipairs({ frame:GetChildren() }) do
@@ -61,6 +82,9 @@ local function Scan(frame, depth)
                 if hasText then
                     done[child] = true
                     ns.SkinButton(child) -- ("Standard", "Okay", Kategorien, Reiter …)
+                    -- Kategorien links ("Chat", "Channels", "Anderes") liegen dicht übereinander: Fläche oben und
+                    -- unten je 1 schmaler – so entsteht Luft dazwischen
+                    if key:find("category") then ns.Flat(child, C.button, { 0, 1, 0, 1 }) end
                     ns.CenterText(child)
                 end
             else
@@ -70,6 +94,7 @@ local function Scan(frame, depth)
                 if type(child.NineSlice) == "table" then ns.Hide(child.NineSlice) end
                 local hadBackdrop = child.GetBackdrop and child:GetBackdrop() ~= nil
                 if hadBackdrop or type(child.NineSlice) == "table" then
+                    NoBackdrop(child)
                     ns.HideTextures(child)
                     if w > 60 and h > 40 then ns.Flat(child, C.panel) end
                 end
@@ -97,6 +122,7 @@ local function SkinChatConfig()
     local f = G("ChatConfigFrame")
     if not f or ns.chatConfigSkinned or Forbidden(f) then return end
     ns.chatConfigSkinned = true
+    Step("backdrop", function() NoBackdrop(f) end)
     ns.SkinWindow(f)
     Step("header", function() SkinHeader(f) end)
     Step("scan", function() Scan(f, 1) end)
@@ -108,6 +134,8 @@ local function SkinChatConfig()
         if waited < 0.3 then return end
         waited = 0
         if type(f.NineSlice) == "table" then ns.Hide(f.NineSlice) end
+        pcall(NoBackdrop, f)
+        pcall(ns.HideTextures, f) -- (unsere eigenen Flächen bleiben – HideTextures lässt sie aus)
         pcall(Scan, f, 1)
         if ns.SkinOpenMenu then pcall(ns.SkinOpenMenu) end
     end)
