@@ -252,9 +252,13 @@ local function OnItem(tip, itemID)
     if IsSecret(link) then return end
     local info = link or itemID
     if not info then return end
-    local _, _, quality, level, _, _, _, _, equipLoc = GetItemInfo(info)
-    if quality and d.colorBorder and d.skin and quality >= 2 then
-        local r, g, b = GetItemQualityColor(quality)
+    -- (im Forever-Client gibt es nur noch C_Item.GetItemInfo – die alte GetItemInfo fehlt)
+    local getInfo = (C_Item and C_Item.GetItemInfo) or GetItemInfo
+    if not getInfo then return end
+    local _, _, quality, level, _, _, _, _, equipLoc = getInfo(info)
+    local qualityColor = (C_Item and C_Item.GetItemQualityColor) or GetItemQualityColor
+    if quality and qualityColor and d.colorBorder and d.skin and quality >= 2 then
+        local r, g, b = qualityColor(quality)
         SetEdgeColor(tip, r, g, b, 0.85, true)
     end
     local added = false
