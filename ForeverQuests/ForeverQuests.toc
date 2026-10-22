@@ -2,7 +2,7 @@
 ## Title: ForeverQuests |cff8a8a8a(Beta)|r
 ## Notes: Replacement for the Blizzard quest tracker
 ## Notes-deDE: Ersatz für den Blizzard-Questtracker
-## IconTexture: Interface\AddOns\ForeverQuests\Media\ForeverCore
+## IconTexture: Interface\AddOns\ForeverQuests\Media\ForeverQuests
 ## Category: Forever Core
 ## Author: flowfy
 ## X-License: MIT

@@ -46,7 +46,7 @@ end
 -- Reiter rechts für das Dungeonfenster von ForeverQuests (nur, wenn ForeverQuests geladen ist): gebaut wie Blizzards
 -- Seiten-Reiter ("common-sidetab", runde Maske, "common-sidetab-hover"), unter dem letzten Reiter im selben Abstand
 local function Quests() return ns.UI.API and ns.UI.API.ForeverQuests end
-local DUNGEON_ICON = "Interface\\Icons\\INV_Misc_Key_13"
+local DUNGEON_ICON = "Interface\\AddOns\\ForeverQuests\\Media\\ForeverQuests" -- (Logo von ForeverQuests: "!")
 local dungeonTab
 
 -- Blizzards Reiter rechts am Fenster (Knöpfe, die rechts über die Fensterkante hinausragen), von oben nach unten

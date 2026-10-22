@@ -16,7 +16,7 @@ function ns.CreateMinimapButton()
     if button or not Minimap then return end
     button = ForeverHub.UI.MinimapButton({
         name = "ForeverQuestsMinimapButton",
-        icon = "Interface\\GossipFrame\\AvailableQuestIcon",
+        icon = "Interface\\AddOns\\ForeverQuests\\Media\\ForeverQuests", -- eigenes Logo im Stil von Forever Core: "!"
         title = ns.L("ADDON_NAME"),
         angle = function() return ns.db.minimapAngle or 220 end,
         setAngle = function(angle) ns.db.minimapAngle = angle end,

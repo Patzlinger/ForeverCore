@@ -8,6 +8,7 @@
 - ForeverSkin: talents window – the frame in the Forever look (title bar with gold line) and flat "Primary"/"Secondary" tabs (selected one gold); the talent trees stay as they are. Switch: /fskin » "Talents window".
 - ForeverSkin: group finder ("Looking for Group") – flat frame with the eye in the title bar and flat buttons at the bottom (background and category graphics stay); a new side tab opens the ForeverQuests dungeon window. Switch: /fskin » "Group finder".
 - ForeverQuests: interface for other Forever addons to open the dungeon window.
+- ForeverQuests: own logo in the Forever Core style ("!") for the addon list, the minimap button and the group finder tab.
 - ForeverSkin: drop-down and right-click menus everywhere (units, unit frames, including submenus) in the Forever look. Switch: /fskin » "Menus".
 - ForeverSkin: "Appearances" window (transmogrify) – flat frame, dropdowns, buttons and search bar in the Forever look; background, slot icons and previews stay. Switch: /fskin » "Appearances (transmogrify)".
 - ForeverSkin: "Guild & Communities" window in the Forever look (frame, list on the left, inner frames, scroll bars, buttons at the top right); pictures in the content stay. Switch: /fskin » "Guild & Communities".
