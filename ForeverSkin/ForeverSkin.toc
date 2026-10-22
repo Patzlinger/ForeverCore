@@ -26,3 +26,4 @@ Tabard.lua
 DressUp.lua
 Professions.lua
 Talents.lua
+Communities.lua
