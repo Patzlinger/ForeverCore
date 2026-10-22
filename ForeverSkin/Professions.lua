@@ -199,11 +199,7 @@ local function Overlays(f)
         local fill = overlay.foot:CreateTexture(nil, "BACKGROUND")
         fill:SetAllPoints()
         fill:SetColorTexture(C.header[1], C.header[2], C.header[3], 1)
-        local fline = overlay.foot:CreateTexture(nil, "BORDER")
-        fline:SetPoint("BOTTOMLEFT", overlay.foot, "TOPLEFT")
-        fline:SetPoint("BOTTOMRIGHT", overlay.foot, "TOPRIGHT")
-        fline:SetHeight(1)
-        fline:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 0.35)
+        -- (ohne goldene Trennlinie – auf Wunsch)
     end
     -- Ebenen: Linie oben über allem; Fußleiste über Blizzards Inhalt, die Bedienelemente der unteren Reihe darüber
     -- (angehobene Bedienelemente und ihre Kästen zählen nicht mit – sonst schaukelte sich die Ebene hoch)
