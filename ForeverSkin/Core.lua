@@ -143,7 +143,8 @@ end
 -- Kontostand links in der Titelleiste ("Dein Gold: …") – feste Stilregel für alle umgestalteten Fenster
 -- (docs/Fenster-Stil.md). Aktualisiert sich bei jeder Gold-Änderung und beim Öffnen.
 local goldTexts = {} -- [Fenster] = Text
-local GOLD_SKIP = { LootFrame = true, SettingsPanel = true } -- (zu schmal bzw. kein Spiel-Fenster)
+-- (zu schmal bzw. ohne Bezug zum Gold: Beute, Optionen, Makros)
+local GOLD_SKIP = { LootFrame = true, SettingsPanel = true, MacroFrame = true }
 local function UpdateGold(fs)
     if ns.Money and GetMoney then fs:SetText(T("Dein Gold: ", "Your gold: ") .. ns.Money(GetMoney())) end
 end
