@@ -27,6 +27,7 @@ ns.DEFAULTS = {
     talents = true,  -- Talentfenster (Rahmen, Reiter Primär/Sekundär)
     communities = true, -- Gilde & Communitys
     wardrobe = true, -- Vorlagen (Transmogrifikation)
+    menus = true,    -- aufgeklappte Menüs überall (Rechtsklick auf Einheiten, Auswahllisten)
     scale = 110,     -- Größe von Gespräch, Quest, Händler und Lehrer in Prozent
 }
 
@@ -1025,7 +1026,7 @@ local options
 local checks = {}
 local function Build()
     options = UI.SettingsPanel("ForeverSkinOptions", T("ForeverSkin – Einstellungen (Prototyp)", "ForeverSkin – Settings (prototype)"),
-        460, 668, { key = "ForeverSkin", group = UI.SETTINGS_GROUPS.comfort, label = T("Fenster-Stil", "Window style") })
+        460, 692, { key = "ForeverSkin", group = UI.SETTINGS_GROUPS.comfort, label = T("Fenster-Stil", "Window style") })
     local W = 420
     UI.Header(options, 18, -40, T("Fenster im Forever-Stil", "Windows in the Forever look"), W)
     local reload
@@ -1053,12 +1054,13 @@ local function Build()
     Check(-398, T("Talentfenster", "Talents window"), "talents")
     Check(-422, T("Gilde & Communitys", "Guild & Communities"), "communities")
     Check(-446, T("Vorlagen (Transmogrifikation)", "Appearances (transmogrify)"), "wardrobe")
-    local size = UI.Slider(options, 22, -476, T("Größe von Gespräch, Quest, Händler, Lehrer", "Size of dialog, quest, vendor, trainer"),
+    Check(-470, T("Menüs (Rechtsklick auf Einheiten)", "Menus (right-click on units)"), "menus")
+    local size = UI.Slider(options, 22, -500, T("Größe von Gespräch, Quest, Händler, Lehrer", "Size of dialog, quest, vendor, trainer"),
         90, 130, 5, function(v)
             ns.GetDB().scale = v
             ns.RescaleAll()
         end, { unit = " %", width = 220 })
-    UI.Hint(options, 22, -520, W - 12, T("Änderungen gelten nach dem Neuladen. Gefällt dir der Stil nicht, schalte " ..
+    UI.Hint(options, 22, -544, W - 12, T("Änderungen gelten nach dem Neuladen. Gefällt dir der Stil nicht, schalte " ..
         "ForeverSkin in der Addon-Liste aus – dann ist alles wieder wie vorher.",
         "Changes apply after reloading. If you don't like the look, turn ForeverSkin off in the addon list – " ..
         "everything is back as before."))

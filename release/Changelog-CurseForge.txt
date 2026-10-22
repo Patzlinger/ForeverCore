@@ -6,6 +6,7 @@
 
 - ForeverHelpers, loot rolls: a main switch turns the loot roll window off completely (settings, or /floot on | off) – Blizzard's own roll frames are unaffected.
 - ForeverSkin: talents window – the frame in the Forever look (title bar with gold line) and flat "Primary"/"Secondary" tabs (selected one gold); the talent trees stay as they are. Switch: /fskin » "Talents window".
+- ForeverSkin: drop-down and right-click menus everywhere (units, unit frames, including submenus) in the Forever look. Switch: /fskin » "Menus".
 - ForeverSkin: "Appearances" window (transmogrify) – flat frame, dropdowns, buttons and search bar in the Forever look; background, slot icons and previews stay. Switch: /fskin » "Appearances (transmogrify)".
 - ForeverSkin: "Guild & Communities" window in the Forever look (frame, list on the left, inner frames, scroll bars, buttons at the top right); pictures in the content stay. Switch: /fskin » "Guild & Communities".
 - ForeverSkin: talents window – new "Spellbook" button next to the search box (opens ForeverSpellbook, otherwise Blizzard's spellbook).

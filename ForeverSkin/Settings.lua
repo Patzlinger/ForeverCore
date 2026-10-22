@@ -245,40 +245,99 @@ end
 -- offene Auswahlliste (Blizzards Menü-System): flach und dunkel mit goldener Linie oben. Blizzards Menüs verbieten
 -- eigene Grafiken (CreateTexture ist dort gesperrt) – darum ein EIGENER Rahmen dahinter, der dem offenen Menü folgt;
 -- am Menü selbst werden nur Blizzards Grafiken unsichtbar gemacht (SetAlpha ist erlaubt)
-local menuBack
-function ns.SkinOpenMenu()
-    local manager = Menu and Menu.GetManager and Menu.GetManager()
-    local menu = manager and manager.GetOpenMenu and manager:GetOpenMenu()
-    if not (menu and menu.IsShown and menu:IsShown()) then
-        if menuBack then menuBack:Hide() end
-        return
+-- Gilt für ALLE Menüs dieser Art (auch Rechtsklick auf Einheiten und Einheitenfenster) samt Untermenüs: das
+-- Hauptmenü kennt Blizzards Menü-Verwaltung, Untermenüs werden (nur solange ein Menü offen ist, gedrosselt) unter
+-- den Rahmen gesucht – Menü-Rahmen erkennt man an ihrer Menü-Beschreibung
+local menuBacks = {}                                  -- [Menü] = eigener Rahmen dahinter
+local knownMenus = setmetatable({}, { __mode = "k" }) -- gefundene Menü-Rahmen (auch Untermenüs)
+local function BackFor(menu)
+    local back = menuBacks[menu]
+    if not back then
+        back = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
+        ns.UI.SetFlat(back, C.background)
+        local line = back:CreateTexture(nil, "ARTWORK")
+        line:SetTexture(WHITE)
+        line:SetVertexColor(C.accent[1], C.accent[2], C.accent[3], 0.8)
+        line:SetPoint("TOPLEFT", 1, -1)
+        line:SetPoint("TOPRIGHT", -1, -1)
+        line:SetHeight(1)
+        back:EnableMouse(false)
+        back:SetAllPoints(menu)
+        menuBacks[menu] = back
     end
+    return back
+end
+local function SkinMenuFrame(menu)
+    if not (menu and menu.IsShown and menu:IsShown()) or (menu.IsForbidden and menu:IsForbidden()) then return end
     for _, r in ipairs({ menu:GetRegions() }) do
         if r:IsObjectType("Texture") then r:SetAlpha(0) end
     end
     for _, key in ipairs({ "NineSlice", "Background", "Bg" }) do
         if type(menu[key]) == "table" and menu[key].SetAlpha then menu[key]:SetAlpha(0) end
     end
-    if not menuBack then
-        menuBack = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
-        ns.UI.SetFlat(menuBack, C.background)
-        local line = menuBack:CreateTexture(nil, "ARTWORK")
-        line:SetTexture(WHITE)
-        line:SetVertexColor(C.accent[1], C.accent[2], C.accent[3], 0.8)
-        line:SetPoint("TOPLEFT", 1, -1)
-        line:SetPoint("TOPRIGHT", -1, -1)
-        line:SetHeight(1)
-        menuBack:EnableMouse(false)
-    end
-    if menuBack.menu ~= menu then
-        menuBack.menu = menu
-        menuBack:ClearAllPoints()
-        menuBack:SetAllPoints(menu)
-    end
-    menuBack:SetFrameStrata(menu:GetFrameStrata())
-    menuBack:SetFrameLevel(math.max(0, menu:GetFrameLevel() - 1))
-    menuBack:Show()
+    local back = BackFor(menu)
+    back:SetFrameStrata(menu:GetFrameStrata())
+    back:SetFrameLevel(math.max(0, menu:GetFrameLevel() - 1))
+    back:Show()
 end
+local function IsMenuFrame(frame)
+    if type(frame) ~= "table" or (frame.IsForbidden and frame:IsForbidden()) then return false end
+    return frame.GetRegions ~= nil
+        and (type(frame.menuDescription) == "table" or type(frame.GetMenuDescription) == "function")
+end
+local lastSearch = 0
+function ns.SkinOpenMenu()
+    local manager = Menu and Menu.GetManager and Menu.GetManager()
+    local root = manager and manager.GetOpenMenu and manager:GetOpenMenu()
+    local open = root and root.IsShown and root:IsShown()
+    if open then
+        knownMenus[root] = true
+        -- Untermenüs suchen (höchstens fünfmal je Sekunde, nur bei offenem Menü)
+        local now = GetTime()
+        if now - lastSearch > 0.2 and EnumerateFrames then
+            lastSearch = now
+            local frame = EnumerateFrames()
+            while frame do
+                if not knownMenus[frame] and IsMenuFrame(frame) and frame:IsShown() then knownMenus[frame] = true end
+                frame = EnumerateFrames(frame)
+            end
+        end
+    end
+    for menu in pairs(knownMenus) do
+        if open and menu:IsShown() then SkinMenuFrame(menu) end
+    end
+    for menu, back in pairs(menuBacks) do
+        if not (open and menu:IsShown()) then back:Hide() end
+    end
+end
+
+-- überall (nicht nur in umgestalteten Fenstern): ein kleiner Taktgeber, der nur arbeitet, solange ein Menü offen ist;
+-- dazu gleich beim Öffnen (Haken an Blizzards Menü-Verwaltung), damit kein Blizzard-Menü aufblitzt
+local menuDriver = CreateFrame("Frame")
+local menuWaited = 0
+menuDriver:SetScript("OnUpdate", function(_, elapsed)
+    menuWaited = menuWaited + elapsed
+    if menuWaited < 0.05 then return end
+    menuWaited = 0
+    if not ns.GetDB().menus then return end
+    pcall(ns.SkinOpenMenu)
+end)
+local menuHooked = false
+local function HookMenuManager()
+    local manager = not menuHooked and Menu and Menu.GetManager and Menu.GetManager()
+    if not manager then return end
+    menuHooked = true
+    for _, method in ipairs({ "OpenMenu", "OpenContextMenu" }) do
+        if type(manager[method]) == "function" then
+            hooksecurefunc(manager, method, function()
+                if ns.GetDB().menus then pcall(ns.SkinOpenMenu) end
+            end)
+        end
+    end
+end
+local menuEvents = CreateFrame("Frame")
+menuEvents:RegisterEvent("PLAYER_LOGIN")
+menuEvents:SetScript("OnEvent", function() pcall(HookMenuManager) end)
 
 local function SkinSearchBox(box)
     if not box then return end
