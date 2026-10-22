@@ -393,6 +393,74 @@ local function SkinBrowse(frame, depth)
     end
 end
 
+-- Ergebnislisten ("Wer ist da", "Durchsuchen"): Einträge als flache graue Balken mit feinem Rand (wie die Zeilen der
+-- übrigen Forever-Fenster), die Knöpfe darin (z. B. Einladen) flach mit ihrem Symbol. Blizzard legt die Einträge beim
+-- Blättern neu an – darum im Takt
+local entryDone = setmetatable({}, { __mode = "k" })
+-- nur Hintergrund und Rahmen (breite Flächen, dünne Kanten, "border/frame/background" im Namen) – kleine Symbole
+-- (Rolle, Klasse, Anführer) bleiben
+local function HideBackdrop(frame)
+    for _, r in ipairs({ frame:GetRegions() }) do
+        if r:IsObjectType("Texture") and not ns.IsMine(frame, r) then
+            local w, h = r:GetWidth() or 0, r:GetHeight() or 0
+            local atlas = r.GetAtlas and r:GetAtlas()
+            local s = (type(atlas) == "string" and atlas or ""):lower()
+            if w >= 60 or h >= 60 or w <= 6 or h <= 6 or s:find("border") or s:find("frame") or s:find("background")
+                or s:find("bg") then
+                r:SetAlpha(0)
+            end
+        end
+    end
+end
+local function SkinEntryButton(b)
+    local icon = b.Icon or b.icon
+    if icon then
+        ns.HideTextures(b, { [icon] = true })
+        for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetDisabledTexture" }) do
+            local t = b[get] and b[get](b)
+            if t and t ~= icon then ns.Hide(t) end
+        end
+    end
+    ns.Flat(b, ns.C.button)
+    ns.Hover(b)
+end
+local function SkinEntry(entry)
+    if type(entry.NineSlice) == "table" then ns.Hide(entry.NineSlice) end
+    HideBackdrop(entry)
+    ns.Flat(entry, ns.C.button)
+    if entry:IsObjectType("Button") then ns.Hover(entry) end
+    for _, child in ipairs({ entry:GetChildren() }) do
+        if not Forbidden(child) then
+            if type(child.NineSlice) == "table" then ns.Hide(child.NineSlice) end
+            local text = child.GetText and child:GetText()
+            if child:IsObjectType("Button") and not (type(text) == "string" and text ~= "") then
+                SkinEntryButton(child)
+            elseif not child:IsObjectType("Button") then
+                HideBackdrop(child) -- (Rahmen-Teile in Unter-Rahmen des Eintrags)
+            end
+        end
+    end
+end
+local function SkinResults(frame, depth)
+    for _, child in ipairs({ frame:GetChildren() }) do
+        if not Forbidden(child) then
+            if child.GetScrollTarget then
+                local target = child:GetScrollTarget()
+                if target then
+                    for _, entry in ipairs({ target:GetChildren() }) do
+                        if not entryDone[entry] and not Forbidden(entry) then
+                            entryDone[entry] = true
+                            SkinEntry(entry)
+                        end
+                    end
+                end
+            elseif depth < 4 then
+                SkinResults(child, depth + 1)
+            end
+        end
+    end
+end
+
 -- Fußleiste mit feiner goldener Linie hinter den Knöpfen unten (wie bei allen Forever-Fenstern, ns.ContentBox):
 -- Höhe nach den Knöpfen (deren Oberkante + 7), einmal sobald die Knöpfe da sind
 local footerDone
@@ -438,6 +506,7 @@ local function SkinGroupFinder()
             if page and page:IsVisible() and not Forbidden(page) then
                 pcall(SkinBrowse, page, 1)
                 pcall(GoldDividers, page, 1)
+                pcall(SkinResults, page, 1)
             end
         end
         if ns.SkinOpenMenu then pcall(ns.SkinOpenMenu) end
