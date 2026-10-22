@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **ForeverSkin: professions window in the Forever look** – flat window and title bar, the profession boxes with a fine border (the drawings of the professions stay untouched), flat progress bars, spell icons like bag slots, a flat "unlearn" X. Switch: /fskin » "Professions window".
+
 - ForeverBags: the bank shows only bank tabs and bank bag slots you actually bought again (also limited by the number of purchased slots the game reports). New: the bank bag bar like Blizzard's ("Bag slots:" below the bank – drag bags in or out, locked slots with a lock) and buying the next slot right in the ForeverBags bank window (price and "Buy", with a confirmation).
 
 - **ForeverSkin: dressing room in the Forever look** – flat window without a title bar, a small round portrait with a gold ring at the top left, flat outfit dropdown and buttons, the item list on the right flat, a fine gold line above the bottom buttons; the model and its background stay. Switch: /fskin » "Dressing room".

@@ -24,3 +24,4 @@ Macro.lua
 Mail.lua
 Tabard.lua
 DressUp.lua
+Professions.lua

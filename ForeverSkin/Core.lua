@@ -23,6 +23,7 @@ ns.DEFAULTS = {
     mail = true,     -- Briefkasten (Posteingang, Senden, geöffnete Nachricht)
     tabard = true,   -- Wappenrock-Gestaltung (Gildenwappenrock)
     dressup = true,  -- Anprobe
+    professions = true, -- Berufe-Fenster (Berufsbuch)
     scale = 110,     -- Größe von Gespräch, Quest, Händler und Lehrer in Prozent
 }
 
@@ -144,7 +145,7 @@ end
 -- (docs/Fenster-Stil.md). Aktualisiert sich bei jeder Gold-Änderung und beim Öffnen.
 local goldTexts = {} -- [Fenster] = Text
 -- (zu schmal bzw. ohne Bezug zum Gold: Beute, Optionen, Makros)
-local GOLD_SKIP = { LootFrame = true, SettingsPanel = true, MacroFrame = true }
+local GOLD_SKIP = { LootFrame = true, SettingsPanel = true, MacroFrame = true, ProfessionsBookFrame = true }
 local function UpdateGold(fs)
     if ns.Money and GetMoney then fs:SetText(T("Dein Gold: ", "Your gold: ") .. ns.Money(GetMoney())) end
 end
@@ -1019,7 +1020,7 @@ local options
 local checks = {}
 local function Build()
     options = UI.SettingsPanel("ForeverSkinOptions", T("ForeverSkin – Einstellungen (Prototyp)", "ForeverSkin – Settings (prototype)"),
-        460, 572, { key = "ForeverSkin", group = UI.SETTINGS_GROUPS.comfort, label = T("Fenster-Stil", "Window style") })
+        460, 596, { key = "ForeverSkin", group = UI.SETTINGS_GROUPS.comfort, label = T("Fenster-Stil", "Window style") })
     local W = 420
     UI.Header(options, 18, -40, T("Fenster im Forever-Stil", "Windows in the Forever look"), W)
     local reload
@@ -1043,12 +1044,13 @@ local function Build()
     Check(-302, T("Briefkasten", "Mailbox"), "mail")
     Check(-326, T("Wappenrock-Gestaltung", "Tabard design"), "tabard")
     Check(-350, T("Anprobe", "Dressing room"), "dressup")
-    local size = UI.Slider(options, 22, -380, T("Größe von Gespräch, Quest, Händler, Lehrer", "Size of dialog, quest, vendor, trainer"),
+    Check(-374, T("Berufe-Fenster", "Professions window"), "professions")
+    local size = UI.Slider(options, 22, -404, T("Größe von Gespräch, Quest, Händler, Lehrer", "Size of dialog, quest, vendor, trainer"),
         90, 130, 5, function(v)
             ns.GetDB().scale = v
             ns.RescaleAll()
         end, { unit = " %", width = 220 })
-    UI.Hint(options, 22, -424, W - 12, T("Änderungen gelten nach dem Neuladen. Gefällt dir der Stil nicht, schalte " ..
+    UI.Hint(options, 22, -448, W - 12, T("Änderungen gelten nach dem Neuladen. Gefällt dir der Stil nicht, schalte " ..
         "ForeverSkin in der Addon-Liste aus – dann ist alles wieder wie vorher.",
         "Changes apply after reloading. If you don't like the look, turn ForeverSkin off in the addon list – " ..
         "everything is back as before."))
