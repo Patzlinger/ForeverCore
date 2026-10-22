@@ -91,8 +91,45 @@ local function SkinProfession(frame)
     if icon and icon.SetTexCoord then icon:SetTexCoord(0.07, 0.93, 0.07, 0.93) end
 end
 
+-- Schlüssel eines Unter-Rahmens in seinem Eltern-Rahmen ("UnlearnButton", "SpellButtonTop" …) – nur lesen
+local function KeyOf(parent, child)
+    for k, v in pairs(parent) do
+        if v == child and type(k) == "string" then return k end
+    end
+end
+
+local function HasStatusBar(frame)
+    for _, child in ipairs({ frame:GetChildren() }) do
+        if not Forbidden(child) and child:IsObjectType("StatusBar") then return true end
+    end
+    return false
+end
+
+-- Im Forever-Client heißt das Fenster "ProfessionsFrame" und seine Teile tragen andere Namen als bei Blizzard –
+-- darum allgemein nach Art und Rolle suchen: Fortschrittsbalken, "Verlernen"-Knöpfe, Zauber-Symbole, Berufs-Kästen
+-- (großer Rahmen mit Fortschrittsbalken darin oder "Profession" im Namen)
+local function Scan(frame, depth)
+    for _, child in ipairs({ frame:GetChildren() }) do
+        if not Forbidden(child) then
+            local key = ((KeyOf(frame, child) or "") .. "|" .. (child:GetName() or "")):lower()
+            local w, h = child:GetWidth() or 0, child:GetHeight() or 0
+            if child:IsObjectType("StatusBar") then
+                SkinBar(child)
+            elseif key:find("unlearn") then
+                ns.SkinClose(child)
+            elseif child:IsObjectType("Button") or child:IsObjectType("CheckButton") then
+                local hasIcon = child.iconTexture or child.icon or child.Icon
+                if key:find("spell") or (hasIcon and w >= 28 and w <= 56 and h >= 28 and h <= 56) then SkinSpell(child) end
+            else
+                if w > 200 and h > 60 and (key:find("profession") or HasStatusBar(child)) then SkinSection(child) end
+                if depth < 4 then Scan(child, depth + 1) end
+            end
+        end
+    end
+end
+
 local function SkinBook()
-    local f = G("ProfessionsBookFrame")
+    local f = G("ProfessionsBookFrame") or G("ProfessionsFrame")
     if not f or ns.professionsSkinned or Forbidden(f) then return end
     ns.professionsSkinned = true
     ns.SkinWindow(f)
@@ -101,25 +138,21 @@ local function SkinBook()
             "SecondaryProfession3", "SecondaryProfession4" }) do
             SkinProfession(f[n] or G(n))
         end
+        Scan(f, 1)
     end)
     ns.Watch(f)
-    -- Blizzard setzt beim Lernen/Verlernen Teile neu: beim Öffnen nochmals (die Zeichnungen bleiben dabei unberührt)
+    -- Blizzard baut Teile beim Öffnen bzw. Lernen/Verlernen neu: dann nochmals (die Zeichnungen bleiben unberührt)
     f:HookScript("OnShow", function()
-        Step("sections", function()
-            for _, n in ipairs({ "PrimaryProfession1", "PrimaryProfession2", "SecondaryProfession1",
-                "SecondaryProfession2", "SecondaryProfession3", "SecondaryProfession4" }) do
-                local section = f[n] or G(n)
-                if section then SkinSection(section) end
-            end
-        end)
+        C_Timer.After(0, function() Step("sections", function() Scan(f, 1) end) end)
     end)
 end
 
 local events = CreateFrame("Frame")
 events:RegisterEvent("PLAYER_LOGIN")
 events:RegisterEvent("ADDON_LOADED")
-events:SetScript("OnEvent", function(_, event, addon)
-    if event == "ADDON_LOADED" and addon ~= "Blizzard_ProfessionsBook" then return end
-    if not ns.GetDB().professions or not G("ProfessionsBookFrame") then return end
+events:SetScript("OnEvent", function()
+    -- (welches Blizzard-Paket das Fenster lädt, ist im Forever-Client anders – einfach nachsehen, ob es da ist)
+    if ns.professionsSkinned or not ns.GetDB().professions then return end
+    if not (G("ProfessionsBookFrame") or G("ProfessionsFrame")) then return end
     Step("skin", SkinBook)
 end)
