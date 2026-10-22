@@ -43,12 +43,25 @@ local function FindTabs(frame, depth)
     end
 end
 
+-- Blizzards Metallrahmen (NineSlice, samt braunem Balken und goldenen Ecken) und das Porträt: Blizzard blendet sie
+-- beim Öffnen wieder ein – darum jedes Teil einzeln unsichtbar, bei offenem Fenster immer wieder
+local function HideFrameArt(f)
+    for _, key in ipairs({ "NineSlice", "PortraitContainer" }) do
+        local obj = f[key]
+        if type(obj) == "table" and not Forbidden(obj) then
+            ns.Hide(obj)
+            ns.HideTextures(obj)
+        end
+    end
+end
+
 local function SkinTalents()
     local f = G("PlayerSpellsFrame")
     if not f or ns.talentsSkinned or Forbidden(f) then return end
     ns.talentsSkinned = true
     -- nur der Rahmen ("leicht": Blizzards Hintergrund mit den Talentbäumen bleibt)
     ns.SkinWindow(f, nil, true)
+    Step("frame", function() HideFrameArt(f) end)
     Step("tabs", function() FindTabs(f, 1) end)
     ns.Watch(f)
     -- Reiter entstehen teils erst beim Öffnen/Umschalten: solange offen, ab und zu nachsehen; Text mittig
@@ -56,8 +69,9 @@ local function SkinTalents()
     local waited = 0
     watch:SetScript("OnUpdate", function(_, elapsed)
         waited = waited + elapsed
-        if waited < 0.5 then return end
+        if waited < 0.2 then return end
         waited = 0
+        pcall(HideFrameArt, f)
         pcall(FindTabs, f, 1)
         for t in pairs(tabs) do pcall(ns.CenterText, t) end
     end)
