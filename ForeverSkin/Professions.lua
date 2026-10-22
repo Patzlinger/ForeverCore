@@ -25,7 +25,13 @@ local function SkinSection(section)
     for _, r in ipairs({ section:GetRegions() }) do
         if r:IsObjectType("Texture") and not ns.IsMine(section, r) then
             local w, h = r:GetWidth() or 0, r:GetHeight() or 0
-            if w <= BORDER_MAX or h <= BORDER_MAX then r:SetAlpha(0) end
+            if w <= BORDER_MAX or h <= BORDER_MAX then
+                r:SetAlpha(0)
+            else
+                -- Blizzards Hintergrund des Berufs bleibt (die allgemeine Fenster-Umgestaltung hatte ihn schon
+                -- ausgeblendet – darum wieder sichtbar machen)
+                r:SetAlpha(1)
+            end
         end
     end
     if not boxes[section] then
