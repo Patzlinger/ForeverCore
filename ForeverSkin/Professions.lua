@@ -298,6 +298,22 @@ local function Overlays(f)
         end
     end
 end
+-- Text-Knöpfe der unteren Reihe ("Alle erstellen", "Erstellen") kleiner, Schrift gleich groß: Höhe 22, Breite nach
+-- Text (nur außerhalb des Kampfs)
+local BTN_HEIGHT, BTN_PAD, BTN_MIN = 22, 24, 70
+local function ShrinkBottomButtons(f)
+    if InCombatLockdown() or not f:GetBottom() then return end
+    for b in pairs(textButtons) do
+        if b:IsVisible() and b:GetBottom() and (b:GetBottom() - f:GetBottom()) < FOOTER then
+            local fs = b.GetFontString and b:GetFontString()
+            local w = math.max(BTN_MIN, math.floor((fs and fs:GetStringWidth() or 0) + BTN_PAD + 0.5))
+            if math.abs(b:GetWidth() - w) > 0.5 or math.abs(b:GetHeight() - BTN_HEIGHT) > 0.5 then
+                pcall(b.SetSize, b, w, BTN_HEIGHT)
+            end
+        end
+    end
+end
+
 local function HideBottomBar(frame)
     local f = headerFrame
     if not f or not f:GetBottom() then return end
@@ -427,6 +443,7 @@ local function SkinBook()
             pcall(Scan, f, 1)
             pcall(Overlays, f)
             pcall(CloseTopGap, f)
+            pcall(ShrinkBottomButtons, f)
         end
     end)
 end
