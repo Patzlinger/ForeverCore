@@ -78,6 +78,38 @@ local function FindButtons(frame, depth)
     end
 end
 
+-- Knopf "Zauberbuch" links neben dem Suchfeld (wie beim Lehrer: ForeverSpellbook, sonst Blizzards Zauberbuch)
+local function FindSearchBox(frame, depth)
+    for _, child in ipairs({ frame:GetChildren() }) do
+        if not Forbidden(child) then
+            if child:IsObjectType("EditBox") then return child end
+            if depth < 5 then
+                local found = FindSearchBox(child, depth + 1)
+                if found then return found end
+            end
+        end
+    end
+end
+
+local function AddSpellbookButton(f)
+    local book = ns.UI.Button(f, ns.T("Zauberbuch", "Spellbook"), 100, function()
+        local api = ns.UI.API and ns.UI.API.ForeverSpellbook
+        if api and api.Toggle then
+            pcall(api.Toggle)
+        elseif PlayerSpellsUtil and PlayerSpellsUtil.ToggleSpellBookFrame then
+            pcall(PlayerSpellsUtil.ToggleSpellBookFrame)
+        end
+    end)
+    book:SetHeight(22)
+    local search = FindSearchBox(f, 1)
+    if search then
+        book:SetPoint("RIGHT", search, "LEFT", -12, 0)
+    else
+        book:SetPoint("TOPRIGHT", f, "TOPRIGHT", -260, -32)
+    end
+    book:SetFrameLevel(f:GetFrameLevel() + 20)
+end
+
 -- Reiter kleiner (Schrift bleibt gleich groß): Höhe 24, Breite nach Text; danach die Leiste neu anordnen lassen
 local TAB_HEIGHT, TAB_PAD, TAB_MIN = 24, 28, 80
 local function SizeTabs()
@@ -161,6 +193,7 @@ local function SkinTalents()
     Step("tabs", function() FindTabs(f, 1); SizeTabs(); LiftTabs(f) end)
     Step("dropdowns", function() FindDropdowns(f, 1) end)
     Step("buttons", function() FindButtons(f, 1) end)
+    Step("spellbook", function() AddSpellbookButton(f) end)
     ns.Watch(f)
     -- Reiter entstehen teils erst beim Öffnen/Umschalten: solange offen, ab und zu nachsehen; Text mittig
     local watch = CreateFrame("Frame", nil, f)
