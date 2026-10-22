@@ -329,6 +329,35 @@ local function ShrinkBottomButtons(f)
     end
 end
 
+-- Lage der unteren Knöpfe feiner: alle NUDGE_UP höher, der linke ("Alle erstellen") NUDGE_RIGHT weiter rechts.
+-- Blizzard setzt die Anker teils neu – dann gilt dessen Lage als neue Grundlage (nur außerhalb des Kampfs). Hängt ein
+-- Knopf an einem anderen Bedienelement der Reihe, wandert er mit diesem schon nach oben (nicht doppelt)
+local NUDGE_UP, NUDGE_RIGHT = 3, 8
+local nudged = setmetatable({}, { __mode = "k" }) -- [Knopf] = { x, y } (von uns gesetzt)
+local function NudgeBottomButtons(f)
+    if InCombatLockdown() or not f:GetBottom() then return end
+    local row, leftmost = {}, nil
+    for b in pairs(textButtons) do
+        if shrunk[b] and b:IsVisible() and b:GetLeft() then
+            row[#row + 1] = b
+            if not leftmost or b:GetLeft() < leftmost:GetLeft() then leftmost = b end
+        end
+    end
+    for _, b in ipairs(row) do
+        if b:GetNumPoints() == 1 then
+            local p, rel, rp, x, y = b:GetPoint(1)
+            local mine = nudged[b]
+            if not (mine and math.abs(x - mine[1]) < 0.01 and math.abs(y - mine[2]) < 0.01) then
+                local chained = rel and (textButtons[rel] or bottomControls[rel])
+                local nx = x + (b == leftmost and NUDGE_RIGHT or 0)
+                local ny = y + (chained and 0 or NUDGE_UP)
+                nudged[b] = { nx, ny }
+                b:SetPoint(p, rel, rp, nx, ny)
+            end
+        end
+    end
+end
+
 local function HideBottomBar(frame)
     local f = headerFrame
     if not f or not f:GetBottom() then return end
@@ -451,13 +480,14 @@ local function SkinBook()
     local waited = 0
     watch:SetScript("OnUpdate", function(_, elapsed)
         pcall(KeepButtonsFlat)
+        pcall(CloseTopGap, f) -- (jedes Bild: sonst rutschte der Inhalt erst Sekunden nach dem Öffnen hoch)
+        pcall(NudgeBottomButtons, f)
         if ns.SkinOpenMenu then pcall(ns.SkinOpenMenu) end
         waited = waited + elapsed
         if waited >= 0.5 then
             waited = 0
             pcall(Scan, f, 1)
             pcall(Overlays, f)
-            pcall(CloseTopGap, f)
             pcall(ShrinkBottomButtons, f)
         end
     end)
