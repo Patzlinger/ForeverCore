@@ -25,8 +25,11 @@ local function SkinSection(section)
     for _, r in ipairs({ section:GetRegions() }) do
         if r:IsObjectType("Texture") and not ns.IsMine(section, r) then
             local w, h = r:GetWidth() or 0, r:GetHeight() or 0
+            local atlas = r.GetAtlas and r:GetAtlas()
             if w <= BORDER_MAX or h <= BORDER_MAX then
                 r:SetAlpha(0)
+            elseif type(atlas) == "string" and atlas:find("overview%-Card") then
+                r:SetAlpha(0) -- Blizzards Karte hinter der Zeichnung (dunkler Kasten mit hellem Rand): weg, auf Wunsch
             else
                 -- Blizzards Hintergrund des Berufs bleibt (die allgemeine Fenster-Umgestaltung hatte ihn schon
                 -- ausgeblendet – darum wieder sichtbar machen)
@@ -34,11 +37,31 @@ local function SkinSection(section)
             end
         end
     end
-    if not boxes[section] then
-        boxes[section] = true
-        local look = ns.Flat(section, { 0, 0, 0, 0 })
-        if look then ns.EdgeColor(section, C.border, 1) end
+    -- (früher hier zusätzlich ein feiner grauer Rand – mit der Karte auf Wunsch weg)
+end
+
+-- Lücke zwischen Titelleiste und den Berufen (Berufsübersicht) schließen: den Inhalt so weit nach oben, dass der
+-- erste Beruf GAP_TOP unter der Fensteroberkante beginnt. Misst jedes Mal neu (verschiebt nur, wenn die Lücke größer
+-- ist) – nur außerhalb des Kampfs (darin stecken geschützte Zauber-Knöpfe)
+local GAP_TOP = 24 + 6
+local function CloseTopGap(f)
+    if InCombatLockdown() then return end
+    local first = f.PrimaryProfession1 or G("PrimaryProfession1")
+    if not first or Forbidden(first) or not first:IsVisible() then return end
+    local content = first:GetParent()
+    if not content or content == f or Forbidden(content) or not (first:GetTop() and f:GetTop()) then return end
+    local s = first:GetEffectiveScale() / f:GetEffectiveScale()
+    local extra = (f:GetTop() - first:GetTop() * s) - GAP_TOP
+    if extra <= 1 then return end
+    local dy = extra / s
+    local points = {}
+    for i = 1, content:GetNumPoints() do
+        local p, rel, rp, x, y = content:GetPoint(i)
+        points[i] = { p, rel, rp, x or 0, (y or 0) + dy }
     end
+    if #points == 0 then return end
+    content:ClearAllPoints()
+    for _, pt in ipairs(points) do content:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5]) end
 end
 
 -- Fortschrittsbalken: Rahmen weg, flacher dunkler Hintergrund; Füllung und Text bleiben
@@ -399,6 +422,7 @@ local function SkinBook()
             waited = 0
             pcall(Scan, f, 1)
             pcall(Overlays, f)
+            pcall(CloseTopGap, f)
         end
     end)
 end

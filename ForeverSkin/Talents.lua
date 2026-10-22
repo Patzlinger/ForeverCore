@@ -103,11 +103,16 @@ local function AddSpellbookButton(f)
     book:SetHeight(22)
     local search = FindSearchBox(f, 1)
     if search then
+        -- im selben Rahmen und auf der Ebene des Suchfelds: sonst lag ein unsichtbarer Teil des Talentfensters
+        -- (sehr hohe Ebenen) darüber und fing den Klick ab
+        local holder = search:GetParent() or f
+        book:SetParent(holder)
         book:SetPoint("RIGHT", search, "LEFT", -12, 0)
+        book:SetFrameLevel(search:GetFrameLevel() + 2)
     else
         book:SetPoint("TOPRIGHT", f, "TOPRIGHT", -260, -32)
+        book:SetFrameLevel(f:GetFrameLevel() + 500)
     end
-    book:SetFrameLevel(f:GetFrameLevel() + 20)
 end
 
 -- Reiter kleiner (Schrift bleibt gleich groß): Höhe 24, Breite nach Text; danach die Leiste neu anordnen lassen
