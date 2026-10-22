@@ -28,7 +28,7 @@ ns.DEFAULTS = {
     communities = true, -- Gilde & Communitys
     wardrobe = true, -- Vorlagen (Transmogrifikation)
     menus = true,    -- aufgeklappte Menüs überall (Rechtsklick auf Einheiten, Auswahllisten)
-    groupFinder = true, -- Suche nach Gruppe (mit Dungeonfenster daneben)
+    groupFinder = true, -- Suche nach Gruppe (mit Reiter zum Dungeonfenster)
     scale = 110,     -- Größe von Gespräch, Quest, Händler und Lehrer in Prozent
 }
 
@@ -1056,7 +1056,7 @@ local function Build()
     Check(-422, T("Gilde & Communitys", "Guild & Communities"), "communities")
     Check(-446, T("Vorlagen (Transmogrifikation)", "Appearances (transmogrify)"), "wardrobe")
     Check(-470, T("Menüs (Rechtsklick auf Einheiten)", "Menus (right-click on units)"), "menus")
-    Check(-494, T("Suche nach Gruppe (mit Dungeonfenster)", "Group finder (with dungeon window)"), "groupFinder")
+    Check(-494, T("Suche nach Gruppe (Reiter zum Dungeonfenster)", "Group finder (tab to dungeon window)"), "groupFinder")
     local size = UI.Slider(options, 22, -524, T("Größe von Gespräch, Quest, Händler, Lehrer", "Size of dialog, quest, vendor, trainer"),
         90, 130, 5, function(v)
             ns.GetDB().scale = v

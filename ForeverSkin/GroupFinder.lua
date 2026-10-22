@@ -1,8 +1,8 @@
 -- ForeverSkin – GroupFinder.lua: Fenster "Suche nach Gruppe" (im Forever-Client LFGParentFrame) im Forever-Stil
 -- (docs/Fenster-Stil.md). Auf Wunsch bleiben Hintergrund und die Grafiken der Knöpfe (Rollen, Kategorien, "Zurück",
 -- "Selbst anmelden") unverändert – nur Rahmen und Titelleiste werden flach, das Auge (Porträt) sitzt klein links in
--- der Titelleiste. Beim Öffnen erscheint rechts daneben das Dungeonfenster von ForeverQuests (Schnittstelle
--- UI.API.ForeverQuests.ShowDocked/HideDocked); es schließt sich mit, wenn es erst dadurch aufging.
+-- der Titelleiste. Die Knöpfe unten ("Zurück", "Selbst anmelden") werden flach. Rechts unter Blizzards Reitern ein
+-- eigener Reiter, der das Dungeonfenster von ForeverQuests öffnet (Schnittstelle UI.API.ForeverQuests.Toggle).
 local _, ns = ...
 
 local function G(name) return _G[name] end
@@ -43,15 +43,100 @@ local function AddEye(f)
     end
 end
 
--- Dungeonfenster von ForeverQuests rechts daneben (nur, wenn ForeverQuests geladen ist)
+-- Reiter rechts für das Dungeonfenster von ForeverQuests (nur, wenn ForeverQuests geladen ist): gebaut wie Blizzards
+-- Seiten-Reiter ("common-sidetab", runde Maske, "common-sidetab-hover"), unter dem letzten Reiter im selben Abstand
 local function Quests() return ns.UI.API and ns.UI.API.ForeverQuests end
-local function DockDungeons(f)
-    local api = Quests()
-    if api and api.ShowDocked then pcall(api.ShowDocked, f) end
+local DUNGEON_ICON = "Interface\\Icons\\INV_Misc_Key_13"
+local dungeonTab
+
+-- Blizzards Reiter rechts am Fenster (Knöpfe, die rechts über die Fensterkante hinausragen), von oben nach unten
+local function SideTabs(f)
+    local list, seen = {}, {}
+    local function Consider(b)
+        if b and b ~= dungeonTab and not seen[b] and not Forbidden(b) and b.IsObjectType and b:IsObjectType("Button")
+            and b:IsShown() and b:GetLeft() and b:GetTop() and f:GetRight() and b:GetLeft() >= f:GetRight() - 10 then
+            seen[b] = true
+            list[#list + 1] = b
+        end
+    end
+    for _, child in ipairs({ f:GetChildren() }) do Consider(child) end
+    local name = f:GetName()
+    for i = 1, 8 do Consider(name and G(name .. "Tab" .. i)) end
+    table.sort(list, function(a, b) return a:GetTop() > b:GetTop() end)
+    return list
 end
-local function UndockDungeons()
-    local api = Quests()
-    if api and api.HideDocked then pcall(api.HideDocked) end
+
+local function BuildDungeonTab(f)
+    local tab = CreateFrame("Button", nil, f)
+    tab:SetSize(55, 59)
+    local bg = tab:CreateTexture(nil, "BACKGROUND")
+    bg:SetAllPoints()
+    if not bg:SetAtlas("common-sidetab") then bg:SetColorTexture(0.1, 0.1, 0.12, 0.9) end
+    local icon = tab:CreateTexture(nil, "ARTWORK")
+    icon:SetSize(49, 49)
+    icon:SetPoint("CENTER")
+    icon:SetTexture(DUNGEON_ICON)
+    local mask = tab:CreateMaskTexture()
+    mask:SetAllPoints()
+    mask:SetAtlas("common-sidetab-mask")
+    icon:AddMaskTexture(mask)
+    local hl = tab:CreateTexture(nil, "HIGHLIGHT")
+    hl:SetAllPoints()
+    if not hl:SetAtlas("common-sidetab-hover") then hl:SetColorTexture(1, 1, 1, 0.15) end
+    tab:SetScript("OnClick", function()
+        local api = Quests()
+        if api and api.Toggle then pcall(api.Toggle) end
+    end)
+    tab:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine("ForeverQuests", 1, 0.82, 0)
+        GameTooltip:AddLine(ns.T("Dungeons: Quests, Level und Gruppensuche", "Dungeons: quests, levels and group finder"),
+            1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    tab:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    return tab
+end
+
+local function PlaceDungeonTab(f)
+    if not Quests() then
+        if dungeonTab then dungeonTab:Hide() end
+        return
+    end
+    dungeonTab = dungeonTab or BuildDungeonTab(f)
+    local tabs = SideTabs(f)
+    local last = tabs[#tabs]
+    dungeonTab:ClearAllPoints()
+    if last then
+        dungeonTab:SetSize(last:GetWidth(), last:GetHeight())
+        dungeonTab:SetFrameLevel(last:GetFrameLevel())
+        local gap = 4
+        if tabs[2] then gap = math.max(0, (tabs[1]:GetBottom() or 0) - (tabs[2]:GetTop() or 0)) end
+        dungeonTab:SetPoint("TOP", last, "BOTTOM", 0, -gap)
+    else
+        dungeonTab:SetPoint("TOPLEFT", f, "TOPRIGHT", 0, -40)
+    end
+    dungeonTab:Show()
+end
+
+-- Knöpfe unten ("Zurück", "Selbst anmelden"): flach wie überall. Nur Text-Knöpfe in Knopfhöhe unten im Fenster –
+-- die großen Kategorie-Knöpfe ("Dungeons" …) behalten ihre Grafik (auf Wunsch)
+local bottomButtons = setmetatable({}, { __mode = "k" })
+local function SkinBottomButtons(f, frame, depth)
+    for _, child in ipairs({ frame:GetChildren() }) do
+        if not Forbidden(child) then
+            if child:IsObjectType("Button") then
+                local text = child.GetText and child:GetText()
+                if not bottomButtons[child] and type(text) == "string" and text ~= "" and child:GetHeight() <= 30
+                    and child:GetBottom() and f:GetBottom() and child:GetBottom() - f:GetBottom() < 50 then
+                    bottomButtons[child] = true
+                    ns.SkinButton(child)
+                end
+            elseif depth < 4 then
+                SkinBottomButtons(f, child, depth + 1)
+            end
+        end
+    end
 end
 
 local function SkinGroupFinder()
@@ -63,9 +148,7 @@ local function SkinGroupFinder()
     Step("frame", function() HideFrameArt(f) end)
     Step("eye", function() AddEye(f) end)
     ns.Watch(f)
-    f:HookScript("OnShow", function() DockDungeons(f) end)
-    f:HookScript("OnHide", UndockDungeons)
-    if f:IsShown() then DockDungeons(f) end
+    -- (Blizzards Reiter und Knöpfe stehen erst nach dem Öffnen fest – darum im Takt einreihen bzw. umgestalten)
     local watch = CreateFrame("Frame", nil, f)
     local waited = 0
     watch:SetScript("OnUpdate", function(_, elapsed)
@@ -73,6 +156,8 @@ local function SkinGroupFinder()
         if waited < 0.2 then return end
         waited = 0
         pcall(HideFrameArt, f)
+        pcall(PlaceDungeonTab, f)
+        pcall(SkinBottomButtons, f, f, 1)
     end)
 end
 
