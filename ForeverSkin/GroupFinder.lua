@@ -291,12 +291,13 @@ local function SkinRefresh(b)
         local t = b[get] and b[get](b)
         if t and t ~= icon then ns.Hide(t) end
     end
-    ns.Flat(b, ns.C.button)
+    -- nur das Symbol, ohne Kasten (auf Wunsch): hellgrau, beim Überfahren gold – wie unsere feinen Pfeile
     if icon and icon.SetDesaturated then
         icon:SetDesaturated(true)
         icon:SetVertexColor(0.85, 0.85, 0.87)
+        b:HookScript("OnEnter", function() icon:SetVertexColor(ns.C.accent[1], ns.C.accent[2], ns.C.accent[3]) end)
+        b:HookScript("OnLeave", function() icon:SetVertexColor(0.85, 0.85, 0.87) end)
     end
-    ns.Hover(b)
 end
 local function GoldDividers(frame, depth)
     for _, r in ipairs({ frame:GetRegions() }) do
