@@ -85,6 +85,28 @@ local function Setup(frame)
     if frame:IsShown() then Later() end
 end
 
+-- /falts reiter: wie weit ist der Reiter gekommen? (Fenster gefunden, Reiter angelegt, Blizzards Reiter, Lage)
+function ns.CheckProfessionTab()
+    local function Say(text) print("|cffffcc00ForeverAlts|r: " .. tostring(text)) end
+    local frame = _G.ProfessionsFrame or _G.ProfessionsBookFrame
+    Say("Berufe-Fenster: " .. (frame and ((frame:GetName() or "?") .. (frame:IsShown() and " (offen)" or " (zu)")) or "nicht gefunden"))
+    Say("Reiter angelegt: " .. tostring(tab ~= nil))
+    local names = {}
+    for i = 1, 12 do
+        local t = _G["Professions" .. i .. "Tab"]
+        if t then names[#names + 1] = "Professions" .. i .. "Tab" .. (t:IsShown() and "" or " (versteckt)") end
+    end
+    Say("Blizzard-Reiter: " .. (#names > 0 and table.concat(names, ", ") or "keine gefunden"))
+    if tab then
+        local p, rel, rp, x, y = tab:GetPoint(1)
+        Say(string.format("Unser Reiter: sichtbar=%s, Größe %dx%d, Ebene %s/%d, hängt an %s %s (%d, %d)",
+            tostring(tab:IsVisible()), tab:GetWidth() or 0, tab:GetHeight() or 0, tab:GetFrameStrata(),
+            tab:GetFrameLevel(), tostring(rel and rel.GetName and rel:GetName() or rel), tostring(rp), x or 0, y or 0))
+    end
+    -- gleich noch einmal einreihen (falls das Fenster offen ist)
+    if frame and tab and frame:IsShown() then pcall(Place, frame) end
+end
+
 local events = CreateFrame("Frame")
 events:RegisterEvent("PLAYER_LOGIN")
 events:RegisterEvent("ADDON_LOADED")
