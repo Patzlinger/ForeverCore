@@ -42,6 +42,8 @@ local function SkinSection(section)
 end
 
 -- Fortschrittsbalken: Rahmen weg, flacher dunkler Hintergrund; Füllung und Text bleiben
+local barLooks = setmetatable({}, { __mode = "k" })
+local headerFrame -- das Berufe-/Herstellungsfenster (für die Lage im Fenster)
 local function SkinBar(bar)
     if not bar or Forbidden(bar) or boxes[bar] then return end
     boxes[bar] = true
@@ -52,7 +54,19 @@ local function SkinBar(bar)
     for _, child in ipairs({ bar:GetChildren() }) do
         if not Forbidden(child) and not child:IsObjectType("Button") then ns.HideTextures(child) end
     end
-    ns.Flat(bar, C.input or C.button, -1)
+    barLooks[bar] = ns.Flat(bar, C.input or C.button, -1)
+end
+
+-- Balken im Kopfbereich (Herstellungsfenster): ganz ohne Hintergrund, nur Füllung und Text – sonst lag er über der
+-- goldenen Linie der Titelleiste
+local function NoBarBackground(bar)
+    local look = barLooks[bar]
+    local f = headerFrame
+    if not (look and f and f:GetTop() and bar:GetTop()) then return end
+    local s = bar:GetEffectiveScale() / f:GetEffectiveScale()
+    if f:GetTop() - bar:GetTop() * s > 70 then return end -- (nur oben im Fenster)
+    look.fill:SetAlpha(0)
+    for _, e in ipairs(look.edges or {}) do e:SetAlpha(0) end
 end
 
 -- Zauber-Symbol (geschützter Knopf – nur das Aussehen): wie ein Taschenplatz
@@ -135,7 +149,6 @@ end
 -- darüber) – Oberkante mindestens HEADER_GAP unter der Linie; einmalig verschoben
 local HEADER_LINE, HEADER_GAP = 24, 6
 local headerShifted = setmetatable({}, { __mode = "k" })
-local headerFrame
 local function KeepBelowHeader(bar)
     local f = headerFrame
     if not f or headerShifted[bar] or not bar:GetTop() or not f:GetTop() then return end
@@ -264,6 +277,7 @@ local function Scan(frame, depth)
             elseif child:IsObjectType("StatusBar") then
                 SkinBar(child)
                 KeepBelowHeader(child)
+                NoBarBackground(child)
             elseif child:IsObjectType("EditBox") then
                 SkinEdit(child) -- (Menge beim Herstellen)
                 bottomControls[child] = true
