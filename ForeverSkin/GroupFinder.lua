@@ -129,6 +129,32 @@ function ns.DumpGroupFinderTabs()
     end
     local ok, err = pcall(HideFrameArt, f)
     Say("Ausblenden: " .. (ok and "ok" or ("Fehler " .. tostring(err))))
+    -- sichtbare Linien/Leisten (flach und breit) in allen Unter-Rahmen – z. B. Verzierungen, die /fskin grafik nicht
+    -- findet (Rahmen ohne Maus)
+    local function KeyOf(parent, child)
+        for k, v in pairs(parent) do if v == child and type(k) == "string" then return k end end
+    end
+    local function Lines(frame, depth, path)
+        for _, r in ipairs({ frame:GetRegions() }) do
+            if r:IsObjectType("Texture") and r:IsVisible() and r:GetAlpha() > 0 and not ns.IsMine(frame, r) then
+                local w, h = r:GetWidth() or 0, r:GetHeight() or 0
+                if w >= 150 and h <= 40 then
+                    local atlas = r.GetAtlas and r:GetAtlas()
+                    Say(string.format("  Linie: %s.%s | %s | %dx%d | oben %.0f", path,
+                        tostring(r:GetName() or KeyOf(frame, r) or "-"), tostring(atlas or r:GetTexture()), w, h,
+                        r:GetTop() or 0))
+                end
+            end
+        end
+        if depth < 5 then
+            for _, child in ipairs({ frame:GetChildren() }) do
+                if not Forbidden(child) and child:IsVisible() then
+                    Lines(child, depth + 1, path .. ">" .. tostring(KeyOf(frame, child) or child:GetName() or "?"))
+                end
+            end
+        end
+    end
+    Lines(f, 1, "LFGParentFrame")
     for i, b in ipairs(SideTabs(f)) do
         Say(string.format("Reiter %d: %s, links %.0f, oben %.0f, %dx%d, Skalierung %.2f", i,
             tostring(b:GetName() or b:GetDebugName()), b:GetLeft() or 0, b:GetTop() or 0, b:GetWidth() or 0,
