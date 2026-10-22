@@ -2522,6 +2522,10 @@ do
                 local dungeon = DungeonByQuest(questID)
                 if dungeon then ns.ShowDungeon(dungeon) end
             end,
+            -- Dungeonfenster neben einem anderen Fenster einblenden (z. B. ForeverSkin: neben "Suche nach Gruppe")
+            -- und wieder schließen – nur, wenn es dafür geöffnet wurde (vorher Offenes bleibt, wie es war)
+            ShowDocked = function(anchor) ns.ShowDungeonsDocked(anchor) end,
+            HideDocked = function() ns.HideDungeonsDocked() end,
         }
     end
 end
@@ -2544,6 +2548,26 @@ end
 
 function ns.HideDungeons()
     if window then window:Hide() end
+end
+
+-- angedockt neben einem anderen Fenster (rechts daneben, obere Kanten bündig); schon offen = nur andocken.
+-- Beim Lösen zurück in die Mitte – und schließen, wenn es erst durch das Andocken aufging
+local docked -- nil = nicht angedockt; true/false = beim Andocken selbst geöffnet?
+function ns.ShowDungeonsDocked(anchor)
+    if not anchor or not EnsureWindow() then return end
+    if docked == nil then docked = not window:IsShown() end
+    window:ClearAllPoints()
+    window:SetPoint("TOPLEFT", anchor, "TOPRIGHT", 6, 0)
+    window:SetFrameStrata("DIALOG")
+    window:Show()
+end
+function ns.HideDungeonsDocked()
+    if docked == nil or not window then return end
+    local openedByDock = docked
+    docked = nil
+    if openedByDock then window:Hide() end
+    window:ClearAllPoints()
+    window:SetPoint("CENTER")
 end
 
 function ns.ToggleDungeons()

@@ -28,3 +28,4 @@ Professions.lua
 Talents.lua
 Communities.lua
 Wardrobe.lua
+GroupFinder.lua
