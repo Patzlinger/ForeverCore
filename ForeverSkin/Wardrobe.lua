@@ -68,6 +68,18 @@ end
 
 local done = setmetatable({}, { __mode = "k" })
 local tabs = setmetatable({}, { __mode = "k" }) -- Reiter: Text mittig im Kasten halten (Blizzard setzt ihn tiefer)
+
+-- Reiter etwas tiefer (auf Wunsch): TAB_DOWN unter Blizzards Lage; setzt Blizzard den Anker neu, gilt dessen Lage
+-- als neue Grundlage
+local TAB_DOWN = 4
+local tabSet = setmetatable({}, { __mode = "k" }) -- [Reiter] = von uns gesetzter y-Versatz
+local function LowerTab(tab)
+    if tab:GetNumPoints() ~= 1 then return end
+    local p, rel, rp, x, y = tab:GetPoint(1)
+    if tabSet[tab] and math.abs(y - tabSet[tab]) < 0.01 then return end
+    tabSet[tab] = y - TAB_DOWN
+    tab:SetPoint(p, rel, rp, x, y - TAB_DOWN)
+end
 local function Scan(frame, depth)
     for _, child in ipairs({ frame:GetChildren() }) do
         if not Forbidden(child) then HideBackground(child) end
@@ -130,7 +142,12 @@ local function SkinWardrobe(f)
     HideBackground(f)
     Step("scan", function() Scan(f, 1) end)
     Step("corners", function() HideCorners(f, 1) end)
-    Step("tabs", function() for t in pairs(tabs) do ns.CenterText(t) end end)
+    Step("tabs", function()
+        for t in pairs(tabs) do
+            ns.CenterText(t)
+            LowerTab(t)
+        end
+    end)
     ns.Watch(f)
     -- Blizzard blendet Rahmen und Porträt beim Öffnen teils wieder ein, Seiten entstehen beim Umschalten
     local watch = CreateFrame("Frame", nil, f)
@@ -147,7 +164,10 @@ local function SkinWardrobe(f)
         end
         pcall(Scan, f, 1)
         pcall(HideCorners, f, 1)
-        for t in pairs(tabs) do pcall(ns.CenterText, t) end
+        for t in pairs(tabs) do
+            pcall(ns.CenterText, t)
+            pcall(LowerTab, t)
+        end
         if ns.SkinOpenMenu then pcall(ns.SkinOpenMenu) end
     end)
 end
