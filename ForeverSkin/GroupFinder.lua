@@ -279,7 +279,7 @@ local function SkinBottomButtons(f, frame, depth)
 end
 
 -- Seite "Durchsuchen" (LFGBrowseFrame): Auswahllisten ("Kategorie", "Nach Aktivität filtern") flach, der Knopf
--- "Aktualisieren" daneben flach mit hellem Symbol; Blizzards braune Trennlinien ("…divider…") gold gefärbt
+-- "Aktualisieren" daneben nur als helles Symbol; Blizzards braune Trennlinien ("…divider…", "…ScrollLine") weg
 local browseDone = setmetatable({}, { __mode = "k" })
 local function KeyOf(parent, child)
     for k, v in pairs(parent) do if v == child and type(k) == "string" then return k end end
@@ -307,8 +307,7 @@ local function GoldDividers(frame, depth)
             -- (Trennlinien heißen hier "LFGBrowseFrameBarTop/-Middle" mit der Grafik "groupfinder-ScrollLine")
             local a = type(atlas) == "string" and atlas:lower() or ""
             if a:find("divider") or a:find("scrollline") or key:lower():find("divider") then
-                r:SetDesaturated(true)
-                r:SetVertexColor(ns.C.accent[1], ns.C.accent[2], ns.C.accent[3], 1)
+                r:SetAlpha(0) -- (erst gold gefärbt, dann auf Wunsch ganz entfernt)
             end
         end
     end
