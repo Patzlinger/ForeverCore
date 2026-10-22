@@ -67,6 +67,7 @@ local function SkinProgress(bar)
 end
 
 local done = setmetatable({}, { __mode = "k" })
+local tabs = setmetatable({}, { __mode = "k" }) -- Reiter: Text mittig im Kasten halten (Blizzard setzt ihn tiefer)
 local function Scan(frame, depth)
     for _, child in ipairs({ frame:GetChildren() }) do
         if not Forbidden(child) then HideBackground(child) end
@@ -92,6 +93,7 @@ local function Scan(frame, depth)
                 if type(label) == "string" and label ~= "" then
                     done[child] = true
                     ns.SkinTab(child, TabSelected)
+                    tabs[child] = true
                 end
             elseif not child:IsObjectType("Button") and depth < 5 then
                 Scan(child, depth + 1)
@@ -128,6 +130,7 @@ local function SkinWardrobe(f)
     HideBackground(f)
     Step("scan", function() Scan(f, 1) end)
     Step("corners", function() HideCorners(f, 1) end)
+    Step("tabs", function() for t in pairs(tabs) do ns.CenterText(t) end end)
     ns.Watch(f)
     -- Blizzard blendet Rahmen und Porträt beim Öffnen teils wieder ein, Seiten entstehen beim Umschalten
     local watch = CreateFrame("Frame", nil, f)
@@ -144,6 +147,7 @@ local function SkinWardrobe(f)
         end
         pcall(Scan, f, 1)
         pcall(HideCorners, f, 1)
+        for t in pairs(tabs) do pcall(ns.CenterText, t) end
         if ns.SkinOpenMenu then pcall(ns.SkinOpenMenu) end
     end)
 end
