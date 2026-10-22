@@ -269,6 +269,20 @@ local function SkinBottomButtons(f, frame, depth)
     end
 end
 
+-- Fußleiste mit feiner goldener Linie hinter den Knöpfen unten (wie bei allen Forever-Fenstern, ns.ContentBox):
+-- Höhe nach den Knöpfen (deren Oberkante + 7), einmal sobald die Knöpfe da sind
+local footerDone
+local function AddFooter(f)
+    if footerDone or not f:GetBottom() then return end
+    local top
+    for b in pairs(bottomButtons) do
+        if b:IsVisible() and b:GetTop() then top = math.max(top or 0, b:GetTop() - f:GetBottom()) end
+    end
+    if not top then return end
+    footerDone = true
+    ns.ContentBox(f, math.floor(top + 7.5), nil, true)
+end
+
 local function SkinGroupFinder()
     local f = G("LFGParentFrame")
     if not f or ns.groupFinderSkinned or Forbidden(f) then return end
@@ -293,6 +307,7 @@ local function SkinGroupFinder()
         end
         pcall(PlaceDungeonTab, f)
         pcall(SkinBottomButtons, f, f, 1)
+        pcall(AddFooter, f)
     end)
 end
 
