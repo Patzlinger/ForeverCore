@@ -653,6 +653,21 @@ local function RaiseAboveFooter(f, frame)
     frame:ClearAllPoints()
     for _, pt in ipairs(points) do frame:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5]) end
 end
+-- Auf-/Zuklappen (rotes Plus/Minus vor "Kalimdor" …): feiner Pfeil wie in den übrigen Listen. Den Zustand verrät
+-- Blizzards (unsichtbare) Knopfgrafik: Minus = aufgeklappt, Plus = zugeklappt (Pfad, Atlas oder Datei-Nummer)
+local MINUS_IDS = { [130821] = true, [130822] = true } -- UI-MinusButton-Up/-Down
+local PLUS_IDS = { [130838] = true, [130836] = true }  -- UI-PlusButton-Up/-Down
+local function ToggleState(b)
+    local t = b.GetNormalTexture and b:GetNormalTexture()
+    if not t then return nil end
+    local atlas = t.GetAtlas and t:GetAtlas()
+    local tex = t:GetTexture()
+    local s = ((type(atlas) == "string" and atlas or "") .. "|" .. (type(tex) == "string" and tex or "")):lower()
+    if s:find("minus") or s:find("open") or MINUS_IDS[tex] then return true end
+    if s:find("plus") or s:find("closed") or PLUS_IDS[tex] then return false end
+    return nil
+end
+
 local function SkinActivityView(f, view, depth)
     for _, child in ipairs({ view:GetChildren() }) do
         if not Forbidden(child) then
@@ -668,6 +683,8 @@ local function SkinActivityView(f, view, depth)
                     viewDone[child] = true
                     SkinDescription(view, child)
                 end
+            elseif child:IsObjectType("Button") and (child:GetWidth() or 0) <= 24 and ToggleState(child) ~= nil then
+                ns.SkinToggle(child, ToggleState(child)) -- (bei jedem Durchgang: Richtung nach dem Zustand)
             else
                 if isDropdown and depth == 1 then pcall(RaiseAboveFooter, f, child) end
                 if depth < 6 and not isDropdown then SkinActivityView(f, child, depth + 1) end
