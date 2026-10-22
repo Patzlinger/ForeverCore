@@ -503,12 +503,28 @@ local function AboveFooter(f, frame)
     for _, pt in ipairs(points) do frame:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5]) end
 end
 
+-- Listenanfang etwas höher im Kasten (auf Wunsch): obere Ankerpunkte der Liste einmal LIST_UP nach oben
+local LIST_UP = 6
+local function ListHigher(list)
+    if list.foreverRaised then return end
+    list.foreverRaised = true
+    local points = {}
+    for i = 1, list:GetNumPoints() do
+        local p, rel, rp, x, y = list:GetPoint(i)
+        if p:find("TOP") then y = (y or 0) + LIST_UP end
+        points[i] = { p, rel, rp, x or 0, y or 0 }
+    end
+    list:ClearAllPoints()
+    for _, pt in ipairs(points) do list:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5]) end
+end
+
 local function SkinResults(frame, depth, f)
     for _, child in ipairs({ frame:GetChildren() }) do
         if not Forbidden(child) then
             local isBar = type(child.Track) == "table" and (child.Track.Thumb or child.Back)
             if f and (child.GetScrollTarget or isBar) and child:IsVisible() then pcall(AboveFooter, f, child) end
             if child.GetScrollTarget then
+                pcall(ListHigher, child)
                 local target = child:GetScrollTarget()
                 if target then
                     for _, entry in ipairs({ target:GetChildren() }) do
