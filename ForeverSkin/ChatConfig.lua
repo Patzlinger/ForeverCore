@@ -50,6 +50,38 @@ local function NoBackdrop(frame)
     end
 end
 
+-- Zierrahmen am Fenster ("Border" u. Ä.: Unter-Rahmen nur aus Grafiken, ohne Maus, fast so groß wie das Fenster) –
+-- weg; der alte goldbraune Rahmen hatte weder Backdrop noch NineSlice
+local function HideBorders(f)
+    if type(f.Border) == "table" and f.Border.GetRegions and not Forbidden(f.Border) then
+        ns.HideTextures(f.Border)
+        ns.Hide(f.Border)
+    end
+    local fw, fh = f:GetWidth() or 0, f:GetHeight() or 0
+    for _, child in ipairs({ f:GetChildren() }) do
+        if not Forbidden(child) and not child:IsMouseEnabled() and #{ child:GetChildren() } == 0
+            and (child:GetWidth() or 0) >= fw * 0.9 and (child:GetHeight() or 0) >= fh * 0.9 then
+            ns.HideTextures(child)
+        end
+    end
+end
+
+-- Knöpfe unten ("Chat: Standard", "Fenster zurücksetzen", "OK"): BUTTON_IN nach innen, BUTTON_UP höher; hängt ein
+-- Knopf rechts an einem anderen, bekommt er BUTTON_GAP Luft dazu – einmal je Knopf
+local BUTTON_IN, BUTTON_UP, BUTTON_GAP = 6, 4, 4
+local nudged = setmetatable({}, { __mode = "k" })
+local function NudgeBottom(f, b)
+    if nudged[b] or b:GetNumPoints() ~= 1 or not (b:GetCenter() and f:GetCenter()) then return end
+    nudged[b] = true
+    local p, rel, rp, x, y = b:GetPoint(1)
+    if rel and rel ~= f and rel.IsObjectType and rel:IsObjectType("Button") then
+        b:SetPoint(p, rel, rp, (x or 0) + BUTTON_GAP, y or 0) -- (wandert mit dem Knopf davor mit)
+    else
+        local inward = b:GetCenter() < f:GetCenter() and BUTTON_IN or -BUTTON_IN
+        b:SetPoint(p, rel, rp, (x or 0) + inward, (y or 0) + BUTTON_UP)
+    end
+end
+
 local done = setmetatable({}, { __mode = "k" })
 local function Scan(frame, depth)
     for _, child in ipairs({ frame:GetChildren() }) do
@@ -84,8 +116,13 @@ local function Scan(frame, depth)
                     ns.SkinButton(child) -- ("Standard", "Okay", Kategorien, Reiter …)
                     -- Kategorien links ("Chat", "Channels", "Anderes") liegen dicht übereinander: Fläche oben und
                     -- unten je 1 schmaler – so entsteht Luft dazwischen
-                    if key:find("category") then ns.Flat(child, C.button, { 0, 1, 0, 1 }) end
+                    if key:find("category") then ns.Flat(child, C.button, { 4, 2, 4, 2 }) end
                     ns.CenterText(child)
+                end
+                -- Knöpfe ganz unten am Fenster: nach innen und höher
+                local f = G("ChatConfigFrame")
+                if f and child:GetBottom() and f:GetBottom() and child:GetBottom() - f:GetBottom() < 30 then
+                    NudgeBottom(f, child)
                 end
             else
                 -- Kasten mit Blizzard-Rahmen (Backdrop/NineSlice): flache Fläche mit feinem Rand. Kleine Rahmen
@@ -125,7 +162,9 @@ local function SkinChatConfig()
     Step("backdrop", function() NoBackdrop(f) end)
     ns.SkinWindow(f)
     Step("header", function() SkinHeader(f) end)
+    Step("borders", function() HideBorders(f) end)
     Step("scan", function() Scan(f, 1) end)
+    ns.ContentBox(f, 32, nil, true) -- (Fußleiste mit goldener Linie hinter den Knöpfen unten)
     ns.Watch(f)
     local watch = CreateFrame("Frame", nil, f)
     local waited = 0
@@ -135,6 +174,7 @@ local function SkinChatConfig()
         waited = 0
         if type(f.NineSlice) == "table" then ns.Hide(f.NineSlice) end
         pcall(NoBackdrop, f)
+        pcall(HideBorders, f)
         pcall(ns.HideTextures, f) -- (unsere eigenen Flächen bleiben – HideTextures lässt sie aus)
         pcall(Scan, f, 1)
         if ns.SkinOpenMenu then pcall(ns.SkinOpenMenu) end
