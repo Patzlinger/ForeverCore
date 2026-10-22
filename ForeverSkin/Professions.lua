@@ -81,17 +81,22 @@ local function SkinSpell(button)
     boxes[button] = true
     local name = button:GetName()
     local icon = button.iconTexture or button.icon or (name and (G(name .. "IconTexture") or G(name .. "Icon")))
+    -- Nur Fach-Hintergrund und erkennbare Rahmen weg. Das Bild des Knopfs (bei manchen Knöpfen die "normale" Grafik,
+    -- z. B. der herzustellende Gegenstand) bleibt immer – sonst verschwand es
+    local normal = button.GetNormalTexture and button:GetNormalTexture()
     for _, r in ipairs({ button:GetRegions() }) do
-        if r:IsObjectType("Texture") and r ~= icon then
-            local w = r:GetWidth() or 0
-            -- (Rahmen und Fach-Hintergrund des Knopfs; Texte/Glanz anderer Größe bleiben)
-            if w >= (button:GetWidth() or 0) - 2 or r:GetDrawLayer() == "BACKGROUND" then r:SetAlpha(0) end
+        if r:IsObjectType("Texture") and r ~= icon and r ~= normal then
+            local atlas = r.GetAtlas and r:GetAtlas()
+            local tex = r.GetTexture and r:GetTexture()
+            local s = ((type(atlas) == "string" and atlas or "") .. "|" .. (type(tex) == "string" and tex or "")):lower()
+            if r:GetDrawLayer() == "BACKGROUND" or s:find("border") or s:find("frame") or s:find("slot")
+                or s:find("ring") then
+                r:SetAlpha(0)
+            end
         end
     end
-    for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture" }) do
-        local t = button[get] and button[get](button)
-        if t and t ~= icon then t:SetAlpha(0) end
-    end
+    local pushed = button.GetPushedTexture and button:GetPushedTexture()
+    if pushed and pushed ~= icon then pushed:SetAlpha(0) end
     if icon and icon.SetTexCoord then
         icon:ClearAllPoints()
         icon:SetPoint("TOPLEFT", 1, -1)
