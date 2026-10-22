@@ -11,7 +11,7 @@ local pills = {}
 local selectedDungeon
 local onlyOwnFaction = true
 local hideCompleted = false -- Häkchen "Abgeschlossene ausblenden"
-local levelTabActive = false -- Reiter "Mein Levelbereich"
+local levelTabActive = true -- Reiter "Mein Levelbereich" (standardmäßig gewählt)
 local raidTabActive = false  -- Reiter "Schlachtzüge" (die anderen Reiter zeigen nur Dungeons)
 local LEVEL_EARLY = 2        -- Dungeons schon so viele Level vor dem Mindestlevel zeigen
 local refreshPending = false
@@ -2224,7 +2224,6 @@ local function CreateWindow()
         RefreshDetail()
     end
     local allTab = ns.Style.CreateButton(listPanel, ns.L("TAB_ALL"), tabWidth, 24, function() SelectTab("all") end)
-    allTab:SetPoint("TOPLEFT", 8, -8)
     allTab.key = "all"
     local levelTab = ns.Style.CreateButton(listPanel, ns.L("TAB_MY_LEVEL"), tabWidth, 24, function() SelectTab("level") end,
         function(tooltip) tooltip:AddLine(ns.L("TIP_MY_LEVEL"), 1, 1, 1, true) end)
@@ -2232,10 +2231,11 @@ local function CreateWindow()
     local raidTab = ns.Style.CreateButton(listPanel, ns.L("TAB_RAIDS"), tabWidth, 24, function() SelectTab("raid") end,
         function(tooltip) tooltip:AddLine(ns.L("TIP_RAIDS"), 1, 1, 1, true) end)
     raidTab.key = "raid"
-    -- Reihenfolge: Alle Dungeons | Schlachtzüge | Mein Levelbereich
+    -- Reihenfolge: Mein Levelbereich (Standard) | Alle Dungeons | Schlachtzüge
+    levelTab:SetPoint("TOPLEFT", 8, -8)
+    allTab:SetPoint("LEFT", levelTab, "RIGHT", 6, 0)
     raidTab:SetPoint("LEFT", allTab, "RIGHT", 6, 0)
-    levelTab:SetPoint("LEFT", raidTab, "RIGHT", 6, 0)
-    tabs = { allTab, raidTab, levelTab }
+    tabs = { levelTab, allTab, raidTab }
     -- Breite nach Textlänge verteilen ("Mein Levelbereich" passte nicht in ein Drittel): jeder Reiter bekommt
     -- seinen Text + Rand, der übrige Platz wird gleichmäßig aufgeteilt
     do
