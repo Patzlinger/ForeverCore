@@ -28,6 +28,8 @@ local function HideFrameArt(f)
     end
     ns.Hide(f.portrait)
     ns.Hide(f.Portrait)
+    -- Streifen hinter den Rollen-Symbolen (oben, "groupfinder-roles-background"): weg, auf Wunsch
+    ns.Hide(G("LFGListingFrameRoleBackground"))
     -- die Seiten ("Anmelden" = LFGListingFrame, "Durchsuchen" = LFGBrowseFrame) haben einen eigenen Metallrahmen mit
     -- Kopf oben (laut /fskin grafik: NineSlice mit "UI-Frame-PortraitMetal-…") – weg; Hintergrund und der Streifen
     -- hinter den Rollen bleiben
@@ -67,8 +69,10 @@ local dungeonTab
 local function SideTabs(f)
     local list, seen = {}, {}
     local function Consider(b)
+        -- (verglichen in Bildschirmpunkten: Reiter und Fenster können unterschiedlich skaliert sein)
         if b and b ~= dungeonTab and not seen[b] and not Forbidden(b) and b.IsObjectType and b:IsObjectType("Button")
-            and b:IsShown() and b:GetLeft() and b:GetTop() and f:GetRight() and b:GetLeft() >= f:GetRight() - 20
+            and b:IsShown() and b:GetLeft() and b:GetTop() and f:GetRight()
+            and b:GetLeft() * b:GetEffectiveScale() >= (f:GetRight() - 20) * f:GetEffectiveScale()
             and (b:GetWidth() or 0) >= 30 and (b:GetWidth() or 0) <= 80 then
             seen[b] = true
             list[#list + 1] = b
@@ -86,8 +90,36 @@ local function SideTabs(f)
     Walk(f, 1)
     local name = f:GetName()
     for i = 1, 8 do Consider(name and G(name .. "Tab" .. i)) end
-    table.sort(list, function(a, b) return a:GetTop() > b:GetTop() end)
+    table.sort(list, function(a, b) return a:GetTop() * a:GetEffectiveScale() > b:GetTop() * b:GetEffectiveScale() end)
     return list
+end
+
+-- /fskin lfg: welche Reiter gefunden wurden und wo unser Reiter hängt (zur Fehlersuche)
+function ns.DumpGroupFinderTabs()
+    local function Say(text) print("|cffffcc00ForeverSkin|r: " .. tostring(text)) end
+    local f = G("LFGParentFrame")
+    if not f then return Say("LFGParentFrame nicht gefunden") end
+    Say(string.format("Fenster: rechts %.0f, Skalierung %.2f, offen %s", (f:GetRight() or 0), f:GetEffectiveScale(),
+        tostring(f:IsShown())))
+    for i, b in ipairs(SideTabs(f)) do
+        Say(string.format("Reiter %d: %s, links %.0f, oben %.0f, %dx%d, Skalierung %.2f", i,
+            tostring(b:GetName() or b:GetDebugName()), b:GetLeft() or 0, b:GetTop() or 0, b:GetWidth() or 0,
+            b:GetHeight() or 0, b:GetEffectiveScale()))
+    end
+    -- alle Knöpfe rechts außen (auch die nicht erkannten), damit man sieht, woran es hängt
+    local function Walk(frame, depth)
+        for _, child in ipairs({ frame:GetChildren() }) do
+            if not Forbidden(child) then
+                if child:IsObjectType("Button") and child:IsShown() and child:GetLeft() and f:GetRight()
+                    and child:GetLeft() * child:GetEffectiveScale() > (f:GetRight() - 60) * f:GetEffectiveScale() then
+                    Say(string.format("  Knopf rechts: %s, links %.0f, %dx%d", tostring(child:GetDebugName()),
+                        child:GetLeft(), child:GetWidth() or 0, child:GetHeight() or 0))
+                end
+                if depth < 4 then Walk(child, depth + 1) end
+            end
+        end
+    end
+    Walk(f, 1)
 end
 
 local function BuildDungeonTab(f)

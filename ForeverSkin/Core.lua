@@ -1095,6 +1095,8 @@ SlashCmdList["FOREVERSKIN"] = ns.Safe(T("Befehl", "Command"), function(msg)
         ns.DumpMouse() -- Prüfbefehl: welches Fenster liegt unter der Maus
     elseif (msg == "grafik" or msg == "texture") and ns.DumpTextures then
         ns.DumpTextures() -- Prüfbefehl: welche Grafiken liegen unter der Maus
+    elseif msg == "lfg" and ns.DumpGroupFinderTabs then
+        ns.DumpGroupFinderTabs() -- Prüfbefehl: Reiter an "Suche nach Gruppe"
     else
         ns.ToggleOptions()
     end
