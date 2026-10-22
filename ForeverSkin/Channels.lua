@@ -163,10 +163,50 @@ local function SkinChannels()
     end)
 end
 
+-- "Neuer Channel" (CreateChannelPopup): flache Titelleiste mit dem Titel mittig, Eingabefelder und Knöpfe flach
+local function SkinCreatePopup()
+    local p = G("CreateChannelPopup")
+    if not p or ns.createChannelSkinned or Forbidden(p) then return end
+    ns.createChannelSkinned = true
+    if p.ClearBackdrop then pcall(p.ClearBackdrop, p) end
+    for _, key in ipairs({ "Border", "BG", "Bg" }) do
+        local obj = p[key]
+        if type(obj) == "table" and obj.GetRegions and not Forbidden(obj) then ns.HideTextures(obj) end
+        ns.Hide(obj)
+    end
+    ns.SkinWindow(p)
+    local header = p.Header
+    if type(header) == "table" and not Forbidden(header) then
+        ns.HideTextures(header)
+        local title = header.Text
+        if title and title.ClearAllPoints then
+            title:SetParent(p)
+            title:ClearAllPoints()
+            title:SetPoint("CENTER", p, "TOP", 0, -12)
+            title:SetDrawLayer("OVERLAY", 7)
+        end
+    end
+    for _, child in ipairs({ p:GetChildren() }) do
+        if not Forbidden(child) then
+            if child:IsObjectType("EditBox") then
+                for _, k in ipairs({ "Left", "Middle", "Right", "Mid" }) do ns.Hide(child[k]) end
+                ns.HideTextures(child)
+                ns.Flat(child, ns.C.input, { -4, 0, -2, 0 })
+            elseif child:IsObjectType("Button") and child ~= p.CloseButton then
+                local text = child.GetText and child:GetText()
+                if type(text) == "string" and text ~= "" then ns.SkinButton(child) end
+            end
+        end
+    end
+    ns.SkinClose(p.CloseButton)
+    ns.Watch(p)
+end
+
 local events = CreateFrame("Frame")
 events:RegisterEvent("PLAYER_LOGIN")
 events:RegisterEvent("ADDON_LOADED")
 events:SetScript("OnEvent", function()
-    if ns.channelsSkinned or not ns.GetDB().chatConfig or not G("ChannelFrame") then return end
-    Step("skin", SkinChannels)
+    if not ns.GetDB().chatConfig then return end
+    if not ns.channelsSkinned and G("ChannelFrame") then Step("skin", SkinChannels) end
+    if not ns.createChannelSkinned and G("CreateChannelPopup") then Step("create", SkinCreatePopup) end
 end)
