@@ -32,6 +32,32 @@ local function Selected(b)
     return b.selected == true
 end
 
+-- Auswahlliste (der kleine Pfeil-Knopf neben der Suche): flach mit feinem Pfeil – bei schmalen Knöpfen ohne Text der
+-- Pfeil mittig. Das aufgeklappte Menü macht ns.SkinOpenMenu flach (im Takt unten)
+local dropdowns = setmetatable({}, { __mode = "k" })
+local function FindDropdowns(frame, depth)
+    for _, child in ipairs({ frame:GetChildren() }) do
+        if not Forbidden(child) then
+            local isDropdown = (child.IsObjectType and child:IsObjectType("DropdownButton"))
+                or (type(child.Arrow) == "table" and type(child.Text) == "table" and not child:IsObjectType("CheckButton"))
+            if isDropdown and not dropdowns[child] then
+                dropdowns[child] = true
+                ns.SkinDropdown(child)
+                if child:GetWidth() < 40 then
+                    for _, r in ipairs({ child:GetRegions() }) do
+                        if ns.IsMine(child, r) and math.abs(r:GetWidth() - 10) < 0.5 and math.abs(r:GetHeight() - 10) < 0.5 then
+                            r:ClearAllPoints()
+                            r:SetPoint("CENTER")
+                        end
+                    end
+                end
+            elseif depth < 5 then
+                FindDropdowns(child, depth + 1)
+            end
+        end
+    end
+end
+
 -- Reiter kleiner (Schrift bleibt gleich groß): Höhe 24, Breite nach Text; danach die Leiste neu anordnen lassen
 local TAB_HEIGHT, TAB_PAD, TAB_MIN = 24, 28, 80
 local function SizeTabs()
@@ -113,6 +139,7 @@ local function SkinTalents()
     ns.SkinWindow(f, nil, true)
     Step("frame", function() HideFrameArt(f) end)
     Step("tabs", function() FindTabs(f, 1); SizeTabs(); LiftTabs(f) end)
+    Step("dropdowns", function() FindDropdowns(f, 1) end)
     ns.Watch(f)
     -- Reiter entstehen teils erst beim Öffnen/Umschalten: solange offen, ab und zu nachsehen; Text mittig
     local watch = CreateFrame("Frame", nil, f)
@@ -124,6 +151,8 @@ local function SkinTalents()
         pcall(HideFrameArt, f)
         pcall(FindTabs, f, 1)
         pcall(SizeTabs)
+        pcall(FindDropdowns, f, 1)
+        if ns.SkinOpenMenu then pcall(ns.SkinOpenMenu) end -- aufgeklapptes Menü ("Passive ausblenden" …) flach
         pcall(LiftTabs, f)
         for t in pairs(tabs) do pcall(ns.CenterText, t) end
     end)
