@@ -131,6 +131,28 @@ local function SkinEdit(edit)
     ns.Flat(edit, C.input or C.button, { -4, 0, -2, 0 })
 end
 
+-- Fortschrittsbalken ganz oben (Herstellungsfenster): unter der goldenen Linie der Titelleiste lassen (er lag
+-- darüber) – Oberkante mindestens HEADER_GAP unter der Linie; einmalig verschoben
+local HEADER_LINE, HEADER_GAP = 24, 6
+local headerShifted = setmetatable({}, { __mode = "k" })
+local headerFrame
+local function KeepBelowHeader(bar)
+    local f = headerFrame
+    if not f or headerShifted[bar] or not bar:GetTop() or not f:GetTop() then return end
+    local s = bar:GetEffectiveScale() / f:GetEffectiveScale()
+    local below = f:GetTop() - bar:GetTop() * s -- Abstand der Balken-Oberkante zur Fenster-Oberkante
+    if below > HEADER_LINE + HEADER_GAP or below < 0 then return end
+    headerShifted[bar] = true
+    local dy = (HEADER_LINE + HEADER_GAP - below) / s
+    local points = {}
+    for i = 1, bar:GetNumPoints() do
+        local p, rel, rp, x, y = bar:GetPoint(i)
+        points[i] = { p, rel, rp, x or 0, (y or 0) - dy }
+    end
+    bar:ClearAllPoints()
+    for _, pt in ipairs(points) do bar:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5]) end
+end
+
 -- Schlüssel eines Unter-Rahmens in seinem Eltern-Rahmen ("UnlearnButton", "SpellButtonTop" …) – nur lesen
 local function KeyOf(parent, child)
     for k, v in pairs(parent) do
@@ -162,8 +184,18 @@ local function Scan(frame, depth)
                 ns.SkinScrollBar(child)
             elseif child:IsObjectType("StatusBar") then
                 SkinBar(child)
+                KeepBelowHeader(child)
             elseif child:IsObjectType("EditBox") then
                 SkinEdit(child) -- (Menge beim Herstellen)
+                -- die Pfeile der Menge stecken im Eingabefeld selbst
+                for _, sub in ipairs({ child:GetChildren() }) do
+                    if not Forbidden(sub) and sub:IsObjectType("Button") then
+                        local subKey = ((KeyOf(child, sub) or "") .. "|" .. (sub:GetName() or "")):lower()
+                        local left = subKey:find("decrement") or subKey:find("minus") or subKey:find("left")
+                            or (sub:GetLeft() and child:GetLeft() and sub:GetLeft() < child:GetLeft() + 5)
+                        ns.SkinArrowButton(sub, left and true or false)
+                    end
+                end
             elseif isDropdown then
                 ns.SkinDropdown(child) -- ("Filter")
                 if depth < 4 then Scan(child, depth + 1) end -- (darin z. B. das rote X "Filter zurücksetzen")
@@ -193,6 +225,7 @@ local function SkinBook()
     local f = G("ProfessionsBookFrame") or G("ProfessionsFrame")
     if not f or ns.professionsSkinned or Forbidden(f) then return end
     ns.professionsSkinned = true
+    headerFrame = f
     ns.SkinWindow(f)
     Step("sections", function()
         for _, n in ipairs({ "PrimaryProfession1", "PrimaryProfession2", "SecondaryProfession1", "SecondaryProfession2",
