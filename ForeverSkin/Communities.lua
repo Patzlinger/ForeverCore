@@ -62,6 +62,18 @@ local function SkinMaxMin(f)
     ns.SkinArrowOnly(mm.MinimizeButton, "down")
 end
 
+-- Blizzard sperrt den Knopf (ausgegraut), solange es nichts zu verkleinern gibt (keine Gilde/Community) – unser feiner
+-- Pfeil zeigte das nicht: dann ganz ausblenden, sonst sichtbar
+local function MaxMinShown(f)
+    local mm = f.MaximizeMinimizeFrame
+    if type(mm) ~= "table" or Forbidden(mm) then return end
+    local usable = false
+    for _, b in ipairs({ mm.MaximizeButton or false, mm.MinimizeButton or false }) do
+        if b and b:IsShown() and b:IsEnabled() then usable = true end
+    end
+    mm:SetAlpha(usable and 1 or 0)
+end
+
 local function SkinCommunities()
     local f = G("CommunitiesFrame")
     if not f or ns.communitiesSkinned or Forbidden(f) then return end
@@ -78,7 +90,7 @@ local function SkinCommunities()
     end
     Step("portrait", function() HidePortrait(f) end)
     Step("list", function() SkinList(f.CommunitiesList) end)
-    Step("maxmin", function() SkinMaxMin(f) end)
+    Step("maxmin", function() SkinMaxMin(f); MaxMinShown(f) end)
     Step("scan", function() Scan(f, 1) end)
     ns.Watch(f)
     -- Blizzard baut Seiten beim Umschalten (Gilde, Chat, Mitglieder …) neu und blendet Rahmen beim Öffnen wieder
@@ -91,6 +103,7 @@ local function SkinCommunities()
         waited = 0
         if type(f.NineSlice) == "table" then ns.Hide(f.NineSlice) end
         pcall(HidePortrait, f)
+        pcall(MaxMinShown, f)
         pcall(SkinList, f.CommunitiesList)
         pcall(Scan, f, 1)
         if ns.SkinOpenMenu then pcall(ns.SkinOpenMenu) end
