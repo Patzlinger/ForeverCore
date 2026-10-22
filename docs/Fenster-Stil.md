@@ -21,7 +21,8 @@ Werte in Punkten des Fensters (vor `ns.Scaled`).
 - **Titelleiste** 23 hoch mit goldener Linie (`ns.SkinWindow`), Titel mittig, Schließen-Kreuz rechts.
   **Links immer „Dein Gold: …“** – kommt automatisch mit `ns.SkinWindow` (`ns.HeaderGold`, aktualisiert sich bei
   jeder Gold-Änderung). Eigenes Gold dann nirgends sonst im Fenster (Blizzards Gold-Anzeigen ausblenden); wächst die
-  Titelleiste nach oben, die Anzeige mitversetzen. Ausnahmen: Beute-Fenster (zu schmal), Optionen-Fenster, Makro-Fenster (kein Bezug zum Gold).
+  Titelleiste nach oben, die Anzeige mitversetzen. Ausnahmen: Beute-Fenster (zu schmal), Optionen-Fenster, Makro-Fenster, Berufe, Talente, Gilde & Communitys,
+  Sammlungen/Vorlagen (kein Bezug zum Gold bzw. auf Wunsch) – Liste GOLD_SKIP in ForeverSkin/Core.lua.
 - **Visitenkarte** unter der Titelleiste (wie `ns.NpcCard`): rundes Bild mit goldenem Ring (48 Ring / 45 Fuge /
   43 Bild, Mitte bei (36, −56)), daneben Name groß in Gold (`GameFontNormalLarge` bei (68, −37)), darunter Unterzeile
   (`GameFontHighlightSmall`, 0.85 grau) und Info (`GameFontDisableSmall`). Ohne NPC ein passendes Symbol (Briefkasten:
