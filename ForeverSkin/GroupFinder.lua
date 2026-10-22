@@ -462,6 +462,14 @@ local function FitEntryTexts(entry)
         if b:IsShown() and b:GetLeft() then left = math.min(left or b:GetLeft(), b:GetLeft()) end
     end
     if not left then return end
+    -- Balken endet 4 vor dem ersten Knopf: der Knopf steht frei daneben (auf Wunsch)
+    if entry:GetRight() then
+        local cut = math.floor(entry:GetRight() - left + 4 + 0.5)
+        if entry.foreverCut ~= cut then
+            entry.foreverCut = cut
+            ns.Flat(entry, ns.C.button, { 0, ENTRY_GAP, cut, ENTRY_GAP })
+        end
+    end
     local function Fit(frame)
         for _, r in ipairs({ frame:GetRegions() }) do
             if r:IsObjectType("FontString") and r:IsShown() and r:GetLeft() and r:GetLeft() < left then
