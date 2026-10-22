@@ -424,6 +424,26 @@ local function HideBackdrop(frame)
         end
     end
 end
+-- Knopf zum Entfernen/Austragen (rotes X): unser feines Kreuz statt Kasten – erkannt am Namen oder an der Grafik
+local function IsRemoveButton(entry, b)
+    local key = ((KeyOf(entry, b) or "") .. "|" .. (b:GetName() or "")):lower()
+    for _, word in ipairs({ "remove", "delist", "cancel", "close", "delete", "unlist", "leave" }) do
+        if key:find(word) then return true end
+    end
+    for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture" }) do
+        local t = b[get] and b[get](b)
+        if t then
+            local atlas = t.GetAtlas and t:GetAtlas()
+            local tex = t:GetTexture()
+            local s = ((type(atlas) == "string" and atlas or "") .. "|" .. (type(tex) == "string" and tex or "")):lower()
+            if s:find("close") or s:find("cancel") or s:find("redx") or s:find("delist") or s:find("remove") then
+                return true
+            end
+        end
+    end
+    return false
+end
+
 local function SkinEntryButton(b)
     local icon = b.Icon or b.icon
     if icon then
@@ -453,7 +473,7 @@ local function SkinEntry(entry)
             if type(child.NineSlice) == "table" then ns.Hide(child.NineSlice) end
             local text = child.GetText and child:GetText()
             if child:IsObjectType("Button") and not (type(text) == "string" and text ~= "") then
-                SkinEntryButton(child)
+                if IsRemoveButton(entry, child) then ns.SkinClose(child) else SkinEntryButton(child) end
                 list[#list + 1] = child
                 -- (einmal um ENTRY_RIGHT nach links – gleicher Abstand zum rechten Rand des Balkens wie vorher)
                 if child:GetNumPoints() == 1 then
