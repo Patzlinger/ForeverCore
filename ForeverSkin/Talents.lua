@@ -53,6 +53,17 @@ local function HideFrameArt(f)
             ns.HideTextures(obj)
         end
     end
+    -- Blizzards großes Talent-Hintergrundbild (liegt unter den Bäumen, sichtbar nur oben bei den Reitern) und die
+    -- Partikel-Animation darüber: weg, dort zeigt sich unsere flache Fläche
+    local talents = f.TalentsFrame
+    if type(talents) == "table" and not Forbidden(talents) then
+        for key, obj in pairs(talents) do
+            if type(key) == "string" and type(obj) == "table" and (key == "Background" or key:find("Particles"))
+                and obj.IsObjectType and obj:IsObjectType("Texture") then
+                obj:SetAlpha(0)
+            end
+        end
+    end
 end
 
 local function SkinTalents()
