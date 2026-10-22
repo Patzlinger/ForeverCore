@@ -70,10 +70,24 @@ local function KeepAboveButtons(frame)
     for _, pt in ipairs(points) do frame:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5]) end
 end
 
+-- Blizzard zeichnet die abgerundeten Leisten der Überschriften beim Aktualisieren neu (lagen dann über unserem
+-- Balken, ungleich breit): bei jedem Durchgang wieder weg – nur breite Grafiken, das kleine +/− bleibt
+local function HideBars(entry)
+    for _, r in ipairs({ entry:GetRegions() }) do
+        if r:IsObjectType("Texture") and not ns.IsMine(entry, r) and (r:GetWidth() or 0) >= 30 then r:SetAlpha(0) end
+    end
+    for _, key in ipairs({ "Left", "Middle", "Right" }) do ns.Hide(entry[key]) end
+end
+
 local done = setmetatable({}, { __mode = "k" })
 local function Scan(f, frame, depth)
     for _, child in ipairs({ frame:GetChildren() }) do
         if not Forbidden(child) then
+            -- Listen und Laufleisten enden über den Knöpfen unten (die Namensliste hängt direkt am Fenster, nicht an
+            -- der Innenfläche – darum hier für jede einzeln)
+            if (child.GetScrollTarget or type(child.Track) == "table") and child:IsVisible() then
+                pcall(KeepAboveButtons, child)
+            end
             if type(child.Track) == "table" and (child.Track.Thumb or child.Back) then
                 if not done[child] then
                     done[child] = true
@@ -85,10 +99,13 @@ local function Scan(f, frame, depth)
             elseif child.GetScrollTarget then
                 local target = child:GetScrollTarget()
                 for _, entry in ipairs(target and { target:GetChildren() } or {}) do
-                    if not done[entry] and not Forbidden(entry) and entry:IsObjectType("Button") then
-                        done[entry] = true
-                        ns.SkinButton(entry) -- (Überschriften, Channels, Namen – je ein flacher Balken)
-                        EvenEntry(entry, target)
+                    if not Forbidden(entry) and entry:IsObjectType("Button") then
+                        if not done[entry] then
+                            done[entry] = true
+                            ns.SkinButton(entry) -- (Überschriften, Channels, Namen – je ein flacher Balken)
+                            EvenEntry(entry, target)
+                        end
+                        HideBars(entry)
                     end
                 end
             elseif child:IsObjectType("Button") then
