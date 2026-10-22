@@ -106,6 +106,18 @@ function ns.DumpGroupFinderTabs()
     if not f then return Say("LFGParentFrame nicht gefunden") end
     Say(string.format("Fenster: rechts %.0f, Skalierung %.2f, offen %s", (f:GetRight() or 0), f:GetEffectiveScale(),
         tostring(f:IsShown())))
+    -- ausgeblendete Grafiken: wirklich unsichtbar?
+    local listing = G("LFGListingFrame")
+    for label, obj in pairs({ RoleBackground = G("LFGListingFrameRoleBackground"), Bg = G("LFGListingFrameBg"),
+        NineSlice = listing and listing.NineSlice }) do
+        if type(obj) == "table" and obj.GetAlpha then
+            Say(string.format("Grafik %s: Alpha %.2f, sichtbar %s", label, obj:GetAlpha(), tostring(obj:IsVisible())))
+        else
+            Say("Grafik " .. label .. ": nicht gefunden")
+        end
+    end
+    local ok, err = pcall(HideFrameArt, f)
+    Say("Ausblenden: " .. (ok and "ok" or ("Fehler " .. tostring(err))))
     for i, b in ipairs(SideTabs(f)) do
         Say(string.format("Reiter %d: %s, links %.0f, oben %.0f, %dx%d, Skalierung %.2f", i,
             tostring(b:GetName() or b:GetDebugName()), b:GetLeft() or 0, b:GetTop() or 0, b:GetWidth() or 0,
@@ -218,7 +230,12 @@ local function SkinGroupFinder()
         waited = waited + elapsed
         if waited < 0.2 then return end
         waited = 0
-        pcall(HideFrameArt, f)
+        -- (Fehler beim Ausblenden einmal melden statt still zu schlucken – sonst fehlte jeder Hinweis)
+        local ok, err = pcall(HideFrameArt, f)
+        if not ok and not watch.reported then
+            watch.reported = true
+            if ns.UI.ReportError then ns.UI.ReportError("ForeverSkin", "groupfinder/frame", err) end
+        end
         pcall(PlaceDungeonTab, f)
         pcall(SkinBottomButtons, f, f, 1)
     end)
