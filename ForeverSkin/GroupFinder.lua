@@ -134,16 +134,18 @@ function ns.DumpGroupFinderTabs()
     local function KeyOf(parent, child)
         for k, v in pairs(parent) do if v == child and type(k) == "string" then return k end end
     end
+    local shown = 0
     local function Lines(frame, depth, path)
         for _, r in ipairs({ frame:GetRegions() }) do
-            if r:IsObjectType("Texture") and r:IsVisible() and r:GetAlpha() > 0 and not ns.IsMine(frame, r) then
+            -- wirklich sichtbar: auch die Eltern nicht durchsichtig (GetEffectiveAlpha)
+            local alpha = r.GetEffectiveAlpha and r:GetEffectiveAlpha() or r:GetAlpha()
+            if shown < 60 and r:IsObjectType("Texture") and r:IsVisible() and alpha > 0.05 and not ns.IsMine(frame, r) then
+                shown = shown + 1
                 local w, h = r:GetWidth() or 0, r:GetHeight() or 0
-                if w >= 150 and h <= 40 then
-                    local atlas = r.GetAtlas and r:GetAtlas()
-                    Say(string.format("  Linie: %s.%s | %s | %dx%d | oben %.0f", path,
-                        tostring(r:GetName() or KeyOf(frame, r) or "-"), tostring(atlas or r:GetTexture()), w, h,
-                        r:GetTop() or 0))
-                end
+                local atlas = r.GetAtlas and r:GetAtlas()
+                Say(string.format("  Linie: %s.%s | %s | %dx%d | oben %.0f links %.0f", path,
+                    tostring(r:GetName() or KeyOf(frame, r) or "-"), tostring(atlas or r:GetTexture()), w, h,
+                    r:GetTop() or 0, r:GetLeft() or 0))
             end
         end
         if depth < 5 then
