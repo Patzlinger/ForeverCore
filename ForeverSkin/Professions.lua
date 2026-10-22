@@ -44,7 +44,10 @@ end
 local GAP_TOP = 24 + 6
 local function CloseTopGap(f)
     if InCombatLockdown() then return end
-    local first = f.PrimaryProfession1 or G("PrimaryProfession1")
+    -- (im Forever-Client tiefer: BookPage > ProfessionsContentFrame > PrimaryProfession1)
+    local page = f.BookPage
+    local list = type(page) == "table" and page.ProfessionsContentFrame
+    local first = f.PrimaryProfession1 or (type(list) == "table" and list.PrimaryProfession1) or G("PrimaryProfession1")
     if not first or Forbidden(first) or not first:IsVisible() then return end
     local content = first:GetParent()
     if not content or content == f or Forbidden(content) or not (first:GetTop() and f:GetTop()) then return end
@@ -300,16 +303,28 @@ local function Overlays(f)
 end
 -- Text-Knöpfe der unteren Reihe ("Alle erstellen", "Erstellen") kleiner, Schrift gleich groß: Höhe 22, Breite nach
 -- Text (nur außerhalb des Kampfs)
+-- Blizzard setzt die Breite laufend neu (nach dem Text) – darum direkt nach jeder Größenänderung durch Blizzard die
+-- eigene Größe setzen (Haken an SetWidth/SetHeight/SetSize, mit Sperre gegen Schleifen); sonst wackelten die Knöpfe
 local BTN_HEIGHT, BTN_PAD, BTN_MIN = 22, 24, 70
+local shrunk = setmetatable({}, { __mode = "k" })
+local function ApplySmall(b)
+    if shrunk[b] ~= true or InCombatLockdown() then return end
+    local fs = b.GetFontString and b:GetFontString()
+    local w = math.max(BTN_MIN, math.floor((fs and fs:GetStringWidth() or 0) + BTN_PAD + 0.5))
+    if math.abs(b:GetWidth() - w) <= 0.5 and math.abs(b:GetHeight() - BTN_HEIGHT) <= 0.5 then return end
+    shrunk[b] = "busy"
+    pcall(b.SetSize, b, w, BTN_HEIGHT)
+    shrunk[b] = true
+end
 local function ShrinkBottomButtons(f)
     if InCombatLockdown() or not f:GetBottom() then return end
     for b in pairs(textButtons) do
-        if b:IsVisible() and b:GetBottom() and (b:GetBottom() - f:GetBottom()) < FOOTER then
-            local fs = b.GetFontString and b:GetFontString()
-            local w = math.max(BTN_MIN, math.floor((fs and fs:GetStringWidth() or 0) + BTN_PAD + 0.5))
-            if math.abs(b:GetWidth() - w) > 0.5 or math.abs(b:GetHeight() - BTN_HEIGHT) > 0.5 then
-                pcall(b.SetSize, b, w, BTN_HEIGHT)
+        if shrunk[b] == nil and b:IsVisible() and b:GetBottom() and (b:GetBottom() - f:GetBottom()) < FOOTER then
+            shrunk[b] = true
+            for _, method in ipairs({ "SetWidth", "SetHeight", "SetSize", "SetText" }) do
+                hooksecurefunc(b, method, ApplySmall)
             end
+            ApplySmall(b)
         end
     end
 end
