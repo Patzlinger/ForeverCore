@@ -28,8 +28,11 @@ local function HideFrameArt(f)
     end
     ns.Hide(f.portrait)
     ns.Hide(f.Portrait)
-    -- Streifen hinter den Rollen-Symbolen (oben, "groupfinder-roles-background"): weg, auf Wunsch
+    -- Streifen hinter den Rollen-Symbolen (oben): "groupfinder-roles-background" und darunter der dunkle Hintergrund
+    -- der Seite ("Bg") – weg, auf Wunsch; dort zeigt sich unsere Fläche. Das Bild der Innenfläche bleibt
     ns.Hide(G("LFGListingFrameRoleBackground"))
+    ns.Hide(G("LFGListingFrameBg"))
+    ns.Hide(G("LFGBrowseFrameBg"))
     -- die Seiten ("Anmelden" = LFGListingFrame, "Durchsuchen" = LFGBrowseFrame) haben einen eigenen Metallrahmen mit
     -- Kopf oben (laut /fskin grafik: NineSlice mit "UI-Frame-PortraitMetal-…") – weg; Hintergrund und der Streifen
     -- hinter den Rollen bleiben
@@ -65,12 +68,14 @@ local function Quests() return ns.UI.API and ns.UI.API.ForeverQuests end
 local DUNGEON_ICON = "Interface\\AddOns\\ForeverQuests\\Media\\ForeverQuests" -- (Logo von ForeverQuests: "!")
 local dungeonTab
 
--- Blizzards Reiter rechts am Fenster (Knöpfe, die rechts über die Fensterkante hinausragen), von oben nach unten
+-- Blizzards Reiter rechts am Fenster, von oben nach unten. Im Forever-Client sind das KEINE Knöpfe, sondern einfache
+-- Rahmen direkt am Fenster (laut /fskin maus) – darum jeder sichtbare Rahmen, der rechts über die Fensterkante
+-- hinausragt und höchstens 80 breit ist (einzelner Reiter oder ein Behälter mit allen Reitern)
 local function SideTabs(f)
     local list, seen = {}, {}
     local function Consider(b)
         -- (verglichen in Bildschirmpunkten: Reiter und Fenster können unterschiedlich skaliert sein)
-        if b and b ~= dungeonTab and not seen[b] and not Forbidden(b) and b.IsObjectType and b:IsObjectType("Button")
+        if b and b ~= dungeonTab and not seen[b] and not Forbidden(b) and b.IsObjectType and b:IsObjectType("Frame")
             and b:IsShown() and b:GetLeft() and b:GetTop() and f:GetRight()
             and b:GetLeft() * b:GetEffectiveScale() >= (f:GetRight() - 20) * f:GetEffectiveScale()
             and (b:GetWidth() or 0) >= 30 and (b:GetWidth() or 0) <= 80 then
@@ -164,8 +169,10 @@ local function PlaceDungeonTab(f)
     local last = tabs[#tabs]
     dungeonTab:ClearAllPoints()
     if last then
-        dungeonTab:SetSize(last:GetWidth(), last:GetHeight())
-        dungeonTab:SetFrameLevel(last:GetFrameLevel())
+        -- einzelner Reiter: dieselbe Größe; Behälter mit mehreren Reitern (hoch): Standardgröße, direkt darunter
+        local single = (last:GetHeight() or 0) <= 80
+        if single then dungeonTab:SetSize(last:GetWidth(), last:GetHeight()) else dungeonTab:SetSize(55, 59) end
+        dungeonTab:SetFrameLevel(last:GetFrameLevel() + 1)
         local gap = 4
         if tabs[2] then gap = math.max(0, (tabs[1]:GetBottom() or 0) - (tabs[2]:GetTop() or 0)) end
         dungeonTab:SetPoint("TOP", last, "BOTTOM", 0, -gap)
