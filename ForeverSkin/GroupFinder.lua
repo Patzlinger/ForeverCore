@@ -426,7 +426,7 @@ local function SkinEntryButton(b)
 end
 -- Balken: rechts ENTRY_RIGHT Abstand zur Laufleiste, oben/unten je ENTRY_GAP (= Luft zwischen den Einträgen); die
 -- Knöpfe rücken um ENTRY_RIGHT mit nach links
-local ENTRY_RIGHT, ENTRY_GAP = 8, 2
+local ENTRY_RIGHT, ENTRY_GAP = 4, 2
 local BUTTON_GAP, TEXT_PAD = 9, 4 -- Abstand Balken–Knopf; Text endet so weit vor der Balkenkante
 local CONTENT_UP = 4               -- Inhalt so viel höher im Balken
 local entryButtons = setmetatable({}, { __mode = "k" }) -- [Eintrag] = { Knöpfe ohne Text }
@@ -466,11 +466,6 @@ local function FitEntryTexts(entry)
     if not left or not entry:GetRight() then return end
     -- Balken endet BUTTON_GAP vor dem ersten Knopf: der Knopf steht frei daneben (auf Wunsch)
     local cut = math.floor(entry:GetRight() - left + BUTTON_GAP + 0.5)
-    if entry.foreverCut ~= cut then
-        entry.foreverCut = cut
-        -- (Balken CONTENT_UP tiefer als der Eintrag: der Inhalt sitzt darin höher; Abstand zwischen den Balken bleibt)
-        ns.Flat(entry, ns.C.button, { 0, ENTRY_GAP + CONTENT_UP, cut, ENTRY_GAP - CONTENT_UP })
-    end
     -- Text nur im Balken: endet TEXT_PAD vor dessen rechter Kante (gekürzt mit "…"); was erst kurz davor beginnt,
     -- wird ausgeblendet. Beim nächsten Füllen durch Blizzard wieder zurückgesetzt, wenn der Text passt
     local limit = entry:GetRight() - cut - TEXT_PAD
@@ -498,6 +493,23 @@ local function FitEntryTexts(entry)
     Gather(entry, texts)
     for _, child in ipairs({ entry:GetChildren() }) do
         if not Forbidden(child) and not child:IsObjectType("Button") then Gather(child, texts) end
+    end
+    -- Text senkrecht mittig im Balken: Balken so verschieben, dass über dem obersten und unter dem untersten Text
+    -- gleich viel Rand ist (oben + unten zusammen bleibt 2 × ENTRY_GAP, also auch der Abstand zwischen den Balken)
+    local textTop, textBottom
+    for _, r in ipairs(texts) do
+        if not r.foreverHidden and (r:GetText() or "") ~= "" and r:GetBottom() then
+            textTop = math.max(textTop or r:GetTop(), r:GetTop())
+            textBottom = math.min(textBottom or r:GetBottom(), r:GetBottom())
+        end
+    end
+    local top = ENTRY_GAP + CONTENT_UP
+    if textTop and entry:GetTop() and entry:GetBottom() then
+        top = math.floor((entry:GetTop() - textTop - textBottom + entry:GetBottom() + 2 * ENTRY_GAP) / 2 + 0.5)
+    end
+    if entry.foreverCut ~= cut or entry.foreverTop ~= top then
+        entry.foreverCut, entry.foreverTop = cut, top
+        ns.Flat(entry, ns.C.button, { 0, top, cut, 2 * ENTRY_GAP - top })
     end
     local lines = {}
     for _, r in ipairs(texts) do
