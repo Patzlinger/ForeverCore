@@ -37,15 +37,48 @@ local function TabSelected(tab)
     return tab.IsEnabled and not tab:IsEnabled()
 end
 
+-- Hintergrund der Sammlungsseiten (Leder-Kachel, Schattenkanten, Ecken – Blizzards CollectionsBackgroundTemplate):
+-- unsichtbar, darunter unsere flache Fläche. Nur Grafiken mit diesen Schlüsseln – Symbole und Modelle bleiben
+local function IsBackgroundKey(k)
+    return k == "Bg" or k == "Background" or k:find("^BackgroundTile") or k:find("^BGCorner") or k:find("^Shadow")
+        or k:find("^OverlayShadow") or k:find("Corner")
+end
+local function HideBackground(frame)
+    for k, v in pairs(frame) do
+        if type(k) == "string" and type(v) == "table" and v.IsObjectType and v:IsObjectType("Texture")
+            and IsBackgroundKey(k) and v:GetParent() == frame then
+            v:SetAlpha(0)
+        end
+    end
+end
+
+-- Anzahl (z. B. Spielzeuge "12/150"): Fortschrittsbalken flach – Rahmen weg, dunkle Fläche, goldene Füllung, Text bleibt
+local function SkinProgress(bar)
+    local fill = bar.GetStatusBarTexture and bar:GetStatusBarTexture()
+    for _, r in ipairs({ bar:GetRegions() }) do
+        if r:IsObjectType("Texture") and r ~= fill and not ns.IsMine(bar, r) then r:SetAlpha(0) end
+    end
+    for _, key in ipairs({ "border", "Border", "NineSlice" }) do ns.Hide(bar[key]) end
+    ns.Flat(bar, ns.C.input, -1)
+    if fill then
+        fill:SetTexture("Interface\\Buttons\\WHITE8x8")
+        bar:SetStatusBarColor(ns.C.accent[1], ns.C.accent[2], ns.C.accent[3], 0.8)
+    end
+end
+
 local done = setmetatable({}, { __mode = "k" })
 local function Scan(frame, depth)
     for _, child in ipairs({ frame:GetChildren() }) do
+        if not Forbidden(child) then HideBackground(child) end
         if not Forbidden(child) and not done[child] then
             if type(child.NineSlice) == "table" then ns.Hide(child.NineSlice) end -- (Innenrahmen samt Zierecken)
             local key = ((KeyOf(frame, child) or "") .. "|" .. (child:GetName() or "")):lower()
             local isDropdown = (child.IsObjectType and child:IsObjectType("DropdownButton"))
                 or (type(child.Arrow) == "table" and type(child.Text) == "table" and not child:IsObjectType("CheckButton"))
-            if isDropdown then
+            if child:IsObjectType("StatusBar") then
+                done[child] = true
+                SkinProgress(child) -- (Anzahl gesammelt)
+            elseif isDropdown then
                 done[child] = true
                 ns.SkinDropdown(child) -- (Klasse, Filter)
             elseif child:IsObjectType("EditBox") then
@@ -92,6 +125,7 @@ local function SkinWardrobe(f)
     skinned[f] = true
     ns.SkinWindow(f, nil, true)
     ns.Hide(f.Bg)
+    HideBackground(f)
     Step("scan", function() Scan(f, 1) end)
     Step("corners", function() HideCorners(f, 1) end)
     ns.Watch(f)
