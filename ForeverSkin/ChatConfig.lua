@@ -68,7 +68,7 @@ end
 
 -- Knöpfe unten ("Chat: Standard", "Fenster zurücksetzen", "OK"): BUTTON_IN nach innen, BUTTON_UP höher; hängt ein
 -- Knopf rechts an einem anderen, bekommt er BUTTON_GAP Luft dazu – einmal je Knopf
-local BUTTON_IN, BUTTON_UP, BUTTON_GAP = 6, -1, 4 -- (BUTTON_UP negativ = tiefer: unter der goldenen Linie)
+local BUTTON_IN, BUTTON_UP, BUTTON_GAP = 6, -4, 4 -- (BUTTON_UP negativ = tiefer: unter der goldenen Linie)
 local nudged = setmetatable({}, { __mode = "k" })
 local function NudgeBottom(f, b)
     if nudged[b] or b:GetNumPoints() ~= 1 or not (b:GetCenter() and f:GetCenter()) then return end
