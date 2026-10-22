@@ -20,8 +20,8 @@ local function BlizzardTabs(frame)
         for _, child in ipairs({ parent:GetChildren() }) do
             if child ~= tab and not Forbidden(child) and child:IsShown() then
                 local left, w, h = child:GetLeft(), child:GetWidth() or 0, child:GetHeight() or 0
-                if (child:IsObjectType("CheckButton") or child:IsObjectType("Button")) and left and left >= right - 12
-                    and w >= 24 and w <= 60 and h >= 24 and h <= 60 then
+                -- (im Forever-Client sind die Reiter einfache Rahmen ohne Namen, keine Knöpfe – laut /fskin maus)
+                if left and left >= right - 12 and w >= 24 and w <= 60 and h >= 24 and h <= 60 then
                     list[#list + 1] = child
                 elseif depth < 2 and not child:IsObjectType("Button") then
                     Look(child, depth + 1)
@@ -51,12 +51,14 @@ local function Place(frame)
     if not tab.styled then
         tab.styled = true
         tab:SetSize(last:GetWidth(), last:GetHeight())
-        -- Rahmen wie Blizzards Reiter: dessen Grafiken außer dem Symbol übernehmen (Datei bzw. Atlas, Lage)
+        -- Rahmen wie Blizzards Reiter: dessen Grafiken außer dem Symbol übernehmen (Datei bzw. Atlas, Lage). Das Symbol
+        -- liegt in der Ebene ARTWORK (bzw. unter einem bekannten Schlüssel) – das bleibt weg, sonst schiene es durch
         for _, r in ipairs({ last:GetRegions() }) do
-            if r:IsObjectType("Texture") and r:IsShown() then
+            if r:IsObjectType("Texture") and r:IsShown() and r:GetAlpha() > 0 then
                 local atlas = r.GetAtlas and r:GetAtlas()
                 local file = r:GetTexture()
-                local isIcon = r == last.icon or r == last.Icon or r == (last.GetNormalTexture and last:GetNormalTexture())
+                local isIcon = r == last.icon or r == last.Icon or r == last.IconTexture
+                    or r == (last.GetNormalTexture and last:GetNormalTexture()) or r:GetDrawLayer() == "ARTWORK"
                 if not isIcon and (atlas or file) then
                     local t = tab:CreateTexture(nil, r:GetDrawLayer())
                     if atlas and atlas ~= "" then t:SetAtlas(atlas) else t:SetTexture(file) end
