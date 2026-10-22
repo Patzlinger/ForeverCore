@@ -10,11 +10,19 @@ local T = ns.T
 local ICON = "Interface\\AddOns\\ForeverAlts\\Media\\ForeverAlts"
 local tab
 
+-- Blizzards Reiter Nr. i: im Forever-Client ein Schlüssel IM Berufe-Fenster (frame.Professions3Tab), kein globaler
+-- Name – darum beides versuchen
+local function TabAt(i)
+    local frame = _G.ProfessionsFrame or _G.ProfessionsBookFrame
+    local key = "Professions" .. i .. "Tab"
+    return (frame and frame[key]) or _G[key]
+end
+
 -- sichtbare Blizzard-Reiter von oben nach unten
 local function BlizzardTabs()
     local list = {}
     for i = 1, 12 do
-        local t = _G["Professions" .. i .. "Tab"]
+        local t = TabAt(i)
         if t and t ~= tab and t:IsShown() and t:GetTop() then list[#list + 1] = t end
     end
     table.sort(list, function(a, b) return a:GetTop() > b:GetTop() end)
@@ -76,7 +84,7 @@ local function Setup(frame)
     local function Later() C_Timer.After(0.05, function() pcall(Place, frame) end) end
     frame:HookScript("OnShow", Later)
     for i = 1, 12 do
-        local t = _G["Professions" .. i .. "Tab"]
+        local t = TabAt(i)
         if t then
             t:HookScript("OnShow", Later)
             t:HookScript("OnHide", Later)
@@ -93,7 +101,7 @@ function ns.CheckProfessionTab()
     Say("Reiter angelegt: " .. tostring(tab ~= nil))
     local names = {}
     for i = 1, 12 do
-        local t = _G["Professions" .. i .. "Tab"]
+        local t = TabAt(i)
         if t then names[#names + 1] = "Professions" .. i .. "Tab" .. (t:IsShown() and "" or " (versteckt)") end
     end
     Say("Blizzard-Reiter: " .. (#names > 0 and table.concat(names, ", ") or "keine gefunden"))
