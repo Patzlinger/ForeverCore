@@ -86,7 +86,7 @@ local function Scan(frame, depth)
                 SkinSearch(child)
             elseif child:IsObjectType("Button") and (key:find("prev") or key:find("next")) then
                 done[child] = true
-                ns.SkinArrowButton(child, key:find("prev") ~= nil) -- (Blättern unten)
+                ns.SkinArrowOnly(child, key:find("prev") and "left" or "right") -- (Blättern unten: nur der Pfeil)
             elseif child:IsObjectType("Button") and key:find("tab") then
                 local label = child.GetText and child:GetText()
                 if type(label) == "string" and label ~= "" then

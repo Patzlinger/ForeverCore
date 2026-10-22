@@ -149,7 +149,8 @@ end
 local goldTexts = {} -- [Fenster] = Text
 -- (zu schmal bzw. ohne Bezug zum Gold: Beute, Optionen, Makros)
 local GOLD_SKIP = { LootFrame = true, SettingsPanel = true, MacroFrame = true, ProfessionsBookFrame = true,
-    ProfessionsFrame = true, PlayerSpellsFrame = true, CommunitiesFrame = true }
+    ProfessionsFrame = true, PlayerSpellsFrame = true, CommunitiesFrame = true, CollectionsJournal = true,
+    WardrobeFrame = true }
 local function UpdateGold(fs)
     if ns.Money and GetMoney then fs:SetText(T("Dein Gold: ", "Your gold: ") .. ns.Money(GetMoney())) end
 end
