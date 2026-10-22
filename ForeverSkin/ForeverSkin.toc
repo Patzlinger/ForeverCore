@@ -27,3 +27,4 @@ DressUp.lua
 Professions.lua
 Talents.lua
 Communities.lua
+Wardrobe.lua
