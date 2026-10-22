@@ -12,6 +12,7 @@ local T = UI.T
 -- Einstellungen (SavedVariables)
 ---------------------------------------------------------------------------
 local DEFAULTS = {
+    enabled = true, -- aus = Würfel-Fenster ganz abgeschaltet (keine Auswertung, kein Fenster; Blizzards Würfeln bleibt)
     locked = true, -- gesperrt starten; entsperren per Menue, Minimap-Rechtsklick oder /fmove
     scale = 1,
     keep = 5,       -- so viele Sekunden nach dem Ergebnis bleibt ein Wurf sichtbar (danach ausblenden)
@@ -617,6 +618,12 @@ local function LayoutBlock(b, item)
 end
 
 function Refresh()
+    if not GetDB().enabled then -- abgeschaltet: nichts zeigen
+        wipe(items)
+        for _, b in ipairs(blocks) do b:Hide() end
+        frame:Hide()
+        return
+    end
     -- fertige Eintraege nach einer Weile entfernen
     local now = GetTime()
     for i = #items, 1, -1 do
@@ -693,6 +700,10 @@ local TEST_NAMES = { "Thorgar", "Elyndra", "Pyrothas", "Maelwen", "Brannoc", "Sy
 local TEST_CLASSES = { "WARRIOR", "PRIEST", "MAGE", "ROGUE", "DRUID", "PALADIN", "HUNTER", "WARLOCK", "SHAMAN" }
 
 local function RunTest(count)
+    if not GetDB().enabled then
+        Chat(T("Das Würfel-Fenster ist ausgeschaltet (/floot on).", "The loot roll window is turned off (/floot on)."))
+        return
+    end
     count = math.max(2, math.min(40, count or 5))
     local roster = {}
     roster[1] = { name = PlayerName() or "Ich", class = select(2, UnitClass("player")) }
@@ -759,7 +770,7 @@ end
 
 -- Wir duerfen selbst wuerfeln: Gegenstand mit Restzeit anlegen
 H.START_LOOT_ROLL = function(rollID, rollTime)
-    if IsSecret(rollID) then return end
+    if not GetDB().enabled or IsSecret(rollID) then return end
     local icon, name, _, quality = GetLootRollItemInfo(rollID)
     local link = GetLootRollItemLink(rollID)
     -- schon ueber den Chat angelegt?
@@ -774,7 +785,9 @@ H.START_LOOT_ROLL = function(rollID, rollTime)
     Refresh()
 end
 
-H.CHAT_MSG_LOOT = OnLootMessage
+H.CHAT_MSG_LOOT = function(msg)
+    if GetDB().enabled then OnLootMessage(msg) end
+end
 
 for event in pairs(H) do pcall(events.RegisterEvent, events, event) end
 events:SetScript("OnEvent", function(_, event, ...)
@@ -793,12 +806,18 @@ local function SetLocked(locked)
     Refresh()
 end
 
+-- Hauptschalter: aus = keine Auswertung, kein Fenster (auch nicht im Verschiebe-Modus)
+local function SetEnabled(on)
+    GetDB().enabled = on and true or false
+    Refresh()
+end
+
 ---------------------------------------------------------------------------
 -- Einstellungsfenster
 ---------------------------------------------------------------------------
 local ToggleOptions
 do
-    local options = UI.SettingsPanel("ForeverLootOptions", T("ForeverLoot – Würfel-Fenster", "ForeverLoot – Loot rolls"), 340, 420,
+    local options = UI.SettingsPanel("ForeverLootOptions", T("ForeverLoot – Würfel-Fenster", "ForeverLoot – Loot rolls"), 340, 470,
         { key = "ForeverHelpers.loot", group = UI.SETTINGS_GROUPS.helpers, label = T("Würfel-Fenster", "Loot rolls") })
     local W = 308 -- Breite der Ueberschriften
 
@@ -806,17 +825,22 @@ do
         return UI.Button(options, text, width, Safe(T("Einstellungen", "Settings"), onClick))
     end
 
-    -- Position: verschieben und sperren
-    UI.Header(options, 18, -32, T("Position", "Position"), W)
+    -- Hauptschalter
+    UI.Header(options, 18, -32, T("Allgemein", "General"), W)
+    local enabled = UI.Check(options, 14, -54, T("Würfel-Fenster einschalten", "Enable loot roll window"),
+        Safe(T("Einstellungen", "Settings"), function(checked) SetEnabled(checked) end))
 
-    local lock = UI.Check(options, 14, -54, T("Fenster sperren", "Lock window"),
+    -- Position: verschieben und sperren
+    UI.Header(options, 18, -82, T("Position", "Position"), W)
+
+    local lock = UI.Check(options, 14, -104, T("Fenster sperren", "Lock window"),
         Safe(T("Einstellungen", "Settings"), function(checked) SetLocked(checked) end))
 
     local moveBtn = Button(T("Verschieben", "Move"), 110, function()
         SetLocked(false)
         lock:SetChecked(false)
     end)
-    moveBtn:SetPoint("TOPLEFT", 16, -82)
+    moveBtn:SetPoint("TOPLEFT", 16, -132)
     local doneBtn = Button(T("Fertig – sperren", "Done – lock"), 130, function()
         SetLocked(true)
         lock:SetChecked(true)
@@ -827,10 +851,10 @@ do
         o.pos = nil
         RestorePosition()
     end)
-    resetBtn:SetPoint("TOPLEFT", 16, -108)
+    resetBtn:SetPoint("TOPLEFT", 16, -158)
 
     -- Anzeige: Schieberegler mit – / +
-    UI.Header(options, 18, -156, T("Anzeige", "Display"), W)
+    UI.Header(options, 18, -206, T("Anzeige", "Display"), W)
     local sliders = {}
     local function Slider(label, key, minV, maxV, step, y, toValue, fromValue, unit)
         local s = UI.Slider(options, 18, y, label, minV, maxV, step, Safe(T("Einstellungen", "Settings"), function(value)
@@ -843,25 +867,26 @@ do
     end
 
     local function Same(v) return v end
-    Slider(T("Größe", "Size"), "scale", 50, 200, 5, -180,
+    Slider(T("Größe", "Size"), "scale", 50, 200, 5, -230,
         function(v) return v / 100 end, function(v) return math.floor(v * 100 + 0.5) end, " %")
-    Slider(T("Nach dem Ergebnis ausblenden nach", "Hide after result"), "keep", 1, 60, 1, -220, Same, Same, " s")
-    Slider(T("Liste einklappen ab mehr als", "Collapse list above"), "maxRows", 1, 40, 1, -260, Same, Same,
+    Slider(T("Nach dem Ergebnis ausblenden nach", "Hide after result"), "keep", 1, 60, 1, -270, Same, Same, " s")
+    Slider(T("Liste einklappen ab mehr als", "Collapse list above"), "maxRows", 1, 40, 1, -310, Same, Same,
         T(" Spielern", " players"))
 
     -- Test und Liste
-    UI.Header(options, 18, -316, T("Testmodus", "Test mode"), W)
+    UI.Header(options, 18, -366, T("Testmodus", "Test mode"), W)
     local test5 = Button(T("Test: 5 Spieler", "Test: 5 players"), 140, function() RunTest(5) end)
-    test5:SetPoint("TOPLEFT", 16, -340)
+    test5:SetPoint("TOPLEFT", 16, -390)
     local test20 = Button(T("Test: 20 Spieler", "Test: 20 players"), 140, function() RunTest(20) end)
     test20:SetPoint("LEFT", test5, "RIGHT", 6, 0)
     local clear = Button(T("Liste leeren", "Clear list"), 140, function()
         wipe(items)
         Refresh()
     end)
-    clear:SetPoint("TOPLEFT", 16, -366)
+    clear:SetPoint("TOPLEFT", 16, -416)
 
     options:SetScript("OnShow", function()
+        enabled:SetChecked(GetDB().enabled)
         lock:SetChecked(GetDB().locked)
         for _, s in ipairs(sliders) do s.ffLoad() end
     end)
@@ -920,6 +945,10 @@ SlashCmdList["FOREVERLOOT"] = Safe("Befehl", function(msg)
         RunTest(tonumber(arg))
     elseif cmd == "" or cmd == "config" or cmd == "optionen" then
         ToggleOptions()
+    elseif cmd == "on" or cmd == "an" or cmd == "off" or cmd == "aus" then
+        SetEnabled(cmd == "on" or cmd == "an")
+        Chat(o.enabled and T("Würfel-Fenster eingeschaltet.", "Loot roll window turned on.")
+            or T("Würfel-Fenster ausgeschaltet.", "Loot roll window turned off."))
     elseif cmd == "lock" then
         SetLocked(not o.locked)
         Chat(o.locked and T("Fenster gesperrt.", "Window locked.") or T("Fenster entsperrt – zum Verschieben ziehen.", "Window unlocked – drag to move."))
@@ -955,6 +984,7 @@ SlashCmdList["FOREVERLOOT"] = Safe("Befehl", function(msg)
     else
         Chat(T("Befehle (oder einfach /floot für die Einstellungen):", "Commands (or just /floot for the settings):"))
         Chat(T("  /floot test [Anzahl] – Testmodus (z. B. /floot test 20)", "  /floot test [count] – test mode (e.g. /floot test 20)"))
+        Chat(T("  /floot on | off – Würfel-Fenster ein-/ausschalten", "  /floot on | off – turn the loot roll window on/off"))
         Chat(T("  /floot lock – Fenster sperren/entsperren", "  /floot lock – lock/unlock window"))
         Chat(T("  /floot scale 120 – Größe in Prozent", "  /floot scale 120 – size in percent"))
         Chat(T("  /floot keep 5 – Sekunden nach dem Ergebnis bis zum Ausblenden", "  /floot keep 5 – seconds after the result until it hides"))

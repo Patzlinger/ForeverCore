@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- ForeverHelpers, loot rolls: a main switch turns the loot roll window off completely (settings, or /floot on | off) – Blizzard's own roll frames are unaffected.
 - ForeverSkin: talents window – the frame in the Forever look (title bar with gold line) and flat "Primary"/"Secondary" tabs (selected one gold); the talent trees stay as they are. Switch: /fskin » "Talents window".
 
 - ForeverAlts: its own tab on the right side of the professions window, lined up with Blizzard's profession tabs (same size and frame, ForeverAlts icon) – opens the overview of your alts with their professions and recipes.
