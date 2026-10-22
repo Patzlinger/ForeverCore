@@ -81,6 +81,20 @@ local function HideFrameArt(f)
         if page and not Forbidden(page) then
             KeepHidden(page.Bg)
             KeepHidden(G(pageName .. "Bg"))
+            -- Seiten ohne eigene Innenfläche (z. B. "Wer ist da"): Bild, verzierter Rahmen und Steinstreifen hängen
+            -- direkt an der Seite (laut /fskin lfg) – weg; an die Stelle des Bildes unser flacher Kasten
+            KeepHidden(page.headerBackground)
+            KeepHidden(page.insideFrame)
+            local art = page.BackgroundArt
+            if type(art) == "table" and art.GetPoint then
+                KeepHidden(art)
+                if not page.foreverBox then
+                    page.foreverBox = CreateFrame("Frame", nil, page)
+                    page.foreverBox:SetAllPoints(art)
+                    page.foreverBox:SetFrameLevel(math.max(0, page:GetFrameLevel()))
+                end
+                SkinInset(f, page.foreverBox)
+            end
             for _, key in ipairs({ "NineSlice", "TitleContainer", "PortraitContainer" }) do
                 local obj = page[key]
                 if type(obj) == "table" and not Forbidden(obj) then
