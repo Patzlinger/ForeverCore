@@ -8,7 +8,32 @@ local C = ns.C
 local function G(name) return _G[name] end
 local function Forbidden(obj) return obj and obj.IsForbidden and obj:IsForbidden() end
 
-local LEFT_GROW = 8
+-- Rand links so breit wie rechts: rechts = Abstand des Inhalts zur Fensterkante, links = Abstand der Liste zur Kante
+-- unserer Fläche. Die Fläche (samt Titelleiste) reicht links entsprechend über Blizzards Fensterkante hinaus –
+-- Blizzards Inhalt bleibt, wo er ist. Gemessen bei jedem Durchgang (die Aufteilung ändert sich z. B. beim Verkleinern)
+local currentGrow
+local function EvenMargins(f)
+    local list = f.CommunitiesList
+    if type(list) ~= "table" or Forbidden(list) or not (list:GetLeft() and f:GetLeft() and f:GetRight()) then return end
+    local maxRight
+    for _, child in ipairs({ f:GetChildren() }) do
+        if child ~= list and not Forbidden(child) and child:IsShown() and child:GetRight()
+            and (child:GetWidth() or 0) > 150 and (child:GetHeight() or 0) > 100 and child:GetRight() <= f:GetRight() + 1 then
+            maxRight = math.max(maxRight or 0, child:GetRight())
+        end
+    end
+    if not maxRight then return end
+    local rightMargin = math.max(0, f:GetRight() - maxRight)
+    local grow = math.floor(rightMargin - (list:GetLeft() - f:GetLeft()) + 0.5)
+    if grow == currentGrow then return end
+    currentGrow = grow
+    local look = ns.Flat(f, C.background, { -grow, 0, 0, 0 })
+    if look and look.head then
+        look.head:ClearAllPoints()
+        look.head:SetPoint("TOPLEFT", look.fill, "TOPLEFT", 1, -1)
+        look.head:SetPoint("TOPRIGHT", look.fill, "TOPRIGHT", -1, -1)
+    end
+end
 
 -- Porträt oben links (hier "PortraitOverlay" mit Gildenwappen, dazu das übliche PortraitContainer): unsichtbar
 local function HidePortrait(f)
@@ -80,14 +105,7 @@ local function SkinCommunities()
     ns.communitiesSkinned = true
     ns.SkinWindow(f, nil, true)
     ns.Hide(f.Bg)
-    -- links liegt die Liste direkt an der Fensterkante: Fläche (samt Titelleiste) dort sichtbar LEFT_GROW weiter
-    -- hinaus – gleicher Rand wie rechts, Blizzards Inhalt bleibt, wo er ist
-    local look = ns.Flat(f, C.background, { -LEFT_GROW, 0, 0, 0 })
-    if look and look.head then
-        look.head:ClearAllPoints()
-        look.head:SetPoint("TOPLEFT", look.fill, "TOPLEFT", 1, -1)
-        look.head:SetPoint("TOPRIGHT", look.fill, "TOPRIGHT", -1, -1)
-    end
+    Step("margins", function() EvenMargins(f) end)
     Step("portrait", function() HidePortrait(f) end)
     Step("list", function() SkinList(f.CommunitiesList) end)
     Step("maxmin", function() SkinMaxMin(f); MaxMinShown(f) end)
@@ -104,6 +122,7 @@ local function SkinCommunities()
         if type(f.NineSlice) == "table" then ns.Hide(f.NineSlice) end
         pcall(HidePortrait, f)
         pcall(MaxMinShown, f)
+        pcall(EvenMargins, f)
         pcall(SkinList, f.CommunitiesList)
         pcall(Scan, f, 1)
         if ns.SkinOpenMenu then pcall(ns.SkinOpenMenu) end
