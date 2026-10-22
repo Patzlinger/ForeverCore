@@ -8,6 +8,19 @@ local C = ns.C
 local function G(name) return _G[name] end
 local function Forbidden(obj) return obj and obj.IsForbidden and obj:IsForbidden() end
 
+local LEFT_GROW = 8
+
+-- Porträt oben links (hier "PortraitOverlay" mit Gildenwappen, dazu das übliche PortraitContainer): unsichtbar
+local function HidePortrait(f)
+    for _, key in ipairs({ "PortraitOverlay", "PortraitContainer", "PortraitFrame", "Portrait" }) do
+        local obj = f[key]
+        if type(obj) == "table" and not Forbidden(obj) then
+            ns.Hide(obj)
+            ns.HideTextures(obj)
+        end
+    end
+end
+
 local function Step(what, fn)
     local ok, err = pcall(fn)
     if not ok and ns.UI.ReportError then ns.UI.ReportError("ForeverSkin", "communities/" .. what, err) end
@@ -55,6 +68,15 @@ local function SkinCommunities()
     ns.communitiesSkinned = true
     ns.SkinWindow(f, nil, true)
     ns.Hide(f.Bg)
+    -- links liegt die Liste direkt an der Fensterkante: Fläche (samt Titelleiste) dort sichtbar LEFT_GROW weiter
+    -- hinaus – gleicher Rand wie rechts, Blizzards Inhalt bleibt, wo er ist
+    local look = ns.Flat(f, C.background, { -LEFT_GROW, 0, 0, 0 })
+    if look and look.head then
+        look.head:ClearAllPoints()
+        look.head:SetPoint("TOPLEFT", look.fill, "TOPLEFT", 1, -1)
+        look.head:SetPoint("TOPRIGHT", look.fill, "TOPRIGHT", -1, -1)
+    end
+    Step("portrait", function() HidePortrait(f) end)
     Step("list", function() SkinList(f.CommunitiesList) end)
     Step("maxmin", function() SkinMaxMin(f) end)
     Step("scan", function() Scan(f, 1) end)
@@ -68,7 +90,7 @@ local function SkinCommunities()
         if waited < 0.3 then return end
         waited = 0
         if type(f.NineSlice) == "table" then ns.Hide(f.NineSlice) end
-        if type(f.PortraitContainer) == "table" then ns.Hide(f.PortraitContainer) end
+        pcall(HidePortrait, f)
         pcall(SkinList, f.CommunitiesList)
         pcall(Scan, f, 1)
         if ns.SkinOpenMenu then pcall(ns.SkinOpenMenu) end
