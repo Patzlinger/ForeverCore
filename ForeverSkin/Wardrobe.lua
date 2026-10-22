@@ -68,6 +68,7 @@ end
 
 local done = setmetatable({}, { __mode = "k" })
 local tabs = setmetatable({}, { __mode = "k" }) -- Reiter: Text mittig im Kasten halten (Blizzard setzt ihn tiefer)
+local centered = setmetatable({}, { __mode = "k" }) -- andere Knöpfe, deren Text mittig bleiben soll ("Filter")
 
 -- Reiter etwas tiefer (auf Wunsch): TAB_DOWN unter Blizzards Lage; setzt Blizzard den Anker neu, gilt dessen Lage
 -- als neue Grundlage
@@ -88,7 +89,12 @@ local function Scan(frame, depth)
             local key = ((KeyOf(frame, child) or "") .. "|" .. (child:GetName() or "")):lower()
             local isDropdown = (child.IsObjectType and child:IsObjectType("DropdownButton"))
                 or (type(child.Arrow) == "table" and type(child.Text) == "table" and not child:IsObjectType("CheckButton"))
-            if child:IsObjectType("StatusBar") then
+            if child:IsObjectType("Button") and key:find("filter") and not isDropdown then
+                -- "Filter" ist hier ein Knopf mit Text (keine Auswahlliste): flacher Text-Knopf mit Kasten
+                done[child] = true
+                ns.SkinButton(child)
+                centered[child] = true -- (Text mittig halten)
+            elseif child:IsObjectType("StatusBar") then
                 done[child] = true
                 SkinProgress(child) -- (Anzahl gesammelt)
             elseif isDropdown then
@@ -168,6 +174,7 @@ local function SkinWardrobe(f)
             pcall(ns.CenterText, t)
             pcall(LowerTab, t)
         end
+        for b in pairs(centered) do pcall(ns.CenterText, b) end
         if ns.SkinOpenMenu then pcall(ns.SkinOpenMenu) end
     end)
 end
