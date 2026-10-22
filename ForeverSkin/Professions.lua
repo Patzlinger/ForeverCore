@@ -48,8 +48,14 @@ local function CloseTopGap(f)
     if not first or Forbidden(first) or not first:IsVisible() then return end
     local content = first:GetParent()
     if not content or content == f or Forbidden(content) or not (first:GetTop() and f:GetTop()) then return end
+    -- gemessen an der sichtbaren Karte (sie beginnt tiefer als der Rahmen des Berufs), sonst am Rahmen
+    local top = first:GetTop()
+    for _, r in ipairs({ first:GetRegions() }) do
+        local atlas = r:IsObjectType("Texture") and r.GetAtlas and r:GetAtlas()
+        if type(atlas) == "string" and atlas:find("overview%-Card") and r:GetTop() then top = r:GetTop() end
+    end
     local s = first:GetEffectiveScale() / f:GetEffectiveScale()
-    local extra = (f:GetTop() - first:GetTop() * s) - GAP_TOP
+    local extra = (f:GetTop() - top * s) - GAP_TOP
     if extra <= 1 then return end
     local dy = extra / s
     local points = {}
