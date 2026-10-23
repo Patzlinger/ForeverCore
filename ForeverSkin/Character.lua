@@ -15,6 +15,7 @@ local PORTRAIT_X, PORTRAIT_Y = 12, TITLE_UP - 12 -- Mitte des Porträts: auf der
 -- goldener Rand der Ausrüstungsplätze (Dicke) und Luft zwischen Rand und Symbol – in der Luft zeigt sich die
 -- Seltenheitsfarbe (Blizzards IconBorder wird genau dorthin gesetzt)
 local SLOT_EDGE, SLOT_GAP = 1, 1
+local RIGHT_LINE_UP = 8 -- Trennlinie unter den 4 Reitern rechts so viel über der Unterkante des Steinstreifens
 
 local function Step(what, fn)
     local ok, err = pcall(fn)
@@ -211,7 +212,7 @@ end
 -- feine goldene Trennlinien: unter "Stufe …, Klasse" (Unterkante des früheren Streifens der Ausrüstungsseite) und
 -- rechts unter den 4 Reitern (Unterkante des früheren Steinstreifens) – wie die Linie unter der Titelleiste
 local function SubLines()
-    local function Line(parent, anchor)
+    local function Line(parent, anchor, up)
         -- (auf eigenem Unter-Rahmen: das Ausblenden der Grafiken von parent im Takt trifft ihn nicht)
         local holder = CreateFrame("Frame", nil, parent)
         holder:SetAllPoints(parent)
@@ -219,14 +220,15 @@ local function SubLines()
         local line = holder:CreateTexture(nil, "OVERLAY", nil, 7)
         line:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 0.6)
         line:SetHeight(1)
-        line:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, 0)
-        line:SetPoint("TOPRIGHT", anchor, "BOTTOMRIGHT", 0, 0)
+        line:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, up or 0)
+        line:SetPoint("TOPRIGHT", anchor, "BOTTOMRIGHT", 0, up or 0)
     end
     local paper = G("PaperDollFrame")
     local host = paper and paper.TopBackgroundStripHost
     if type(host) == "table" and not Forbidden(host) then Line(host, host.TopBackgroundStrip or host) end
     local right, stone = G("CharacterFrameRightPaneHost"), G("CharacterFrameRightPaneHostStoneBg")
-    if right and stone and not Forbidden(right) then Line(right, stone) end
+    -- (der Steinstreifen reicht ein Stück unter die Reiter – Linie RIGHT_LINE_UP höher, auf Wunsch)
+    if right and stone and not Forbidden(right) then Line(right, stone, RIGHT_LINE_UP) end
 end
 
 -- Werte-Spalte rechts: Überschriften ("Allgemein", "Primäre Eigenschaften" …: Rahmen mit Titel und Hintergrund) als
