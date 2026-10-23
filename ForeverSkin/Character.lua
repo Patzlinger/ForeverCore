@@ -686,6 +686,41 @@ local function LowerDetails(f)
     end
 end
 
+-- Listen auf den übrigen Seiten (Statistiken, Ruf, Währung …) samt Laufleiste: oben kürzer, so dass sie LIST_GAP
+-- unter unserer goldenen Linie beginnen (sie reichten darüber, Text lag unter dem Streifen) – nur die oberen
+-- Ankerpunkte, die Unterkante bleibt; gemessen, nur wenn nötig. Werte-Listen und eigene Rahmen nicht
+local LIST_GAP = 6
+local function ShortenLists(f)
+    local left = G("CharacterFrameLeftPaneHost")
+    if not (left and left:GetTop()) then return end
+    local limit = left:GetTop() - LIST_GAP
+    local function Walk(frame, depth)
+        for _, child in ipairs({ frame:GetChildren() }) do
+            if not Forbidden(child) and not ourFrames[child] and child:IsVisible()
+                and not (child:GetName() or ""):find("Stats") then
+                local isList = child.GetScrollTarget or (child:IsObjectType("ScrollFrame") and child:GetScrollChild())
+                    or type(child.Track) == "table"
+                if isList then
+                    local delta = (child:GetTop() or limit) - limit
+                    if delta > 0.5 and child:GetNumPoints() > 0 then
+                        local points = {}
+                        for i = 1, child:GetNumPoints() do
+                            local p, rel, rp, x, y = child:GetPoint(i)
+                            if p:find("TOP") then y = (y or 0) - delta end
+                            points[i] = { p, rel, rp, x or 0, y or 0 }
+                        end
+                        child:ClearAllPoints()
+                        for _, pt in ipairs(points) do child:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5]) end
+                    end
+                elseif depth < 4 then
+                    Walk(child, depth + 1)
+                end
+            end
+        end
+    end
+    Walk(f, 1)
+end
+
 local function SkinCharacter()
     local f = G("CharacterFrame")
     if not f or ns.characterSkinned or Forbidden(f) then return end
@@ -756,7 +791,10 @@ local function SkinCharacter()
         local rep = G("ReputationFrame")
         if rep and rep:IsVisible() then pcall(FindRepHeaders) end
         pcall(FindPageHeaders, f, 1)
-        if not (G("PaperDollFrame") and G("PaperDollFrame"):IsVisible()) then pcall(LowerDetails, f) end
+        if not (G("PaperDollFrame") and G("PaperDollFrame"):IsVisible()) then
+            pcall(LowerDetails, f)
+            pcall(ShortenLists, f)
+        end
         -- Werte-Listen außer der eigenen (z. B. Begleiter) – gleiche Behandlung
         local ok, lists = pcall(FindStatLists, f, 1, {})
         if ok then
