@@ -161,6 +161,13 @@ local function SkinCharacter()
     Step("frame", function()
         HideFrameArt(f)
         ns.Flat(f, C.background, { 0, -TITLE_UP, 0, 0 })
+        -- feiner Rand ums ganze Fenster auf eigenem Rahmen ÜBER den Hintergründen links/rechts (die verdeckten ihn),
+        -- unter dem Porträt; ohne Füllung, ohne Maus
+        local border = CreateFrame("Frame", nil, f)
+        border:SetAllPoints(f)
+        border:SetFrameLevel(f:GetFrameLevel() + 45)
+        border:EnableMouse(false)
+        ns.Flat(border, { 0, 0, 0, 0 }, { 0, -TITLE_UP, 0, 0 })
         local title = (f.TitleContainer and f.TitleContainer.TitleText) or G("CharacterFrameTitleText")
         if title then title:SetTextColor(C.accent[1], C.accent[2], C.accent[3]) end
         Raise(f.TitleContainer or title)
