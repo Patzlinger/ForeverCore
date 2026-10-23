@@ -69,6 +69,21 @@ local function HideFrameArt(f)
         end
     end
     ns.Hide(G("CharacterFrameRightPaneHostStoneBg"))
+    -- Trennlinie zwischen linker und rechter Seite ("common-framedivider", samt Verzierung unten): gold
+    local right = G("CharacterFrameRightPaneHost")
+    if right and not Forbidden(right) then
+        for _, child in ipairs({ right:GetChildren() }) do
+            if not Forbidden(child) then
+                for _, r in ipairs({ child:GetRegions() }) do
+                    local atlas = r:IsObjectType("Texture") and r.GetAtlas and r:GetAtlas()
+                    if type(atlas) == "string" and atlas:find("framedivider") then
+                        r:SetDesaturated(true)
+                        r:SetVertexColor(C.accent[1], C.accent[2], C.accent[3], 1)
+                    end
+                end
+            end
+        end
+    end
     -- Innenflächen: nur ihr Rahmen weg (ihr Hintergrund bleibt)
     for _, key in ipairs({ "Inset", "InsetRight", "InsetLeft" }) do
         local inset = f[key] or G("CharacterFrame" .. key)
@@ -95,6 +110,10 @@ local function SkinSlot(b)
     ns.HideTextures(b, keep)
     ns.Hide(b.GetNormalTexture and b:GetNormalTexture())
     ns.Hide(name and G(name .. "Frame"))
+    -- Blizzards Verzierung um den Platz ("UI-Character-Info-GearSlot" im Unter-Rahmen BorderFrame): weg – unser
+    -- goldener Rand ersetzt sie (auf Wunsch)
+    local deco = b.BorderFrame
+    if type(deco) == "table" and deco.GetRegions and not Forbidden(deco) then ns.HideTextures(deco) end
     if icon and icon.SetTexCoord then
         icon:ClearAllPoints()
         icon:SetPoint("TOPLEFT", 1, -1)
