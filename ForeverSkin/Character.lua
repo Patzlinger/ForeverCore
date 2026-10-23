@@ -56,6 +56,7 @@ end
 
 local movedDivider = setmetatable({}, { __mode = "k" })
 local ourFrames = setmetatable({}, { __mode = "k" }) -- eigene Hilfsrahmen (Linien): nie mit verschieben
+local rightLines = {} -- Linien unter den 4 Reitern rechts (je Seite eine: Ausrüstung, Spieler gegen Spieler, Währung)
 local dividerLines = setmetatable({}, { __mode = "k" }) -- [Blizzards Trennlinie] = unsere goldene Linie
 
 -- Rahmen: nur Blizzards Rahmen, Titel-Grafik, Streifen und Porträt weg – Hintergründe bleiben; flache Fläche darunter
@@ -334,6 +335,7 @@ local function SubLines()
         line:SetHeight(1)
         line:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", left or 0, up or 0)
         line:SetPoint("TOPRIGHT", anchor, "BOTTOMRIGHT", 0, up or 0)
+        return line
     end
     local paper = G("PaperDollFrame")
     local host = paper and paper.TopBackgroundStripHost
@@ -342,7 +344,15 @@ local function SubLines()
     -- (der Steinstreifen reicht ein Stück unter die Reiter – Linie RIGHT_LINE_UP höher, auf Wunsch)
     -- (1 px später beginnen: sonst lag sie 1 px über der senkrechten Trennlinie. Nur auf der Ausrüstungsseite – dort
     -- sind die 4 Reiter; auf den übrigen Seiten lief sie mitten durch die Texte)
-    if right and stone and not Forbidden(right) then Line(right, stone, RIGHT_LINE_UP, 1, paper) end
+    -- Auf Wunsch auch auf "Spieler gegen Spieler" und "Währung" – dort rückt der Detailbereich darunter (siehe
+    -- FixDetailFrames, rightLines)
+    if right and stone and not Forbidden(right) then
+        for _, owner in ipairs({ paper or false, G("PVPRankFrame") or false, G("TokenFrame") or false }) do
+            if owner and not Forbidden(owner) then
+                rightLines[#rightLines + 1] = Line(right, stone, RIGHT_LINE_UP, 1, owner)
+            end
+        end
+    end
 end
 
 -- Werte-Spalte rechts: Überschriften ("Allgemein", "Primäre Eigenschaften" …: Rahmen mit Titel und Hintergrund) als
@@ -700,6 +710,10 @@ end
 local titleLine -- unsere goldene Linie unter der Titelleiste (Maß für "darunter")
 local function FixDetailFrames(f)
     local lineTop = titleLine and titleLine:GetTop()
+    -- ist auf der Seite die Linie unter den Reitern rechts zu sehen, gilt sie (sie liegt tiefer)
+    for _, l in ipairs(rightLines) do
+        if l:IsVisible() and l:GetTop() then lineTop = math.min(lineTop or l:GetTop(), l:GetTop()) end
+    end
     if not lineTop then return end
     -- Detailbereiche: Schlüssel "DetailFrame" oder ein Unter-Rahmen mit "Detail" im Namen (z. B. SkillDetailFrame
     -- in SkillsFrame, laut /fskin grafik)
