@@ -285,6 +285,24 @@ local function IsStatHeader(entry)
     return false
 end
 local stripes = setmetatable({}, { __mode = "k" })
+-- Blizzards Zeilenstreifen ("UI-Character-Info-Line-Bounce2"): Blizzard setzt ihre Sichtbarkeit für den Zeilenwechsel
+-- ständig neu – darum gleich nach jeder solchen Änderung wieder unsichtbar (Haken mit Sperre gegen Schleifen)
+local kept = setmetatable({}, { __mode = "k" })
+local function KeepInvisible(tex)
+    if kept[tex] == nil then
+        kept[tex] = true
+        local function Again(t)
+            if kept[t] == "busy" then return end
+            kept[t] = "busy"
+            t:SetAlpha(0)
+            kept[t] = true
+        end
+        for _, method in ipairs({ "SetAlpha", "Show", "SetShown", "SetAtlas", "SetTexture", "SetVertexColor" }) do
+            if type(tex[method]) == "function" then hooksecurefunc(tex, method, Again) end
+        end
+    end
+    tex:SetAlpha(0)
+end
 -- Inhalt der Liste: moderne Liste (ScrollTarget) oder ältere (ScrollFrame mit Inhalt)
 -- (im Forever-Client ist "CharacterStatsPaneScrollBox" ein einfacher Rahmen, laut /fskin werte: die Liste steckt
 -- darin – sonst ist der Rahmen selbst der Behälter)
@@ -358,7 +376,7 @@ local function SkinStatList(list)
                 if stripes[entry] then stripes[entry]:Hide() end
             else
                 for _, r in ipairs({ entry:GetRegions() }) do
-                    if r:IsObjectType("Texture") and r ~= stripes[entry] then r:SetAlpha(0) end
+                    if r:IsObjectType("Texture") and r ~= stripes[entry] then KeepInvisible(r) end
                 end
                 if not stripes[entry] then
                     stripes[entry] = entry:CreateTexture(nil, "BACKGROUND", nil, -7)
