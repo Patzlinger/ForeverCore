@@ -50,6 +50,16 @@ local function HideFrameArt(f)
     end
     for _, suffix in ipairs({ "Portrait", "PortraitFrame", "TitleBg" }) do ns.Hide(G("CharacterFrame" .. suffix)) end
     if f.TitleContainer then ns.HideTextures(f.TitleContainer) end
+    -- Streifen hinter "Stufe …, Klasse" (TopBackgroundStrip der Seiten) und Steinstreifen hinter den 4 Reitern der
+    -- rechten Spalte (laut /fskin grafik) – weg, auf Wunsch; die großen Hintergründe dahinter bleiben
+    for _, page in ipairs({ "PaperDollFrame", "ReputationFrame", "TokenFrame" }) do
+        local host = G(page) and G(page).TopBackgroundStripHost
+        if type(host) == "table" and not Forbidden(host) then
+            ns.Hide(host.TopBackgroundStrip)
+            ns.HideTextures(host)
+        end
+    end
+    ns.Hide(G("CharacterFrameRightPaneHostStoneBg"))
     -- Innenflächen: nur ihr Rahmen weg (ihr Hintergrund bleibt)
     for _, key in ipairs({ "Inset", "InsetRight", "InsetLeft" }) do
         local inset = f[key] or G("CharacterFrame" .. key)
