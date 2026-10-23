@@ -191,6 +191,16 @@ function ns.UpdateSlot(button, bag, slot)
     end
     local info = C_Container.GetContainerItemInfo(bag, slot)
     local texture = info and info.iconFileID
+    -- Erster Start nach Spielstart: Gegenstandsdaten sind oft noch nicht geladen (Platz belegt, aber ohne Daten ->
+    -- leeres dunkles Feld). Daten anfordern und nach dem Eintreffen neu zeichnen (ns.itemDataPending, Ereignisse unten).
+    if not texture then
+        local itemID = C_Container.GetContainerItemID(bag, slot)
+        if itemID then
+            ns.itemDataPending = true
+            if C_Item and C_Item.RequestLoadItemDataByID then pcall(C_Item.RequestLoadItemDataByID, itemID) end
+            texture = C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(itemID) or nil
+        end
+    end
     SetItemButtonTexture(button, texture)
     SetItemButtonCount(button, info and info.stackCount or 0)
     SetItemButtonDesaturated(button, info and info.isLocked)
@@ -1271,6 +1281,11 @@ events:SetScript("OnEvent", function(_, event, isInitialLogin)
         if createPending and window and window:IsShown() then ns.LayoutBags() end
         return
     end
+    if event == "GET_ITEM_INFO_RECEIVED" or event == "ITEM_DATA_LOAD_RESULT" then
+        -- kommt beim Login sehr oft (auch für andere Addons): nur neu zeichnen, wenn uns Daten fehlten
+        if not ns.itemDataPending then return end
+        ns.itemDataPending = false -- wird beim Zeichnen wieder gesetzt, falls noch etwas fehlt
+    end
     QueueRefresh()
 end)
 
@@ -1282,7 +1297,7 @@ function ns.SetupBags()
     for _, event in ipairs({ "BAG_UPDATE_DELAYED", "ITEM_LOCK_CHANGED", "BAG_UPDATE_COOLDOWN", "PLAYER_MONEY",
         "INVENTORY_SEARCH_UPDATE", "BAG_NEW_ITEMS_UPDATED", "PLAYER_REGEN_ENABLED", "BAG_CONTAINER_UPDATE",
         "PLAYER_EQUIPMENT_CHANGED", "PLAYER_ENTERING_WORLD", "CURRENCY_DISPLAY_UPDATE", "QUEST_ACCEPTED",
-        "QUEST_REMOVED" }) do
+        "QUEST_REMOVED", "GET_ITEM_INFO_RECEIVED", "ITEM_DATA_LOAD_RESULT" }) do
         pcall(events.RegisterEvent, events, event)
     end
     -- Handel: Taschen öffnen und rechts ans Handelsfenster hängen; beim Schließen des Handels wieder zu, wenn wir

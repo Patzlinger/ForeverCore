@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- ForeverBags: right after starting the game, the bag window could stay dark for a while (item data not loaded yet) – it now redraws as soon as the item data arrives.
 - ForeverQuests: dungeon window – the "My level" tab now comes first and is selected by default.
 
 - ForeverHelpers, loot rolls: a main switch turns the loot roll window off completely (settings, or /floot on | off) – Blizzard's own roll frames are unaffected.
