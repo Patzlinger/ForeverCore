@@ -149,7 +149,8 @@ local function SkinSlot(b)
     for _, p in ipairs({ { "TOPLEFT", "TOPRIGHT", true }, { "BOTTOMLEFT", "BOTTOMRIGHT", true },
         { "TOPLEFT", "BOTTOMLEFT", false }, { "TOPRIGHT", "BOTTOMRIGHT", false } }) do
         local e = b:CreateTexture(nil, "OVERLAY", nil, 6)
-        e:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 0.85)
+        -- (gedämpftes Gold – auf Wunsch weniger grell: dunkler und etwas durchscheinend)
+        e:SetColorTexture(C.accent[1] * 0.7, C.accent[2] * 0.7, C.accent[3] * 0.7, 0.6)
         e:SetPoint(p[1], b, p[1])
         e:SetPoint(p[2], b, p[2])
         if p[3] then e:SetHeight(SLOT_EDGE) else e:SetWidth(SLOT_EDGE) end
