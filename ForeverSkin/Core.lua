@@ -30,6 +30,7 @@ ns.DEFAULTS = {
     menus = true,    -- aufgeklappte Menüs überall (Rechtsklick auf Einheiten, Auswahllisten)
     groupFinder = true, -- Suche nach Gruppe (mit Reiter zum Dungeonfenster)
     chatConfig = true, -- Chat-Einstellungen und Chat-Channels
+    character = true, -- Charakterfenster (Ausrüstung, Ruf, Währungen)
     size = 100,      -- Größe von Gespräch, Quest, Händler und Lehrer in Prozent (100 = Grundgröße SIZE_BASE)
 }
 
@@ -1057,7 +1058,7 @@ local options
 local checks = {}
 local function Build()
     options = UI.SettingsPanel("ForeverSkinOptions", T("ForeverSkin – Einstellungen (Prototyp)", "ForeverSkin – Settings (prototype)"),
-        460, 740, { key = "ForeverSkin", group = UI.SETTINGS_GROUPS.comfort, label = T("Fenster-Stil", "Window style") })
+        460, 764, { key = "ForeverSkin", group = UI.SETTINGS_GROUPS.comfort, label = T("Fenster-Stil", "Window style") })
     local W = 420
     UI.Header(options, 18, -40, T("Fenster im Forever-Stil", "Windows in the Forever look"), W)
     local reload
@@ -1088,12 +1089,13 @@ local function Build()
     Check(-470, T("Menüs (Rechtsklick auf Einheiten)", "Menus (right-click on units)"), "menus")
     Check(-494, T("Suche nach Gruppe (Reiter zum Dungeonfenster)", "Group finder (tab to dungeon window)"), "groupFinder")
     Check(-518, T("Chat-Einstellungen und Chat-Channels", "Chat settings and chat channels"), "chatConfig")
-    local size = UI.Slider(options, 22, -548, T("Größe von Gespräch, Quest, Händler, Lehrer", "Size of dialog, quest, vendor, trainer"),
+    Check(-542, T("Charakterfenster", "Character window"), "character")
+    local size = UI.Slider(options, 22, -572, T("Größe von Gespräch, Quest, Händler, Lehrer", "Size of dialog, quest, vendor, trainer"),
         80, 120, 5, function(v)
             ns.GetDB().size = v
             ns.RescaleAll()
         end, { unit = " %", width = 220 })
-    UI.Hint(options, 22, -592, W - 12, T("Änderungen gelten nach dem Neuladen. Gefällt dir der Stil nicht, schalte " ..
+    UI.Hint(options, 22, -616, W - 12, T("Änderungen gelten nach dem Neuladen. Gefällt dir der Stil nicht, schalte " ..
         "ForeverSkin in der Addon-Liste aus – dann ist alles wieder wie vorher.",
         "Changes apply after reloading. If you don't like the look, turn ForeverSkin off in the addon list – " ..
         "everything is back as before."))
