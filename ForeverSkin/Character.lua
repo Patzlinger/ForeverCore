@@ -111,6 +111,9 @@ local function HideFrameArt(f)
                 for _, r in ipairs({ child:GetRegions() }) do
                     local atlas = r:IsObjectType("Texture") and r.GetAtlas and r:GetAtlas()
                     if type(atlas) == "string" and atlas:find("framedivider") then
+                        -- (der Rahmen der Trennlinie darf nie mit nach unten geschoben werden – sonst rutschte die
+                        -- senkrechte Linie auf den übrigen Seiten unter den Fensterrand)
+                        ourFrames[child] = true
                         -- Blizzards Trennlinie ist 11 breit mit dunklem Schatten (wirkte neben dem Gold wie ein
                         -- schwarzer Streifen): unsichtbar, stattdessen eine eigene goldene Linie von 1 px in ihrer Mitte
                         r:SetAlpha(0)
