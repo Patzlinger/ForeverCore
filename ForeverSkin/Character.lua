@@ -79,11 +79,16 @@ local function HideFrameArt(f)
     ns.Hide(G("CharacterFrameRightPaneHostStoneBg"))
     -- Hintergrundbilder der beiden Seiten ("UI-Character-Info-General-BG" links, "…-Stat-BG" rechts): durch unsere
     -- flache Innenfläche ersetzt (auf Wunsch); das Bild hinter dem Modell gehört zur Modellansicht und bleibt
-    for _, hostName in ipairs({ "CharacterFrameLeftPaneHost", "CharacterFrameRightPaneHost" }) do
-        local host = G(hostName)
+    local leftHost, rightHost = G("CharacterFrameLeftPaneHost"), G("CharacterFrameRightPaneHost")
+    for _, host in ipairs({ leftHost or false, rightHost or false }) do
         if host and not Forbidden(host) then
             ns.HideTextures(host)
-            ns.Flat(host, C.panel)
+            -- (rechts: Fläche nach links bis an die linke Seite – sonst blieb zwischen beiden ein dunkler Streifen)
+            local gap = 0
+            if host == rightHost and leftHost and leftHost:GetRight() and host:GetLeft() then
+                gap = math.max(0, math.floor(host:GetLeft() - leftHost:GetRight() + 0.5))
+            end
+            ns.Flat(host, C.panel, { -gap, 0, 0, 0 })
         end
     end
     -- Trennlinie zwischen linker und rechter Seite ("common-framedivider", samt Verzierung unten): gold
@@ -222,6 +227,64 @@ local function Raise(obj)
     end
     obj:ClearAllPoints()
     for _, pt in ipairs(points) do obj:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5]) end
+end
+
+-- Knopf zum Ein-/Ausklappen der Werte (gelber Pfeil oben rechts neben "Stufe …"): feiner Pfeil ohne Kasten wie bei
+-- uns überall, grau, beim Überfahren gold; zeigt nach links, solange die Werte offen sind, sonst nach rechts
+local expandArrow
+local function IsExpandButton(b)
+    if (b:GetWidth() or 0) > 32 or (b:GetHeight() or 0) > 32 then return false end
+    local text = b.GetText and b:GetText()
+    if type(text) == "string" and text ~= "" then return false end
+    local key = (b:GetName() or ""):lower()
+    if key:find("expand") or key:find("collapse") then return true end
+    local t = b.GetNormalTexture and b:GetNormalTexture()
+    if not t then return false end
+    local atlas = t.GetAtlas and t:GetAtlas()
+    local tex = t:GetTexture()
+    local s = ((type(atlas) == "string" and atlas or "") .. "|" .. (type(tex) == "string" and tex or "")):lower()
+    return s:find("arrow") or s:find("expand") or s:find("collapse") or s:find("pagebutton")
+end
+local function FindExpandButton(frame, depth)
+    for _, child in ipairs({ frame:GetChildren() }) do
+        if not Forbidden(child) and not slotDone[child] then
+            if child:IsObjectType("Button") and not child:IsObjectType("CheckButton") and IsExpandButton(child) then
+                return child
+            end
+            if depth < 3 then
+                local found = FindExpandButton(child, depth + 1)
+                if found then return found end
+            end
+        end
+    end
+end
+local function SkinExpandButton(f)
+    if not expandArrow then
+        local b = G("CharacterFrameExpandButton") or FindExpandButton(G("PaperDollFrame") or f, 1)
+        if not b then return end
+        ns.HideTextures(b)
+        for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetHighlightTexture", "GetDisabledTexture" }) do
+            local t = b[get] and b[get](b)
+            if t then ns.Hide(t) end
+        end
+        local arrow = b:CreateTexture(nil, "OVERLAY", nil, 7)
+        arrow:SetTexture("Interface\\ChatFrame\\ChatFrameExpandArrow")
+        arrow:SetSize(11, 11)
+        arrow:SetPoint("CENTER")
+        arrow:SetVertexColor(0.8, 0.8, 0.82)
+        b:HookScript("OnEnter", function() arrow:SetVertexColor(C.accent[1], C.accent[2], C.accent[3]) end)
+        b:HookScript("OnLeave", function() arrow:SetVertexColor(0.8, 0.8, 0.82) end)
+        expandArrow = { button = b, arrow = arrow }
+    end
+    -- (Blizzard setzt seine Grafiken beim Umschalten neu: weiter unsichtbar halten; Richtung nach dem Zustand)
+    local b = expandArrow.button
+    for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetDisabledTexture" }) do
+        local t = b[get] and b[get](b)
+        if t then ns.Hide(t) end
+    end
+    local right = G("CharacterFrameRightPaneHost") or G("CharacterStatsPane")
+    local open = right and right:IsShown()
+    expandArrow.arrow:SetRotation(open and math.pi or 0)
 end
 
 -- feine goldene Trennlinien: unter "Stufe …, Klasse" (Unterkante des früheren Streifens der Ausrüstungsseite) und
@@ -469,6 +532,7 @@ local function SkinCharacter()
         if waited < 0.3 then return end
         waited = 0
         pcall(HideFrameArt, f)
+        pcall(SkinExpandButton, f)
         pcall(Scan, f, 1)
         local right = G("CharacterFrameRightPaneHost")
         if right and right:IsVisible() then pcall(SkinStats, right, 1) end
