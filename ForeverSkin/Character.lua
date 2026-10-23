@@ -740,10 +740,19 @@ local function SkinCharacter()
     -- Blizzard blendet Rahmen beim Öffnen/Umschalten wieder ein und baut Seiten erst beim ersten Zeigen
     local watch = CreateFrame("Frame", nil, f)
     local waited = 0
+    -- nach dem Öffnen und jedem Reiterwechsel eine halbe Sekunde lang in JEDEM Bild umgestalten – sonst sah man
+    -- Blizzards Grafiken kurz, bis zur nächsten Prüfung
+    local fastUntil = 0
+    local function Fast() fastUntil = GetTime() + 0.5 end
+    f:HookScript("OnShow", Fast)
+    for i = 1, 8 do
+        local tab = G("CharacterFrameTab" .. i)
+        if tab and not Forbidden(tab) then tab:HookScript("OnClick", Fast) end
+    end
     watch:SetScript("OnUpdate", function(_, elapsed)
         pcall(SkinRepHeaders) -- (jedes Bild: Blizzard setzt die Leisten der Ruf-Überschriften neu)
         waited = waited + elapsed
-        if waited < 0.3 then return end
+        if waited < 0.3 and GetTime() > fastUntil then return end
         local rep = G("ReputationFrame")
         if rep and rep:IsVisible() then pcall(FindRepHeaders) end
         pcall(FindPageHeaders, f, 1)
