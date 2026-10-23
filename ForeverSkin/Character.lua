@@ -758,7 +758,8 @@ local function NoScrollLines(frame, depth)
     for _, r in ipairs({ frame:GetRegions() }) do
         if r:IsObjectType("Texture") then
             local atlas = r.GetAtlas and r:GetAtlas()
-            if type(atlas) == "string" and atlas:find("ScrollLine") then r:SetAlpha(0) end
+            -- (dazu Blizzards Innenrahmen mit Zierecken, "common-insideframe" – z. B. um den Ausrüstungsmanager)
+            if type(atlas) == "string" and (atlas:find("ScrollLine") or atlas:find("insideframe")) then r:SetAlpha(0) end
         end
     end
     if depth < 7 then
