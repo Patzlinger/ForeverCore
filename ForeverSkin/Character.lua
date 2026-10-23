@@ -208,6 +208,23 @@ local function Raise(obj)
     for _, pt in ipairs(points) do obj:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5]) end
 end
 
+-- feine goldene Trennlinien: unter "Stufe …, Klasse" (Unterkante des früheren Streifens der Ausrüstungsseite) und
+-- rechts unter den 4 Reitern (Unterkante des früheren Steinstreifens) – wie die Linie unter der Titelleiste
+local function SubLines()
+    local function Line(parent, anchor)
+        local line = parent:CreateTexture(nil, "OVERLAY", nil, 7)
+        line:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 0.6)
+        line:SetHeight(1)
+        line:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, 0)
+        line:SetPoint("TOPRIGHT", anchor, "BOTTOMRIGHT", 0, 0)
+    end
+    local paper = G("PaperDollFrame")
+    local host = paper and paper.TopBackgroundStripHost
+    if type(host) == "table" and not Forbidden(host) then Line(host, host.TopBackgroundStrip or host) end
+    local right, stone = G("CharacterFrameRightPaneHost"), G("CharacterFrameRightPaneHostStoneBg")
+    if right and stone and not Forbidden(right) then Line(right, stone) end
+end
+
 local function SkinCharacter()
     local f = G("CharacterFrame")
     if not f or ns.characterSkinned or Forbidden(f) then return end
@@ -246,6 +263,7 @@ local function SkinCharacter()
         Raise(close)
     end)
     Step("portrait", function() Portrait(f) end)
+    Step("lines", SubLines)
     Step("slots", function()
         for _, s in ipairs(SLOTS) do SkinSlot(G("Character" .. s .. "Slot")) end
     end)
