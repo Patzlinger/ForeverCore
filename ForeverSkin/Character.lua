@@ -689,8 +689,15 @@ local function LowerDetails(f)
     for _, page in ipairs({ "ReputationFrame", "TokenFrame", "SkillFrame", "PVPFrame", "HonorFrame" }) do
         if G(page) and G(page):IsVisible() then Check(G(page)) end
     end
-    -- Seiten mit "DetailFrame" (z. B. PVPRankFrame, laut /fskin maus): den ganzen Block unter die Linie (so bleiben
-    -- die Texte darin richtig zueinander) und seinen hellen Balken ("UI-Character-Info-ScrollLine") weg
+end
+
+-- Seiten mit "DetailFrame" (z. B. PVPRankFrame, laut /fskin maus): den ganzen Block unter unsere goldene Linie unter
+-- der Titelleiste (so bleiben die Texte darin richtig zueinander) und seinen hellen Balken
+-- ("UI-Character-Info-ScrollLine") weg. Eigener Schritt, unabhängig von den Seitenflächen (die gibt es nicht überall)
+local titleLine -- unsere goldene Linie unter der Titelleiste (Maß für "darunter")
+local function FixDetailFrames(f)
+    local lineTop = titleLine and titleLine:GetTop()
+    if not lineTop then return end
     for _, page in ipairs({ f:GetChildren() }) do
         local detail = not Forbidden(page) and page:IsVisible() and page.DetailFrame
         if type(detail) == "table" and not Forbidden(detail) and detail:IsVisible() then
@@ -775,6 +782,7 @@ local function SkinCharacter()
         local line = border:CreateTexture(nil, "OVERLAY")
         line:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 0.6)
         line:SetHeight(1)
+        titleLine = line
         local function PlaceLine()
             local pane = G("CharacterFrameLeftPaneHost")
             local y = -23
@@ -829,6 +837,12 @@ local function SkinCharacter()
         if not (G("PaperDollFrame") and G("PaperDollFrame"):IsVisible()) then
             pcall(LowerDetails, f)
             pcall(ShortenLists, f)
+        end
+        -- (Fehler einmal melden statt still zu schlucken)
+        local okDetail, errDetail = pcall(FixDetailFrames, f)
+        if not okDetail and not watch.detailReported then
+            watch.detailReported = true
+            if ns.UI.ReportError then ns.UI.ReportError("ForeverSkin", "character/details", errDetail) end
         end
         -- Werte-Listen außer der eigenen (z. B. Begleiter) – gleiche Behandlung
         local ok, lists = pcall(FindStatLists, f, 1, {})
