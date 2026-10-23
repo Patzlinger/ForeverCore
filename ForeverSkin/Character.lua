@@ -285,12 +285,58 @@ local function IsStatHeader(entry)
     return false
 end
 local stripes = setmetatable({}, { __mode = "k" })
+-- Inhalt der Liste: moderne Liste (ScrollTarget) oder ältere (ScrollFrame mit Inhalt)
+local function StatTarget(list)
+    if list.GetScrollTarget then return list:GetScrollTarget() end
+    if list.GetScrollChild then return list:GetScrollChild() end
+end
+-- Einträge = Rahmen mit Text (auch tiefer verschachtelt: Behälter ohne eigenen Text werden durchsucht)
+local function HasText(frame)
+    for _, r in ipairs({ frame:GetRegions() }) do
+        if r:IsObjectType("FontString") and (r:GetText() or "") ~= "" then return true end
+    end
+    return false
+end
+local function StatEntries(frame, out, depth)
+    for _, child in ipairs({ frame:GetChildren() }) do
+        if not Forbidden(child) and child:IsShown() then
+            if HasText(child) then
+                out[#out + 1] = child
+            elseif depth < 3 then
+                StatEntries(child, out, depth + 1)
+            end
+        end
+    end
+    return out
+end
+
+-- /fskin werte: Aufbau der Werte-Spalte im Chat (Fehlersuche)
+function ns.DumpStats()
+    local function Say(t) print("|cffffcc00ForeverSkin|r: " .. tostring(t)) end
+    local list = G("CharacterStatsPaneScrollBox")
+    if not list then return Say("CharacterStatsPaneScrollBox nicht gefunden") end
+    local target = StatTarget(list)
+    Say(string.format("Liste: %s, Inhalt: %s", list:GetObjectType(), tostring(target and target:GetDebugName())))
+    if not target then return end
+    for i, entry in ipairs(StatEntries(target, {}, 1)) do
+        if i > 12 then break end
+        local tex = {}
+        for _, r in ipairs({ entry:GetRegions() }) do
+            if r:IsObjectType("Texture") then
+                tex[#tex + 1] = tostring(r.GetAtlas and r:GetAtlas() or r:GetTexture())
+            end
+        end
+        Say(string.format("%d. %s %dx%d Kopf=%s | %s", i, tostring(entry:GetDebugName()), entry:GetWidth() or 0,
+            entry:GetHeight() or 0, tostring(IsStatHeader(entry)), table.concat(tex, ", ")))
+    end
+end
+
 local function SkinStatList(list)
     if type(list.Border) == "table" then ns.Hide(list.Border) end
-    local target = list.GetScrollTarget and list:GetScrollTarget()
+    local target = StatTarget(list)
     if not target then return end
     local rows = {}
-    for _, entry in ipairs({ target:GetChildren() }) do
+    for _, entry in ipairs(StatEntries(target, {}, 1)) do
         if not Forbidden(entry) and entry:IsShown() and entry:GetTop() then
             local header = IsStatHeader(entry)
             if header then
