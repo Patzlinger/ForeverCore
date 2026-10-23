@@ -434,8 +434,30 @@ function ns.DumpStats()
     end
 end
 
+-- Laufleiste der Werte-Spalte SCROLL_RIGHT nach rechts: mehr Luft zu den Werten (auf Wunsch) – einmal
+local SCROLL_RIGHT = 5
+local scrollMoved = setmetatable({}, { __mode = "k" })
+local function MoveStatScrollBar(list)
+    local bar = list.ScrollBar
+    if type(bar) ~= "table" then
+        for _, child in ipairs({ list:GetChildren() }) do
+            if not Forbidden(child) and type(child.Track) == "table" then bar = child end
+        end
+    end
+    if type(bar) ~= "table" or Forbidden(bar) or scrollMoved[bar] or bar:GetNumPoints() == 0 then return end
+    scrollMoved[bar] = true
+    local points = {}
+    for i = 1, bar:GetNumPoints() do
+        local p, rel, rp, x, y = bar:GetPoint(i)
+        points[i] = { p, rel, rp, (x or 0) + SCROLL_RIGHT, y or 0 }
+    end
+    bar:ClearAllPoints()
+    for _, pt in ipairs(points) do bar:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5]) end
+end
+
 local function SkinStatList(list)
     if type(list.Border) == "table" then ns.Hide(list.Border) end
+    pcall(MoveStatScrollBar, list)
     -- Klassenbild hinter der Werte-Spalte ("UI-Character-Info-<Klasse>-BG"): weg, auf Wunsch – darunter unsere
     -- flache Innenfläche der rechten Seite
     if type(list.ClassBackground) == "table" then ns.Hide(list.ClassBackground) end
