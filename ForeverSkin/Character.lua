@@ -358,6 +358,9 @@ end
 
 local function SkinStatList(list)
     if type(list.Border) == "table" then ns.Hide(list.Border) end
+    -- Klassenbild hinter der Werte-Spalte ("UI-Character-Info-<Klasse>-BG"): weg, auf Wunsch – darunter unsere
+    -- flache Innenfläche der rechten Seite
+    if type(list.ClassBackground) == "table" then ns.Hide(list.ClassBackground) end
     local target = StatTarget(list)
     if not target then return end
     local rows = {}
