@@ -588,6 +588,20 @@ end
 local function MarkHeader(entry)
     repHeaders[entry] = true
     ns.Flat(entry, C.button, { 0, 1, 0, 1 })
+    -- breite Blizzard-Grafiken (die Leiste) dauerhaft unsichtbar: Haken an der Grafik selbst – Blizzard macht sie
+    -- beim Öffnen wieder sichtbar, das blitzte sonst kurz auf
+    local function Keep(frame)
+        for _, r in ipairs({ frame:GetRegions() }) do
+            if r:IsObjectType("Texture") and not ns.IsMine(frame, r) and r:GetDrawLayer() ~= "HIGHLIGHT"
+                and (r:GetWidth() or 0) >= 30 then
+                KeepInvisible(r)
+            end
+        end
+    end
+    Keep(entry)
+    for _, child in ipairs({ entry:GetChildren() }) do
+        if not Forbidden(child) and not child:IsObjectType("Button") then Keep(child) end
+    end
 end
 local function FindRepHeaders()
     local rep = G("ReputationFrame")
@@ -936,6 +950,17 @@ local function SkinCharacter()
         FindRepHeaders()
         FindPageHeaders(f, 1)
     end)
+    -- jede Seite: sobald sie gezeigt wird (Blizzard hat die Liste dann schon gefüllt, gezeichnet wird erst danach)
+    -- Überschriften suchen und umgestalten – sonst sah man beim Öffnen kurz Blizzards Leisten
+    local function OnPageShow()
+        pcall(FindRepHeaders)
+        pcall(FindPageHeaders, f, 1)
+        pcall(SkinRepHeaders)
+    end
+    f:HookScript("OnShow", OnPageShow)
+    for _, page in ipairs({ f:GetChildren() }) do
+        if not Forbidden(page) and page.HookScript then page:HookScript("OnShow", OnPageShow) end
+    end
     ns.Watch(f)
     f:HookScript("OnShow", function() Step("portrait", function() Portrait(f) end) end)
     -- Blizzard blendet Rahmen beim Öffnen/Umschalten wieder ein und baut Seiten erst beim ersten Zeigen
