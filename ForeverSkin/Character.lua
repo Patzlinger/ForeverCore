@@ -545,6 +545,7 @@ end
 -- Überschrift = Eintrag OHNE Rufbalken (die Zeilen mit "Neutral" … haben einen und bleiben). Nur breite Grafiken weg –
 -- das kleine "−" zum Zuklappen bleibt. Blizzard setzt die Leisten beim Auf-/Zuklappen neu: darum in jedem Bild
 local repHeaders = setmetatable({}, { __mode = "k" })
+local HookRepList -- (weiter unten gesetzt: Ruf-Liste beim Befüllen prüfen)
 local function HasStatusBar(frame, depth)
     for _, child in ipairs({ frame:GetChildren() }) do
         if not Forbidden(child) then
@@ -593,6 +594,7 @@ local function FindRepHeaders()
     local list = rep and (rep.ScrollBox or G("ReputationFrameScrollBox") or G("ReputationListScrollFrame"))
     local target = list and StatTarget(list)
     if not target then return end
+    if list.GetScrollTarget and HookRepList then HookRepList(list) end
     for _, entry in ipairs({ target:GetChildren() }) do
         if not Forbidden(entry) and not repHeaders[entry] and entry:IsShown() and HasText(entry)
             and not HasStatusBar(entry, 1) then
@@ -630,6 +632,40 @@ end
 local function IsHeaderArt(key)
     return headerArt[key] or (type(key) == "string" and key:lower():find("header") ~= nil)
 end
+-- Eintrag sofort beim Befüllen durch Blizzard prüfen (noch bevor er gezeichnet wird – sonst sah man beim Öffnen kurz
+-- Blizzards Leiste): Überschrift erkannt -> Balken und Leiste weg. rep = Ruf-Liste (Überschrift = ohne Rufbalken)
+local function ClassifyEntry(entry, rep)
+    if Forbidden(entry) or not HasText(entry) then return end
+    if not repHeaders[entry] then
+        local header = false
+        if rep then
+            header = not HasStatusBar(entry, 1)
+            if header then
+                for _, key in ipairs(WideArt(entry)) do headerArt[key] = true end
+            end
+        else
+            for _, key in ipairs(WideArt(entry)) do
+                if IsHeaderArt(key) then header = true break end
+            end
+        end
+        if header then MarkHeader(entry) end
+    end
+    if repHeaders[entry] then
+        HideWide(entry)
+        for _, child in ipairs({ entry:GetChildren() }) do
+            if not Forbidden(child) and not child:IsObjectType("Button") then HideWide(child) end
+        end
+    end
+    pcall(SkinToggles, entry)
+end
+local hookedLists = setmetatable({}, { __mode = "k" })
+local function HookList(list, rep)
+    if hookedLists[list] or not (ScrollUtil and ScrollUtil.AddInitializedFrameCallback) then return end
+    hookedLists[list] = true
+    pcall(ScrollUtil.AddInitializedFrameCallback, list, function(_, entry) pcall(ClassifyEntry, entry, rep) end, list)
+end
+HookRepList = function(list) HookList(list, true) end
+
 local function FindPageHeaders(frame, depth)
     for _, child in ipairs({ frame:GetChildren() }) do
         if not Forbidden(child) and child:IsVisible() and not slotDone[child] then
@@ -637,6 +673,7 @@ local function FindPageHeaders(frame, depth)
             local target = (child.GetScrollTarget and child:GetScrollTarget())
                 or (child:IsObjectType("ScrollFrame") and child:GetScrollChild())
             if target and not name:find("Stats") then
+                if child.GetScrollTarget then HookList(child, frame == G("ReputationFrame")) end
                 for _, entry in ipairs({ target:GetChildren() }) do
                     if not Forbidden(entry) and entry:IsShown() then pcall(SkinToggles, entry) end
                     if not Forbidden(entry) and not repHeaders[entry] and entry:IsShown() and HasText(entry) then
@@ -870,6 +907,11 @@ local function SkinCharacter()
         end
     end)
     Step("scan", function() Scan(f, 1) end)
+    -- Listen gleich einhaken (Einträge werden dann schon beim ersten Befüllen umgestaltet)
+    Step("lists", function()
+        FindRepHeaders()
+        FindPageHeaders(f, 1)
+    end)
     ns.Watch(f)
     f:HookScript("OnShow", function() Step("portrait", function() Portrait(f) end) end)
     -- Blizzard blendet Rahmen beim Öffnen/Umschalten wieder ein und baut Seiten erst beim ersten Zeigen
