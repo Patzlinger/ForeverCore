@@ -674,6 +674,14 @@ local function FindPageHeaders(frame, depth)
                 or (child:IsObjectType("ScrollFrame") and child:GetScrollChild())
             if target and not name:find("Stats") then
                 if child.GetScrollTarget then HookList(child, frame == G("ReputationFrame")) end
+                -- Ausrüstungsmanager und Titel ("Neues Set", gespeicherte Sets, Titel): jeder Eintrag als flacher
+                -- grauer Balken (breite Blizzard-Grafiken weg, Symbole bleiben)
+                local debug = (child.GetDebugName and child:GetDebugName() or "") .. "|" .. (frame:GetDebugName() or "")
+                if debug:find("EquipmentManager") or debug:find("TitleManager") or debug:find("GearManager") then
+                    for _, entry in ipairs({ target:GetChildren() }) do
+                        if not Forbidden(entry) and not repHeaders[entry] and entry:IsShown() then MarkHeader(entry) end
+                    end
+                end
                 for _, entry in ipairs({ target:GetChildren() }) do
                     if not Forbidden(entry) and entry:IsShown() then pcall(SkinToggles, entry) end
                     if not Forbidden(entry) and not repHeaders[entry] and entry:IsShown() and HasText(entry) then
