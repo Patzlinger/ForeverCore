@@ -10,6 +10,8 @@ local C = ns.C
 local function G(name) return _G[name] end
 local function Forbidden(obj) return obj and obj.IsForbidden and obj:IsForbidden() end
 local CIRCLE = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
+local TITLE_UP = 10            -- Titelleiste so viel höher als Blizzards Fensterrand (siehe Raise)
+local PORTRAIT_X, PORTRAIT_Y = 8, TITLE_UP - 8 -- Mitte des Porträts: auf der oberen linken Ecke
 
 local function Step(what, fn)
     local ok, err = pcall(fn)
@@ -31,7 +33,8 @@ local function Portrait(f)
             local t = holder:CreateTexture(nil, "OVERLAY", nil, sub)
             t:SetColorTexture(c[1], c[2], c[3], 1)
             t:SetSize(size, size)
-            t:SetPoint("CENTER", f, "TOPLEFT", 20, -20)
+            -- (auf der oberen linken Ecke unserer Fläche, die TITLE_UP über Blizzards Rand reicht – ragt leicht hinaus)
+            t:SetPoint("CENTER", f, "TOPLEFT", PORTRAIT_X, PORTRAIT_Y)
             local mask = holder:CreateMaskTexture()
             mask:SetTexture(CIRCLE, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
             mask:SetAllPoints(t)
@@ -140,7 +143,6 @@ end
 
 -- Titelleiste (Name + Schließen) TITLE_UP höher: unsere Fläche reicht oben so weit über Blizzards Fensterrand
 -- hinaus, Name und Kreuz rücken mit – Blizzards Inhalt bleibt, wo er ist (wie beim Handelsfenster)
-local TITLE_UP = 10
 local raised = setmetatable({}, { __mode = "k" })
 local function Raise(obj)
     if not obj or raised[obj] or not obj.GetNumPoints or obj:GetNumPoints() == 0 then return end
@@ -168,6 +170,22 @@ local function SkinCharacter()
         border:SetFrameLevel(f:GetFrameLevel() + 45)
         border:EnableMouse(false)
         ns.Flat(border, { 0, 0, 0, 0 }, { 0, -TITLE_UP, 0, 0 })
+        -- goldene Trennlinie unter der Titelleiste: an der Oberkante der Hintergründe (linke Seite), sonst 23 unter
+        -- Blizzards Rand
+        local line = border:CreateTexture(nil, "OVERLAY")
+        line:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 0.6)
+        line:SetHeight(1)
+        local function PlaceLine()
+            local pane = G("CharacterFrameLeftPaneHost")
+            local y = -23
+            if pane and pane:GetTop() and f:GetTop() then y = math.floor(pane:GetTop() - f:GetTop() + 0.5) end
+            line:ClearAllPoints()
+            line:SetPoint("TOPLEFT", f, "TOPLEFT", 1, y)
+            line:SetPoint("TOPRIGHT", f, "TOPRIGHT", -1, y)
+        end
+        PlaceLine()
+        f:HookScript("OnShow", function() C_Timer.After(0, PlaceLine) end)
+        f:HookScript("OnSizeChanged", function() C_Timer.After(0, PlaceLine) end)
         local title = (f.TitleContainer and f.TitleContainer.TitleText) or G("CharacterFrameTitleText")
         if title then title:SetTextColor(C.accent[1], C.accent[2], C.accent[3]) end
         Raise(f.TitleContainer or title)
