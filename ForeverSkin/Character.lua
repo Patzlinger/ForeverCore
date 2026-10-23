@@ -212,7 +212,11 @@ end
 -- rechts unter den 4 Reitern (Unterkante des früheren Steinstreifens) – wie die Linie unter der Titelleiste
 local function SubLines()
     local function Line(parent, anchor)
-        local line = parent:CreateTexture(nil, "OVERLAY", nil, 7)
+        -- (auf eigenem Unter-Rahmen: das Ausblenden der Grafiken von parent im Takt trifft ihn nicht)
+        local holder = CreateFrame("Frame", nil, parent)
+        holder:SetAllPoints(parent)
+        holder:EnableMouse(false)
+        local line = holder:CreateTexture(nil, "OVERLAY", nil, 7)
         line:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 0.6)
         line:SetHeight(1)
         line:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, 0)
