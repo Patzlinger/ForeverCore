@@ -71,8 +71,11 @@ local function HideFrameArt(f)
     if f.TitleContainer then ns.HideTextures(f.TitleContainer) end
     -- Streifen hinter "Stufe …, Klasse" (TopBackgroundStrip der Seiten) und Steinstreifen hinter den 4 Reitern der
     -- rechten Spalte (laut /fskin grafik) – weg, auf Wunsch; die großen Hintergründe dahinter bleiben
-    for _, page in ipairs({ "PaperDollFrame", "ReputationFrame", "TokenFrame" }) do
-        local host = G(page) and G(page).TopBackgroundStripHost
+    -- (auf jeder Seite, die einen hat – z. B. auch Statistiken: dort lag er über dem Anfang der Liste)
+    local pages = { G("PaperDollFrame") or false, G("ReputationFrame") or false, G("TokenFrame") or false }
+    for _, child in ipairs({ f:GetChildren() }) do pages[#pages + 1] = child end
+    for _, page in ipairs(pages) do
+        local host = page and not Forbidden(page) and page.TopBackgroundStripHost
         if type(host) == "table" and not Forbidden(host) then
             ns.Hide(host.TopBackgroundStrip)
             ns.HideTextures(host)
