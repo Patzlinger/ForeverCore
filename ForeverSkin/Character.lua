@@ -268,6 +268,57 @@ local function SkinStats(frame, depth)
     end
 end
 
+-- Im Forever-Client ist die Werte-Spalte eine eigene Laufliste direkt am Fenster (CharacterStatsPaneScrollBox, laut
+-- /fskin grafik) – Einträge allgemein erkannt: Überschrift = Kopf-/Kategorie-Grafik oder mindestens 24 hoch, sonst
+-- Wertezeile. Rand der Liste ("common-insideframe") weg; das Klassenbild dahinter bleibt
+local function IsStatHeader(entry)
+    if (entry:GetHeight() or 0) >= 24 then return true end
+    for _, r in ipairs({ entry:GetRegions() }) do
+        if r:IsObjectType("Texture") then
+            local atlas = r.GetAtlas and r:GetAtlas()
+            local s = (type(atlas) == "string" and atlas or ""):lower()
+            if s:find("header") or s:find("category") or s:find("title") then return true end
+        end
+    end
+    return false
+end
+local stripes = setmetatable({}, { __mode = "k" })
+local function SkinStatList(list)
+    if type(list.Border) == "table" then ns.Hide(list.Border) end
+    local target = list.GetScrollTarget and list:GetScrollTarget()
+    if not target then return end
+    local rows = {}
+    for _, entry in ipairs({ target:GetChildren() }) do
+        if not Forbidden(entry) and entry:IsShown() and entry:GetTop() then
+            local header = IsStatHeader(entry)
+            if header then
+                if statDone[entry] ~= "header" then
+                    statDone[entry] = "header"
+                    ns.Flat(entry, C.button, { 2, 1, 2, 1 })
+                end
+                ns.HideTextures(entry)
+                for _, r in ipairs({ entry:GetRegions() }) do
+                    if r:IsObjectType("FontString") then r:SetTextColor(C.accent[1], C.accent[2], C.accent[3]) end
+                end
+                if stripes[entry] then stripes[entry]:Hide() end
+            else
+                for _, r in ipairs({ entry:GetRegions() }) do
+                    if r:IsObjectType("Texture") and r ~= stripes[entry] then r:SetAlpha(0) end
+                end
+                if not stripes[entry] then
+                    stripes[entry] = entry:CreateTexture(nil, "BACKGROUND", nil, -7)
+                    stripes[entry]:SetColorTexture(1, 1, 1, 0.04)
+                    stripes[entry]:SetAllPoints(entry)
+                end
+                rows[#rows + 1] = entry
+            end
+        end
+    end
+    -- Zeilenwechsel: jede zweite Zeile (von oben) mit dezentem Streifen
+    table.sort(rows, function(a, b) return a:GetTop() > b:GetTop() end)
+    for i, entry in ipairs(rows) do stripes[entry]:SetShown(i % 2 == 0) end
+end
+
 local function SkinCharacter()
     local f = G("CharacterFrame")
     if not f or ns.characterSkinned or Forbidden(f) then return end
@@ -330,6 +381,8 @@ local function SkinCharacter()
         pcall(Scan, f, 1)
         local right = G("CharacterFrameRightPaneHost")
         if right and right:IsVisible() then pcall(SkinStats, right, 1) end
+        local statList = G("CharacterStatsPaneScrollBox")
+        if statList and statList:IsVisible() and not Forbidden(statList) then pcall(SkinStatList, statList) end
         for i = 1, 6 do
             local tab = G("CharacterFrameTab" .. i)
             if tab and tab:IsShown() then pcall(ns.CenterText, tab) end
