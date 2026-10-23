@@ -12,13 +12,13 @@ Ablauf:
 
 ## Offen
 
-### ForeverQuests: Filter „Aktuelle Zone“ zeigt alles
-- **Was passiert:** Mit dem Filter „nur aktuelle Zone“ zeigt der Tracker trotzdem alle Quests. Die meisten anderen
-  Filter funktionieren.
-- **Erwartet:** nur Quests der Zone, in der man gerade ist.
-- **Gemeldet:** 2026-10-19, Patzlinger
+_Zurzeit keine._
 
 ## Erledigt
+
+### ForeverQuests: Filter „Aktuelle Zone“ zeigt alles (behoben, bestätigt 2026-10-23)
+- **Was passierte:** Mit dem Filter „nur aktuelle Zone“ zeigte der Tracker trotzdem alle Quests.
+- **Stand:** laut Patzlinger behoben (im Spiel geprüft); gemeldet 2026-10-19.
 
 ### ForeverBags: Bank zeigt zu viele Taschenplätze (behoben 2026-10-20)
 - **Ursache:** In diesem Client ist Behälter -1 der Schlüsselbund (nicht mehr das Bankfach), und ForeverBags las
