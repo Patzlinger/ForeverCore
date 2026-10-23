@@ -308,12 +308,10 @@ local function HasText(frame)
 end
 local function StatEntries(frame, out, depth)
     for _, child in ipairs({ frame:GetChildren() }) do
-        if not Forbidden(child) and child:IsShown() then
-            if HasText(child) then
-                out[#out + 1] = child
-            elseif depth < 4 and not (child.Track or child:IsObjectType("Slider")) then -- (Laufleiste nicht)
-                StatEntries(child, out, depth + 1)
-            end
+        if not Forbidden(child) and child:IsShown() and not (child.Track or child:IsObjectType("Slider")) then
+            if HasText(child) then out[#out + 1] = child end
+            -- (auch in Einträgen weitersuchen: die Wertezeilen hängen teils IN ihrer Überschrift)
+            if depth < 5 then StatEntries(child, out, depth + 1) end
         end
     end
     return out
