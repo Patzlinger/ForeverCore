@@ -321,11 +321,13 @@ end
 -- feine goldene Trennlinien: unter "Stufe …, Klasse" (Unterkante des früheren Streifens der Ausrüstungsseite) und
 -- rechts unter den 4 Reitern (Unterkante des früheren Steinstreifens) – wie die Linie unter der Titelleiste
 local function SubLines()
-    local function Line(parent, anchor, up, left)
-        -- (auf eigenem Unter-Rahmen: das Ausblenden der Grafiken von parent im Takt trifft ihn nicht)
-        local holder = CreateFrame("Frame", nil, parent)
+    local function Line(parent, anchor, up, left, owner)
+        -- (auf eigenem Unter-Rahmen: das Ausblenden der Grafiken von parent im Takt trifft ihn nicht. owner: Rahmen,
+        -- mit dem die Linie ein-/ausgeblendet wird – z. B. nur auf der Ausrüstungsseite)
+        local holder = CreateFrame("Frame", nil, owner or parent)
         ourFrames[holder] = true
         holder:SetAllPoints(parent)
+        if owner then holder:SetFrameLevel(parent:GetFrameLevel() + 5) end
         holder:EnableMouse(false)
         local line = holder:CreateTexture(nil, "OVERLAY", nil, 7)
         line:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 0.6)
@@ -338,8 +340,9 @@ local function SubLines()
     if type(host) == "table" and not Forbidden(host) then Line(host, host.TopBackgroundStrip or host) end
     local right, stone = G("CharacterFrameRightPaneHost"), G("CharacterFrameRightPaneHostStoneBg")
     -- (der Steinstreifen reicht ein Stück unter die Reiter – Linie RIGHT_LINE_UP höher, auf Wunsch)
-    -- (1 px später beginnen: sonst lag sie 1 px über der senkrechten Trennlinie)
-    if right and stone and not Forbidden(right) then Line(right, stone, RIGHT_LINE_UP, 1) end
+    -- (1 px später beginnen: sonst lag sie 1 px über der senkrechten Trennlinie. Nur auf der Ausrüstungsseite – dort
+    -- sind die 4 Reiter; auf den übrigen Seiten lief sie mitten durch die Texte)
+    if right and stone and not Forbidden(right) then Line(right, stone, RIGHT_LINE_UP, 1, paper) end
 end
 
 -- Werte-Spalte rechts: Überschriften ("Allgemein", "Primäre Eigenschaften" …: Rahmen mit Titel und Hintergrund) als
