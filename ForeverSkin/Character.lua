@@ -55,6 +55,7 @@ local function Portrait(f)
 end
 
 local movedDivider = setmetatable({}, { __mode = "k" })
+local ourFrames = setmetatable({}, { __mode = "k" }) -- eigene Hilfsrahmen (Linien): nie mit verschieben
 local dividerLines = setmetatable({}, { __mode = "k" }) -- [Blizzards Trennlinie] = unsere goldene Linie
 
 -- Rahmen: nur Blizzards Rahmen, Titel-Grafik, Streifen und Porträt weg – Hintergründe bleiben; flache Fläche darunter
@@ -112,6 +113,7 @@ local function HideFrameArt(f)
                         r:SetAlpha(0)
                         if not dividerLines[r] then
                             local holder = CreateFrame("Frame", nil, right)
+                            ourFrames[holder] = true
                             holder:SetAllPoints(right)
                             holder:SetFrameLevel(child:GetFrameLevel() + 1)
                             holder:EnableMouse(false)
@@ -316,6 +318,7 @@ local function SubLines()
     local function Line(parent, anchor, up, left)
         -- (auf eigenem Unter-Rahmen: das Ausblenden der Grafiken von parent im Takt trifft ihn nicht)
         local holder = CreateFrame("Frame", nil, parent)
+        ourFrames[holder] = true
         holder:SetAllPoints(parent)
         holder:EnableMouse(false)
         local line = holder:CreateTexture(nil, "OVERLAY", nil, 7)
@@ -580,6 +583,29 @@ local function FindRepHeaders()
     end
 end
 
+-- Auf-/Zuklappen in den Listen (rotes Plus/Minus vor "Schlachtfelder" …): feiner Pfeil wie überall – zugeklappt
+-- nach rechts, aufgeklappt nach unten. Den Zustand verrät Blizzards (unsichtbare) Knopfgrafik
+local MINUS_IDS = { [130821] = true, [130822] = true } -- UI-MinusButton-Up/-Down
+local PLUS_IDS = { [130838] = true, [130836] = true }  -- UI-PlusButton-Up/-Down
+local function ToggleState(b)
+    local t = b.GetNormalTexture and b:GetNormalTexture()
+    if not t then return nil end
+    local atlas = t.GetAtlas and t:GetAtlas()
+    local tex = t:GetTexture()
+    local s = ((type(atlas) == "string" and atlas or "") .. "|" .. (type(tex) == "string" and tex or "")):lower()
+    if s:find("minus") or s:find("open") or MINUS_IDS[tex] then return true end
+    if s:find("plus") or s:find("closed") or PLUS_IDS[tex] then return false end
+    return nil
+end
+local function SkinToggles(entry)
+    for _, child in ipairs({ entry:GetChildren() }) do
+        if not Forbidden(child) and child:IsObjectType("Button") and (child:GetWidth() or 0) <= 24 then
+            local state = ToggleState(child)
+            if state ~= nil then ns.SkinToggle(child, state) end
+        end
+    end
+end
+
 -- übrige Seiten (Statistiken, Währung, Fertigkeiten …): in allen sichtbaren Listen des Fensters Einträge mit der
 -- Überschrift-Leiste (wie bei Ruf, oder "header" im Grafiknamen) – die Werte-Listen haben ihre eigene Behandlung
 local function IsHeaderArt(key)
@@ -593,6 +619,7 @@ local function FindPageHeaders(frame, depth)
                 or (child:IsObjectType("ScrollFrame") and child:GetScrollChild())
             if target and not name:find("Stats") then
                 for _, entry in ipairs({ target:GetChildren() }) do
+                    if not Forbidden(entry) and entry:IsShown() then pcall(SkinToggles, entry) end
                     if not Forbidden(entry) and not repHeaders[entry] and entry:IsShown() and HasText(entry) then
                         for _, key in ipairs(WideArt(entry)) do
                             if IsHeaderArt(key) then
@@ -634,7 +661,7 @@ local function LowerDetails(f)
     local lineTop = left:GetTop()
     local function Check(frame)
         for _, child in ipairs({ frame:GetChildren() }) do
-            if not Forbidden(child) and child:IsVisible() and child:GetTop() and child:GetLeft()
+            if not Forbidden(child) and not ourFrames[child] and child:IsVisible() and child:GetTop() and child:GetLeft()
                 and child:GetLeft() >= right:GetLeft() - 4 and (child:GetHeight() or 0) > 60
                 and not (child:GetName() or ""):find("Stats") and child:GetNumPoints() > 0 then
                 local delta = child:GetTop() - (lineTop - DETAIL_GAP)
