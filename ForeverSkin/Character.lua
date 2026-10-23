@@ -138,16 +138,35 @@ local function Scan(frame, depth)
     end
 end
 
+-- Titelleiste (Name + Schließen) TITLE_UP höher: unsere Fläche reicht oben so weit über Blizzards Fensterrand
+-- hinaus, Name und Kreuz rücken mit – Blizzards Inhalt bleibt, wo er ist (wie beim Handelsfenster)
+local TITLE_UP = 10
+local raised = setmetatable({}, { __mode = "k" })
+local function Raise(obj)
+    if not obj or raised[obj] or not obj.GetNumPoints or obj:GetNumPoints() == 0 then return end
+    raised[obj] = true
+    local points = {}
+    for i = 1, obj:GetNumPoints() do
+        local p, rel, rp, x, y = obj:GetPoint(i)
+        points[i] = { p, rel, rp, x or 0, (y or 0) + TITLE_UP }
+    end
+    obj:ClearAllPoints()
+    for _, pt in ipairs(points) do obj:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5]) end
+end
+
 local function SkinCharacter()
     local f = G("CharacterFrame")
     if not f or ns.characterSkinned or Forbidden(f) then return end
     ns.characterSkinned = true
     Step("frame", function()
         HideFrameArt(f)
-        ns.Flat(f, C.background)
+        ns.Flat(f, C.background, { 0, -TITLE_UP, 0, 0 })
         local title = (f.TitleContainer and f.TitleContainer.TitleText) or G("CharacterFrameTitleText")
         if title then title:SetTextColor(C.accent[1], C.accent[2], C.accent[3]) end
-        ns.SkinClose(f.CloseButton or G("CharacterFrameCloseButton"))
+        Raise(f.TitleContainer or title)
+        local close = f.CloseButton or G("CharacterFrameCloseButton")
+        ns.SkinClose(close)
+        Raise(close)
     end)
     Step("portrait", function() Portrait(f) end)
     Step("slots", function()
