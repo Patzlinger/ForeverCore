@@ -22,7 +22,10 @@ Werte in Punkten des Fensters (vor `ns.Scaled`).
   **Links immer „Dein Gold: …“** – kommt automatisch mit `ns.SkinWindow` (`ns.HeaderGold`, aktualisiert sich bei
   jeder Gold-Änderung). Eigenes Gold dann nirgends sonst im Fenster (Blizzards Gold-Anzeigen ausblenden); wächst die
   Titelleiste nach oben, die Anzeige mitversetzen. Ausnahmen: Beute-Fenster (zu schmal), Optionen-Fenster, Makro-Fenster, Berufe, Talente, Gilde & Communitys,
-  Sammlungen/Vorlagen (kein Bezug zum Gold bzw. auf Wunsch) – Liste GOLD_SKIP in ForeverSkin/Core.lua.
+  Sammlungen/Vorlagen, Gruppensuche, Chat-Einstellungen/-Channels, Charakterfenster (kein Bezug zum Gold bzw. auf
+  Wunsch) – Liste GOLD_SKIP in ForeverSkin/Core.lua.
+- **Variante ohne Titelleiste** (Anprobe, Charakterfenster): flache Fläche, Titel gold oben, kleines rundes Porträt
+  mit goldenem Ring auf der oberen linken Ecke, feine goldene Linie unter dem Kopf.
 - **Visitenkarte** unter der Titelleiste (wie `ns.NpcCard`): rundes Bild mit goldenem Ring (48 Ring / 45 Fuge /
   43 Bild, Mitte bei (36, −56)), daneben Name groß in Gold (`GameFontNormalLarge` bei (68, −37)), darunter Unterzeile
   (`GameFontHighlightSmall`, 0.85 grau) und Info (`GameFontDisableSmall`). Ohne NPC ein passendes Symbol (Briefkasten:
@@ -77,10 +80,43 @@ Werte in Punkten des Fensters (vor `ns.Scaled`).
 - Andocken: ForeverBags hängt die Taschen an Händler, Bank und Handel – bei neuen Fenstern mit Gegenständen
   (z. B. Auktionshaus) gleich mit vorsehen.
 
+## 6a. Erfahrungen aus Talente, Gruppensuche, Chat, Charakterfenster (2026-10)
+
+- **Forever-Namen weichen ab** (Charakterfenster: `CharacterStatsPaneScrollBox` ist ein einfacher Rahmen mit Liste
+  darin, Seiten heißen `PVPRankFrame`, `SkillsFrame`; Gruppensuche ist `LFGParentFrame`, Sammlungen
+  `CollectionsJournal`). Nie Blizzards Retail-Namen voraussetzen – erst `/fskin maus` bzw. `/fskin grafik`.
+- **Blizzard macht Ausgeblendetes wieder sichtbar** (beim Öffnen, Umschalten, per Animation oder durch Neusetzen der
+  Grafik). Ausblenden im Takt reicht dann nicht: **Haken an der Grafik selbst** (`hooksecurefunc` auf
+  `SetAlpha`/`Show`/`SetAtlas`/`SetTexture`, mit Sperre gegen Schleifen) oder **ganz verstecken** (`Hide` + Haken auf
+  `Show`), Backdrops mit `ClearBackdrop` und Haken auf `SetBackdrop`.
+- **Kein Aufblitzen:** Umgestalten, bevor gezeichnet wird – im `OnShow` der Seite (Blizzard hat die Liste dann schon
+  gefüllt), bei modernen Listen über `ScrollUtil.AddInitializedFrameCallback` (jeder Eintrag beim Befüllen), und nach
+  dem Öffnen/Reiterwechsel eine halbe Sekunde in **jedem** Bild statt nur im Takt.
+- **Kein Springen:** Verschiebt man Blizzard-Bereiche, die Blizzard neu verankert, mit einem Haken auf `SetPoint`
+  sofort nachziehen (Sperre gegen die eigene Änderung). Messen statt fester Werte (oberste sichtbare Kante, auch Texte
+  über dem Rand).
+- **Eigene Grafiken auf eigenen Unter-Rahmen**, wenn im Takt `ns.HideTextures` über denselben Rahmen läuft (sonst
+  blendet man die eigenen Linien gleich wieder aus); eigene Hilfsrahmen in einer Tabelle merken und beim Verschieben
+  auslassen.
+- **Ebenen:** Hintergründe von Seiten sind oft eigene Rahmen über dem Fenster – eigene Ränder, Linien und Porträts dann
+  auf einem eigenen Rahmen mit hoher Ebene (`GetFrameLevel() + 100`), sonst verdeckt.
+- **Feine Linien immer über `ns.OnePixel`** (genau 1 Bildschirmpixel, scharf bei jeder UI-Skalierung), nicht
+  `SetHeight(1)`.
+- **Zierelemente**: Trennlinien „common-framedivider“ (11 breit mit Schatten) durch eine eigene 1-px-Goldlinie ersetzen;
+  „…ScrollLine…“, „common-insideframe“, „TopTileStreaks“ und Steinstreifen („…StoneBG…“) ausblenden.
+- **Plus/Minus zum Auf-/Zuklappen** als feine Pfeile (`ns.SkinToggle`, Zustand aus Blizzards unsichtbarer Grafik:
+  minus/plus bzw. Datei-Nummern 130821/130838).
+- **Gleiche Vorlage = gleiche Umgestaltung:** z. B. Symbol-Auswahl (IconSelectorPopupFrameTemplate) über
+  `ns.SkinIconPopup` (Makros, Ausrüstungssets).
+
 ## 7. Prüfbefehle
 
 - `/fskin maus` – Fenster unter der Maus samt Eltern-Kette, „(geschützt)“ bei gesperrten Rahmen.
-- `/fskin taxi` – Grafiken der Flugkarte (Vorlage für ähnliche Untersuchungen).
+- `/fskin grafik` – Grafiken unter der Maus (Schlüssel, Atlas/Datei, Ebene, Größe, Eltern). Findet nur Rahmen, die die
+  Maus annehmen – sonst einen eigenen Prüfbefehl mit Auflistung aller sichtbaren Grafiken bauen (siehe `/fskin lfg`).
+- `/fskin fenster` – alle großen benannten Fenster des Spiels, umgestaltet (+) oder nicht (−).
+- `/fskin lfg` (Gruppensuche: Reiter, ausgeblendete und sichtbare Grafiken), `/fskin werte` (Werte-Spalte im
+  Charakterfenster), `/fskin taxi` (Flugkarte) – Vorlagen für ähnliche Untersuchungen.
 
 ## 8. Ablauf für ein neues Fenster
 
