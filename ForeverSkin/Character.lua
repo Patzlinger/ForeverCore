@@ -698,8 +698,32 @@ local titleLine -- unsere goldene Linie unter der Titelleiste (Maß für "darunt
 local function FixDetailFrames(f)
     local lineTop = titleLine and titleLine:GetTop()
     if not lineTop then return end
+    -- Detailbereiche: Schlüssel "DetailFrame" oder ein Unter-Rahmen mit "Detail" im Namen (z. B. SkillDetailFrame
+    -- in SkillsFrame, laut /fskin grafik)
+    local details = {}
     for _, page in ipairs({ f:GetChildren() }) do
-        local detail = not Forbidden(page) and page:IsVisible() and page.DetailFrame
+        if not Forbidden(page) and page:IsVisible() then
+            if type(page.DetailFrame) == "table" then details[#details + 1] = page.DetailFrame end
+            for _, child in ipairs({ page:GetChildren() }) do
+                if not Forbidden(child) and child ~= page.DetailFrame and (child:GetName() or ""):find("Detail") then
+                    details[#details + 1] = child
+                end
+            end
+        end
+    end
+    -- oberste sichtbare Kante des Bereichs: auch Texte/Grafiken, die über seinen Rand hinausragen (z. B. der Titel
+    -- "Zivilist" sitzt über der Oberkante des Bereichs)
+    local function ContentTop(frame)
+        local top = frame:GetTop()
+        for _, r in ipairs({ frame:GetRegions() }) do
+            if r:IsShown() and r:GetTop() and (r:GetAlpha() or 1) > 0 then top = math.max(top or r:GetTop(), r:GetTop()) end
+        end
+        for _, child in ipairs({ frame:GetChildren() }) do
+            if not Forbidden(child) and child:IsShown() and child:GetTop() then top = math.max(top or child:GetTop(), child:GetTop()) end
+        end
+        return top
+    end
+    for _, detail in ipairs(details) do
         if type(detail) == "table" and not Forbidden(detail) and detail:IsVisible() then
             local function NoScrollLine(frame, depth)
                 for _, r in ipairs({ frame:GetRegions() }) do
@@ -714,7 +738,7 @@ local function FixDetailFrames(f)
             end
             ns.Hide(detail.Divider)
             NoScrollLine(detail, 1)
-            local delta = (detail:GetTop() or lineTop) - (lineTop - DETAIL_GAP)
+            local delta = (ContentTop(detail) or lineTop) - (lineTop - DETAIL_GAP)
             if delta > 0.5 and detail:GetNumPoints() > 0 then
                 local points = {}
                 for i = 1, detail:GetNumPoints() do
