@@ -229,6 +229,45 @@ local function SubLines()
     if right and stone and not Forbidden(right) then Line(right, stone) end
 end
 
+-- Werte-Spalte rechts: Überschriften ("Allgemein", "Primäre Eigenschaften" …: Rahmen mit Titel und Hintergrund) als
+-- flacher grauer Balken mit goldener Schrift; Wertezeilen (Beschriftung + Wert): Blizzards braune Streifen weg, der
+-- Wechsel der Zeilen bleibt als dezenter heller Streifen (sichtbar, wenn Blizzard dort einen Streifen zeigt)
+local statDone = setmetatable({}, { __mode = "k" })
+local function StatBackground(frame)
+    return frame.Background or frame.background or frame.Bg
+end
+local function SkinStatFrame(frame)
+    local bg = StatBackground(frame)
+    local title = frame.Title or frame.title or frame.Header
+    local label = frame.Label or frame.label
+    if title and title.SetTextColor and type(bg) == "table" then
+        -- Überschrift
+        if not statDone[frame] then
+            statDone[frame] = "header"
+            ns.Flat(frame, C.button, { 2, 1, 2, 1 })
+        end
+        ns.HideTextures(frame)
+        title:SetTextColor(C.accent[1], C.accent[2], C.accent[3])
+    elseif label and (frame.Value or frame.value) and type(bg) == "table" then
+        -- Wertezeile: eigener dezenter Streifen, sichtbar wie Blizzards (der selbst unsichtbar wird)
+        if not statDone[frame] then
+            statDone[frame] = frame:CreateTexture(nil, "BACKGROUND", nil, -7)
+            statDone[frame]:SetColorTexture(1, 1, 1, 0.04)
+            statDone[frame]:SetAllPoints(bg)
+        end
+        statDone[frame]:SetShown(bg:IsShown())
+        bg:SetAlpha(0)
+    end
+end
+local function SkinStats(frame, depth)
+    for _, child in ipairs({ frame:GetChildren() }) do
+        if not Forbidden(child) and not slotDone[child] then
+            SkinStatFrame(child)
+            if depth < 6 then SkinStats(child, depth + 1) end
+        end
+    end
+end
+
 local function SkinCharacter()
     local f = G("CharacterFrame")
     if not f or ns.characterSkinned or Forbidden(f) then return end
@@ -289,6 +328,8 @@ local function SkinCharacter()
         waited = 0
         pcall(HideFrameArt, f)
         pcall(Scan, f, 1)
+        local right = G("CharacterFrameRightPaneHost")
+        if right and right:IsVisible() then pcall(SkinStats, right, 1) end
         for i = 1, 6 do
             local tab = G("CharacterFrameTab" .. i)
             if tab and tab:IsShown() then pcall(ns.CenterText, tab) end
