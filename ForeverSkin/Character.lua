@@ -667,7 +667,9 @@ local function LowerDetails(f)
     local lineTop = left:GetTop()
     local function Check(frame)
         for _, child in ipairs({ frame:GetChildren() }) do
-            if not Forbidden(child) and not ourFrames[child] and child:IsVisible() and child:GetTop() and child:GetLeft()
+            -- (DetailFrame nicht hier – der wird unten als Ganzes behandelt, sonst zweimal verschoben)
+            if not Forbidden(child) and not ourFrames[child] and child ~= frame.DetailFrame and child:IsVisible()
+                and child:GetTop() and child:GetLeft()
                 and child:GetLeft() >= right:GetLeft() - 4 and (child:GetHeight() or 0) > 60
                 and not (child:GetName() or ""):find("Stats") and child:GetNumPoints() > 0 then
                 local delta = child:GetTop() - (lineTop - DETAIL_GAP)
