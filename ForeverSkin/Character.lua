@@ -72,6 +72,15 @@ local function HideFrameArt(f)
         end
     end
     ns.Hide(G("CharacterFrameRightPaneHostStoneBg"))
+    -- Hintergrundbilder der beiden Seiten ("UI-Character-Info-General-BG" links, "…-Stat-BG" rechts): durch unsere
+    -- flache Innenfläche ersetzt (auf Wunsch); das Bild hinter dem Modell gehört zur Modellansicht und bleibt
+    for _, hostName in ipairs({ "CharacterFrameLeftPaneHost", "CharacterFrameRightPaneHost" }) do
+        local host = G(hostName)
+        if host and not Forbidden(host) then
+            ns.HideTextures(host)
+            ns.Flat(host, C.panel)
+        end
+    end
     -- Trennlinie zwischen linker und rechter Seite ("common-framedivider", samt Verzierung unten): gold
     local right = G("CharacterFrameRightPaneHost")
     if right and not Forbidden(right) then
