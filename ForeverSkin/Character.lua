@@ -313,7 +313,7 @@ end
 -- feine goldene Trennlinien: unter "Stufe …, Klasse" (Unterkante des früheren Streifens der Ausrüstungsseite) und
 -- rechts unter den 4 Reitern (Unterkante des früheren Steinstreifens) – wie die Linie unter der Titelleiste
 local function SubLines()
-    local function Line(parent, anchor, up)
+    local function Line(parent, anchor, up, left)
         -- (auf eigenem Unter-Rahmen: das Ausblenden der Grafiken von parent im Takt trifft ihn nicht)
         local holder = CreateFrame("Frame", nil, parent)
         holder:SetAllPoints(parent)
@@ -321,7 +321,7 @@ local function SubLines()
         local line = holder:CreateTexture(nil, "OVERLAY", nil, 7)
         line:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 0.6)
         line:SetHeight(1)
-        line:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, up or 0)
+        line:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", left or 0, up or 0)
         line:SetPoint("TOPRIGHT", anchor, "BOTTOMRIGHT", 0, up or 0)
     end
     local paper = G("PaperDollFrame")
@@ -329,7 +329,8 @@ local function SubLines()
     if type(host) == "table" and not Forbidden(host) then Line(host, host.TopBackgroundStrip or host) end
     local right, stone = G("CharacterFrameRightPaneHost"), G("CharacterFrameRightPaneHostStoneBg")
     -- (der Steinstreifen reicht ein Stück unter die Reiter – Linie RIGHT_LINE_UP höher, auf Wunsch)
-    if right and stone and not Forbidden(right) then Line(right, stone, RIGHT_LINE_UP) end
+    -- (1 px später beginnen: sonst lag sie 1 px über der senkrechten Trennlinie)
+    if right and stone and not Forbidden(right) then Line(right, stone, RIGHT_LINE_UP, 1) end
 end
 
 -- Werte-Spalte rechts: Überschriften ("Allgemein", "Primäre Eigenschaften" …: Rahmen mit Titel und Hintergrund) als
