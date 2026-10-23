@@ -31,9 +31,11 @@ local function SkinSlot(button)
     for _, get in ipairs({ "GetPushedTexture", "GetHighlightTexture", "GetCheckedTexture" }) do
         if button[get] then ns.Hide(button[get](button)) end
     end
-    -- Fach-Grafiken: Hintergrund-Ebene (das graue Fach-Muster) und alles, was als Datei/Atlas "Slot" heißt
+    -- Fach-Grafiken: Hintergrund-Ebene (das graue Fach-Muster) und alles, was als Datei/Atlas "Slot" heißt – das
+    -- Symbol selbst bleibt (bei den Ausrüstungssets liegt es als "Icon" auf der Hintergrund-Ebene)
+    local icon = button.Icon or button.icon
     for _, r in ipairs({ button:GetRegions() }) do
-        if r:IsObjectType("Texture") and r ~= normal and not ns.IsMine(button, r) then
+        if r:IsObjectType("Texture") and r ~= normal and r ~= icon and not ns.IsMine(button, r) then
             local atlas = r.GetAtlas and r:GetAtlas()
             local tex = r.GetTexture and r:GetTexture()
             local s = ((type(atlas) == "string" and atlas or "") .. (type(tex) == "string" and tex or "")):lower()

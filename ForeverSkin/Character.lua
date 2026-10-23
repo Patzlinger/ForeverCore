@@ -866,6 +866,21 @@ local function ShortenLists(f)
     Walk(f, 1)
 end
 
+-- Knopf "Neues Set" im Ausrüstungsmanager (PaperDollFrameNewSet, laut /fskin maus): flacher Knopf; Blizzards
+-- Hintergrund ("StateTexture", setzt Blizzard bei jeder Maus-Bewegung neu) und übrige breite Grafiken bei jedem
+-- Durchgang unsichtbar – das grüne Plus bleibt (schmal)
+local function SkinNewSet()
+    local b = G("PaperDollFrameNewSet")
+    if not b or Forbidden(b) then return end
+    if not b.foreverSkinned then
+        b.foreverSkinned = true
+        ns.Flat(b, C.button, { 0, 1, 0, 1 })
+        ns.Hover(b)
+    end
+    ns.Hide(b.StateTexture)
+    HideWide(b)
+end
+
 local function SkinCharacter()
     local f = G("CharacterFrame")
     if not f or ns.characterSkinned or Forbidden(f) then return end
@@ -949,7 +964,17 @@ local function SkinCharacter()
         pcall(NoScrollLines, f, 1)
         -- Symbol-Auswahl für Ausrüstungssets: gleiche Umgestaltung wie die Makro-Symbol-Auswahl (Macro.lua)
         local gearPopup = G("GearManagerPopupFrame")
-        if gearPopup and ns.SkinIconPopup and not Forbidden(gearPopup) then pcall(ns.SkinIconPopup, gearPopup) end
+        if gearPopup and ns.SkinIconPopup and not Forbidden(gearPopup) then
+            pcall(ns.SkinIconPopup, gearPopup)
+            -- OK/Abbrechen hier 4 tiefer (auf Wunsch; OK hängt an Abbrechen und wandert mit) – einmal
+            local cancel = gearPopup.BorderBox and gearPopup.BorderBox.CancelButton
+            if cancel and not cancel.foreverLowered and cancel:GetNumPoints() == 1 then
+                cancel.foreverLowered = true
+                local p, rel, rp, x, y = cancel:GetPoint(1)
+                cancel:SetPoint(p, rel, rp, x or 0, (y or 0) - 4)
+            end
+        end
+        pcall(SkinNewSet)
         -- (Fehler einmal melden statt still zu schlucken)
         local okDetail, errDetail = pcall(FixDetailFrames, f)
         if not okDetail and not watch.detailReported then
