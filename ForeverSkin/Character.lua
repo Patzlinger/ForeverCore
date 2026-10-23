@@ -26,7 +26,7 @@ local function Portrait(f)
         portrait = {}
         local holder = CreateFrame("Frame", nil, f)
         holder:SetAllPoints(f)
-        holder:SetFrameLevel(f:GetFrameLevel() + 50)
+        holder:SetFrameLevel(f:GetFrameLevel() + 110) -- (über dem Rand)
         holder:EnableMouse(false)
         portrait.holder = holder
         local function Disk(size, sub, c)
@@ -101,8 +101,10 @@ local function SkinSlot(b)
         icon:SetPoint("BOTTOMRIGHT", -1, 1)
         icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
     end
+    -- Rand gold (auf Wunsch) – dauerhaft, darum ohne ns.Hover (das färbte ihn beim Verlassen wieder grau);
+    -- Blizzards Hervorhebung beim Überfahren bleibt
     ns.Flat(b, { 0.06, 0.06, 0.08, 0.85 })
-    ns.Hover(b)
+    ns.EdgeColor(b, C.accent, 0.8)
 end
 
 -- Reiter unten ("Charakter", "Ruf", "Währung"): flach, der gewählte gold (PanelTemplates sperren den gewählten)
@@ -167,7 +169,7 @@ local function SkinCharacter()
         -- unter dem Porträt; ohne Füllung, ohne Maus
         local border = CreateFrame("Frame", nil, f)
         border:SetAllPoints(f)
-        border:SetFrameLevel(f:GetFrameLevel() + 45)
+        border:SetFrameLevel(f:GetFrameLevel() + 100) -- (der linke Hintergrund liegt hoch und verdeckte den Rand)
         border:EnableMouse(false)
         ns.Flat(border, { 0, 0, 0, 0 }, { 0, -TITLE_UP, 0, 0 })
         -- goldene Trennlinie unter der Titelleiste: an der Oberkante der Hintergründe (linke Seite), sonst 23 unter
