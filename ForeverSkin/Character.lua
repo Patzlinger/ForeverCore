@@ -55,6 +55,7 @@ local function Portrait(f)
 end
 
 local movedDivider = setmetatable({}, { __mode = "k" })
+local dividerLines = setmetatable({}, { __mode = "k" }) -- [Blizzards Trennlinie] = unsere goldene Linie
 
 -- Rahmen: nur Blizzards Rahmen, Titel-Grafik, Streifen und Porträt weg – Hintergründe bleiben; flache Fläche darunter
 local function HideFrameArt(f)
@@ -106,8 +107,21 @@ local function HideFrameArt(f)
                 for _, r in ipairs({ child:GetRegions() }) do
                     local atlas = r:IsObjectType("Texture") and r.GetAtlas and r:GetAtlas()
                     if type(atlas) == "string" and atlas:find("framedivider") then
-                        r:SetDesaturated(true)
-                        r:SetVertexColor(C.accent[1], C.accent[2], C.accent[3], 1)
+                        -- Blizzards Trennlinie ist 11 breit mit dunklem Schatten (wirkte neben dem Gold wie ein
+                        -- schwarzer Streifen): unsichtbar, stattdessen eine eigene goldene Linie von 1 px in ihrer Mitte
+                        r:SetAlpha(0)
+                        if not dividerLines[r] then
+                            local holder = CreateFrame("Frame", nil, right)
+                            holder:SetAllPoints(right)
+                            holder:SetFrameLevel(child:GetFrameLevel() + 1)
+                            holder:EnableMouse(false)
+                            local line = holder:CreateTexture(nil, "OVERLAY", nil, 7)
+                            line:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 0.6)
+                            line:SetWidth(1)
+                            line:SetPoint("TOP", r, "TOP", 0, 0)
+                            line:SetPoint("BOTTOM", r, "BOTTOM", 0, 0)
+                            dividerLines[r] = line
+                        end
                         -- einmal DIVIDER_RIGHT nach rechts (auf Wunsch)
                         if not movedDivider[r] and r:GetNumPoints() > 0 then
                             movedDivider[r] = true
