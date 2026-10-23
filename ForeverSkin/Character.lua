@@ -286,9 +286,18 @@ local function IsStatHeader(entry)
 end
 local stripes = setmetatable({}, { __mode = "k" })
 -- Inhalt der Liste: moderne Liste (ScrollTarget) oder ältere (ScrollFrame mit Inhalt)
+-- (im Forever-Client ist "CharacterStatsPaneScrollBox" ein einfacher Rahmen, laut /fskin werte: die Liste steckt
+-- darin – sonst ist der Rahmen selbst der Behälter)
 local function StatTarget(list)
     if list.GetScrollTarget then return list:GetScrollTarget() end
-    if list.GetScrollChild then return list:GetScrollChild() end
+    if list.GetScrollChild and list:GetScrollChild() then return list:GetScrollChild() end
+    for _, child in ipairs({ list:GetChildren() }) do
+        if not Forbidden(child) then
+            if child.GetScrollTarget and child:GetScrollTarget() then return child:GetScrollTarget() end
+            if child.GetScrollChild and child:GetScrollChild() then return child:GetScrollChild() end
+        end
+    end
+    return list
 end
 -- Einträge = Rahmen mit Text (auch tiefer verschachtelt: Behälter ohne eigenen Text werden durchsucht)
 local function HasText(frame)
@@ -302,7 +311,7 @@ local function StatEntries(frame, out, depth)
         if not Forbidden(child) and child:IsShown() then
             if HasText(child) then
                 out[#out + 1] = child
-            elseif depth < 3 then
+            elseif depth < 4 and not (child.Track or child:IsObjectType("Slider")) then -- (Laufleiste nicht)
                 StatEntries(child, out, depth + 1)
             end
         end
