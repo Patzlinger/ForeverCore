@@ -784,12 +784,19 @@ local function NoScrollLines(frame, depth)
 end
 
 local titleLine -- unsere goldene Linie unter der Titelleiste (Maß für "darunter")
-local function FixDetailFrames(f)
+local function DetailLineTop()
     local lineTop = titleLine and titleLine:GetTop()
     -- ist auf der Seite die Linie unter den Reitern rechts zu sehen, gilt sie (sie liegt tiefer)
     for _, l in ipairs(rightLines) do
         if l:IsVisible() and l:GetTop() then lineTop = math.min(lineTop or l:GetTop(), l:GetTop()) end
     end
+    return lineTop
+end
+local detailHooked = setmetatable({}, { __mode = "k" }) -- [Bereich] = true / "busy" (Sperre beim eigenen Verschieben)
+local detailHookSet = setmetatable({}, { __mode = "k" }) -- [Bereich] = Haken an SetPoint gesetzt
+local FixDetailFrames
+local function FixDetailFrames_(f)
+    local lineTop = DetailLineTop()
     if not lineTop then return end
     -- Detailbereiche: Schlüssel "DetailFrame" oder ein Unter-Rahmen mit "Detail" im Namen (z. B. SkillDetailFrame
     -- in SkillsFrame, laut /fskin grafik)
@@ -831,19 +838,31 @@ local function FixDetailFrames(f)
             end
             ns.Hide(detail.Divider)
             NoScrollLine(detail, 1)
-            local delta = (ContentTop(detail) or lineTop) - (lineTop - DETAIL_GAP)
-            if delta > 0.5 and detail:GetNumPoints() > 0 then
-                local points = {}
-                for i = 1, detail:GetNumPoints() do
-                    local p, rel, rp, x, y = detail:GetPoint(i)
-                    points[i] = { p, rel, rp, x or 0, (y or 0) - delta }
+            if detailHooked[detail] ~= "busy" then
+                local delta = (ContentTop(detail) or lineTop) - (lineTop - DETAIL_GAP)
+                if delta > 0.5 and detail:GetNumPoints() > 0 then
+                    detailHooked[detail] = "busy"
+                    local points = {}
+                    for i = 1, detail:GetNumPoints() do
+                        local p, rel, rp, x, y = detail:GetPoint(i)
+                        points[i] = { p, rel, rp, x or 0, (y or 0) - delta }
+                    end
+                    detail:ClearAllPoints()
+                    for _, pt in ipairs(points) do detail:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5]) end
+                    detailHooked[detail] = true
                 end
-                detail:ClearAllPoints()
-                for _, pt in ipairs(points) do detail:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5]) end
+            end
+            -- setzt Blizzard die Lage neu (z. B. anderer Eintrag gewählt): sofort wieder darunter (kein Springen)
+            if not detailHookSet[detail] then
+                detailHookSet[detail] = true
+                hooksecurefunc(detail, "SetPoint", function()
+                    if detailHooked[detail] ~= "busy" then pcall(FixDetailFrames, f) end
+                end)
             end
         end
     end
 end
+FixDetailFrames = FixDetailFrames_
 
 -- Listen auf den übrigen Seiten (Statistiken, Ruf, Währung …) samt Laufleiste: oben kürzer, so dass sie LIST_GAP
 -- unter unserer goldenen Linie beginnen (sie reichten darüber, Text lag unter dem Streifen) – nur die oberen
@@ -956,6 +975,13 @@ local function SkinCharacter()
         pcall(FindRepHeaders)
         pcall(FindPageHeaders, f, 1)
         pcall(SkinRepHeaders)
+        -- (Detailbereiche und Listen gleich an ihren Platz – sonst sah man die Texte kurz springen)
+        pcall(NoScrollLines, f, 1)
+        pcall(FixDetailFrames, f)
+        if not (G("PaperDollFrame") and G("PaperDollFrame"):IsVisible()) then
+            pcall(LowerDetails, f)
+            pcall(ShortenLists, f)
+        end
     end
     f:HookScript("OnShow", OnPageShow)
     for _, page in ipairs({ f:GetChildren() }) do
