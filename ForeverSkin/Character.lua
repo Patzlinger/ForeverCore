@@ -88,7 +88,14 @@ local function HideFrameArt(f)
             if host == rightHost and leftHost and leftHost:GetRight() and host:GetLeft() then
                 gap = math.max(0, math.floor(host:GetLeft() - leftHost:GetRight() + 0.5))
             end
-            ns.Flat(host, C.panel, { -gap, 0, 0, 0 })
+            local look = ns.Flat(host, C.panel, { -gap, 0, 0, 0 })
+            -- innere Randlinien an der Trennlinie weg (wirkten neben der goldenen Linie wie ein schwarzer Streifen):
+            -- links die rechte Kante, rechts die linke (ns.Flat: Kanten oben, unten, links, rechts)
+            local edges = look and look.edges
+            if edges then
+                if host == leftHost and edges[4] then edges[4]:SetAlpha(0) end
+                if host == rightHost and edges[3] then edges[3]:SetAlpha(0) end
+            end
         end
     end
     -- Trennlinie zwischen linker und rechter Seite ("common-framedivider", samt Verzierung unten): gold
