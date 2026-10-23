@@ -4,7 +4,8 @@
 #   pwsh -File tools\check.ps1 ForeverPlates   -> nur diese Addons
 # Geprüft wird:
 #   1. Syntax (lua-language-server, Stufe Fehler)
-#   2. Aufrufe eigener Funktionen, die an der Stelle nicht sichtbar sind (z. B. vor ihrer Definition aufgerufen)
+#   2. Aufrufe eigener Funktionen, die an der Stelle nicht sichtbar sind (z. B. vor ihrer Definition aufgerufen),
+#      ebenso eigene Variablen (local …), die vor ihrer Anlage benutzt werden
 #   3. .toc: jede eingetragene Datei existiert; jede .lua-Datei ist eingetragen (sonst lädt das Spiel sie nicht)
 #   4. Luas Grenze von 200 lokalen Variablen je Datei (Warnung ab 185 auf oberster Ebene)
 #   5. gemeinsame Hub-Funktionen richtig aufgerufen (UI.AfterCombat braucht zuerst einen Schlüssel-Text)
@@ -64,6 +65,17 @@ foreach ($addon in $targets) {
             # auch die üblichen Kurz-Namen (T = UI.T, L = ns.L …): fehlt ihr "local" in der Datei, ist das ein Fehler
             if ($ownFunctions.Contains($name) -or @('T', 'L', 'C', 'UI', 'ns', 'Safe', 'IsSecret', 'GetDB', 'HUB') -ccontains $name) {
                 $errors.Add("$addon – eigene Funktion '$name' hier nicht sichtbar (vor der Definition aufgerufen?): $($m.Groups[1].Value)")
+            } else {
+                # auch eigene Variablen: steht "local Name" in DERSELBEN Datei, wird sie hier vor ihrer Anlage benutzt
+                # (z. B. eine später zugewiesene Funktion "local X" … "X = function")
+                $file = $m.Groups[1].Value -replace ':\d+:\d+$', ''
+                $path = if ([System.IO.Path]::IsPathRooted($file)) { $file } else { Join-Path $dir $file }
+                if (Test-Path $path) {
+                    $src = Get-Content $path -Raw
+                    if ($src -cmatch "(?m)^\s*local\s+(?:[A-Za-z_][A-Za-z0-9_]*\s*,\s*)*$([regex]::Escape($name))\b") {
+                        $errors.Add("$addon – eigene Variable '$name' hier vor ihrer Anlage benutzt (local weiter unten?): $($m.Groups[1].Value)")
+                    }
+                }
             }
         }
     }
