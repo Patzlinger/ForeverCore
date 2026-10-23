@@ -11,7 +11,8 @@ local function G(name) return _G[name] end
 local function Forbidden(obj) return obj and obj.IsForbidden and obj:IsForbidden() end
 local CIRCLE = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
 local TITLE_UP = 10            -- Titelleiste so viel höher als Blizzards Fensterrand (siehe Raise)
-local PORTRAIT_X, PORTRAIT_Y = 8, TITLE_UP - 8 -- Mitte des Porträts: auf der oberen linken Ecke
+local PORTRAIT_X, PORTRAIT_Y = 12, TITLE_UP - 12 -- Mitte des Porträts: auf der oberen linken Ecke (leicht innen)
+local SLOT_EDGE, SLOT_GAP = 2, 1 -- goldener Rand der Ausrüstungsplätze (Dicke) und Luft zwischen Rand und Symbol
 
 local function Step(what, fn)
     local ok, err = pcall(fn)
@@ -114,16 +115,28 @@ local function SkinSlot(b)
     -- goldener Rand ersetzt sie (auf Wunsch)
     local deco = b.BorderFrame
     if type(deco) == "table" and deco.GetRegions and not Forbidden(deco) then ns.HideTextures(deco) end
+    -- Symbol innerhalb von Rand + Luft
+    local inset = SLOT_EDGE + SLOT_GAP
     if icon and icon.SetTexCoord then
         icon:ClearAllPoints()
-        icon:SetPoint("TOPLEFT", 1, -1)
-        icon:SetPoint("BOTTOMRIGHT", -1, 1)
+        icon:SetPoint("TOPLEFT", inset, -inset)
+        icon:SetPoint("BOTTOMRIGHT", -inset, inset)
         icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
     end
-    -- Rand gold (auf Wunsch) – dauerhaft, darum ohne ns.Hover (das färbte ihn beim Verlassen wieder grau);
-    -- Blizzards Hervorhebung beim Überfahren bleibt
-    ns.Flat(b, { 0.06, 0.06, 0.08, 0.85 })
-    ns.EdgeColor(b, C.accent, 0.8)
+    -- dunkle Fläche; der feine Rand von ns.Flat weg – stattdessen ein eigener goldener Rand SLOT_EDGE dick (auf Wunsch,
+    -- ersetzt Blizzards Verzierung); dauerhaft gold, Blizzards Hervorhebung beim Überfahren bleibt
+    local look = ns.Flat(b, { 0.06, 0.06, 0.08, 0.85 })
+    if look then
+        for _, e in ipairs(look.edges or {}) do e:SetAlpha(0) end
+    end
+    for _, p in ipairs({ { "TOPLEFT", "TOPRIGHT", true }, { "BOTTOMLEFT", "BOTTOMRIGHT", true },
+        { "TOPLEFT", "BOTTOMLEFT", false }, { "TOPRIGHT", "BOTTOMRIGHT", false } }) do
+        local e = b:CreateTexture(nil, "OVERLAY", nil, 6)
+        e:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 0.85)
+        e:SetPoint(p[1], b, p[1])
+        e:SetPoint(p[2], b, p[2])
+        if p[3] then e:SetHeight(SLOT_EDGE) else e:SetWidth(SLOT_EDGE) end
+    end
 end
 
 -- Reiter unten ("Charakter", "Ruf", "Währung"): flach, der gewählte gold (PanelTemplates sperren den gewählten)
