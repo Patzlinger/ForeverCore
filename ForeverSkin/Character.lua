@@ -546,6 +546,25 @@ local function SkinRepHeaders()
         end
     end
 end
+-- Grafiken der Ruf-Überschriften merken: dieselbe braune Leiste haben die Überschriften der übrigen Seiten
+-- (Statistiken, Währung, Fertigkeiten) – daran werden sie dort erkannt (dazu alles mit "header" im Namen)
+local headerArt = {}
+local function WideArt(frame)
+    local list = {}
+    for _, r in ipairs({ frame:GetRegions() }) do
+        if r:IsObjectType("Texture") and not ns.IsMine(frame, r) and r:GetDrawLayer() ~= "HIGHLIGHT"
+            and (r:GetWidth() or 0) >= 30 then
+            local atlas = r.GetAtlas and r:GetAtlas()
+            local key = (type(atlas) == "string" and atlas ~= "" and atlas) or r:GetTexture()
+            if key then list[#list + 1] = key end
+        end
+    end
+    return list
+end
+local function MarkHeader(entry)
+    repHeaders[entry] = true
+    ns.Flat(entry, C.button, { 0, 1, 0, 1 })
+end
 local function FindRepHeaders()
     local rep = G("ReputationFrame")
     local list = rep and (rep.ScrollBox or G("ReputationFrameScrollBox") or G("ReputationListScrollFrame"))
@@ -554,10 +573,54 @@ local function FindRepHeaders()
     for _, entry in ipairs({ target:GetChildren() }) do
         if not Forbidden(entry) and not repHeaders[entry] and entry:IsShown() and HasText(entry)
             and not HasStatusBar(entry, 1) then
-            repHeaders[entry] = true
-            ns.Flat(entry, C.button, { 0, 1, 0, 1 })
+            for _, key in ipairs(WideArt(entry)) do headerArt[key] = true end
+            MarkHeader(entry)
         end
     end
+end
+
+-- übrige Seiten (Statistiken, Währung, Fertigkeiten …): in allen sichtbaren Listen des Fensters Einträge mit der
+-- Überschrift-Leiste (wie bei Ruf, oder "header" im Grafiknamen) – die Werte-Listen haben ihre eigene Behandlung
+local function IsHeaderArt(key)
+    return headerArt[key] or (type(key) == "string" and key:lower():find("header") ~= nil)
+end
+local function FindPageHeaders(frame, depth)
+    for _, child in ipairs({ frame:GetChildren() }) do
+        if not Forbidden(child) and child:IsVisible() and not slotDone[child] then
+            local name = child:GetName() or ""
+            local target = (child.GetScrollTarget and child:GetScrollTarget())
+                or (child:IsObjectType("ScrollFrame") and child:GetScrollChild())
+            if target and not name:find("Stats") then
+                for _, entry in ipairs({ target:GetChildren() }) do
+                    if not Forbidden(entry) and not repHeaders[entry] and entry:IsShown() and HasText(entry) then
+                        for _, key in ipairs(WideArt(entry)) do
+                            if IsHeaderArt(key) then
+                                MarkHeader(entry)
+                                break
+                            end
+                        end
+                    end
+                end
+            elseif depth < 4 and not name:find("Stats") then
+                FindPageHeaders(child, depth + 1)
+            end
+        end
+    end
+end
+
+-- alle Werte-Listen (eigene Werte, Begleiter …): Rahmen mit "Stats" im Namen und einer Liste darin
+local function FindStatLists(frame, depth, out)
+    for _, child in ipairs({ frame:GetChildren() }) do
+        if not Forbidden(child) and child:IsVisible() then
+            local name = child:GetName() or ""
+            if name:find("Stats") and StatTarget(child) ~= child then
+                out[#out + 1] = child
+            elseif depth < 3 then
+                FindStatLists(child, depth + 1, out)
+            end
+        end
+    end
+    return out
 end
 
 local function SkinCharacter()
@@ -620,6 +683,14 @@ local function SkinCharacter()
         if waited < 0.3 then return end
         local rep = G("ReputationFrame")
         if rep and rep:IsVisible() then pcall(FindRepHeaders) end
+        pcall(FindPageHeaders, f, 1)
+        -- Werte-Listen außer der eigenen (z. B. Begleiter) – gleiche Behandlung
+        local ok, lists = pcall(FindStatLists, f, 1, {})
+        if ok then
+            for _, l in ipairs(lists) do
+                if l ~= G("CharacterStatsPaneScrollBox") then pcall(SkinStatList, l) end
+            end
+        end
         waited = 0
         pcall(HideFrameArt, f)
         pcall(SkinExpandButton, f)
