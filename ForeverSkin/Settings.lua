@@ -260,7 +260,7 @@ local function BackFor(menu)
         line:SetVertexColor(C.accent[1], C.accent[2], C.accent[3], 0.8)
         line:SetPoint("TOPLEFT", 1, -1)
         line:SetPoint("TOPRIGHT", -1, -1)
-        line:SetHeight(1)
+        ns.OnePixel(line, true)
         back:EnableMouse(false)
         back:SetAllPoints(menu)
         menuBacks[menu] = back
@@ -416,7 +416,7 @@ local function SkinSettings()
         navLine:SetVertexColor(C.border[1], C.border[2], C.border[3], 1)
         navLine:SetPoint("TOPLEFT", nav, "TOPRIGHT", 0, 0)
         navLine:SetPoint("BOTTOMLEFT", nav, "BOTTOMRIGHT", 0, 0)
-        navLine:SetWidth(1)
+        ns.OnePixel(navLine, false)
         -- feine goldene Linie unter den Reitern "Spiel/Addons"
         if f.GameTab then
             local tabLine = f:CreateTexture(nil, "ARTWORK")
@@ -424,7 +424,7 @@ local function SkinSettings()
             tabLine:SetVertexColor(C.accent[1], C.accent[2], C.accent[3], 0.6)
             tabLine:SetPoint("TOPLEFT", f.GameTab, "BOTTOMLEFT", -2, -6)
             tabLine:SetPoint("RIGHT", nav, "RIGHT", -8, 0)
-            tabLine:SetHeight(1)
+            ns.OnePixel(tabLine, true)
         end
         ns.SkinScrollBar(list.ScrollBar)
     end
@@ -449,7 +449,7 @@ local function SkinSettings()
             line:SetVertexColor(C.accent[1], C.accent[2], C.accent[3], 0.6)
             line:SetPoint("BOTTOMLEFT", head, "BOTTOMLEFT", 0, 0)
             line:SetPoint("BOTTOMRIGHT", head, "BOTTOMRIGHT", 0, 0)
-            line:SetHeight(1)
+            ns.OnePixel(line, true)
         end
     end
     ns.Watch(f)

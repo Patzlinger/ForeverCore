@@ -40,7 +40,7 @@ local function SkinPopup(frame)
     line:SetVertexColor(C.accent[1], C.accent[2], C.accent[3], 0.8)
     line:SetPoint("TOPLEFT", 1, -1)
     line:SetPoint("TOPRIGHT", -1, -1)
-    line:SetHeight(1)
+    ns.OnePixel(line, true)
     for _, b in ipairs(Buttons(frame)) do ns.SkinButton(b) end
     ns.Watch(frame)
 end

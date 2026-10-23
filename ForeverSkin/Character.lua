@@ -126,7 +126,7 @@ local function HideFrameArt(f)
                             holder:EnableMouse(false)
                             local line = holder:CreateTexture(nil, "OVERLAY", nil, 7)
                             line:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 0.6)
-                            line:SetWidth(1)
+                            ns.OnePixel(line, false)
                             line:SetPoint("TOP", r, "TOP", 0, 0)
                             line:SetPoint("BOTTOM", r, "BOTTOM", 0, 0)
                             dividerLines[r] = line
@@ -204,7 +204,7 @@ local function SkinSlot(b)
         e:SetColorTexture(C.accent[1] * 0.7, C.accent[2] * 0.7, C.accent[3] * 0.7, 0.6)
         e:SetPoint(p[1], b, p[1])
         e:SetPoint(p[2], b, p[2])
-        if p[3] then e:SetHeight(SLOT_EDGE) else e:SetWidth(SLOT_EDGE) end
+        ns.OnePixel(e, p[3]) -- (SLOT_EDGE = 1: genau ein Bildschirmpixel)
     end
 end
 
@@ -332,7 +332,7 @@ local function SubLines()
         holder:EnableMouse(false)
         local line = holder:CreateTexture(nil, "OVERLAY", nil, 7)
         line:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 0.6)
-        line:SetHeight(1)
+        ns.OnePixel(line, true)
         line:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", left or 0, up or 0)
         line:SetPoint("TOPRIGHT", anchor, "BOTTOMRIGHT", 0, up or 0)
         return line
@@ -932,7 +932,7 @@ local function SkinCharacter()
         -- Blizzards Rand
         local line = border:CreateTexture(nil, "OVERLAY")
         line:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 0.6)
-        line:SetHeight(1)
+        ns.OnePixel(line, true)
         titleLine = line
         local function PlaceLine()
             local pane = G("CharacterFrameLeftPaneHost")

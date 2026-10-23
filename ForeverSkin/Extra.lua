@@ -489,7 +489,7 @@ local function GrowUp(f)
         footLine:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 0.35)
         footLine:SetPoint("BOTTOMLEFT", foot, "TOPLEFT")
         footLine:SetPoint("BOTTOMRIGHT", foot, "TOPRIGHT")
-        footLine:SetHeight(1)
+        ns.OnePixel(footLine, true)
         tradeOurs[foot], tradeOurs[footLine] = true, true
     end
     -- Knöpfe mittig in die Leiste, mit Luft dazwischen und zum Rand

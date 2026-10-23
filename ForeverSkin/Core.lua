@@ -238,7 +238,7 @@ function ns.SkinWindow(frame, keep, light)
         look.line:SetVertexColor(C.accent[1], C.accent[2], C.accent[3], 0.6)
         look.line:SetPoint("TOPLEFT", look.head, "BOTTOMLEFT")
         look.line:SetPoint("TOPRIGHT", look.head, "BOTTOMRIGHT")
-        look.line:SetHeight(1)
+        ns.OnePixel(look.line, true)
         look.mine[look.head], look.mine[look.line] = true, true
     end
     local inset = frame.Inset or (name and _G[name .. "Inset"])
@@ -287,7 +287,7 @@ function ns.ContentBox(frame, footer, top, noBox)
     local footLine = Tex("BORDER", -6, C.accent, 0.35)
     footLine:SetPoint("BOTTOMLEFT", foot, "TOPLEFT")
     footLine:SetPoint("BOTTOMRIGHT", foot, "TOPRIGHT")
-    footLine:SetHeight(1)
+    ns.OnePixel(footLine, true)
     look.box = true
     if noBox then return end -- nur die untere Leiste (z. B. Händler: dort haben die Gegenstände eigene Kästen)
     -- Inhalt
@@ -299,7 +299,7 @@ function ns.ContentBox(frame, footer, top, noBox)
         local e = Tex("BORDER", -5, C.border)
         e:SetPoint(p[1], box, p[1])
         e:SetPoint(p[2], box, p[2])
-        if p[3] then e:SetHeight(1) else e:SetWidth(1) end
+        ns.OnePixel(e, p[3] and true or false)
     end
     look.box = box
 end
