@@ -89,6 +89,8 @@ local function SkinPopup(popup)
         if ns.SkinOpenMenu then pcall(ns.SkinOpenMenu) end -- aufgeklappte Auswahlliste ("Alle Symbole")
     end)
 end
+-- für andere Symbol-Auswahlen derselben Vorlage (z. B. Ausrüstungssets im Charakterfenster: GearManagerPopupFrame)
+ns.SkinIconPopup = SkinPopup
 
 local function SkinMacro()
     local f = G("MacroFrame")

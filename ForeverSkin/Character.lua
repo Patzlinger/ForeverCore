@@ -947,6 +947,9 @@ local function SkinCharacter()
             pcall(ShortenLists, f)
         end
         pcall(NoScrollLines, f, 1)
+        -- Symbol-Auswahl für Ausrüstungssets: gleiche Umgestaltung wie die Makro-Symbol-Auswahl (Macro.lua)
+        local gearPopup = G("GearManagerPopupFrame")
+        if gearPopup and ns.SkinIconPopup and not Forbidden(gearPopup) then pcall(ns.SkinIconPopup, gearPopup) end
         -- (Fehler einmal melden statt still zu schlucken)
         local okDetail, errDetail = pcall(FixDetailFrames, f)
         if not okDetail and not watch.detailReported then
