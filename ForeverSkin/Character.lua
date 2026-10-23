@@ -687,6 +687,36 @@ local function LowerDetails(f)
     for _, page in ipairs({ "ReputationFrame", "TokenFrame", "SkillFrame", "PVPFrame", "HonorFrame" }) do
         if G(page) and G(page):IsVisible() then Check(G(page)) end
     end
+    -- Seiten mit "DetailFrame" (z. B. PVPRankFrame, laut /fskin maus): den ganzen Block unter die Linie (so bleiben
+    -- die Texte darin richtig zueinander) und seinen hellen Balken ("UI-Character-Info-ScrollLine") weg
+    for _, page in ipairs({ f:GetChildren() }) do
+        local detail = not Forbidden(page) and page:IsVisible() and page.DetailFrame
+        if type(detail) == "table" and not Forbidden(detail) and detail:IsVisible() then
+            local function NoScrollLine(frame, depth)
+                for _, r in ipairs({ frame:GetRegions() }) do
+                    local atlas = r:IsObjectType("Texture") and r.GetAtlas and r:GetAtlas()
+                    if type(atlas) == "string" and atlas:find("ScrollLine") then r:SetAlpha(0) end
+                end
+                if depth < 2 then
+                    for _, child in ipairs({ frame:GetChildren() }) do
+                        if not Forbidden(child) then NoScrollLine(child, depth + 1) end
+                    end
+                end
+            end
+            ns.Hide(detail.Divider)
+            NoScrollLine(detail, 1)
+            local delta = (detail:GetTop() or lineTop) - (lineTop - DETAIL_GAP)
+            if delta > 0.5 and detail:GetNumPoints() > 0 then
+                local points = {}
+                for i = 1, detail:GetNumPoints() do
+                    local p, rel, rp, x, y = detail:GetPoint(i)
+                    points[i] = { p, rel, rp, x or 0, (y or 0) - delta }
+                end
+                detail:ClearAllPoints()
+                for _, pt in ipairs(points) do detail:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5]) end
+            end
+        end
+    end
 end
 
 -- Listen auf den übrigen Seiten (Statistiken, Ruf, Währung …) samt Laufleiste: oben kürzer, so dass sie LIST_GAP
