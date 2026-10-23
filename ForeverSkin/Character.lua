@@ -707,6 +707,22 @@ end
 -- Seiten mit "DetailFrame" (z. B. PVPRankFrame, laut /fskin maus): den ganzen Block unter unsere goldene Linie unter
 -- der Titelleiste (so bleiben die Texte darin richtig zueinander) und seinen hellen Balken
 -- ("UI-Character-Info-ScrollLine") weg. Eigener Schritt, unabhängig von den Seitenflächen (die gibt es nicht überall)
+-- Blizzards "ScrollLine"-Grafiken (z. B. "UI-Character-Info-ScrollLine-Long" über dem Anfang der Listen, die hellen
+-- Balken in den Detailbereichen) im ganzen Charakterfenster weg – lagen über den Texten (auf Wunsch überall)
+local function NoScrollLines(frame, depth)
+    for _, r in ipairs({ frame:GetRegions() }) do
+        if r:IsObjectType("Texture") then
+            local atlas = r.GetAtlas and r:GetAtlas()
+            if type(atlas) == "string" and atlas:find("ScrollLine") then r:SetAlpha(0) end
+        end
+    end
+    if depth < 7 then
+        for _, child in ipairs({ frame:GetChildren() }) do
+            if not Forbidden(child) and not ourFrames[child] then NoScrollLines(child, depth + 1) end
+        end
+    end
+end
+
 local titleLine -- unsere goldene Linie unter der Titelleiste (Maß für "darunter")
 local function FixDetailFrames(f)
     local lineTop = titleLine and titleLine:GetTop()
@@ -879,6 +895,7 @@ local function SkinCharacter()
             pcall(LowerDetails, f)
             pcall(ShortenLists, f)
         end
+        pcall(NoScrollLines, f, 1)
         -- (Fehler einmal melden statt still zu schlucken)
         local okDetail, errDetail = pcall(FixDetailFrames, f)
         if not okDetail and not watch.detailReported then
