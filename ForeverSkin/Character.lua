@@ -16,6 +16,8 @@ local PORTRAIT_X, PORTRAIT_Y = 12, TITLE_UP - 12 -- Mitte des Porträts: auf der
 -- Seltenheitsfarbe (Blizzards IconBorder wird genau dorthin gesetzt)
 local SLOT_EDGE, SLOT_GAP = 1, 1
 local RIGHT_LINE_UP = 8 -- Trennlinie unter den 4 Reitern rechts so viel über der Unterkante des Steinstreifens
+local HEADER_INSET = { 10, 6, 10, 6 } -- Balken der Überschriften in der Werte-Spalte: Abstand zum Eintrag (l, o, r, u)
+local DIVIDER_RIGHT = 2 -- Trennlinie zwischen Vorschau und Werten so viel weiter rechts
 
 local function Step(what, fn)
     local ok, err = pcall(fn)
@@ -51,6 +53,8 @@ local function Portrait(f)
     end
     if SetPortraitTexture then SetPortraitTexture(portrait.image, "player") end
 end
+
+local movedDivider = setmetatable({}, { __mode = "k" })
 
 -- Rahmen: nur Blizzards Rahmen, Titel-Grafik, Streifen und Porträt weg – Hintergründe bleiben; flache Fläche darunter
 local function HideFrameArt(f)
@@ -92,6 +96,17 @@ local function HideFrameArt(f)
                     if type(atlas) == "string" and atlas:find("framedivider") then
                         r:SetDesaturated(true)
                         r:SetVertexColor(C.accent[1], C.accent[2], C.accent[3], 1)
+                        -- einmal DIVIDER_RIGHT nach rechts (auf Wunsch)
+                        if not movedDivider[r] and r:GetNumPoints() > 0 then
+                            movedDivider[r] = true
+                            local points = {}
+                            for i = 1, r:GetNumPoints() do
+                                local p, rel, rp, x, y = r:GetPoint(i)
+                                points[i] = { p, rel, rp, (x or 0) + DIVIDER_RIGHT, y or 0 }
+                            end
+                            r:ClearAllPoints()
+                            for _, pt in ipairs(points) do r:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5]) end
+                        end
                     end
                 end
             end
@@ -370,7 +385,7 @@ local function SkinStatList(list)
             if header then
                 if statDone[entry] ~= "header" then
                     statDone[entry] = "header"
-                    ns.Flat(entry, C.button, { 2, 1, 2, 1 })
+                    ns.Flat(entry, C.button, HEADER_INSET) -- (etwas kleiner als der Eintrag – auf Wunsch)
                 end
                 ns.HideTextures(entry)
                 for _, r in ipairs({ entry:GetRegions() }) do
