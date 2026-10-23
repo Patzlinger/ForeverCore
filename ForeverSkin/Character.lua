@@ -17,16 +17,22 @@ local function Step(what, fn)
 end
 
 -- kleines rundes Porträt oben links (wie bei der Anprobe), Ring gold
+-- (auf eigenem Rahmen ÜBER den Hintergründen links/rechts – die sind eigene Rahmen und verdeckten sonst das Porträt)
 local portrait
 local function Portrait(f)
     if not portrait then
         portrait = {}
+        local holder = CreateFrame("Frame", nil, f)
+        holder:SetAllPoints(f)
+        holder:SetFrameLevel(f:GetFrameLevel() + 50)
+        holder:EnableMouse(false)
+        portrait.holder = holder
         local function Disk(size, sub, c)
-            local t = f:CreateTexture(nil, "OVERLAY", nil, sub)
+            local t = holder:CreateTexture(nil, "OVERLAY", nil, sub)
             t:SetColorTexture(c[1], c[2], c[3], 1)
             t:SetSize(size, size)
             t:SetPoint("CENTER", f, "TOPLEFT", 20, -20)
-            local mask = f:CreateMaskTexture()
+            local mask = holder:CreateMaskTexture()
             mask:SetTexture(CIRCLE, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
             mask:SetAllPoints(t)
             t:AddMaskTexture(mask)
