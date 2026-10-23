@@ -518,6 +518,48 @@ local function SkinStatList(list)
     for i, entry in ipairs(rows) do stripes[entry]:SetShown(i % 2 == 0) end
 end
 
+-- Ruf-Seite: Überschriften ("Horde", "Steamwheedle-Kartell" …) als flacher grauer Balken wie in der Werte-Spalte.
+-- Überschrift = Eintrag OHNE Rufbalken (die Zeilen mit "Neutral" … haben einen und bleiben). Nur breite Grafiken weg –
+-- das kleine "−" zum Zuklappen bleibt. Blizzard setzt die Leisten beim Auf-/Zuklappen neu: darum in jedem Bild
+local repHeaders = setmetatable({}, { __mode = "k" })
+local function HasStatusBar(frame, depth)
+    for _, child in ipairs({ frame:GetChildren() }) do
+        if not Forbidden(child) then
+            if child:IsObjectType("StatusBar") then return true end
+            if depth < 3 and HasStatusBar(child, depth + 1) then return true end
+        end
+    end
+    return false
+end
+local function HideWide(frame)
+    for _, r in ipairs({ frame:GetRegions() }) do
+        if r:IsObjectType("Texture") and not ns.IsMine(frame, r) and (r:GetWidth() or 0) >= 30 then r:SetAlpha(0) end
+    end
+end
+local function SkinRepHeaders()
+    for entry in pairs(repHeaders) do
+        if entry:IsVisible() then
+            HideWide(entry)
+            for _, child in ipairs({ entry:GetChildren() }) do
+                if not Forbidden(child) and not child:IsObjectType("Button") then HideWide(child) end
+            end
+        end
+    end
+end
+local function FindRepHeaders()
+    local rep = G("ReputationFrame")
+    local list = rep and (rep.ScrollBox or G("ReputationFrameScrollBox") or G("ReputationListScrollFrame"))
+    local target = list and StatTarget(list)
+    if not target then return end
+    for _, entry in ipairs({ target:GetChildren() }) do
+        if not Forbidden(entry) and not repHeaders[entry] and entry:IsShown() and HasText(entry)
+            and not HasStatusBar(entry, 1) then
+            repHeaders[entry] = true
+            ns.Flat(entry, C.button, { 0, 1, 0, 1 })
+        end
+    end
+end
+
 local function SkinCharacter()
     local f = G("CharacterFrame")
     if not f or ns.characterSkinned or Forbidden(f) then return end
@@ -573,8 +615,11 @@ local function SkinCharacter()
     local watch = CreateFrame("Frame", nil, f)
     local waited = 0
     watch:SetScript("OnUpdate", function(_, elapsed)
+        pcall(SkinRepHeaders) -- (jedes Bild: Blizzard setzt die Leisten der Ruf-Überschriften neu)
         waited = waited + elapsed
         if waited < 0.3 then return end
+        local rep = G("ReputationFrame")
+        if rep and rep:IsVisible() then pcall(FindRepHeaders) end
         waited = 0
         pcall(HideFrameArt, f)
         pcall(SkinExpandButton, f)
