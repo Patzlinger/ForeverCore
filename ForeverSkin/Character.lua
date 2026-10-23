@@ -281,14 +281,15 @@ local function FindExpandButton(frame, depth)
 end
 local function SkinExpandButton(f)
     if not expandArrow then
-        local b = G("CharacterFrameExpandButton") or FindExpandButton(G("PaperDollFrame") or f, 1)
-        if not b then return end
-        ns.HideTextures(b)
-        for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetHighlightTexture", "GetDisabledTexture" }) do
-            local t = b[get] and b[get](b)
-            if t then ns.Hide(t) end
-        end
-        local arrow = b:CreateTexture(nil, "OVERLAY", nil, 7)
+        -- (im Forever-Client: CharacterFrameRightPaneToggleButton, laut /fskin maus)
+        local b = G("CharacterFrameRightPaneToggleButton") or G("CharacterFrameExpandButton")
+            or FindExpandButton(G("PaperDollFrame") or f, 1)
+        if not b or Forbidden(b) then return end
+        -- unser Pfeil auf eigenem Unter-Rahmen: das Ausblenden der Knopf-Grafiken im Takt trifft ihn nicht
+        local holder = CreateFrame("Frame", nil, b)
+        holder:SetAllPoints(b)
+        holder:EnableMouse(false)
+        local arrow = holder:CreateTexture(nil, "OVERLAY", nil, 7)
         arrow:SetTexture("Interface\\ChatFrame\\ChatFrameExpandArrow")
         arrow:SetSize(11, 11)
         arrow:SetPoint("CENTER")
@@ -299,7 +300,8 @@ local function SkinExpandButton(f)
     end
     -- (Blizzard setzt seine Grafiken beim Umschalten neu: weiter unsichtbar halten; Richtung nach dem Zustand)
     local b = expandArrow.button
-    for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetDisabledTexture" }) do
+    ns.HideTextures(b) -- (der Pfeil ist hier eine eigene Grafik des Knopfs, Ebene ARTWORK)
+    for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetHighlightTexture", "GetDisabledTexture" }) do
         local t = b[get] and b[get](b)
         if t then ns.Hide(t) end
     end
