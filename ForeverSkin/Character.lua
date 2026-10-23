@@ -624,6 +624,38 @@ local function FindStatLists(frame, depth, out)
     return out
 end
 
+-- Detailbereich rechts (Ruf, Fertigkeiten, Spieler gegen Spieler: Name, Stand, Beschreibung …) beginnt bei Blizzard
+-- über unserer goldenen Linie unter der Titelleiste: so weit nach unten, dass er DETAIL_GAP darunter beginnt.
+-- Nur große Bereiche rechts, die über die Linie ragen (nicht die 4 Reiter, nicht die Werte-Liste); gemessen
+local DETAIL_GAP = 8
+local function LowerDetails(f)
+    local left, right = G("CharacterFrameLeftPaneHost"), G("CharacterFrameRightPaneHost")
+    if not (left and right and left:GetTop() and right:GetLeft()) then return end
+    local lineTop = left:GetTop()
+    local function Check(frame)
+        for _, child in ipairs({ frame:GetChildren() }) do
+            if not Forbidden(child) and child:IsVisible() and child:GetTop() and child:GetLeft()
+                and child:GetLeft() >= right:GetLeft() - 4 and (child:GetHeight() or 0) > 60
+                and not (child:GetName() or ""):find("Stats") and child:GetNumPoints() > 0 then
+                local delta = child:GetTop() - (lineTop - DETAIL_GAP)
+                if delta > 0.5 then
+                    local points = {}
+                    for i = 1, child:GetNumPoints() do
+                        local p, rel, rp, x, y = child:GetPoint(i)
+                        points[i] = { p, rel, rp, x or 0, (y or 0) - delta }
+                    end
+                    child:ClearAllPoints()
+                    for _, pt in ipairs(points) do child:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5]) end
+                end
+            end
+        end
+    end
+    Check(right)
+    for _, page in ipairs({ "ReputationFrame", "TokenFrame", "SkillFrame", "PVPFrame", "HonorFrame" }) do
+        if G(page) and G(page):IsVisible() then Check(G(page)) end
+    end
+end
+
 local function SkinCharacter()
     local f = G("CharacterFrame")
     if not f or ns.characterSkinned or Forbidden(f) then return end
@@ -685,6 +717,7 @@ local function SkinCharacter()
         local rep = G("ReputationFrame")
         if rep and rep:IsVisible() then pcall(FindRepHeaders) end
         pcall(FindPageHeaders, f, 1)
+        if not (G("PaperDollFrame") and G("PaperDollFrame"):IsVisible()) then pcall(LowerDetails, f) end
         -- Werte-Listen außer der eigenen (z. B. Begleiter) – gleiche Behandlung
         local ok, lists = pcall(FindStatLists, f, 1, {})
         if ok then
