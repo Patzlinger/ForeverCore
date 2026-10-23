@@ -12,7 +12,9 @@ local function Forbidden(obj) return obj and obj.IsForbidden and obj:IsForbidden
 local CIRCLE = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
 local TITLE_UP = 10            -- Titelleiste so viel höher als Blizzards Fensterrand (siehe Raise)
 local PORTRAIT_X, PORTRAIT_Y = 12, TITLE_UP - 12 -- Mitte des Porträts: auf der oberen linken Ecke (leicht innen)
-local SLOT_EDGE, SLOT_GAP = 2, 1 -- goldener Rand der Ausrüstungsplätze (Dicke) und Luft zwischen Rand und Symbol
+-- goldener Rand der Ausrüstungsplätze (Dicke) und Luft zwischen Rand und Symbol – in der Luft zeigt sich die
+-- Seltenheitsfarbe (Blizzards IconBorder wird genau dorthin gesetzt)
+local SLOT_EDGE, SLOT_GAP = 1, 1
 
 local function Step(what, fn)
     local ok, err = pcall(fn)
@@ -122,6 +124,12 @@ local function SkinSlot(b)
         icon:SetPoint("TOPLEFT", inset, -inset)
         icon:SetPoint("BOTTOMRIGHT", -inset, inset)
         icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+    end
+    -- Seltenheitsrahmen direkt innerhalb des goldenen Randes: füllt die Luft um das Symbol mit der Seltenheitsfarbe
+    if b.IconBorder and b.IconBorder.ClearAllPoints then
+        b.IconBorder:ClearAllPoints()
+        b.IconBorder:SetPoint("TOPLEFT", SLOT_EDGE, -SLOT_EDGE)
+        b.IconBorder:SetPoint("BOTTOMRIGHT", -SLOT_EDGE, SLOT_EDGE)
     end
     -- dunkle Fläche; der feine Rand von ns.Flat weg – stattdessen ein eigener goldener Rand SLOT_EDGE dick (auf Wunsch,
     -- ersetzt Blizzards Verzierung); dauerhaft gold, Blizzards Hervorhebung beim Überfahren bleibt
