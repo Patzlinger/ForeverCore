@@ -87,7 +87,7 @@ local function Setup(name)
         if moving ~= frame then return end
         moving = nil
         frame:StopMovingOrSizing()
-        pcall(frame.SetUserPlaced, frame, false) -- Lage merkt sich Forever Core, nicht Blizzards Layout-Datei
+        pcall(frame.SetUserPlaced, frame, false) -- Lage merkt sich Forever Core UI, nicht Blizzards Layout-Datei
         Save(frame, name)
     end
     -- ziehen am Fenster selbst (an freien Stellen). Die Titelleiste (TitleContainer) NICHT mausfähig machen: sie liegt

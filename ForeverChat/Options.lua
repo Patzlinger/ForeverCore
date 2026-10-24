@@ -2,7 +2,7 @@
 local ADDON_NAME, ns = ...
 local UI, T = ns.UI, ns.T
 
--- Seite im zentralen Einstellungsfenster von Forever Core (verhält sich wie das bisherige eigene Fenster)
+-- Seite im zentralen Einstellungsfenster von Forever Core UI (verhält sich wie das bisherige eigene Fenster)
 local options = UI.SettingsPanel("ForeverChatOptions", T("ForeverChat – Einstellungen", "ForeverChat – Settings"), 660, 780,
     { key = "ForeverChat", group = UI.SETTINGS_GROUPS.comfort, label = "Chat" })
 local loaders = {} -- Funktionen, die beim Oeffnen die aktuellen Werte anzeigen

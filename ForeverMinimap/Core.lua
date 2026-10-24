@@ -1,4 +1,4 @@
--- ForeverMinimap (Prototyp): Blizzards Minimap im Forever-Core-Stil – rund oder eckig, schlichter Rahmen,
+-- ForeverMinimap (Prototyp): Blizzards Minimap im Forever-Core-UI-Stil – rund oder eckig, schlichter Rahmen,
 -- schmale Leiste mit Zone, Uhr und Koordinaten, Knoepfe nur bei Bedarf.
 -- Core.lua: Einstellungen, Start, Chatbefehl
 --

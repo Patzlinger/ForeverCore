@@ -1650,7 +1650,7 @@ end
 -- Nach aussen gebraucht werden nur diese drei; der Rest bleibt im do-Block (200-Variablen-Grenze)
 local ApplySettings, ToggleOptions, ToggleLock
 do
--- Seite im zentralen Einstellungsfenster von Forever Core (verhält sich wie das bisherige eigene Fenster)
+-- Seite im zentralen Einstellungsfenster von Forever Core UI (verhält sich wie das bisherige eigene Fenster)
 local options = UI.SettingsPanel("ForeverCastOptions", T("ForeverCast – Einstellungen", "ForeverCast – Settings"), 600, 740,
     { key = "ForeverCast", group = UI.SETTINGS_GROUPS.frames, label = T("Zauberleiste", "Cast bar") })
 local L, R, COL = 16, 306, 276 -- linke / rechte Spalte, Breite der Ueberschriften

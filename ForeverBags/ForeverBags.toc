@@ -3,7 +3,7 @@
 ## Notes: All bags in one slim window: search, sort, free slots and gold at a glance
 ## Notes-deDE: Alle Taschen in einem schlanken Fenster: Suche, Sortieren, freie Plätze und Gold auf einen Blick
 ## IconTexture: Interface\AddOns\ForeverBags\Media\ForeverBags
-## Category: Forever Core
+## Category: Forever Core UI
 ## Author: flowfy
 ## X-License: MIT
 ## Version: 0.47b

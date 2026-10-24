@@ -68,7 +68,7 @@ end
 
 local function CreateOptions()
     local W, H = 680, 410
-    -- Seite im zentralen Einstellungsfenster von Forever Core (verhält sich wie das bisherige eigene Fenster)
+    -- Seite im zentralen Einstellungsfenster von Forever Core UI (verhält sich wie das bisherige eigene Fenster)
     options = UI.SettingsPanel("ForeverBagsOptions", L("OPT_TITLE"), W, H,
         { key = "ForeverBags", group = UI.SETTINGS_GROUPS.comfort, label = UI.T("Taschen", "Bags") })
     local x, x2, colW = 16, 352, 316

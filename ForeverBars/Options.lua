@@ -230,7 +230,7 @@ end
 ---------------------------------------------------------------------------
 
 local function CreateOptions()
-    -- Seite im zentralen Einstellungsfenster von Forever Core (verhält sich wie das bisherige eigene Fenster)
+    -- Seite im zentralen Einstellungsfenster von Forever Core UI (verhält sich wie das bisherige eigene Fenster)
     local HUB = _G.ForeverHub.UI
     options = HUB.SettingsPanel("ForeverBarsOptions", L("OPT_TITLE"), WINDOW_WIDTH, WINDOW_HEIGHT,
         { key = "ForeverBars", group = HUB.SETTINGS_GROUPS.bars, label = HUB.T("Aktionsleisten", "Action bars"), kind = "menu" })

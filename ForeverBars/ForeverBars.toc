@@ -3,7 +3,7 @@
 ## Notes: Action bars in the ForeverQuests style (size, layout, visibility, key bindings) with experience and reputation bars
 ## Notes-deDE: Aktionsleisten im Stil von ForeverQuests (Größe, Anordnung, Sichtbarkeit, Tastenbelegung) mit Erfahrungs- und Ruf-Leiste
 ## IconTexture: Interface\AddOns\ForeverBars\Media\ForeverBars
-## Category: Forever Core
+## Category: Forever Core UI
 ## Author: flowfy
 ## X-License: MIT
 ## Version: 0.47b

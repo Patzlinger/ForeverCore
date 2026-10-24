@@ -1,4 +1,4 @@
--- ForeverChat – Skin.lua: Aussehen im Forever-Core-Stil.
+-- ForeverChat – Skin.lua: Aussehen im Forever-Core-UI-Stil.
 -- Nur optisch: Blizzards Grafiken werden unsichtbar (UI.HideBlizzard = Alpha 0, kein Hide/SetParent ->
 -- kein taint), unsere Flaechen liegen daneben bzw. als zusaetzliche Grafiken auf den Reitern.
 -- Position und Groesse des Hauptchats verwaltet Blizzards Bearbeitungsmodus (ChatFrame1 ist dort ein

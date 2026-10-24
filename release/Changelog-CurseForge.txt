@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **New name: Forever Core UI.** The suite (formerly "Forever Core", its hub "Forever Hub") is now called Forever Core UI – in the addon list, the overview (/forever), the game menu button and Blizzard's options. Commands and settings stay the same. The Masque group and the Details profile keep the name "Forever Core", so your skins and profiles carry over.
 - **Every addon has its own logo** in the Forever Core style (gold ring, blue center) – in the addon list, on its minimap button and on the tiles of the overview (/forever).
 - ForeverBags: right after starting the game, the bag window could stay dark for a while (item data not loaded yet) – it now redraws as soon as the item data arrives.
 - ForeverQuests: dungeon window – the "My level" tab now comes first and is selected by default.

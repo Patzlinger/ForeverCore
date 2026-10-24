@@ -1,16 +1,16 @@
-# Forever Core
+# Forever Core UI
 
 *Less clutter. More control. Just the essentials.*
 
-Forever Core is a complete user interface for **World of Warcraft: Forever**. You get frames, bars, nameplates, quests, bags, map, chat and tooltips in one calm, consistent look. Install it, log in and play.
+Forever Core UI is a complete user interface for **World of Warcraft: Forever**. You get frames, bars, nameplates, quests, bags, map, chat and tooltips in one calm, consistent look. Install it, log in and play.
 
-Our idea is simple: keep the game straightforward. We improve what's already there, and we build things from scratch where no existing addon did them the way we wanted. You don't have to hunt for a dozen addons and spend an evening making them fit together. Forever Core works out of the box and still lets you change every detail.
+Our idea is simple: keep the game straightforward. We improve what's already there, and we build things from scratch where no existing addon did them the way we wanted. You don't have to hunt for a dozen addons and spend an evening making them fit together. Forever Core UI works out of the box and still lets you change every detail.
 
 Every part is its own addon. Use all of them, or only the ones you need.
 
 ---
 
-## Why Forever Core?
+## Why Forever Core UI?
 - **One interface, not a pile of addons.** One settings window, one minimap button, one look: flat and dark with gold accents.
 - **Ready to play.** On a fresh install everything starts in a tidy, tested layout.
 - **Built for Forever.** First and last names, the classic rules for levels and experience, and the game's combat restrictions are all handled. There's no rotation help and no automation in combat.
@@ -93,7 +93,7 @@ Every part is its own addon. Use all of them, or only the ones you need.
 ---
 
 ## Everything in one place
-- **/forever** or the Forever Core minimap button opens the settings window. The overview shows every addon as a tile, so one click turns it on or off. You can search all settings at once.
+- **/forever** or the Forever Core UI minimap button opens the settings window. The overview shows every addon as a tile, so one click turns it on or off. You can search all settings at once.
 - **/fmove** unlocks every frame, so you can place them on a grid. Frames snap to each other, and holding Shift lets you move them freely.
 - **Profiles per character**, for all addons at once (**/forever profile**).
 - **Share your setup:** export all settings as one text and import them anywhere (**/forever export**).

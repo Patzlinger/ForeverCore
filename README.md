@@ -1,4 +1,4 @@
-# Forever Core
+# Forever Core UI
 
 *Less clutter. More control. Just the essentials.*
 
@@ -69,6 +69,6 @@ Welche Addons hineinkommen, steht in `release/addons.txt`.
 
 ## Achtung CurseForge-App
 
-Installieren/Aktualisieren von Forever Core über die CurseForge-App überschreibt die Addon-Ordner –
+Installieren/Aktualisieren von Forever Core UI über die CurseForge-App überschreibt die Addon-Ordner –
 durch die Verknüpfung also das Repository. Dann mit `git status` prüfen und mit `git restore .` zurücksetzen.
-Am besten Forever Core in der App gar nicht installieren.
+Am besten Forever Core UI in der App gar nicht installieren.

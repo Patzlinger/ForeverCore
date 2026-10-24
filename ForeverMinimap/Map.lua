@@ -809,7 +809,7 @@ local function PlaceForeign(b)
     b.fmmPlacing = false
 end
 
--- Reihenfolge in der Knopfleiste: zuerst der Forever-Core-Knopf, direkt darunter die Twink-Übersicht (ForeverAlts),
+-- Reihenfolge in der Knopfleiste: zuerst der Forever-Core-UI-Knopf, direkt darunter die Twink-Übersicht (ForeverAlts),
 -- danach alle anderen alphabetisch
 local FIRST = { ForeverHubMinimapButton = 1, ForeverAltsMinimapButton = 2 }
 local function SortedForeign()

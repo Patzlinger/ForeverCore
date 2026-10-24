@@ -1,9 +1,9 @@
 ## Interface: 16001
 ## Title: ForeverChat |cff8a8a8a(Beta)|r
-## Notes: Chat in the Forever Core look: transparent window, flat tabs, class colors and levels, clickable links, copy chat
-## Notes-deDE: Chat im Forever-Core-Stil: durchsichtiges Fenster, flache Reiter, Klassenfarben und Stufen, klickbare Links, Chat kopieren
+## Notes: Chat in the Forever Core UI look: transparent window, flat tabs, class colors and levels, clickable links, copy chat
+## Notes-deDE: Chat im Forever-Core-UI-Stil: durchsichtiges Fenster, flache Reiter, Klassenfarben und Stufen, klickbare Links, Chat kopieren
 ## IconTexture: Interface\AddOns\ForeverChat\Media\ForeverChat
-## Category: Forever Core
+## Category: Forever Core UI
 ## Author: Patzlinger
 ## Version: 0.47b
 ## X-License: MIT

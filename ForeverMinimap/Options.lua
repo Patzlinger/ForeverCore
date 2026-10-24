@@ -24,7 +24,7 @@ local function Build()
     local colH = math.max(leftH, rightH)
     local qolH = 44 + 4 * CS + 8                -- Komfort (breit, zwei Spalten innen)
     local H = -M.panelTop + colH + M.pad + qolH + M.pad + M.footerHeight + M.pad
-    -- Seite im zentralen Einstellungsfenster von Forever Core (verhält sich wie das bisherige eigene Fenster)
+    -- Seite im zentralen Einstellungsfenster von Forever Core UI (verhält sich wie das bisherige eigene Fenster)
     options = UI.SettingsPanel("ForeverMinimapOptions", T("Einstellungen", "Settings"), W, H,
         { key = "ForeverMinimap", group = UI.SETTINGS_GROUPS.nav, label = "Minimap", kind = "menu", subtitle = "ForeverMinimap" })
 

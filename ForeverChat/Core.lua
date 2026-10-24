@@ -1,4 +1,4 @@
--- ForeverChat (Prototyp): Blizzards Chat im Forever-Core-Stil, mit Klassenfarben, Stufen, Links und Komfort.
+-- ForeverChat (Prototyp): Blizzards Chat im Forever-Core-UI-Stil, mit Klassenfarben, Stufen, Links und Komfort.
 -- Core.lua: Einstellungen, Hilfsfunktionen, Stufen-Speicher, Start, Chatbefehl
 --
 -- Grundsatz: Der Blizzard-Chat bleibt der Chat (Fluestern, Kanaele, Links, Bearbeitungsmodus, Communities

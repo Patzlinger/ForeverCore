@@ -70,8 +70,8 @@ Blizzard auch benutzt (Leisten, Minimap, Taschen, Chat, Tracker, Bearbeitungsmod
   zeigt es ganz unten rechts in der Karte (rund: auf dem Kreisrand; prüft `ForeverBarsDB.bars.queue.enabled`; beide halten es
   per SetPoint-Hook, nie gleichzeitig). Neue Post: eigene Kachel in der Ecke unten neben der Knopfleiste, exakt zwischen Leiste
   und dem unter der Karte angedockten Mikromenü von ForeverBars (Höhe = Mikromenü, Signal `ForeverBars.Layout`)
-- **Hub ↔ Details!**: Skin "Forever Core" über `Details:InstallSkin` (`no_cache`, nichts in Details' Speicher). Knopf im Hub:
-  `SaveProfile("Forever Core")` = Kopie des aktuellen Details-Profils, `ApplyProfile` (gilt je Charakter), dort Skin für alle
+- **Hub ↔ Details!**: Skin "Forever Core UI" über `Details:InstallSkin` (`no_cache`, nichts in Details' Speicher). Knopf im Hub:
+  `SaveProfile("Forever Core UI")` = Kopie des aktuellen Details-Profils, `ApplyProfile` (gilt je Charakter), dort Skin für alle
   Fenster; vorheriges Profil in `ForeverHubDB.detailsPrevious`, zweiter Klick wechselt zurück. Details-Ordner nie ändern
 - **ForeverQuests ↔ ForeverMinimap**: `followMinimap` (Standard an) hängt den Tracker unter die Minimap/Leiste, gleich breit;
   ForeverMinimap meldet Änderungen per `UI.Fire("ForeverMinimap.Layout")` (Hub-Nachrichten `UI.On`/`UI.Fire`)

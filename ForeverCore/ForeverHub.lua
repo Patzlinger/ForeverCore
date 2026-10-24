@@ -3,21 +3,21 @@
 -- "## Dependencies: ForeverCore" – ForeverCore laedt damit immer vor ihnen, ForeverHub.UI steht bereit.
 --  1. ForeverHub.UI: einheitlicher Stil (Fenster, Ueberschriften, Knoepfe, Regler, Minimap-Knopf,
 --     Chat-Ausgabe, Sprache). Jedes Forever-Addon baut seine Oberflaeche damit.
---  2. Sammelknopf: Die Minimap-Knoepfe der Forever-Addons bleiben versteckt; der eine Forever-Core-Knopf oeffnet
+--  2. Sammelknopf: Die Minimap-Knoepfe der Forever-Addons bleiben versteckt; der eine Forever-Core-UI-Knopf oeffnet
 --     das gemeinsame Einstellungsfenster (Umschalt: Hub-Fenster, Rechtsklick: /fmove).
 --  3. Hub-Fenster (/forever): Liste aller Forever-Addons mit direktem Weg in ihr Menue –
 --     auch ohne Minimap-Knoepfe. Addons dort ein-/ausschalten (gilt nach dem Neuladen);
 --     beim allerersten Start oeffnet es sich einmal als Begruessung.
 --     ForeverCore selbst steht nicht in der Liste (ohne ForeverCore laeuft kein Forever-Addon).
---  4. Eintrag "Forever Core" im Blizzard-Optionsmenue (Reiter AddOns) mit Unterseite je Addon.
---  5. Eintrag "Forever Core" im Addon-Menue an der Minimap (falls der Client es hat).
+--  4. Eintrag "Forever Core UI" im Blizzard-Optionsmenue (Reiter AddOns) mit Unterseite je Addon.
+--  5. Eintrag "Forever Core UI" im Addon-Menue an der Minimap (falls der Client es hat).
 --
 -- Uebergang: Addons bis 0.32b hatten eine eigene Kopie dieser Datei. Laedt so ein altes Addon (ohne Abhaengigkeit)
 -- vor ForeverCore, uebernimmt trotzdem die neueste Version. Ab v21 teilen alle Kopien ihren Zustand (hub.shared: Anmeldungen fuer /fmove, Einrast-Rahmen,
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 65
+local VERSION = 66
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -83,9 +83,9 @@ do
     f:SetScript("OnEvent", function() UI.IS_DE = UI.GetLanguage() == "deDE" end)
 end
 
--- Forever-Core-Logo (liegt in jedem Forever-Addon unter Media\)
+-- Forever-Core-UI-Logo (liegt in jedem Forever-Addon unter Media\)
 UI.LOGO = "Interface\\AddOns\\" .. tostring(ADDON_NAME) .. "\\Media\\ForeverCore"
-UI.NAME = "Forever Core"
+UI.NAME = "Forever Core UI"
 
 local WHITE = "Interface\\Buttons\\WHITE8x8"
 local FLAT = { bgFile = WHITE, edgeFile = WHITE, edgeSize = 1 }
@@ -1901,7 +1901,7 @@ local KNOWN = {
     { name = "ForeverBags",   button = "ForeverBagsMinimapButton", cmd = "/fbags" },
     { name = "ForeverTooltip", button = "ForeverTooltipMinimapButton", cmd = "/ftip" },
     { name = "ForeverPlates", button = "ForeverPlatesMinimapButton", cmd = "/fplates" },
-    -- ownButton: eigener Knopf bleibt neben dem Forever-Core-Knopf sichtbar (in ForeverMinimaps Knopfleiste gleich
+    -- ownButton: eigener Knopf bleibt neben dem Forever-Core-UI-Knopf sichtbar (in ForeverMinimaps Knopfleiste gleich
     -- darunter) – die Twink-Übersicht ist ein Fenster zum schnellen Nachsehen, keine Einstellung (v58)
     { name = "ForeverAlts",   button = "ForeverAltsMinimapButton", cmd = "/falts", ownButton = true },
     { name = "ForeverQuestmob", button = "ForeverQuestmobMinimapButton" },
@@ -2434,11 +2434,11 @@ local function BuildHubWindow()
     f:SetScript("OnShow", function()
         SafeSetup() -- falls seit dem Login Addons/Knoepfe dazugekommen sind
         if f.welcome then
-            f.TitleText:SetText(T("Willkommen bei Forever Core", "Welcome to Forever Core"))
+            f.TitleText:SetText(T("Willkommen bei Forever Core UI", "Welcome to Forever Core UI"))
             intro:SetText("|cffffd100" .. T("Wähle, welche Addons du nutzen möchtest (Klick auf die Kachel) – danach „Neu laden“. ",
                 "Choose which addons you want to use (click a tile) – then \"Reload\". ") .. "|r"
-                .. T("Diese Seite öffnet sich nur dieses eine Mal von selbst; später findest du sie mit /forever, über den Forever-Core-Knopf an der Minimap oder unter Esc » Optionen » AddOns.",
-                "This page only opens by itself this once; later you'll find it via /forever, the Forever Core minimap button or Esc » Options » AddOns."))
+                .. T("Diese Seite öffnet sich nur dieses eine Mal von selbst; später findest du sie mit /forever, über den Forever-Core-UI-Knopf an der Minimap oder unter Esc » Optionen » AddOns.",
+                "This page only opens by itself this once; later you'll find it via /forever, the Forever Core UI minimap button or Esc » Options » AddOns."))
         else
             f.TitleText:SetText(UI.NAME)
             intro:SetText(T("Klick auf eine Kachel schaltet das Addon an oder aus (gilt nach dem Neuladen). Die Einstellungen jedes Addons findest du links in der Liste.",
@@ -2868,7 +2868,7 @@ end
 function UI.OpenSettings(which)
     if searchBuilding then return end -- Seite wird nur für die Suche gebaut, nicht öffnen
     local f = SettingsWindow()
-    -- ohne bestimmte Seite: bei offenem Fenster die aktuelle, sonst die Startseite "Forever Core » Übersicht" (v56)
+    -- ohne bestimmte Seite: bei offenem Fenster die aktuelle, sonst die Startseite "Forever Core UI » Übersicht" (v56)
     local page = FindPage(which) or (f:IsShown() and settingsCurrent) or FindPage("ForeverCore") or settingsCurrent
         or settingsPages[1]
     if not page then return end
@@ -3283,7 +3283,7 @@ events:HookScript("OnEvent", function(_, event)
 end)
 
 ---------------------------------------------------------------------------
--- 4. Blizzard-Optionsmenue (Reiter "AddOns"): Eintrag "Forever Core" mit Uebersicht und je Addon
+-- 4. Blizzard-Optionsmenue (Reiter "AddOns"): Eintrag "Forever Core UI" mit Uebersicht und je Addon
 -- eine Unterseite mit Knopf ins eigene Einstellungsfenster. Die Fenster selbst bleiben eigenstaendig.
 ---------------------------------------------------------------------------
 local settingsCategory
@@ -3321,7 +3321,7 @@ local function PageHeader(page, icon, title, subtitle)
     line:SetPoint("TOPRIGHT", -16, -60)
 end
 
--- Uebersichtsseite "Forever Core": alle geladenen Forever-Addons mit "Öffnen"
+-- Uebersichtsseite "Forever Core UI": alle geladenen Forever-Addons mit "Öffnen"
 local function BuildOverview()
     local page = CreateFrame("Frame")
     PageHeader(page, UI.LOGO, UI.NAME, "Less clutter. More control. Just the essentials.")
@@ -3407,7 +3407,7 @@ end
 
 ---------------------------------------------------------------------------
 -- 5. Addon-Menue an der Minimap (Retail: Knopf neben der Minimap mit allen Addons ohne eigenen Knopf).
--- Ein einziger Eintrag "Forever Core" fuer alle Forever-Addons: Linksklick Hub-Fenster, Rechtsklick
+-- Ein einziger Eintrag "Forever Core UI" fuer alle Forever-Addons: Linksklick Hub-Fenster, Rechtsklick
 -- alle Rahmen verschieben/sperren. Gibt es das Menue im Client nicht, passiert nichts.
 ---------------------------------------------------------------------------
 RegisterCompartment = function()
@@ -3441,14 +3441,14 @@ RegisterCompartment = function()
     if not ok then SHARED.compartment = nil end
 end
 
--- Blizzard-Optionsmenue direkt bei "Forever Core" oeffnen (fuer /forever options)
+-- Blizzard-Optionsmenue direkt bei "Forever Core UI" oeffnen (fuer /forever options)
 function hub.OpenSettings()
     if settingsCategory and Settings and Settings.OpenToCategory then
         Settings.OpenToCategory(settingsCategory:GetID())
     end
 end
 
--- Knopf "Forever Core" (früher "Forever Hub") am Spielmenue (Escape): ein EIGENER Knopf direkt unter dem Menue – nicht in Blizzards
+-- Knopf "Forever Core UI" (früher "Forever Core UI") am Spielmenue (Escape): ein EIGENER Knopf direkt unter dem Menue – nicht in Blizzards
 -- Knopfliste. (Frueher per GameMenuFrame:AddButton eingehaengt: das machte die Knoepfe des Menues "von einem Addon
 -- beruehrt", und Blizzard blockierte danach geschuetzte Aktionen daraus – ADDON_ACTION_FORBIDDEN "callback()".)
 -- Spielmenü im Forever-Stil (v61): Blizzards Rahmen, Kopf und rote Knopfgrafiken werden nur unsichtbar gemacht
@@ -3500,7 +3500,7 @@ do
             back:SetBackdropBorderColor(C.border[1], C.border[2], C.border[3], 1)
             back:Show()
         end
-        -- Maus über einem Knopf: goldener Rand und leichte Aufhellung wie beim Forever-Core-Knopf. Ohne Haken an
+        -- Maus über einem Knopf: goldener Rand und leichte Aufhellung wie beim Forever-Core-UI-Knopf. Ohne Haken an
         -- Blizzards Knöpfen – solange das Menü offen ist, schaut die Fläche selbst nach, wo die Maus ist.
         local function UpdateHover()
             for button, back in pairs(backs) do
@@ -3564,8 +3564,8 @@ do
             end
             -- Hub-Knopf: im Forever-Stil unter dem letzten Knopf in derselben Fläche, sonst wie bisher unter dem Menü
             if not b then
-                b = UI.Button(UIParent, UI.NAME, 150, OpenHub) -- "Forever Core"
-                -- Forever-Core-Symbol links vor dem Text (Text dafür etwas nach rechts)
+                b = UI.Button(UIParent, UI.NAME, 150, OpenHub) -- "Forever Core UI"
+                -- Forever-Core-UI-Symbol links vor dem Text (Text dafür etwas nach rechts)
                 local label = b:GetFontString()
                 if label then
                     label:ClearAllPoints()
@@ -3967,7 +3967,7 @@ function UI.ReadSettingsText(text)
     text = tostring(text or ""):gsub("%s+", "")
     if text == "" then return nil end
     if text:sub(1, #EXPORT_PREFIX) ~= EXPORT_PREFIX then
-        return nil, T("Kein Forever-Core-Text (beginnt mit „FC1:“).", "Not a Forever Core text (starts with \"FC1:\").")
+        return nil, T("Kein Forever-Core-UI-Text (beginnt mit „FC1:“).", "Not a Forever Core UI text (starts with \"FC1:\").")
     end
     local E = Encoder()
     if not E then return nil, T("Dieser Client kann keine Einstellungen lesen.", "This client cannot read settings.") end
@@ -4446,8 +4446,8 @@ local function DetailsSkin()
     local titleTex = RegisterFlatTexture() and FLAT_TEX or "Details Flat"
     return {
         file = [[Interface\AddOns\Details\images\skins\simplygray_skin.blp]],
-        author = "Forever Core", version = "1.1", site = "", no_cache = true,
-        desc = "Like the Forever Core windows: header in Forever color, transparent body, fine border, gold title.",
+        author = "Forever Core UI", version = "1.1", site = "", no_cache = true,
+        desc = "Like the Forever Core UI windows: header in Forever color, transparent body, fine border, gold title.",
         can_change_alpha_head = true,
         icon_anchor_main = { -1, -5 }, icon_anchor_plugins = { -7, -13 }, icon_plugins_size = { 19, 18 },
         micro_frames = { color = { 0.75, 0.75, 0.75, 1 }, font = font, size = 10, textymod = 1 },

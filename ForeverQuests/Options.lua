@@ -167,7 +167,7 @@ end
 ---------------------------------------------------------------------------
 
 local function CreateOptions()
-    -- Seite im zentralen Einstellungsfenster von Forever Core (verhält sich wie das bisherige eigene Fenster)
+    -- Seite im zentralen Einstellungsfenster von Forever Core UI (verhält sich wie das bisherige eigene Fenster)
     local HUB = _G.ForeverHub.UI
     options = HUB.SettingsPanel("ForeverQuestsOptions", L("OPT_TITLE"), 680, 644,
         { key = "ForeverQuests", group = HUB.SETTINGS_GROUPS.nav, label = HUB.T("Quest- und Dungeontracker", "Quest & dungeon tracker"), kind = "menu" })

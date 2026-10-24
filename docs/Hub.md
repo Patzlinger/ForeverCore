@@ -20,7 +20,7 @@ Hub-Funktionen, Einstellungen, Profile, Minimap-Knopf oder /fmove einbindet.
      nur Vorname / Vorname + Initiale = Standard / voll; Realm fällt weg). NUR für Spieler aufrufen (NPC-Namen haben auch
      Leerzeichen); Signal `NameStyleChanged` (UI.On) zum Neuzeichnen. Voller Name bleibt in Charakter-Übersicht, Tooltip, Chat
   2. **Sammelknopf** (seit v53 ohne Liste): sobald ein Forever-Addon da ist, sind dessen Minimap-Knöpfe ausgeblendet;
-     der Forever-Core-Knopf öffnet mit Linksklick das gemeinsame Einstellungsfenster, Umschalt+Linksklick das
+     der Forever-Core-UI-Knopf öffnet mit Linksklick das gemeinsame Einstellungsfenster, Umschalt+Linksklick das
      Hub-Fenster, Rechtsklick /fmove. Neue Addons brauchen deshalb eine Einstellungsseite (`UI.SettingsPanel`)
   3. **Hub-Fenster** `/forever` (`/fhub`, Ebene `HIGH`, bleibt beim Öffnen eines Addons im Hintergrund offen):
      alle installierten Forever-Addons mit Chatbefehl und "Öffnen"-Knopf ins jeweilige Menü,
@@ -32,11 +32,11 @@ Hub-Funktionen, Einstellungen, Profile, Minimap-Knopf oder /fmove einbindet.
      wird sofort beim Anzeigen gesetzt, damit es nie wieder aufpoppt). ForeverCore selbst steht nicht in `KNOWN`
      (ohne ForeverCore lädt kein Forever-Addon); Hub, Optionsmenü und Addon-Menü-Eintrag bleiben, auch wenn alle anderen aus sind
   4. **Gemeinsamer Verschiebe-Modus** `/fmove`: entsperrt/sperrt alle angemeldeten Addons auf einmal
-  5. **Blizzard-Optionsmenü** (Esc » Optionen » Reiter "AddOns"): Eintrag "Forever Core" mit Übersicht und je
+  5. **Blizzard-Optionsmenü** (Esc » Optionen » Reiter "AddOns"): Eintrag "Forever Core UI" mit Übersicht und je
      Forever-Addon eine Unterseite mit "Einstellungen öffnen" (öffnet das eigene Fenster, Optionsmenü schließt sich).
      Automatisch für jedes Addon aus `KNOWN`, dessen Minimap-Knopf existiert; `/forever options` springt dorthin.
      Die eigentlichen Einstellungen bleiben in den eigenen Fenstern (keine zweite Einstellungs-Oberfläche bauen)
-  6. **Addon-Menü an der Minimap**: ein einziger Eintrag "Forever Core" (Links: Hub-Fenster, Rechts: alle verschieben)
+  6. **Addon-Menü an der Minimap**: ein einziger Eintrag "Forever Core UI" (Links: Hub-Fenster, Rechts: alle verschieben)
   7. **Gemeinsame Helfer** – statt eigener Kopien in jedem Addon benutzen:
      - `UI.ReportError(addon, stelle, fehler)` / `UI.Safe(addon, stelle, fn)`: Fehler einmal pro Stelle im Chat, immer an
        BugSack; `UI.ErrorCount(addon)`

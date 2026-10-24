@@ -1,4 +1,4 @@
-Forever Core – für World of Warcraft: Forever (Interface 16001)
+Forever Core UI – für World of Warcraft: Forever (Interface 16001)
 ===============================================================
 Less clutter. More control. Just the essentials.
 Version 0.47b (Beta) · by Patzlinger & flowfy · MIT License
@@ -11,7 +11,7 @@ Installation:
   Danach das Spiel neu starten oder /reload eingeben.
   ForeverCore wird immer gebraucht (gemeinsame Grundlage); in jedem Einzel-Zip ist es schon dabei.
 
-Beim ersten Start öffnet sich einmal der Forever Core Hub: Dort wählst du per Häkchen, welche
+Beim ersten Start öffnet sich einmal der Forever Core UI Hub: Dort wählst du per Häkchen, welche
 Addons du nutzen möchtest, und lädst neu. Ein- und ausschalten geht später jederzeit mit /forever.
 
 Die Addons (jedes funktioniert auch einzeln, zusammen mit ForeverCore):
@@ -55,23 +55,23 @@ Die Addons (jedes funktioniert auch einzeln, zusammen mit ForeverCore):
                  Wunsch die Zauberbuch-Taste (P). /fsb
 
 Minimap: Sind mindestens zwei Forever-Addons installiert, werden ihre Minimap-Knöpfe
-in einem gemeinsamen Zahnrad-Knopf gesammelt. Forever Core steht außerdem im Addon-Menü an der Minimap.
+in einem gemeinsamen Zahnrad-Knopf gesammelt. Forever Core UI steht außerdem im Addon-Menü an der Minimap.
 
 Fenster: Alle Forever-Einstellungsfenster lassen sich an der Ecke unten rechts größer und
 kleiner ziehen; das zuletzt geöffnete Fenster liegt immer oben.
 
-Forever Core Hub: /forever (oder /fhub) öffnet ein Fenster mit allen Forever-Addons –
+Forever Core UI Hub: /forever (oder /fhub) öffnet ein Fenster mit allen Forever-Addons –
 Häkchen schaltet ein Addon ein oder aus (gilt nach "Neu laden", auf Wunsch nur für diesen
 Charakter), ein Klick auf "Öffnen" führt direkt ins Menü des Addons. Dort lässt sich auch der
 Minimap-Knopf ausblenden und die Sprache für alle Forever-Addons auf Englisch umstellen.
-Außerdem steht "Forever Core" im Blizzard-Optionsmenü (Esc » Optionen » AddOns) – mit
+Außerdem steht "Forever Core UI" im Blizzard-Optionsmenü (Esc » Optionen » AddOns) – mit
 einer Unterseite pro Addon, die dessen Einstellungen öffnet. /forever options springt direkt dorthin. /forever reset holt die Knöpfe zurück und setzt die Position zurück.
 
 Profile: /forever profile – jeder Charakter nutzt das gemeinsame Profil oder ein eigenes (für alle
 Addons auf einmal oder einzeln). Austausch: /forever export bzw. /forever import – ein Text für die
 ganze Oberfläche (Häkchen je Addon); ein Import wird als neues Profil gespeichert.
 
-Alles verschieben: /fmove (oder Rechtsklick auf den Forever-Core-Knopf) entsperrt alle aktiven
+Alles verschieben: /fmove (oder Rechtsklick auf den Forever-Core-UI-Knopf) entsperrt alle aktiven
 Forever-Addons auf einmal – mit Raster und Einrasten (Umschalt = frei). Nochmal /fmove sperrt alle.
 
 Sprache: Deutscher Client = Deutsch, alle anderen = Englisch.
@@ -85,7 +85,7 @@ Installation:
   Then restart the game or type /reload.
   ForeverCore is always required (shared base); every single-addon zip already includes it.
 
-On your first login the Forever Core Hub opens once: tick the addons you want to use and reload.
+On your first login the Forever Core UI Hub opens once: tick the addons you want to use and reload.
 You can turn addons on or off at any time later with /forever.
 
 The addons (each one also works on its own, together with ForeverCore):
@@ -130,16 +130,16 @@ The addons (each one also works on its own, together with ForeverCore):
                  Can replace the spellbook key (P). /fsb
 
 Minimap: with two or more Forever addons installed, their minimap buttons are
-collected in one shared gear button. Forever Core is also listed in the addon menu at the minimap.
+collected in one shared gear button. Forever Core UI is also listed in the addon menu at the minimap.
 
 Windows: drag the bottom-right corner of any Forever settings window to resize it;
 the window you opened last always stays on top.
 
-Forever Core Hub: /forever (or /fhub) opens a window listing all Forever addons –
+Forever Core UI Hub: /forever (or /fhub) opens a window listing all Forever addons –
 tick or untick an addon to turn it on or off (applies after "Reload", optionally for this
 character only), and click "Open" to go straight to that addon's settings. The minimap button can be hidden
 there as well (German clients can also switch all Forever addons to English there).
-"Forever Core" also appears in the Blizzard options (Esc » Options » AddOns) with one page
+"Forever Core UI" also appears in the Blizzard options (Esc » Options » AddOns) with one page
 per addon that opens its settings. /forever options jumps straight there. /forever reset brings the buttons back and resets their position.
 
 Profiles: /forever profile – every character uses the shared profile or its own (for all addons at

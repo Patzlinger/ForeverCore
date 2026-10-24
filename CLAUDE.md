@@ -1,4 +1,4 @@
-# Forever Core – gemeinsames Grundgerüst
+# Forever Core UI – gemeinsames Grundgerüst
 
 Dieses Dokument gilt für alle, die an diesem Repository arbeiten (Menschen und Claude). Es beschreibt
 Philosophie, Regeln, Design und Abläufe. Wenn etwas hier nicht steht: am bestehenden Code orientieren und nachfragen.
@@ -16,7 +16,7 @@ neuen Fenster lesen und beim ersten Versuch anwenden**).
 Neue Einzelheiten dort eintragen, hier nur Regeln.
 
 ## 1. Projekt und Philosophie
-- **Forever Core**: schlanke, modulare Addons für *World of Warcraft: Forever*
+- **Forever Core UI**: schlanke, modulare Addons für *World of Warcraft: Forever*
 - Leitsatz: **"Less clutter. More control. Just the essentials."**
   - Jedes Addon löst eine Aufgabe gut, funktioniert allein und passt sich optisch nahtlos in die Suite ein
   - Unaufdringlich: wenig Bildschirmfläche, kein Blinken, keine Spielereien; Infos bei Bedarf (Mouseover/Tooltip)
@@ -109,7 +109,7 @@ Neue Einzelheiten dort eintragen, hier nur Regeln.
   ## Notes: English description
   ## Notes-deDE: Deutsche Beschreibung
   ## IconTexture: Interface\AddOns\ForeverName\Media\ForeverCore
-  ## Category: Forever Core
+  ## Category: Forever Core UI
   ## Author: <Name>
   ## Version: 0.44b
   ## Dependencies: ForeverCore
@@ -118,7 +118,7 @@ Neue Einzelheiten dort eintragen, hier nur Regeln.
 
   ... eigene Dateien ...
   ```
-  - `## Group: ForeverCore`: in Blizzards Addon-Liste eingerückt unter "Forever Core" (wie AtlasLoot); Blizzard setzt das
+  - `## Group: ForeverCore`: in Blizzards Addon-Liste eingerückt unter "Forever Core UI" (wie AtlasLoot); Blizzard setzt das
     nur bei gleichem Namensanfang automatisch, deshalb ausdrücklich eintragen
   - `## Dependencies: ForeverCore`: ForeverCore lädt garantiert vorher, `ForeverHub.UI` steht ab der ersten Zeile bereit.
     **Keine eigene Kopie von `ForeverHub.lua`** mehr ins Addon legen
@@ -313,7 +313,7 @@ gilt für **beide** (und deren Claude) genau dieser Ablauf:
   anderen hängen, Stand in einer Zeile melden. Meldet es einen Konflikt oder falschen Zweig: erst das klären.
 - Ohne Hook von Hand: `git switch development` und `git pull --rebase --autostash`.
 - **Automatischer Abgleich (empfohlen, je Rechner einmal):** `pwsh -File tools/auto-sync-install.ps1` richtet die
-  Windows-Aufgabe „Forever Core Abgleich“ ein: alle 5 Minuten `tools/auto-sync.ps1` (wie session-sync, nur bei
+  Windows-Aufgabe „Forever Core UI Abgleich“ ein: alle 5 Minuten `tools/auto-sync.ps1` (wie session-sync, nur bei
   sauberem Arbeitsstand, verknüpft neue Addon-Ordner), Protokoll `.git/forever-auto-sync.log`; entfernen mit `-Remove`.
   Seit 2026-10-20 bei Patzlinger eingerichtet. Im Spiel danach `/reload`. Weitere Spiel-Clients auf demselben
   Rechner (z. B. ein Stresstest): einmal `tools/link-addons.ps1 -AddOnsDir "<Pfad>"` und den Pfad als Zeile in
@@ -348,7 +348,7 @@ gilt für **beide** (und deren Claude) genau dieser Ablauf:
   1. auf `development`: `git pull --rebase`, Version in allen .toc erhöhen, `## Unreleased` im Changelog in
      `## 0.xxb – <Datum>` umbenennen, `tools/build-release.ps1` bauen, committen, pushen
   2. `git switch main`, `git merge --ff-only development` (geht das nicht: `git merge --no-ff development`),
-     `git tag -a v0.xxb -m "Forever Core 0.xxb"`, `git push origin main v0.xxb`
+     `git tag -a v0.xxb -m "Forever Core UI 0.xxb"`, `git push origin main v0.xxb`
   3. `git switch development` – weiterarbeiten; neuer leerer Abschnitt `## Unreleased` im Changelog
 - `release/addons.txt` = Addons im Release; Prototypen erst nach Freigabe eintragen
 - Alle Release-Addons tragen dieselbe `## Version` (Suite-Version, z. B. `0.44b`); `tools/build-release.ps1` prüft das

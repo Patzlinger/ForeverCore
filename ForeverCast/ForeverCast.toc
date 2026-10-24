@@ -1,7 +1,7 @@
 ## Interface: 16001
 ## Title: ForeverCast |cff8a8a8a(Beta)|r
 ## IconTexture: Interface\AddOns\ForeverCast\Media\ForeverCast
-## Category: Forever Core
+## Category: Forever Core UI
 ## Notes: Minimalist cast bar with ping, lag zone, spell queue window and GCD display
 ## Notes-deDE: Minimalistische Zauberleiste mit Ping, Lag-Bereich, Spell-Queue-Fenster und GCD-Anzeige
 ## Version: 0.47b

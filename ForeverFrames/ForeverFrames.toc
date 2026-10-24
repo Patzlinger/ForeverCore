@@ -1,7 +1,7 @@
 ## Interface: 16001
 ## Title: ForeverFrames |cff8a8a8a(Beta)|r
 ## IconTexture: Interface\AddOns\ForeverFrames\Media\ForeverFrames
-## Category: Forever Core
+## Category: Forever Core UI
 ## Notes: Slim party and raid frames in the style of Cell, with click casting
 ## Notes-deDE: Schlanke Gruppen- und Raidrahmen im Stil von Cell, mit Klick-Zaubern
 ## Version: 0.47b

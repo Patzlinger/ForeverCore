@@ -1,8 +1,8 @@
--- ForeverHelpers: die kleinen Helfer von Forever Core in einem Addon – Würfel-Fenster (ForeverLoot), Buff-Erinnerung
+-- ForeverHelpers: die kleinen Helfer von Forever Core UI in einem Addon – Würfel-Fenster (ForeverLoot), Buff-Erinnerung
 -- (ForeverBuffs) und Händler (ForeverVendor). Jedes Modul bleibt für sich (eigene Einstellungen ForeverLootDB/
 -- ForeverBuffsDB/ForeverVendorDB, eigene Befehle /floot /fbuffs /fvendor, eigene Anmeldung bei /fmove), nur Ordner,
 -- Minimap-Knopf und Einstellungsfenster sind gemeinsam: die Einstellungen liegen im gemeinsamen Fenster von
--- Forever Core unter "Helfer".
+-- Forever Core UI unter "Helfer".
 local ADDON_NAME, root = ...
 local UI = ForeverHub.UI
 local T = UI.T

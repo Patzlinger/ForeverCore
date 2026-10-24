@@ -360,7 +360,7 @@ local function SkinSettings()
     -- Titel steht bei diesem Fenster im Rahmen (NineSlice.Text) – der wird unsichtbar, darum eigener Titel
     local blizzTitle = f.NineSlice and f.NineSlice.Text
     ns.SkinWindow(f)
-    -- Titelleiste wie bei Forever Core: Logo und Titel links
+    -- Titelleiste wie bei Forever Core UI: Logo und Titel links
     local logo = f:CreateTexture(nil, "OVERLAY")
     logo:SetTexture(ns.UI.LOGO)
     logo:SetSize(16, 16)

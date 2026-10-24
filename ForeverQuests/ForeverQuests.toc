@@ -3,7 +3,7 @@
 ## Notes: Replacement for the Blizzard quest tracker
 ## Notes-deDE: Ersatz für den Blizzard-Questtracker
 ## IconTexture: Interface\AddOns\ForeverQuests\Media\ForeverQuests
-## Category: Forever Core
+## Category: Forever Core UI
 ## Author: flowfy
 ## X-License: MIT
 ## Version: 0.47b

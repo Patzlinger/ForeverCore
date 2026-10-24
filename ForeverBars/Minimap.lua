@@ -1,8 +1,8 @@
 local addonName, ns = ...
 
--- Symbol an der Minimap über die gemeinsame Forever-Core-Vorlage (ForeverHub: UI.MinimapButton):
+-- Symbol an der Minimap über die gemeinsame Forever-Core-UI-Vorlage (ForeverHub: UI.MinimapButton):
 -- Linksklick Menü, Rechtsklick Leisten entsperren/sperren, ziehen = um die Minimap verschieben.
--- Ab zwei Forever-Addons sammelt der Hub das Symbol im Forever-Core-Knopf.
+-- Ab zwei Forever-Addons sammelt der Hub das Symbol im Forever-Core-UI-Knopf.
 
 local button
 
@@ -16,7 +16,7 @@ function ns.CreateMinimapButton()
     if button or not Minimap then return end
     button = ForeverHub.UI.MinimapButton({
         name = "ForeverBarsMinimapButton",
-        -- Eigenes Logo im Forever-Core-Stil (Media\ForeverBars.tga, 64 x 64)
+        -- Eigenes Logo im Forever-Core-UI-Stil (Media\ForeverBars.tga, 64 x 64)
         icon = "Interface\\AddOns\\ForeverBars\\Media\\ForeverBars",
         texCoord = { 0, 1, 0, 1 },
         title = ns.L("ADDON_NAME"),
