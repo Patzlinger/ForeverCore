@@ -1,6 +1,6 @@
 ## Interface: 16001
 ## Title: ForeverHelpers |cff8a8a8a(Beta)|r
-## IconTexture: Interface\AddOns\ForeverHelpers\Media\ForeverCore
+## IconTexture: Interface\AddOns\ForeverHelpers\Media\ForeverHelpers
 ## Category: Forever Core
 ## Notes: Small helpers in the Forever Core look: loot rolls (who chose what), buff reminder and vendor helper
 ## Notes-deDE: Kleine Helfer im Forever-Core-Stil: Würfel-Drops (wer was gewählt hat), Buff-Erinnerung und Händler-Helfer

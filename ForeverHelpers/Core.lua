@@ -58,7 +58,7 @@ end
 
 local button = UI.MinimapButton({
     name = "ForeverHelpersMinimapButton",
-    icon = "Interface\\Icons\\INV_Misc_Gear_01",
+    icon = "Interface\\AddOns\\ForeverHelpers\\Media\\ForeverHelpers",
     title = "ForeverHelpers",
     angle = function() return HelperDB().minimapAngle or DB_DEFAULT_ANGLE end,
     setAngle = function(a) HelperDB().minimapAngle = a end,

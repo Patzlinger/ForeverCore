@@ -1,6 +1,6 @@
 ## Interface: 16001
 ## Title: ForeverSpellbook |cff8a8a8a(Beta)|r
-## IconTexture: Interface\AddOns\ForeverSpellbook\Media\ForeverCore
+## IconTexture: Interface\AddOns\ForeverSpellbook\Media\ForeverSpellbook
 ## Category: Forever Core
 ## Notes: Compact spellbook with search, outdated-rank reminder and a preview of what your trainer has next
 ## Notes-deDE: Kompaktes Zauberbuch mit Suche, Hinweis auf veraltete Ränge in den Leisten und Vorschau, was beim Lehrer noch kommt

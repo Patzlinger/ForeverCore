@@ -144,8 +144,7 @@ function ns.SetupOptions()
     if ns.minimapButton then return end
     ns.minimapButton = UI.MinimapButton({
         name = "ForeverMinimapMinimapButton",
-        icon = "Interface\\Icons\\INV_Misc_Map_01",
-        texCoord = { 0.08, 0.92, 0.08, 0.92 },
+        icon = "Interface\\AddOns\\ForeverMinimap\\Media\\ForeverMinimap",
         title = "ForeverMinimap",
         angle = function() return ns.GetDB().minimapAngle end,
         setAngle = function(a) ns.GetDB().minimapAngle = a end,

@@ -54,8 +54,7 @@ local function CreateMinimapButton()
     if minimapButton or not Minimap then return end
     minimapButton = UI.MinimapButton({
         name = "ForeverBagsMinimapButton",
-        icon = "Interface\\Icons\\INV_Misc_Bag_08",
-        texCoord = { 0.08, 0.92, 0.08, 0.92 },
+        icon = "Interface\\AddOns\\ForeverBags\\Media\\ForeverBags",
         title = L("ADDON_NAME"),
         angle = function() return ns.db.minimapAngle end,
         setAngle = function(angle) ns.db.minimapAngle = angle end,

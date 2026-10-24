@@ -1,6 +1,6 @@
 ## Interface: 16001
 ## Title: ForeverSkin |cff8a8a8a(Beta)|r
-## IconTexture: Interface\AddOns\ForeverCore\Media\ForeverCore
+## IconTexture: Interface\AddOns\ForeverSkin\Media\ForeverSkin
 ## Category: Forever Core
 ## Notes: Blizzard windows in the Forever Core look
 ## Notes-deDE: Blizzard-Fenster im Forever-Core-Stil

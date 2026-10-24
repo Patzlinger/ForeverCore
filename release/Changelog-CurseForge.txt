@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Every addon has its own logo** in the Forever Core style (gold ring, blue center) – in the addon list, on its minimap button and on the tiles of the overview (/forever).
 - ForeverBags: right after starting the game, the bag window could stay dark for a while (item data not loaded yet) – it now redraws as soon as the item data arrives.
 - ForeverQuests: dungeon window – the "My level" tab now comes first and is selected by default.
 

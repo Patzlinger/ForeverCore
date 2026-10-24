@@ -466,7 +466,7 @@ end
 
 UI.MinimapButton({
     name = "ForeverTooltipMinimapButton",
-    icon = "Interface\\Icons\\INV_Misc_Note_01",
+    icon = "Interface\\AddOns\\ForeverTooltip\\Media\\ForeverTooltip",
     title = "ForeverTooltip",
     angle = function() return GetDB().minimapAngle end,
     setAngle = function(a) GetDB().minimapAngle = a end,

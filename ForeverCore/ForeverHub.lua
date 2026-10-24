@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 64
+local VERSION = 65
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -1965,6 +1965,12 @@ local entries = {}      -- gefundene Addons: { name, button, icon }
 local hubButton
 local active = false    -- true: Sammelknopf aktiv, Einzelknoepfe versteckt
 
+-- Logo aus der .toc (## IconTexture) – gibt es auch für ausgeschaltete Addons und Addons ohne Minimap-Knopf (v65)
+local function TocIcon(name)
+    local ok, tex = pcall(C_AddOns.GetAddOnMetadata, name, "IconTexture")
+    if ok and type(tex) == "string" and tex ~= "" then return tex end
+end
+
 local function IconOf(button)
     for _, region in ipairs({ button:GetRegions() }) do
         if region.GetDrawLayer and region:GetDrawLayer() == "ARTWORK" and region.GetTexture then
@@ -2231,7 +2237,7 @@ local function BuildHubWindow()
             local enabled = IsEnabled(name)
             local pending = IsPending(name)
             tile.check:SetChecked(enabled)
-            tile.icon:SetTexture(e and e.icon or UI.LOGO)
+            tile.icon:SetTexture(TocIcon(name) or e and e.icon or UI.LOGO)
             tile.icon:SetDesaturated(not enabled)
             tile.label:SetTextColor(enabled and C.accent[1] or 0.5, enabled and C.accent[2] or 0.5, enabled and C.accent[3] or 0.5)
             tile.note:SetShown(not pending)

@@ -126,6 +126,8 @@ Neue Einzelheiten dort eintragen, hier nur Regeln.
     Hub-Einstellungen aus den alten Speicherständen; kann später auf ForeverCore allein reduziert werden)
   - Der Titel trägt den dezenten Beta-Hinweis (nur in der Addon-Liste sichtbar)
   - `Media\ForeverCore.tga` (Logo) liegt in jedem Addon (Kopie z. B. aus ForeverBars)
+  - Eigenes Addon-Logo: `Media\ForeverName.tga` (64 × 64, 32 Bit TGA) – steht in `## IconTexture` und im
+    Minimap-Knopf; die Kacheln der Übersicht nehmen das Logo aus der .toc
   - Release-Addons zusätzlich: `## X-License: MIT`, `## X-Curse-Project-ID: 1743753`, `LICENSE.txt`
 - Datei-Aufteilung frei; bewährt: `Core.lua` (Defaults, Start, Chatbefehl), `Locales.lua`, `Options.lua`, Funktionsdateien
 - Neues Addon zusätzlich: in `ForeverCore/ForeverHub.lua` in die Liste `KNOWN` eintragen (Name + Minimap-Knopf) und

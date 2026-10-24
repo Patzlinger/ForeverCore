@@ -1890,7 +1890,7 @@ local UpdateMinimapPosition -- nach aussen gebraucht
 do
 local mmButton = UI.MinimapButton({
     name = "ForeverCastMinimapButton",
-    icon = "Interface\\Icons\\INV_Misc_PocketWatch_01",
+    icon = "Interface\\AddOns\\ForeverCast\\Media\\ForeverCast",
     title = "ForeverCast",
     angle = function() return GetDB().minimapAngle end,
     setAngle = function(a) GetDB().minimapAngle = a end,

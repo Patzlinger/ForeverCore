@@ -57,7 +57,7 @@ end
 ---------------------------------------------------------------------------
 local mm = UI.MinimapButton({
     name = "ForeverAltsMinimapButton",
-    icon = "Interface\\AddOns\\ForeverAlts\\Media\\ForeverAlts", -- eigenes Logo im Stil von Forever Core: "FA"
+    icon = "Interface\\AddOns\\ForeverAlts\\Media\\ForeverAlts", -- eigenes Logo im Stil von Forever Core: drei Charaktere
     title = "ForeverAlts",
     angle = function() return ns.GetDB().minimapAngle end,
     setAngle = function(a) ns.GetDB().minimapAngle = a end,

@@ -932,7 +932,7 @@ end
 do
     local mm = UI.MinimapButton({
         name = "ForeverFramesMinimapButton",
-        icon = "Interface\\Icons\\Spell_Holy_PrayerOfHealing02",
+        icon = "Interface\\AddOns\\ForeverFrames\\Media\\ForeverFrames",
         title = "ForeverFrames",
         angle = function() return GetDB().minimapAngle end,
         setAngle = function(a) GetDB().minimapAngle = a end,

@@ -285,7 +285,7 @@ end
 
 UI.MinimapButton({
     name = "ForeverPlatesMinimapButton",
-    icon = "Interface\\Icons\\Ability_Hunter_SniperShot",
+    icon = "Interface\\AddOns\\ForeverPlates\\Media\\ForeverPlates",
     title = "ForeverPlates",
     angle = function() return ns.GetDB().minimapAngle end,
     setAngle = function(a) ns.GetDB().minimapAngle = a end,

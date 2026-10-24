@@ -1092,7 +1092,7 @@ end
 ---------------------------------------------------------------------------
 local mm = UI.MinimapButton({
     name = "ForeverSpellbookMinimapButton",
-    icon = "Interface\\Icons\\INV_Misc_Book_09",
+    icon = "Interface\\AddOns\\ForeverSpellbook\\Media\\ForeverSpellbook",
     title = "ForeverSpellbook",
     angle = function() return GetDB().minimapAngle end,
     setAngle = function(a) GetDB().minimapAngle = a end,

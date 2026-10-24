@@ -160,7 +160,7 @@ function ns.SetupOptions()
     if ns.minimapButton then return end
     ns.minimapButton = UI.MinimapButton({
         name = "ForeverChatMinimapButton",
-        icon = "Interface\\GossipFrame\\GossipGossipIcon",
+        icon = "Interface\\AddOns\\ForeverChat\\Media\\ForeverChat",
         title = "ForeverChat",
         angle = function() return ns.GetDB().minimapAngle end,
         setAngle = function(a) ns.GetDB().minimapAngle = a end,

@@ -417,7 +417,7 @@ end
 
 local mm = UI.MinimapButton({
     name = "ForeverUnitsMinimapButton",
-    icon = "Interface\\Icons\\Achievement_Character_Human_Male",
+    icon = "Interface\\AddOns\\ForeverUnits\\Media\\ForeverUnits",
     title = "ForeverUnits",
     angle = function() return GetDB().minimapAngle end,
     setAngle = function(a) GetDB().minimapAngle = a end,
