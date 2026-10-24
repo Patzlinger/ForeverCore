@@ -7,7 +7,6 @@ Auswirkung im Spiel.
 
 ## Geplant
 
-- [ ] ⚠ **ForeverBars: neues Ping-System** einbauen (neue Funktion an den Aktionsleisten)
 - [ ] ⚠ **Restliche Fenster überarbeiten** (ForeverSkin, Darstellung) – noch offen:
   - Große Fenster: Soziales (Freunde, Wer, Freundesfreunde, Schlachtzug), Transmogrifizierer samt „Set bearbeiten“,
     Stall, Bearbeitungsmodus, Abklingzeiten-Manager, Gildenränge und Gilden-Unterfenster (Gildenlog, News-Filter,
@@ -16,8 +15,6 @@ Auswirkung im Spiel.
     Gruppeneinladung, PvP-Bereitschaft, Farbauswahl, Quest-Details-Popup, Modellvorschau, Auswahlfenster,
     Beuteverlauf, Währung übertragen, Spieler melden, Schnelltastenbelegung, Uhr, Sprechkopf, Sockeln (falls vorhanden)
   - Abgleich im Spiel: `/fskin fenster` (listet alle großen Fenster, umgestaltet `+` oder nicht `-`)
-- [ ] ⚠ **Einstellungen übertragen:** Profile kopieren bzw. exportieren/importieren, damit Twinks nicht jedes Addon neu
-      einstellen müssen (neue Funktion im Hub)
 - [ ] ⚠ **Erster Start:** kurzer Einrichtungsassistent im Hub, der die wichtigsten Schalter einmal abfragt (neues
       Fenster beim ersten Login)
 - [ ] **Kampf-Sicherheit prüfen:** ForeverSkin hängt sich an viele Blizzard-Fenster – gezielt durchsehen, ob im Kampf
