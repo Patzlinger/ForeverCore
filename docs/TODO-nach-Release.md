@@ -31,5 +31,11 @@ Auswirkung im Spiel.
 - [ ] ⚠ **Doppelten Code zusammenlegen** (ForeverSkin): Anker verschieben, Grafiken dauerhaft unsichtbar halten,
       Plus/Minus erkennen, flache Suchleiste, Schlüssel finden – gemeinsam in `Core.lua`; `Character.lua` aufteilen.
       Soll nichts ändern, betrifft aber viele Fenster – alle umgestalteten Fenster danach durchsehen
+- [ ] ⚠ **`ForeverHubDB` nur noch in ForeverCore:** steht heute zusätzlich in der .toc von 13 Addons (Übergang seit
+      0.41b) – das Spiel speichert dieselben Hub-Einstellungen 14-mal, und die Kopie eines länger ausgeschalteten
+      Addons kann beim Einloggen neuere Einstellungen (Sprache, Fenstergrößen …) überschreiben. Eintrag bei allen
+      außer ForeverCore streichen; Lua-Code bleibt gleich (alle nutzen dieselbe Tabelle). Kein Datenumzug nötig, da
+      ForeverCore sie seit 0.41b selbst speichert – nur wer direkt von vor 0.41b springt, verliert Hub-Einstellungen.
+      Betrifft Patzlingers Addons (vorher absprechen); danach Neustart, Test: Hub-Einstellung ändern, aus-/einloggen
 - [ ] ⚠ **Überstand am Bildschirmrand:** wo unsere Fläche über Blizzards Fenster hinausreicht (Charakterfenster oben,
       Handel), hält das Spiel nur Blizzards Fenster im Bildschirm – ggf. selbst nachziehen (Lage der Fenster)
