@@ -4,7 +4,7 @@
 ## Category: Forever Core UI
 ## Notes: Slim unit frames (player, target, target of target, focus, pet) – optionally in the look of ForeverFrames
 ## Notes-deDE: Schlanke Einheitenrahmen (Spieler, Ziel, Ziel des Ziels, Fokus, Begleiter) – auf Wunsch im Look von ForeverFrames
-## Version: 0.47b
+## Version: 0.5b
 ## X-Curse-Project-ID: 1743753
 ## Author: Patzlinger
 ## X-License: MIT
