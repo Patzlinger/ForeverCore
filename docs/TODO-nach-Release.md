@@ -17,6 +17,26 @@ Auswirkung im Spiel.
   - Abgleich im Spiel: `/fskin fenster` (listet alle großen Fenster, umgestaltet `+` oder nicht `-`)
 - [ ] ⚠ **Questlog im Dungeonfenster** (ForeverQuests): die Quests des gewählten Dungeons direkt im Dungeonfenster als
       Questlog anzeigen
+- [ ] ⚠ **Alle Addons über `/f move` verschieben** (alle Forever-Addons): ein gemeinsamer Verschiebe-Modus statt der
+      einzelnen `move`-Befehle; Rechtsklick auf einen Rahmen öffnet direkt die passende Seite im Einstellungsmenü
+- [ ] ⚠ **Eigenen Bearbeitungsmodus bei Kampfbeginn beenden** (ForeverCore/alle Addons): offener Verschiebe-Modus
+      schließt sich automatisch, sobald der Kampf beginnt
+- [ ] ⚠ **ForeverFrames:**
+  - Option für einen Trennbalken zwischen Lebens- und Ressourcenleiste
+  - Mana- und Energie-Regeneration anzeigbar machen (prüfen, ob der Wert im Kampf als „secret value“ gesperrt ist)
+  - Mana zusätzlich in % anzeigbar
+- [ ] ⚠ **ForeverCast:** Länge der Sofortzauber-Punkte (Instant-Dots) einstellbar machen – Standardwert bleibt wie er ist
+- [ ] ⚠ **ForeverBars:** neue Zauberränge standardmäßig **nicht** mehr automatisch in die Leiste legen (als Option
+      behalten, Standard aus)
+- [ ] ⚠ **ForeverAlts:** Charakterübersicht (Ausrüstung wie im Charakterfenster) für andere Charaktere anzeigen
+- [ ] ⚠ **Markierungen über Blizzards Schnell-Ping-Menü:** Weltmarkierungen mit dem Ping-Rad verbinden; Zielmarkierungen
+      (Totenkopf, Kreuz …) per Mouseover über Gegner ebenfalls über das Ping-Rad setzen (Addon klären, z. B. ForeverHelpers)
+- [ ] ⚠ **Essen/Trinken-Makro** (ForeverHelpers): Makro, das automatisch das beste Essen bzw. Getränk aus den Taschen
+      nimmt (Makro nur außerhalb des Kampfes aktualisieren)
+- [ ] ⚠ **ForeverBags:** Taschen nach Kategorien filterbar machen
+- [ ] ⚠ **Aufschlüsselung der Werte** (Charakterfenster/Tooltip): je Klasse/Spezialisierung/Talenten zeigen, was ein
+      Punkt bringt (z. B. 1 Angriffskraft = …, 1 Stärke = …) – nur Anzeige außerhalb des Kampfes, keine Kampfberechnung
+- [ ] ⚠ **ForeverPlates:** Bedrohungs-/Aggro-Anzeige überarbeiten
 - [ ] ⚠ **Erster Start:** kurzer Einrichtungsassistent im Hub, der die wichtigsten Schalter einmal abfragt (neues
       Fenster beim ersten Login)
 - [ ] **Kampf-Sicherheit prüfen:** ForeverSkin hängt sich an viele Blizzard-Fenster – gezielt durchsehen, ob im Kampf
