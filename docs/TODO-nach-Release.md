@@ -23,7 +23,7 @@ Auswirkung im Spiel.
       schließt sich automatisch, sobald der Kampf beginnt
 - [ ] ⚠ **ForeverFrames:**
   - Option für einen Trennbalken zwischen Lebens- und Ressourcenleiste
-  - Mana- und Energie-Regeneration anzeigbar machen (prüfen, ob der Wert im Kampf als „secret value“ gesperrt ist)
+  - Mana- und Energie-Regeneration anzeigbar machen
   - Mana zusätzlich in % anzeigbar
 - [ ] ⚠ **ForeverCast:** Länge der Sofortzauber-Punkte (Instant-Dots) einstellbar machen – Standardwert bleibt wie er ist
 - [ ] ⚠ **ForeverBars:** neue Zauberränge standardmäßig **nicht** mehr automatisch in die Leiste legen (als Option
@@ -32,10 +32,10 @@ Auswirkung im Spiel.
 - [ ] ⚠ **Markierungen über Blizzards Schnell-Ping-Menü:** Weltmarkierungen mit dem Ping-Rad verbinden; Zielmarkierungen
       (Totenkopf, Kreuz …) per Mouseover über Gegner ebenfalls über das Ping-Rad setzen (Addon klären, z. B. ForeverHelpers)
 - [ ] ⚠ **Essen/Trinken-Makro** (ForeverHelpers): Makro, das automatisch das beste Essen bzw. Getränk aus den Taschen
-      nimmt (Makro nur außerhalb des Kampfes aktualisieren)
+      nimmt
 - [ ] ⚠ **ForeverBags:** Taschen nach Kategorien filterbar machen
 - [ ] ⚠ **Aufschlüsselung der Werte** (Charakterfenster/Tooltip): je Klasse/Spezialisierung/Talenten zeigen, was ein
-      Punkt bringt (z. B. 1 Angriffskraft = …, 1 Stärke = …) – nur Anzeige außerhalb des Kampfes, keine Kampfberechnung
+      Punkt bringt (z. B. 1 Angriffskraft = …, 1 Stärke = …)
 - [ ] ⚠ **ForeverPlates:** Bedrohungs-/Aggro-Anzeige überarbeiten
 - [ ] ⚠ **Erster Start:** kurzer Einrichtungsassistent im Hub, der die wichtigsten Schalter einmal abfragt (neues
       Fenster beim ersten Login)
