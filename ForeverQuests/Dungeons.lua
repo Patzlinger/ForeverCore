@@ -114,7 +114,12 @@ questLoadListener:SetScript("OnEvent", function(_, _, questID, success)
 end)
 
 -- Gibt es keine einzige Quest des Dungeons in der Beta? (nur, was der Server ausdrücklich als unbekannt meldet)
+-- Seit dem Live-Start meldet der Server bei JEDER angefragten Quest "nicht erfolgreich" – der frühere Vermerk "Not
+-- available in Beta" stand dadurch überall. Er wird nicht mehr gezeigt (die Antwort dient nur noch dazu, nicht
+-- endlos nachzufragen).
+local SHOW_NOT_IN_BETA = false
 local function DungeonNotInBeta(dungeon)
+    if not SHOW_NOT_IN_BETA then return false end
     local any = false
     for _, quest in ipairs(dungeon.quests or {}) do
         if quest.id then
@@ -223,7 +228,7 @@ end
 
 -- Platzhalter ohne Namen: "Quest 1234 (wird geladen …)" bzw. "Unbekannte Quest (ID 1234)"
 local function QuestIDFallback(questID)
-    if questID and unknownQuests[questID] then return ns.L("QUEST_UNKNOWN", questID) end
+    if SHOW_NOT_IN_BETA and questID and unknownQuests[questID] then return ns.L("QUEST_UNKNOWN", questID) end
     return ns.L("QUEST_FALLBACK", questID or 0)
 end
 
@@ -233,7 +238,7 @@ local function QuestName(quest)
     local title = GetGameQuestTitle(quest.id)
     if title then return title end
     local name = Localized(quest, "name")
-    if name and quest.id and unknownQuests[quest.id] then
+    if SHOW_NOT_IN_BETA and name and quest.id and unknownQuests[quest.id] then
         return name .. " " .. ns.L("NOT_IN_BETA")
     end
     return name or QuestIDFallback(quest.id)

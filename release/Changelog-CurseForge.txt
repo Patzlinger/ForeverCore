@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fixed: ForeverQuests' dungeon window marked every dungeon, raid and quest as "Not available in Beta" on the live server (the server now answers every quest data request as unsuccessful) – the beta note is gone.
+
 - ForeverSkin: the new social window (opened with O) in the Forever look – flat frame, Battle.Net bar and status dropdown, flat search and filter, gold dividers, group headings as flat bars with fine arrows, friend cards as grey rows with a subtle tint (Battle.net blue, WoW friend gold, offline none; mouse over = gold), flat action and menu buttons, gold scroll bars; the ignore list, broadcast and notice windows flat too. The side tabs stay as in the group finder.
 
 - ForeverQuests: dungeon window – a new "Quest log" tab next to "Dungeons" and "Raids": on the left "All quests" and one entry per zone of your quest log, on the right your quests as cards in the same style as the dungeon quests: zone, objectives with progress, "In quest log" / "Ready to turn in", the dungeon a quest belongs to, quest chain, rewards and the share button. The tracker and the world map quest log stay as they are.
