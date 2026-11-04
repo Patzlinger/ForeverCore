@@ -24,7 +24,7 @@ Werte in Punkten des Fensters (vor `ns.Scaled`).
   Titelleiste nach oben, die Anzeige mitversetzen. Ausnahmen: Beute-Fenster (zu schmal), Optionen-Fenster, Makro-Fenster, Berufe, Talente, Gilde & Communitys,
   Sammlungen/Vorlagen, Gruppensuche, Chat-Einstellungen/-Channels, Charakterfenster, Abklingzeiten-Manager, Sozialfenster samt Ignorierliste (kein Bezug zum Gold bzw. auf
   Wunsch) – Liste GOLD_SKIP in ForeverSkin/Core.lua.
-- **Variante ohne Titelleiste** (Anprobe, Charakterfenster): flache Fläche, Titel gold oben, kleines rundes Porträt
+- **Variante ohne Titelleiste** (Anprobe, Charakterfenster, Betrachten): flache Fläche, Titel gold oben, kleines rundes Porträt
   mit goldenem Ring auf der oberen linken Ecke, feine goldene Linie unter dem Kopf.
 - **Visitenkarte** unter der Titelleiste (wie `ns.NpcCard`): rundes Bild mit goldenem Ring (48 Ring / 45 Fuge /
   43 Bild, Mitte bei (36, −56)), daneben Name groß in Gold (`GameFontNormalLarge` bei (68, −37)), darunter Unterzeile

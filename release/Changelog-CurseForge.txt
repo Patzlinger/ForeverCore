@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverSkin: inspect window in the Forever look (first version), built like the character window – no title bar, a small round portrait of the inspected player with a gold ring on the top left corner, the name in gold, a fine gold line; equipment slots like bag slots with a muted gold edge; the ornaments around the model are gone (model, its background and the faction crest stay). Switch: /fskin » "Inspect (other players)".
+
 - ForeverSkin: hunter stable in the Forever look (first version) – flat frame with your gold in the title bar, flat inner areas instead of Blizzard's stone pictures, all active and stabled pet slots like bag slots in ForeverBags (dark field, fine border, mouse over and selected = gold), page arrows without boxes. Switch: /fskin » "Stable (hunters)".
 
 - ForeverSkin: social window in the Forever look (first version) – flat frame and inner area, a footer bar with a gold line for the buttons, flat tabs at the bottom and on top (selected one gold), flat Battle.net bar and status dropdown; friends, who list and ignore list as grey rows with a fine border (mouse over and selected = gold); who list column headers and search box flat; raid tab buttons and "All assistant" flat. The raid groups and "Friends of friends" stay Blizzard's for now. Switch: /fskin » "Social window".
