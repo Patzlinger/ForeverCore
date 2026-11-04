@@ -3,7 +3,7 @@
 -- Kalender: Blizzards Steinrahmen und Hintergrundbilder weg; flacher Kopf mit Monat/Jahr und feiner goldener Linie,
 -- Wochentage als dunklere Leiste, die Tage als flaches Raster mit feinem Rand (Maus darauf = gold, heute = gold),
 -- Tage anderer Monate dezent abgedunkelt; Monats-Pfeile, Filter und Schließen flach. Bilder von Feiertagen/Terminen
--- in den Tagen bleiben. Die Termin-Fenster (Ansehen, Erstellen, Einladen) bleiben vorerst Blizzards.
+-- in den Tagen bleiben. Die Termin-Fenster (Ansehen, Erstellen, Einladen …) wie unsere Fenster mit Titelleiste.
 -- Uhr: flaches Fenster, die Uhrzeit links in der Titelleiste statt auf Blizzards Globus; Häkchen, Auswahllisten,
 -- Eingabefeld flach. Stoppuhr: flache Fläche mit dunklem Kopf und goldener Linie.
 -- Die Uhr an der Minikarte (TimeManagerClockButton) gehört zu ForeverMinimap und wird hier nicht angefasst.
@@ -131,6 +131,95 @@ local function SkinCalendar()
     end)
 end
 
+-- Termin-Fenster (Feiertag, Schlachtzug-Sperre, Termin ansehen, Termin erstellen/bearbeiten, Masseneinladung,
+-- Terminauswahl, Bildauswahl): gleich gebaut wie unsere Fenster – flache Fläche, dunkle Titelleiste (23) mit goldener
+-- Linie, Titel darin, Schließen-Kreuz oben rechts; darin Knöpfe, Eingabefelder, Auswahllisten, Häkchen, Laufleisten
+-- und Textkästen flach, Blizzards Trennlinien als feine goldene Linie, kein Leuchten der Zusage-Knöpfe
+local EVENT_FRAMES = { "CalendarViewHolidayFrame", "CalendarViewRaidFrame", "CalendarViewEventFrame",
+    "CalendarCreateEventFrame", "CalendarMassInviteFrame", "CalendarEventPickerFrame", "CalendarTexturePickerFrame" }
+
+local function Divider(frame)
+    for _, r in ipairs({ frame:GetRegions() }) do
+        local tex = r:IsObjectType("Texture") and r.GetTexture and r:GetTexture()
+        if type(tex) == "string" and tex:lower():find("divider") and not done[r] then
+            done[r] = true
+            r:SetAlpha(0)
+            local line = Tex(frame, "BORDER", 1, C.accent, 0.5)
+            line:SetPoint("LEFT", r, "LEFT", 6, 0)
+            line:SetPoint("RIGHT", r, "RIGHT", -6, 0)
+            ns.OnePixel(line, true)
+        end
+    end
+end
+
+local function ScanEvent(frame, depth)
+    Divider(frame)
+    for _, child in ipairs({ frame:GetChildren() }) do
+        if not Forbidden(child) and not done[child] then
+            -- Textkästen (Beschreibung, Einladungsliste: Blizzards dunkle Tooltip-Kästen) flach
+            if type(child.NineSlice) == "table" and not child:IsObjectType("Button") then
+                ns.Hide(child.NineSlice)
+                ns.Flat(child, C.input)
+            end
+            if type(child.Track) == "table" and (child.Track.Thumb or child.Back) then
+                done[child] = true
+                ns.SkinScrollBar(child)
+            elseif child:IsObjectType("DropdownButton") then
+                done[child] = true
+                ns.SkinDropdown(child)
+            elseif child:IsObjectType("CheckButton") and (child:GetWidth() or 0) <= 32 then
+                done[child] = true
+                ns.SkinCheck(child)
+            elseif child:IsObjectType("EditBox") and type(child.Left) == "table" and type(child.Right) == "table" then
+                SkinInput(child)
+            elseif child:IsObjectType("Button") and type(child.Left) == "table" and type(child.Right) == "table" then
+                done[child] = true
+                ns.SkinButton(child)
+                -- (Zusage-Knöpfe leuchten bei Blizzard, solange man nicht geantwortet hat – kein Leuchten)
+                if type(child.flashTexture) == "table" then child.flashTexture:SetTexture(nil) end
+            elseif not child:IsObjectType("Button") and depth < 4 then
+                ScanEvent(child, depth + 1)
+            end
+        end
+    end
+end
+
+local function SkinEventFrame(f)
+    if not f or Forbidden(f) then return end
+    if not done[f] then
+        done[f] = true
+        ns.Hide(f.Border)
+        local look = ns.Flat(f, C.background)
+        local head = Tex(f, "BACKGROUND", -7, C.header)
+        head:SetPoint("TOPLEFT", 1, -1)
+        head:SetPoint("TOPRIGHT", -1, -1)
+        head:SetHeight(22)
+        local line = Tex(f, "BORDER", -6, C.accent, 0.6)
+        line:SetPoint("TOPLEFT", head, "BOTTOMLEFT")
+        line:SetPoint("TOPRIGHT", head, "BOTTOMRIGHT")
+        ns.OnePixel(line, true)
+        if look then look.mine[head], look.mine[line] = true, true end
+        -- Titel-Schild (DialogHeader): Grafik weg, der Titel mittig in unsere Titelleiste
+        local header = f.Header
+        if type(header) == "table" and not Forbidden(header) then
+            ns.HideTextures(header)
+            header:ClearAllPoints()
+            header:SetPoint("CENTER", f, "TOP", 0, -12)
+        end
+        local name = f:GetName()
+        local close = name and (G(name .. "CloseButton") or G(name:gsub("Frame$", "") .. "CloseButton"))
+        if close and not Forbidden(close) then
+            ns.SkinClose(close)
+            close:ClearAllPoints()
+            close:SetPoint("CENTER", f, "TOPRIGHT", -12, -12)
+        end
+        ns.Watch(f)
+        -- Blizzard füllt die Fenster beim Öffnen (Auswahllisten, Einladungsliste) – dann noch einmal durchsehen
+        f:HookScript("OnShow", function(self) pcall(ScanEvent, self, 1) end)
+    end
+    ScanEvent(f, 1)
+end
+
 ---------------------------------------------------------------------------
 -- Uhr und Stoppuhr
 ---------------------------------------------------------------------------
@@ -203,7 +292,10 @@ events:RegisterEvent("PLAYER_LOGIN")
 events:RegisterEvent("ADDON_LOADED")
 events:SetScript("OnEvent", function()
     if not ns.GetDB().calendar then return end
-    if not calSkinned and G("CalendarFrame") then Step("calendar", SkinCalendar) end
+    if not calSkinned and G("CalendarFrame") then
+        Step("calendar", SkinCalendar)
+        for _, n in ipairs(EVENT_FRAMES) do Step("event", function() SkinEventFrame(G(n)) end) end
+    end
     if not clockSkinned and G("TimeManagerFrame") then Step("clock", SkinClock) end
     if not stopwatchSkinned and G("StopwatchFrame") then Step("stopwatch", SkinStopwatch) end
 end)
