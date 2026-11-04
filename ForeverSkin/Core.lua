@@ -32,6 +32,7 @@ ns.DEFAULTS = {
     chatConfig = true, -- Chat-Einstellungen und Chat-Channels
     character = true, -- Charakterfenster (Ausrüstung, Ruf, Währungen)
     cooldowns = true, -- Abklingzeiten-Manager
+    social = true,   -- Sozialfenster (Kontakte, Wer, Schlachtzug, Ignorierliste)
     size = 100,      -- Größe von Gespräch, Quest, Händler und Lehrer in Prozent (100 = Grundgröße SIZE_BASE)
 }
 
@@ -184,14 +185,16 @@ local goldTexts = {} -- [Fenster] = Text
 local GOLD_SKIP = { LootFrame = true, SettingsPanel = true, MacroFrame = true, ProfessionsBookFrame = true,
     ProfessionsFrame = true, PlayerSpellsFrame = true, CommunitiesFrame = true, CollectionsJournal = true,
     WardrobeFrame = true, LFGParentFrame = true, ChatConfigFrame = true, ChannelFrame = true,
-    CreateChannelPopup = true, CooldownViewerSettings = true }
+    CreateChannelPopup = true, CooldownViewerSettings = true, FriendsFrame = true }
+-- Fenster ohne eigenen Namen, die ebenfalls keinen Kontostand bekommen (z. B. Ignorierliste am Sozialfenster)
+ns.noGold = setmetatable({}, { __mode = "k" })
 local function UpdateGold(fs)
     if ns.Money and GetMoney then fs:SetText(T("Dein Gold: ", "Your gold: ") .. ns.Money(GetMoney())) end
 end
 function ns.HeaderGold(frame)
     if not frame or goldTexts[frame] then return frame and goldTexts[frame] end
     local name = frame.GetName and frame:GetName()
-    if name and GOLD_SKIP[name] then return nil end
+    if (name and GOLD_SKIP[name]) or ns.noGold[frame] then return nil end
     local fs = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     fs:SetPoint("LEFT", frame, "TOPLEFT", 10, -12)
     goldTexts[frame] = fs
@@ -1092,12 +1095,13 @@ local function Build()
     Check(-518, T("Chat-Einstellungen und Chat-Channels", "Chat settings and chat channels"), "chatConfig")
     Check(-542, T("Charakterfenster", "Character window"), "character")
     Check(-566, T("Abklingzeiten-Manager", "Cooldown manager"), "cooldowns")
-    local size = UI.Slider(options, 22, -596, T("Größe von Gespräch, Quest, Händler, Lehrer", "Size of dialog, quest, vendor, trainer"),
+    Check(-590, T("Sozialfenster (Kontakte, Wer, Schlachtzug)", "Social window (contacts, who, raid)"), "social")
+    local size = UI.Slider(options, 22, -620, T("Größe von Gespräch, Quest, Händler, Lehrer", "Size of dialog, quest, vendor, trainer"),
         80, 120, 5, function(v)
             ns.GetDB().size = v
             ns.RescaleAll()
         end, { unit = " %", width = 220 })
-    UI.Hint(options, 22, -640, W - 12, T("Änderungen gelten nach dem Neuladen. Gefällt dir der Stil nicht, schalte " ..
+    UI.Hint(options, 22, -664, W - 12, T("Änderungen gelten nach dem Neuladen. Gefällt dir der Stil nicht, schalte " ..
         "ForeverSkin in der Addon-Liste aus – dann ist alles wieder wie vorher.",
         "Changes apply after reloading. If you don't like the look, turn ForeverSkin off in the addon list – " ..
         "everything is back as before."))

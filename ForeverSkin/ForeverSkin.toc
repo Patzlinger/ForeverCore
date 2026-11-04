@@ -33,3 +33,4 @@ ChatConfig.lua
 Channels.lua
 Character.lua
 Cooldowns.lua
+Social.lua
