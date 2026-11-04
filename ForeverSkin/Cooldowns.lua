@@ -1,6 +1,6 @@
 -- ForeverSkin – Cooldowns.lua: Abklingzeiten-Manager (CooldownViewerSettings) im Forever-Stil (docs/Fenster-Stil.md).
--- Flacher Rahmen mit Titelleiste, Spezialisierungs-Symbol klein links, Seitenreiter als flache Kästchen, ohne
--- Suchleiste, Kategorie-Überschriften (auch auf der Gruppen-Buff-Seite) als flache Balken mit feinem Pfeil, Zauber
+-- Flacher Rahmen mit Titelleiste, Spezialisierungs-Symbol klein links, ohne Suchleiste; die Seitenreiter bleiben
+-- Blizzards (wie die der Gruppensuche – auf Wunsch einheitlich), Kategorie-Überschriften (auch auf der Gruppen-Buff-Seite) als flache Balken mit feinem Pfeil, Zauber
 -- als Plätze wie in ForeverBags, Balken-Einträge flach, Fußleiste mit goldener Linie (Layout-Auswahl,
 -- "Änderungen rückgängig"). Die Layout-Dialoge bleiben vorerst Blizzards.
 -- Symbole können im Kampf gesperrt sein: wir lesen sie nie, sondern versetzen nur ihre Ränder.
@@ -20,25 +20,6 @@ end
 
 local done = setmetatable({}, { __mode = "k" }) -- schon umgestaltete Teile
 local arrows = setmetatable({}, { __mode = "k" }) -- [Überschrift] = unser Pfeil
-
--- Seitenreiter (Zauber, Auren, Gruppen-Buffs): flaches Kästchen, das Symbol bleibt; gewählt = goldener Rand
-local function TabSelected(tab)
-    local sel = tab.SelectedTexture
-    if type(sel) == "table" and sel.IsShown then return sel:IsShown() end
-    return tab.GetChecked and tab:GetChecked() or false
-end
-local function SkinSideTab(tab)
-    if done[tab] or Forbidden(tab) then return end
-    done[tab] = true
-    local keep = {}
-    for _, key in ipairs({ "Icon", "Mask", "NewOptionsFrame" }) do
-        if type(tab[key]) == "table" then keep[tab[key]] = true end
-    end
-    ns.HideTextures(tab, keep)
-    for _, key in ipairs({ "Background", "SelectedTexture", "TabGlow", "HighlightTexture" }) do ns.Hide(tab[key]) end
-    ns.Flat(tab, ns.C.background, 2)
-    ns.Hover(tab, TabSelected)
-end
 
 -- Kategorie-Überschrift ("Wichtig", "Nützlich" …): flacher Balken, Titel gold, rechts feiner Pfeil
 -- (zugeklappt nach rechts, aufgeklappt nach unten)
@@ -220,9 +201,6 @@ local function SkinCooldowns(f)
     skinned = true
     ns.SkinWindow(f)
     Step("box", function() ns.ContentBox(f, FOOTER, BOX_TOP) end)
-    Step("tabs", function()
-        for _, tab in ipairs(type(f.TabButtons) == "table" and f.TabButtons or {}) do SkinSideTab(tab) end
-    end)
     Step("layout", function() if f.LayoutDropdown then ns.SkinDropdown(f.LayoutDropdown) end end)
     Step("undo", function() if f.UndoButton then ns.SkinButton(f.UndoButton) end end)
     Step("scroll", function()

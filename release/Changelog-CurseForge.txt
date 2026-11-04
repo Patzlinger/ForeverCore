@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- ForeverSkin: cooldown manager in the Forever look (first version) – flat frame with the spec icon in the title bar, flat side tabs (selected one gold), no search bar, category headings (also on the group buffs page) as flat bars with fine arrows, spells as dark slots like in ForeverBags, flat bars, a gold insert line while dragging and a footer bar with the layout dropdown and "Revert changes". The layout dialogs stay Blizzard's for now. Switch: /fskin » "Cooldown manager".
+- ForeverSkin: cooldown manager in the Forever look (first version) – flat frame with the spec icon in the title bar, side tabs like in the group finder, no search bar, category headings (also on the group buffs page) as flat bars with fine arrows, spells as dark slots like in ForeverBags, flat bars, a gold insert line while dragging and a footer bar with the layout dropdown and "Revert changes". The layout dialogs stay Blizzard's for now. Switch: /fskin » "Cooldown manager".
 
 ## 0.5b – November 2, 2026
 
