@@ -11,10 +11,10 @@ Auswirkung im Spiel.
   - Große Fenster: Soziales nur noch „Freunde von Freunden“, eigenes Schlachtzug-Fenster (RaidParentFrame) und
     Raid-Info; Transmogrifizierer samt „Set bearbeiten“, Gildenränge und Gilden-Unterfenster (Gildenlog, News-Filter,
     Gildeninfo-Text, Avatar-Auswahl), Auktionshaus-Feinschliff (Geld-Eingaben, Gegenstands-Platz beim Verkaufen, Taschen von ForeverBags andocken),
-    Kalender, PvP-Punktetafel und -Ergebnis
+    Termin-Fenster des Kalenders (Ansehen, Erstellen, Einladen), PvP-Punktetafel und -Ergebnis
   - Kleine Fenster: Buch-/Brieftexte, Gildenurkunde/-gründung/-einladung/-umbenennung, Rollenabfrage,
     Gruppeneinladung, PvP-Bereitschaft, Farbauswahl, Quest-Details-Popup, Modellvorschau, Auswahlfenster,
-    Beuteverlauf, Währung übertragen, Spieler melden, Schnelltastenbelegung, Uhr, Sprechkopf, Sockeln (falls vorhanden)
+    Beuteverlauf, Währung übertragen, Spieler melden, Schnelltastenbelegung, Sprechkopf, Sockeln (falls vorhanden)
   - Abgleich im Spiel: `/fskin fenster` (listet alle großen Fenster, umgestaltet `+` oder nicht `-`)
 - [ ] ⚠ **Questlog im Dungeonfenster** (ForeverQuests): die Quests des gewählten Dungeons direkt im Dungeonfenster als
       Questlog anzeigen
