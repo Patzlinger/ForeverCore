@@ -103,16 +103,34 @@ local function HideStrips(frame, depth)
     end
 end
 
--- "Kaufen" (Stallplatz): Blizzard setzt die roten Knopf-Grafiken teils neu – flach halten
-local function PurchaseButton()
-    local b = G("PetStablePurchaseButton")
-    if not b or Forbidden(b) then return end
+-- Text-Knöpfe ("Kaufen" für einen Stallplatz …): flach halten – Blizzard setzt die roten Knopf-Grafiken teils neu.
+-- Gesucht wird jeder Knopf mit Text im Fenster (der Name weicht in der Forever-Fassung ab); Plätze und das
+-- Schließen-Kreuz haben keinen Text
+local function FlatButton(b)
     ns.SkinButton(b)
-    for _, key in ipairs({ "Left", "Middle", "Right" }) do ns.Hide(b[key]) end
+    for _, key in ipairs({ "Left", "Middle", "Right", "Center", "LeftSeparator", "RightSeparator" }) do ns.Hide(b[key]) end
     ns.HideTextures(b)
     for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetHighlightTexture", "GetDisabledTexture" }) do
         if b[get] then ns.Hide(b[get](b)) end
     end
+end
+local function TextButtons(frame, depth)
+    if not frame or Forbidden(frame) then return end
+    for _, child in ipairs({ frame:GetChildren() }) do
+        if not Forbidden(child) then
+            local label = child:IsObjectType("Button") and not child:IsObjectType("CheckButton") and child.GetText
+                and child:GetText()
+            if type(label) == "string" and label ~= "" then
+                FlatButton(child)
+            elseif depth < 3 then
+                TextButtons(child, depth + 1)
+            end
+        end
+    end
+end
+local function PurchaseButton()
+    local f = G("PetStableFrame")
+    if f then TextButtons(f, 1) end
 end
 
 -- Blätter-Pfeile: Blizzard setzt ihre Grafiken beim An-/Ausgrauen neu – immer wieder unsichtbar (unser Pfeil bleibt)
