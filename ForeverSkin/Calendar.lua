@@ -219,6 +219,10 @@ local function CreateFooter(f)
     line:SetPoint("BOTTOMLEFT", foot, "TOPLEFT")
     line:SetPoint("BOTTOMRIGHT", foot, "TOPRIGHT")
     ns.OnePixel(line, true)
+    -- Einladungsliste etwas kürzer: "Spielername" und "Einladen" hängen an ihrer Unterkante und lagen sonst auf der
+    -- goldenen Linie der Fußleiste
+    local list = G("CalendarCreateEventInviteList")
+    if list and not Forbidden(list) and (list:GetHeight() or 0) > 100 then list:SetHeight(list:GetHeight() - 12) end
     local y = CREATE_FOOTER / 2
     for _, s in ipairs({ { "CalendarCreateEventMassInviteButton", "LEFT", 10 }, { "CalendarCreateEventRaidInviteButton", "LEFT", 10 },
         { "CalendarCreateEventCreateButton", "RIGHT", -10 } }) do
