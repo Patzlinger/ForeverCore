@@ -32,3 +32,4 @@ GroupFinder.lua
 ChatConfig.lua
 Channels.lua
 Character.lua
+Cooldowns.lua
