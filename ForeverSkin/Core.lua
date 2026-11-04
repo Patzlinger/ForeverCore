@@ -173,6 +173,56 @@ function ns.DumpWindows()
     end
 end
 
+-- /fskin aufbau <Fenstername>: kompletter Aufbau eines Fensters (Unter-Rahmen und Grafiken samt Schlüssel, Art,
+-- Größe, Anker, Atlas/Datei) in ForeverSkinDB._dump – nach /reload in der SavedVariables-Datei lesbar. Für Fenster,
+-- deren Forever-Fassung in keinem öffentlichen Quelltext steht (z. B. der Stall)
+function ns.DumpFrame(name)
+    local root = name and _G[name]
+    local say = function(text) print("|cffffcc00ForeverSkin|r: " .. text) end
+    if type(root) ~= "table" or not root.GetChildren then return say(T("Fenster nicht gefunden: ", "Window not found: ") .. tostring(name)) end
+    local lines, count = {}, 0
+    local function KeyOf(parent, obj)
+        for k, v in pairs(parent) do if v == obj and type(k) == "string" then return k end end
+    end
+    local function Point(obj)
+        if not obj.GetPoint or obj:GetNumPoints() == 0 then return "" end
+        local p, rel, rp, x, y = obj:GetPoint(1)
+        local relName = type(rel) == "table" and rel.GetName and (rel:GetName() or KeyOf(rel:GetParent() or {}, rel)) or tostring(rel)
+        return string.format(" @%s>%s.%s(%d,%d)", tostring(p), tostring(relName), tostring(rp), math.floor((x or 0) + 0.5),
+            math.floor((y or 0) + 0.5))
+    end
+    local function Walk(frame, depth, path)
+        if count > 600 or (frame.IsForbidden and frame:IsForbidden()) then return end
+        for _, r in ipairs({ frame:GetRegions() }) do
+            count = count + 1
+            local kind = r:GetObjectType()
+            local extra = ""
+            if r:IsObjectType("Texture") then
+                local atlas = r.GetAtlas and r:GetAtlas()
+                extra = " " .. tostring(atlas or r:GetTexture())
+            elseif r:IsObjectType("FontString") then
+                extra = " \"" .. tostring(r:GetText()) .. "\""
+            end
+            lines[#lines + 1] = string.format("%s  %s %s [%s] %dx%d%s%s%s", path, kind, tostring(r:GetName() or KeyOf(frame, r) or "-"),
+                r:IsShown() and "an" or "aus", r:GetWidth() or 0, r:GetHeight() or 0, Point(r), extra,
+                (r.GetDrawLayer and (" " .. tostring((r:GetDrawLayer())))) or "")
+        end
+        for _, child in ipairs({ frame:GetChildren() }) do
+            count = count + 1
+            local label = tostring(child:GetName() or KeyOf(frame, child) or "?")
+            lines[#lines + 1] = string.format("%s> %s %s [%s] %dx%d%s", path, child:GetObjectType(), label,
+                child:IsShown() and "an" or "aus", child:GetWidth() or 0, child:GetHeight() or 0, Point(child))
+            if depth < 4 then Walk(child, depth + 1, path .. ">" .. label) end
+        end
+    end
+    lines[1] = string.format("%s %s [%s] %dx%d", name, root:GetObjectType(), root:IsShown() and "an" or "aus",
+        root:GetWidth() or 0, root:GetHeight() or 0)
+    Walk(root, 1, name)
+    ns.GetDB()._dump = lines
+    say(string.format(T("%d Einträge zu %s gespeichert – jetzt /reload, dann kann Claude sie lesen.",
+        "%d entries for %s saved – now /reload so Claude can read them."), #lines, name))
+end
+
 function ns.EdgeColor(frame, c, a)
     local look = looks[frame]
     if not look then return end
@@ -1129,8 +1179,11 @@ end
 
 SLASH_FOREVERSKIN1 = "/fskin"
 SlashCmdList["FOREVERSKIN"] = ns.Safe(T("Befehl", "Command"), function(msg)
-    msg = strtrim(msg or ""):lower()
-    if msg == "taxi" and ns.DumpTaxi then
+    local raw = strtrim(msg or "")
+    msg = raw:lower()
+    if msg:find("^aufbau ") or msg:find("^layout ") then
+        ns.DumpFrame(strtrim(raw:sub(8))) -- Prüfbefehl: Aufbau eines Fensters speichern (Name mit Groß-/Kleinschreibung)
+    elseif msg == "taxi" and ns.DumpTaxi then
         ns.DumpTaxi() -- Prüfbefehl: Grafiken der Flugkarte im Chat
     elseif (msg == "maus" or msg == "mouse") and ns.DumpMouse then
         ns.DumpMouse() -- Prüfbefehl: welches Fenster liegt unter der Maus

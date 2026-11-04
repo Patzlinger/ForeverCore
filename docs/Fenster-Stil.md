@@ -115,6 +115,10 @@ Werte in Punkten des Fensters (vor `ns.Scaled`).
 - `/fskin grafik` – Grafiken unter der Maus (Schlüssel, Atlas/Datei, Ebene, Größe, Eltern). Findet nur Rahmen, die die
   Maus annehmen – sonst einen eigenen Prüfbefehl mit Auflistung aller sichtbaren Grafiken bauen (siehe `/fskin lfg`).
 - `/fskin fenster` – alle großen benannten Fenster des Spiels, umgestaltet (+) oder nicht (−).
+- `/fskin aufbau <Fenstername>` – kompletter Aufbau eines Fensters (Unter-Rahmen, Grafiken, Schlüssel, Größen,
+  Anker, Atlas/Datei) in `ForeverSkinDB._dump`; nach `/reload` in `WTF\Account\*\SavedVariables\ForeverSkin.lua`
+  lesbar. Für Fenster, deren Forever-Fassung in keinem öffentlichen Quelltext steht (Stall: weder Blizzards neuer
+  `StableFrame` noch die Classic-/Cata-Fassung passen).
 - `/fskin lfg` (Gruppensuche: Reiter, ausgeblendete und sichtbare Grafiken), `/fskin werte` (Werte-Spalte im
   Charakterfenster), `/fskin taxi` (Flugkarte) – Vorlagen für ähnliche Untersuchungen.
 
