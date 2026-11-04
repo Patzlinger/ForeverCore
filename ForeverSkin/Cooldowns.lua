@@ -1,8 +1,8 @@
 -- ForeverSkin – Cooldowns.lua: Abklingzeiten-Manager (CooldownViewerSettings) im Forever-Stil (docs/Fenster-Stil.md).
--- Erster Entwurf: flacher Rahmen mit Titelleiste, Spezialisierungs-Symbol klein links, Seitenreiter als flache
--- Kästchen, Suchleiste, Kategorie-Überschriften als flache Balken mit feinem Pfeil, Zauber als Plätze wie in
--- ForeverBags, Balken-Einträge flach, Fußleiste mit goldener Linie (Layout-Auswahl, "Änderungen rückgängig").
--- Die Gruppen-Buff-Seite und die Layout-Dialoge bleiben vorerst Blizzards.
+-- Flacher Rahmen mit Titelleiste, Spezialisierungs-Symbol klein links, Seitenreiter als flache Kästchen, ohne
+-- Suchleiste, Kategorie-Überschriften (auch auf der Gruppen-Buff-Seite) als flache Balken mit feinem Pfeil, Zauber
+-- als Plätze wie in ForeverBags, Balken-Einträge flach, Fußleiste mit goldener Linie (Layout-Auswahl,
+-- "Änderungen rückgängig"). Die Layout-Dialoge bleiben vorerst Blizzards.
 -- Symbole können im Kampf gesperrt sein: wir lesen sie nie, sondern versetzen nur ihre Ränder.
 local _, ns = ...
 
@@ -20,18 +20,6 @@ end
 
 local done = setmetatable({}, { __mode = "k" }) -- schon umgestaltete Teile
 local arrows = setmetatable({}, { __mode = "k" }) -- [Überschrift] = unser Pfeil
-
--- Suchleiste: Blizzards Rahmen weg, flaches Eingabefeld (Lupe, Hinweistext und X bleiben)
-local function SkinSearch(box)
-    local keep = {}
-    for _, key in ipairs({ "searchIcon", "SearchIcon", "Instructions", "clearButton" }) do
-        local t = box[key]
-        if type(t) == "table" and t.IsObjectType and t:IsObjectType("Texture") then keep[t] = true end
-    end
-    ns.HideTextures(box, keep)
-    for _, key in ipairs({ "Left", "Middle", "Right", "Mid" }) do ns.Hide(box[key]) end
-    ns.Flat(box, ns.C.input, { -4, 2, 0, 2 })
-end
 
 -- Seitenreiter (Zauber, Auren, Gruppen-Buffs): flaches Kästchen, das Symbol bleibt; gewählt = goldener Rand
 local function TabSelected(tab)
@@ -70,12 +58,17 @@ local function SkinHeader(header)
     arrows[header] = arrow
 end
 
+-- (Kategorien fragen wir über IsCollapsed, die Abschnitte der Gruppen-Buff-Seite merken es nur in isCollapsed)
 local function HeaderArrow(header)
     local arrow = arrows[header]
     local cat = header:GetParent()
-    if not arrow or not (cat and cat.IsCollapsed) then return end
-    local ok, collapsed = pcall(cat.IsCollapsed, cat)
-    arrow:SetRotation((ok and collapsed) and 0 or -math.pi / 2)
+    if not arrow or not cat then return end
+    local collapsed = cat.isCollapsed
+    if cat.IsCollapsed then
+        local ok, value = pcall(cat.IsCollapsed, cat)
+        collapsed = ok and value
+    end
+    arrow:SetRotation(collapsed and 0 or -math.pi / 2)
 end
 
 -- Zauber-Platz wie in ForeverBags: dunkles Feld, 1-px-Rand, Maus darauf = gold, Symbol 1 px eingerückt.
@@ -160,11 +153,10 @@ local function Portrait(f)
     end
 end
 
--- Kategorien und ihre Einträge (Blizzard holt sie aus Pools – neue kommen beim Umschalten und Suchen dazu)
-local function ScanContent(f)
-    local content = f.CooldownScroll and f.CooldownScroll.Content
-    if not content then return end
-    SkinMarker(content.ReorderMarker)
+-- Kategorien und ihre Einträge (Blizzard holt sie aus Pools – neue kommen beim Umschalten dazu); gleich gebaut
+-- sind die Abschnitte der Gruppen-Buff-Seite ("Stärkungszauber", "Nicht angezeigt")
+local function ScanList(content)
+    if not content or Forbidden(content) then return end
     for _, cat in ipairs({ content:GetChildren() }) do
         if not Forbidden(cat) and type(cat.Header) == "table" and type(cat.Container) == "table" then
             SkinHeader(cat.Header)
@@ -172,6 +164,31 @@ local function ScanContent(f)
             for _, item in ipairs({ cat.Container:GetChildren() }) do SkinItem(item) end
         end
     end
+end
+local function ScanContent(f)
+    local content = f.CooldownScroll and f.CooldownScroll.Content
+    if content then
+        SkinMarker(content.ReorderMarker)
+        ScanList(content)
+    end
+    local groups = f.GroupBuffFilter and f.GroupBuffFilter.Scroll
+    if groups then
+        ScanList(groups.Content)
+        if groups.ScrollBar then ns.SkinScrollBar(groups.ScrollBar) end
+    end
+end
+
+-- Suche brauchen wir nicht (auf Wunsch): unsichtbar und nicht anklickbar; das Zahnrad daneben (Einstellungen)
+-- wandert rechts über den Inhaltskasten
+local function HideSearch(f)
+    local box = f.SearchBox
+    if type(box) ~= "table" or Forbidden(box) then return end
+    if box:GetAlpha() > 0 then box:SetAlpha(0) end
+    if box:IsMouseEnabled() then box:EnableMouse(false) end
+    if box.HasFocus and box:HasFocus() then box:ClearFocus() end
+    if (box:GetText() or "") ~= "" then box:SetText("") end -- (alter Suchtext würde sonst unsichtbar weiter filtern)
+    local clear = box.clearButton
+    if type(clear) == "table" and clear.IsMouseEnabled and clear:IsMouseEnabled() then clear:EnableMouse(false) end
 end
 
 -- feste Plätze: Liste über der Fußleiste enden lassen, Knöpfe mittig in der Fußleiste (nur setzen, wenn abweichend)
@@ -191,6 +208,9 @@ local function Place(f)
     if undo then SetBottom(undo, "BOTTOMRIGHT", -10, math.floor((FOOTER - (undo:GetHeight() or 22)) / 2 + 0.5)) end
     local layout = f.LayoutDropdown
     if layout then SetBottom(layout, "BOTTOMLEFT", 10, math.floor((FOOTER - (layout:GetHeight() or 26)) / 2 + 0.5)) end
+    HideSearch(f)
+    local gear = f.SettingsDropdown
+    if gear then SetBottom(gear, "TOPRIGHT", -12, -(23 + math.floor((BOX_TOP - 23 - (gear:GetHeight() or 16)) / 2 + 0.5))) end
     Portrait(f)
 end
 
@@ -203,7 +223,6 @@ local function SkinCooldowns(f)
     Step("tabs", function()
         for _, tab in ipairs(type(f.TabButtons) == "table" and f.TabButtons or {}) do SkinSideTab(tab) end
     end)
-    Step("search", function() if f.SearchBox then SkinSearch(f.SearchBox) end end)
     Step("layout", function() if f.LayoutDropdown then ns.SkinDropdown(f.LayoutDropdown) end end)
     Step("undo", function() if f.UndoButton then ns.SkinButton(f.UndoButton) end end)
     Step("scroll", function()
