@@ -263,6 +263,10 @@ local function Place(f)
     local raid = G("RaidFrame")
     if raid and raid:GetParent() == f then
         Anchor(G("RaidFrameConvertToRaidButton"), "RIGHT", raid, "BOTTOMRIGHT", -10, y)
+        -- obere Zeile ("Alle Assistent", Rollen-Anzahl, Info) mittig zwischen goldener Linie (23) und Innenfläche (60)
+        Anchor(G("RaidFrameAllAssistCheckButton"), "LEFT", raid, "TOPLEFT", 58, -42)
+        if raid.RoleCount then Anchor(raid.RoleCount, "CENTER", raid, "TOP", 12, -42) end
+        Anchor(G("RaidFrameRaidInfoButton"), "RIGHT", raid, "TOPRIGHT", -10, -42)
         local notIn = raid.RaidFrameNotInRaid
         local desc = notIn and notIn.ScrollingDescription
         if desc and desc:IsVisible() then ns.Fit(f, desc, nil, FOOTER + GAP + 4, nil, true) end
