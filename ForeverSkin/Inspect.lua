@@ -62,8 +62,9 @@ local function HideFrameArt(f)
     end
     for _, suffix in ipairs({ "Portrait", "PortraitFrame", "TitleBg", "Bg" }) do ns.Hide(G("InspectFrame" .. suffix)) end
     if f.TitleContainer then ns.HideTextures(f.TitleContainer) end
+    -- Innenfläche flach wie die Seiten des Charakterfensters (Blizzards Hintergrund und Rahmen weg)
     local inset = f.Inset or G("InspectFrameInset")
-    if type(inset) == "table" and inset.NineSlice and not Forbidden(inset) then ns.Hide(inset.NineSlice) end
+    if type(inset) == "table" and not Forbidden(inset) then ns.SkinInset(inset) end
     for _, key in ipairs(MODEL_ART) do ns.Hide(G("InspectModelFrame" .. key)) end
 end
 
@@ -167,8 +168,24 @@ local function SkinInspect()
         ns.OnePixel(line, true)
         line:SetPoint("TOPLEFT", f, "TOPLEFT", 1, -23)
         line:SetPoint("TOPRIGHT", f, "TOPRIGHT", -1, -23)
+        -- wie im Charakterfenster: zwischen dieser Linie und der Innenfläche ein dunklerer Balken für "Stufe …", an
+        -- der Oberkante der Innenfläche eine zweite goldene Linie
+        local inset = f.Inset or G("InspectFrameInset")
+        if inset then
+            local strip = f:CreateTexture(nil, "BACKGROUND", nil, -7)
+            strip:SetColorTexture(C.header[1], C.header[2], C.header[3], 1)
+            strip:SetPoint("TOPLEFT", f, "TOPLEFT", 1, -24)
+            strip:SetPoint("RIGHT", f, "RIGHT", -1, 0)
+            strip:SetPoint("BOTTOM", inset, "TOP", 0, 0)
+            local line2 = border:CreateTexture(nil, "OVERLAY")
+            line2:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 0.6)
+            ns.OnePixel(line2, true)
+            line2:SetPoint("LEFT", f, "LEFT", 1, 0)
+            line2:SetPoint("RIGHT", f, "RIGHT", -1, 0)
+            line2:SetPoint("TOP", inset, "TOP", 0, 0)
+        end
+        -- (Name in Blizzards heller Schrift wie im Charakterfenster – nicht umfärben)
         local title = (f.TitleContainer and f.TitleContainer.TitleText) or G("InspectFrameTitleText")
-        if title then title:SetTextColor(C.accent[1], C.accent[2], C.accent[3]) end
         Raise(f.TitleContainer or title)
         local close = f.CloseButton or G("InspectFrameCloseButton")
         ns.SkinClose(close)
