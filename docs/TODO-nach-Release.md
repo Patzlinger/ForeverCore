@@ -8,8 +8,9 @@ Auswirkung im Spiel.
 ## Geplant
 
 - [ ] ⚠ **Restliche Fenster überarbeiten** (ForeverSkin, Darstellung) – noch offen:
-  - Große Fenster: Soziales (Freunde, Wer, Freundesfreunde, Schlachtzug), Transmogrifizierer samt „Set bearbeiten“,
-    Stall, Bearbeitungsmodus, Abklingzeiten-Manager, Gildenränge und Gilden-Unterfenster (Gildenlog, News-Filter,
+  - Große Fenster: Soziales nur noch „Freunde von Freunden“, eigenes Schlachtzug-Fenster (RaidParentFrame) und
+    Raid-Info; Transmogrifizierer samt „Set bearbeiten“, Stall, Bearbeitungsmodus, Layout-Dialoge des
+    Abklingzeiten-Managers (Neu/Umbenennen/Import), Gildenränge und Gilden-Unterfenster (Gildenlog, News-Filter,
     Gildeninfo-Text, Avatar-Auswahl), Auktionshaus, Betrachten, Kalender, PvP-Punktetafel und -Ergebnis
   - Kleine Fenster: Buch-/Brieftexte, Gildenurkunde/-gründung/-einladung/-umbenennung, Rollenabfrage,
     Gruppeneinladung, PvP-Bereitschaft, Farbauswahl, Quest-Details-Popup, Modellvorschau, Auswahlfenster,
