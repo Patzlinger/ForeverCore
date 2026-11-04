@@ -23,14 +23,19 @@ end
 local done = setmetatable({}, { __mode = "k" })
 
 -- Platz (aktiv oder im Stall): Blizzards Fach-Grafik, Rahmen und Leucht-Grafiken weg, Symbol 1 px eingerückt
-local function Checked(button) return type(button.Checked) == "table" and button.Checked:IsShown() end
+-- gewählt: in der Vanilla-Fassung ein Häkchen-Knopf (GetChecked), sonst Blizzards "Checked"-Grafik
+local function Checked(button)
+    if button.GetChecked then return button:GetChecked() and true or false end
+    return type(button.Checked) == "table" and button.Checked:IsShown()
+end
 local function SkinSlot(button)
     if not button or done[button] or Forbidden(button) then return end
     done[button] = true
     local name = button:GetName()
     local icon = button.icon or (name and G(name .. "IconTexture"))
     for _, key in ipairs({ "Background", "Checked", "Border" }) do ns.Hide(button[key]) end
-    for _, get in ipairs({ "GetPushedTexture", "GetHighlightTexture" }) do
+    if name then ns.Hide(G(name .. "Background")) end
+    for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetHighlightTexture", "GetCheckedTexture" }) do
         if button[get] then ns.Hide(button[get](button)) end
     end
     ns.Flat(button, SLOT)
@@ -68,6 +73,33 @@ local function SkinSelectedIcon()
     end
 end
 
+-- Kontostand unten: doppelt zum "Dein Gold" in der Titelleiste – unsichtbar samt seiner Leiste. Nur Rahmen mit
+-- "Money" im Namen, nicht die Kosten ("Kosten: 5 Silber" gehört zum Stallplatz-Kauf)
+local function HideMoneyBar(f)
+    for _, child in ipairs({ f:GetChildren() }) do
+        if not Forbidden(child) then
+            local name = (child:GetName() or ""):lower()
+            if name:find("money") and not name:find("cost") and child:GetAlpha() > 0 then child:SetAlpha(0) end
+        end
+    end
+    for _, key in ipairs({ "MoneyInset", "MoneyBg", "MoneyFrame" }) do
+        local obj = f[key]
+        if type(obj) == "table" and obj.SetAlpha and obj:GetAlpha() > 0 then obj:SetAlpha(0) end
+    end
+end
+
+-- "Kaufen" (Stallplatz): Blizzard setzt die roten Knopf-Grafiken teils neu – flach halten
+local function PurchaseButton()
+    local b = G("PetStablePurchaseButton")
+    if not b or Forbidden(b) then return end
+    ns.SkinButton(b)
+    for _, key in ipairs({ "Left", "Middle", "Right" }) do ns.Hide(b[key]) end
+    ns.HideTextures(b)
+    for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetHighlightTexture", "GetDisabledTexture" }) do
+        if b[get] then ns.Hide(b[get](b)) end
+    end
+end
+
 -- Blätter-Pfeile: Blizzard setzt ihre Grafiken beim An-/Ausgrauen neu – immer wieder unsichtbar (unser Pfeil bleibt)
 local function PageArrows()
     for _, n in ipairs({ "PetStablePrevPageButton", "PetStableNextPageButton" }) do
@@ -94,7 +126,10 @@ local function SkinStable()
             if inset and not Forbidden(inset) then ns.SkinInset(inset) end
         end
     end)
+    Step("money", function() HideMoneyBar(f) end)
+    Step("purchase", PurchaseButton)
     Step("slots", function()
+        SkinSlot(G("PetStableCurrentPet")) -- (Vanilla-Fassung: ein aktueller Begleiter)
         for i = 1, (NUM_PET_ACTIVE_SLOTS or 5) do SkinSlot(G("PetStableActivePet" .. i)) end
         for i = 1, (NUM_PET_STABLE_SLOTS or 10) do SkinSlot(G("PetStableStabledPet" .. i)) end
     end)
@@ -116,6 +151,8 @@ local function SkinStable()
             if type(f[key]) == "table" then ns.Hide(f[key]) end
         end
         pcall(PageArrows)
+        pcall(HideMoneyBar, f)
+        pcall(PurchaseButton)
     end)
 end
 
