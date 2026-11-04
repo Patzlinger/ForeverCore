@@ -217,19 +217,37 @@ end
 
 -- feste Plätze (Blizzard setzt beim Reiterwechsel einiges neu): Innenflächen enden über der Fußleiste, Knöpfe
 -- mittig darin, 10 vom Rand, 8 dazwischen
+local GAP = 8 -- Luft zwischen Innenfläche und goldener Linie der Fußleiste
 local function Place(f)
     local y = FOOTER / 2
     local inset = f.Inset or G("FriendsFrameInset")
-    if inset then ns.Fit(f, inset, nil, FOOTER + 4, nil, true) end
+    if inset then ns.Fit(f, inset, nil, FOOTER + GAP, nil, true) end
     local whoInset = G("WhoFrameListInset")
-    if whoInset and whoInset:IsVisible() then ns.Fit(f, whoInset, nil, FOOTER + 4, nil, true) end
+    if whoInset and whoInset:IsVisible() then ns.Fit(f, whoInset, nil, FOOTER + GAP, nil, true) end
+    -- Listen, die Blizzard nicht an der Innenfläche, sondern am Fenster aufhängt (Schnellbeitritt), enden ebenfalls
+    -- über der Fußleiste (die Laufleiste hängt an der Liste und wandert mit)
+    local quick = G("QuickJoinFrame")
+    local quickBox = quick and quick.ScrollBox
+    if quickBox and quickBox:IsVisible() then ns.Fit(f, quickBox, nil, FOOTER + GAP + 4) end
+    -- Status-Auswahl ganz links zwischen Titelleiste und Innenfläche (Blizzard hängt sie an die Battle.net-Leiste)
+    local header = f.FriendsTabHeader
+    if header and header.StatusDropdown then Anchor(header.StatusDropdown, "LEFT", f, "TOPLEFT", 10, -53) end
+    -- Reiter oben in die Innenfläche eingerückt, die Freundesliste darunter
+    local system = header and header.TabSystem
+    if system and system:IsVisible() then
+        Anchor(system, "TOPLEFT", f, "TOPLEFT", 12, -90)
+        local list = G("FriendsListFrame")
+        if list and list.ScrollBox and list.ScrollBox:IsVisible() then ns.Fit(f, list.ScrollBox, 120, FOOTER + GAP + 4) end
+        local allies = G("RecentAlliesFrame")
+        if allies and allies.List and allies.List:IsVisible() then ns.Fit(f, allies.List, 120) end
+    end
     -- Suchfeld (Wer) wie bei Blizzard knapp über der Innenflächen-Unterkante
     local edit = G("WhoFrameEditBox")
     if edit and not Forbidden(edit) and edit:GetNumPoints() == 2 then
         local parent = edit:GetParent()
         local p1, _, _, x1, y1 = edit:GetPoint(1)
         local p2, _, _, x2 = edit:GetPoint(2)
-        local want = FOOTER + 10
+        local want = FOOTER + GAP + 6
         if math.abs((y1 or 0) - want) > 0.5 then
             edit:ClearAllPoints()
             edit:SetPoint(p1, parent, p1, x1, want)
@@ -247,14 +265,16 @@ local function Place(f)
         Anchor(G("RaidFrameConvertToRaidButton"), "RIGHT", raid, "BOTTOMRIGHT", -10, y)
         local notIn = raid.RaidFrameNotInRaid
         local desc = notIn and notIn.ScrollingDescription
-        if desc and desc:IsVisible() then ns.Fit(f, desc, nil, FOOTER + 8, nil, true) end
+        if desc and desc:IsVisible() then ns.Fit(f, desc, nil, FOOTER + GAP + 4, nil, true) end
     end
-    -- Reiter unten mit 8 Abstand aneinander
+    local join = quick and quick.JoinQueueButton
+    if join then Anchor(join, "RIGHT", f, "BOTTOMRIGHT", -10, y) end
+    -- Reiter unten direkt am Fenster angeheftet (wie beim Briefkasten), 8 Abstand untereinander
     local prev
     for i = 1, 6 do
         local tab = G("FriendsFrameTab" .. i)
         if tab and tab:IsShown() then
-            if prev then Anchor(tab, "LEFT", prev, "RIGHT", 8, 0) end
+            if prev then Anchor(tab, "LEFT", prev, "RIGHT", 8, 0) else Anchor(tab, "TOPLEFT", f, "BOTTOMLEFT", 6, 1) end
             pcall(ns.CenterText, tab)
             prev = tab
         end
@@ -286,6 +306,8 @@ local function SkinSocial()
     Step("buttons", function()
         Buttons({ "FriendsFrameAddFriendButton", "FriendsFrameSendMessageButton", "WhoFrameGroupInviteButton",
             "WhoFrameAddFriendButton", "WhoFrameWhoButton" })
+        local quick = G("QuickJoinFrame")
+        if quick and quick.JoinQueueButton then ns.SkinButton(quick.JoinQueueButton) end -- (Beitrittsanfrage)
     end)
     Step("who", SkinWho)
     Step("raid", SkinRaid)
