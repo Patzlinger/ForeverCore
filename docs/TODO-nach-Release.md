@@ -11,7 +11,7 @@ Auswirkung im Spiel.
   - Große Fenster: Soziales nur noch „Freunde von Freunden“, eigenes Schlachtzug-Fenster (RaidParentFrame) und
     Raid-Info; Transmogrifizierer samt „Set bearbeiten“, Bearbeitungsmodus, Layout-Dialoge des
     Abklingzeiten-Managers (Neu/Umbenennen/Import), Gildenränge und Gilden-Unterfenster (Gildenlog, News-Filter,
-    Gildeninfo-Text, Avatar-Auswahl), Auktionshaus, Betrachten, Kalender, PvP-Punktetafel und -Ergebnis
+    Gildeninfo-Text, Avatar-Auswahl), Auktionshaus, Kalender, PvP-Punktetafel und -Ergebnis
   - Kleine Fenster: Buch-/Brieftexte, Gildenurkunde/-gründung/-einladung/-umbenennung, Rollenabfrage,
     Gruppeneinladung, PvP-Bereitschaft, Farbauswahl, Quest-Details-Popup, Modellvorschau, Auswahlfenster,
     Beuteverlauf, Währung übertragen, Spieler melden, Schnelltastenbelegung, Uhr, Sprechkopf, Sockeln (falls vorhanden)
