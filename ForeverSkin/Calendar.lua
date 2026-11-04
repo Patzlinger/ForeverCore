@@ -184,8 +184,55 @@ local function ScanEvent(frame, depth)
     end
 end
 
+-- Spaltenköpfe der Einladungsliste (Name, Klasse, Status): Blizzard richtet sie erst an der ersten Zeile aus, solange
+-- die Liste noch abgerufen wird, lagen sie übereinander – bis dahin eigene feste Plätze
+local function SortButtons()
+    for _, list in ipairs({ G("CalendarCreateEventInviteList") or false, G("CalendarViewEventInviteList") or false }) do
+        if list and not Forbidden(list) then
+            local name = list:GetName()
+            for _, s in ipairs({ { "NameSortButton", "BOTTOMLEFT", 12 }, { "ClassSortButton", "BOTTOM", 20 },
+                { "StatusSortButton", "BOTTOMRIGHT", -30 } }) do
+                local b = G(name .. s[1])
+                -- (nur, solange Blizzard sie noch an der Oberkante der Liste hat – danach gilt Blizzards Ausrichtung)
+                local p = b and b:GetNumPoints() == 1 and b:GetPoint(1)
+                if p == "BOTTOM" then
+                    b:ClearAllPoints()
+                    b:SetPoint(s[2], list, s[2] == "BOTTOM" and "TOP" or (s[2] == "BOTTOMLEFT" and "TOPLEFT" or "TOPRIGHT"), s[3], 0)
+                end
+            end
+        end
+    end
+end
+
+-- Termin erstellen: Blizzards braune Knopfleiste weg, unten eine Fußleiste mit feiner goldener Linie, die Knöpfe
+-- mittig darin (10 vom Rand)
+local CREATE_FOOTER = 40
+local function CreateFooter(f)
+    if done.createFooter then return end
+    done.createFooter = true
+    ns.Hide(G("CalendarCreateEventFrameButtonBackground"))
+    local foot = Tex(f, "BACKGROUND", -7, C.header)
+    foot:SetPoint("BOTTOMLEFT", 1, 1)
+    foot:SetPoint("BOTTOMRIGHT", -1, 1)
+    foot:SetHeight(CREATE_FOOTER)
+    local line = Tex(f, "BORDER", -6, C.accent, 0.35)
+    line:SetPoint("BOTTOMLEFT", foot, "TOPLEFT")
+    line:SetPoint("BOTTOMRIGHT", foot, "TOPRIGHT")
+    ns.OnePixel(line, true)
+    local y = CREATE_FOOTER / 2
+    for _, s in ipairs({ { "CalendarCreateEventMassInviteButton", "LEFT", 10 }, { "CalendarCreateEventRaidInviteButton", "LEFT", 10 },
+        { "CalendarCreateEventCreateButton", "RIGHT", -10 } }) do
+        local b = G(s[1])
+        if b and not Forbidden(b) then
+            b:ClearAllPoints()
+            b:SetPoint(s[2], f, "BOTTOM" .. s[2], s[3], y)
+        end
+    end
+end
+
 local function SkinEventFrame(f)
     if not f or Forbidden(f) then return end
+    if f == G("CalendarCreateEventFrame") then CreateFooter(f) end
     if not done[f] then
         done[f] = true
         ns.Hide(f.Border)
@@ -215,7 +262,19 @@ local function SkinEventFrame(f)
         end
         ns.Watch(f)
         -- Blizzard füllt die Fenster beim Öffnen (Auswahllisten, Einladungsliste) – dann noch einmal durchsehen
-        f:HookScript("OnShow", function(self) pcall(ScanEvent, self, 1) end)
+        f:HookScript("OnShow", function(self)
+            pcall(ScanEvent, self, 1)
+            pcall(SortButtons)
+        end)
+        -- solange offen: Spaltenköpfe prüfen (die Liste lädt nach)
+        local watch = CreateFrame("Frame", nil, f)
+        local waited = 0
+        watch:SetScript("OnUpdate", function(_, elapsed)
+            waited = waited + elapsed
+            if waited < 0.3 then return end
+            waited = 0
+            pcall(SortButtons)
+        end)
     end
     ScanEvent(f, 1)
 end
