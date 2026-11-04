@@ -61,6 +61,7 @@ local FACTION_ICON = {
 local STATUS = {
     DONE = { textKey = "STATUS_DONE", stripe = { 0.2, 0.8, 0.3 }, pill = { 0.12, 0.40, 0.18, 0.9 } },
     ACTIVE = { textKey = "STATUS_ACTIVE", stripe = { 1, 0.82, 0 }, pill = { 0.45, 0.35, 0.05, 0.9 } },
+    READY = { textKey = "STATUS_READY", stripe = { 0.2, 0.8, 0.3 }, pill = { 0.12, 0.40, 0.18, 0.9 } }, -- (Questlog: abgabebereit)
     OPEN = { stripe = { 0.35, 0.35, 0.40 } },
 }
 
@@ -326,6 +327,54 @@ local function CountQuests(dungeon)
         end
     end
     return remaining, completed
+end
+
+-- Eintrag "Questlog" oben in der Liste: die Quests aus dem eigenen Questlog als Karten im Stil der Dungeonquests
+-- (wird bei jedem Anzeigen neu aus dem Questlog gelesen; Tracker und Questlog der Weltkarte bleiben unverändert)
+local QUESTLOG = { name = "", isLog = true, quests = {} }
+local function RefreshLogQuests()
+    QUESTLOG.name = ns.L("QUESTLOG_ENTRY")
+    local quests, zone = {}, nil
+    local num = C_QuestLog.GetNumQuestLogEntries and C_QuestLog.GetNumQuestLogEntries() or 0
+    for i = 1, num do
+        local info = C_QuestLog.GetInfo(i)
+        if info then
+            if info.isHeader then
+                zone = info.title
+            elseif not info.isHidden and info.questID and info.questID > 0 then
+                quests[#quests + 1] = { id = info.questID, name = info.title, zone = zone, isLog = true,
+                    level = (info.level and info.level > 0) and tostring(info.level) or nil }
+            end
+        end
+    end
+    QUESTLOG.quests = quests
+    return quests
+end
+
+-- Questlog-Quest abgabebereit (alle Ziele erfüllt)?
+local function IsLogQuestReady(questID)
+    return questID and C_QuestLog.IsComplete and C_QuestLog.IsComplete(questID) and true or false
+end
+
+local function LogReadyCount()
+    local n = 0
+    for _, quest in ipairs(QUESTLOG.quests) do
+        if IsLogQuestReady(quest.id) then n = n + 1 end
+    end
+    return n
+end
+
+-- Ziele einer Questlog-Quest mit Fortschritt (erfüllte grün), je Ziel eine Zeile; ohne Ziele der Questtext
+local function LogObjectivesText(questID)
+    local objectives = C_QuestLog.GetQuestObjectives and C_QuestLog.GetQuestObjectives(questID)
+    if type(objectives) ~= "table" or #objectives == 0 then return GetQuestTooltipText(questID) or "" end
+    local lines = {}
+    for _, o in ipairs(objectives) do
+        if o.text and o.text ~= "" then
+            lines[#lines + 1] = (o.finished and "|cff55cc66" or "|cffdddddd") .. "• " .. o.text .. "|r"
+        end
+    end
+    return table.concat(lines, "\n")
 end
 
 -- Quest im Chat verlinken: echter Questlink (über die ID), sonst der Name in eckigen Klammern
@@ -1455,11 +1504,13 @@ RefreshDetail = function()
     if not window or not window:IsShown() then return end
 
     local dungeon = selectedDungeon
+    local isLog = dungeon ~= nil and dungeon.isLog == true
+    if isLog then RefreshLogQuests() end
     atlasButton:SetShown(dungeon ~= nil and dungeon.areaID ~= nil and IsAtlasLootAvailable())
-    -- "Alle teilen" (ohne Gruppe blass) und "Gruppe" (nur in einer Gruppe)
-    shareAllButton:SetShown(#GetQuestsInLog(dungeon) > 0)
+    -- "Alle teilen" (ohne Gruppe blass) und "Gruppe" (nur in einer Gruppe) – beim Questlog nicht (gilt Dungeons)
+    shareAllButton:SetShown(not isLog and #GetQuestsInLog(dungeon) > 0)
     shareAllButton:SetAlpha(IsInGroup() and 1 or 0.45)
-    groupButton:SetShown(dungeon ~= nil and IsInGroup())
+    groupButton:SetShown(dungeon ~= nil and not isLog and IsInGroup())
     -- Sichtbare Knöpfe von rechts nach links anordnen: [Gruppe] [Alle teilen] [Bosse & Beute]
     local headerAnchor
     for _, button in ipairs({ atlasButton, shareAllButton, groupButton }) do
@@ -1491,6 +1542,11 @@ RefreshDetail = function()
     -- Kopfbereich: Titel und Plaketten
     detailTitle:SetText(Localized(dungeon, "name"))
     local pillList = {}
+    if isLog then
+        table.insert(pillList, { ns.L("QUESTLOG_COUNT", #dungeon.quests), { 0.18, 0.18, 0.22, 1 } })
+        local ready = LogReadyCount()
+        if ready > 0 then table.insert(pillList, { ns.L("READY_COUNT", ready), STATUS.READY.pill }) end
+    end
     if dungeon.levels then
         table.insert(pillList, { ns.L("LEVEL", ColoredLevels(dungeon.levels)), { 0.18, 0.18, 0.22, 1 } })
     end
@@ -1517,6 +1573,7 @@ RefreshDetail = function()
             entry.quest = quest
 
             local status = GetQuestStatus(quest.id) or "OPEN"
+            if quest.isLog and status == "ACTIVE" and IsLogQuestReady(quest.id) then status = "READY" end
             local style = STATUS[status]
             entry.stripe:SetColorTexture(style.stripe[1], style.stripe[2], style.stripe[3], 1)
             done = done + card.done
@@ -1547,7 +1604,14 @@ RefreshDetail = function()
             -- Zeile 1: Questgeber, Ort und Kurzangaben; Zeile 2 nur bei Vorquest/Notiz.
             -- Ist der Questgeber ein Gegenstand, steht er in einer eigenen Zeile darüber (entry.giverItem)
             local parts = {}
-            if quest.giverItemID then
+            if quest.isLog then
+                -- Questlog: Gebiet (Überschrift im Questlog) und, falls die Quest zu einem Dungeon gehört, dieser
+                if quest.zone then table.insert(parts, "|cff888888" .. quest.zone .. "|r") end
+                local inDungeon = ns.DungeonForQuest and ns.DungeonForQuest(quest.id)
+                if inDungeon then
+                    table.insert(parts, "|cff4fc3f7" .. ns.L("QUESTLOG_DUNGEON", Localized(inDungeon, "name")) .. "|r")
+                end
+            elseif quest.giverItemID then
                 if quest.zone then table.insert(parts, where) end
             else
                 table.insert(parts, (GiverText(quest, true) or "?") .. " |cff888888–|r " .. where)
@@ -1595,7 +1659,7 @@ RefreshDetail = function()
             -- Rechts Platz für die Plaketten lassen
             -- Reihenfolge rechts in der Titelzeile: [Status] [Fraktion] [Level] [Teilen] [Kartenpunkt]
             local hasWaypoint = quest.x ~= nil and quest.y ~= nil
-            local hasShare = status == "ACTIVE"
+            local hasShare = status == "ACTIVE" or status == "READY"
             entry.waypointButton:SetShown(hasWaypoint)
             entry.shareButton:SetShown(hasShare)
             -- Ohne Gruppe bzw. bei nicht teilbaren Quests nur blass anzeigen (Tooltip nennt den Grund)
@@ -1645,7 +1709,9 @@ RefreshDetail = function()
             entry.info:SetWidth(width - 24)
             entry.info:SetText(table.concat(lines, "\n"))
             entry.desc:SetWidth(width - 24)
-            entry.desc:SetText(GetQuestTooltipText(quest.id) or "")
+            -- Questlog: die Ziele mit Fortschritt (je Ziel eine Zeile); Dungeonquests: Text aus dem Quest-Tooltip
+            if entry.desc.SetMaxLines then entry.desc:SetMaxLines(quest.isLog and 8 or 2) end
+            entry.desc:SetText((quest.isLog and LogObjectivesText(quest.id)) or GetQuestTooltipText(quest.id) or "")
 
             -- Startgegenstand: Symbol in Seltenheitsfarbe, "Startet durch: [Name]"
             local giverItemHeight = 0
@@ -1686,7 +1752,11 @@ RefreshDetail = function()
     questContent:SetHeight(math.max(1, y))
 
     -- Zusammenfassung bzw. Hinweis, wenn nichts angezeigt wird
-    if total == 0 then
+    if isLog then
+        detailExtra:SetText(ns.L("QUESTLOG_COUNT", total) .. "  ·  " .. ns.L("READY_COUNT", LogReadyCount()))
+        detailEmpty:SetText(ns.L("QUESTLOG_EMPTY"))
+        detailEmpty:SetShown(shown == 0)
+    elseif total == 0 then
         detailExtra:SetText("")
         detailEmpty:SetText(ns.L("NO_QUESTS_DUNGEON"))
         detailEmpty:Show()
@@ -2049,17 +2119,50 @@ RefreshList = function()
             if dungeon == selectedDungeon then selectedVisible = true end
         end
     end
+    -- (der Eintrag "Questlog" steht in jedem Reiter)
+    if selectedDungeon == QUESTLOG then selectedVisible = true end
     -- Ist der gewählte Dungeon im Reiter nicht dabei, den ersten passenden wählen
     if not selectedVisible and (levelTabActive or raidTabActive or (selectedDungeon and selectedDungeon.isRaid)) then
         selectedDungeon = visible[1]
     end
 
     local shown = 0
+    -- ganz oben: "Questlog" (eigene Quests als Karten) – ohne Auge und Wappen, Anzahl der Quests, Balken = Anteil
+    -- der abgabebereiten
+    do
+        local quests = RefreshLogQuests()
+        shown = 1
+        local button = GetListButton(1)
+        button.dungeon = QUESTLOG
+        button:ClearAllPoints()
+        button:SetPoint("TOPLEFT", listContent, "TOPLEFT", 4, 0)
+        button:SetWidth(width - 8)
+        button.eye:Hide()
+        button.factionIcon:Hide()
+        button.name:SetText(ns.L("QUESTLOG_ENTRY"))
+        button.name:SetTextColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3])
+        local ready = LogReadyCount()
+        button.sub:SetText("|cff8a8a8a" .. ns.L("QUESTLOG_COUNT", #quests) .. "  ·  " .. ns.L("READY_COUNT", ready) .. "|r")
+        if #quests > 0 then SetPill(button.countPill, #quests, { 0.22, 0.22, 0.27, 1 }) else button.countPill:Hide() end
+        button.progressBg:SetShown(#quests > 0)
+        if #quests > 0 and ready > 0 then
+            local barWidth = math.max(1, width - 8 - 34 - 44)
+            button.progressFill:SetWidth(math.max(1, barWidth * ready / #quests))
+            button.progressFill:Show()
+        else
+            button.progressFill:Hide()
+        end
+        local selected = selectedDungeon == QUESTLOG
+        button.selectBar:SetShown(selected)
+        button.background:SetColorTexture(1, 1, 1, selected and 0.08 or 0)
+        button:Show()
+    end
     for _, dungeon in ipairs(visible) do
         do
             shown = shown + 1
             local button = GetListButton(shown)
             button.dungeon = dungeon
+            button.eye:Show()
             button:ClearAllPoints()
             button:SetPoint("TOPLEFT", listContent, "TOPLEFT", 4, -(shown - 1) * LIST_ROW_HEIGHT)
             button:SetWidth(width - 8)
@@ -2458,6 +2561,10 @@ local function CreateWindow()
     end
     window:SetScript("OnEvent", function(_, event)
         RequestRefresh()
+        -- Quest angenommen, abgegeben oder abgebrochen: Anzahl beim Eintrag "Questlog" aktuell halten
+        if (event == "QUEST_ACCEPTED" or event == "QUEST_TURNED_IN" or event == "QUEST_REMOVED") and window:IsShown() then
+            C_Timer.After(0.3, function() if window and window:IsShown() then RefreshList() end end)
+        end
         -- Beim Levelaufstieg kann sich der Levelbereich der Liste ändern
         if event == "PLAYER_LEVEL_UP" and window:IsShown() then RefreshList() end
     end)
@@ -2510,6 +2617,7 @@ local function DungeonByQuest(questID)
     end
     return questID and apiQuestIndex[questID]
 end
+ns.DungeonForQuest = DungeonByQuest -- (Questlog-Karten: "Dungeon: …")
 do
     local HUB = _G.ForeverHub and _G.ForeverHub.UI
     if HUB and HUB.API then

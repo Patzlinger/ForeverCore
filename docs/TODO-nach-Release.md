@@ -16,8 +16,6 @@ Auswirkung im Spiel.
     Gruppeneinladung, PvP-Bereitschaft, Farbauswahl, Quest-Details-Popup, Modellvorschau, Auswahlfenster,
     Beuteverlauf, Währung übertragen, Spieler melden, Schnelltastenbelegung, Sprechkopf, Sockeln (falls vorhanden)
   - Abgleich im Spiel: `/fskin fenster` (listet alle großen Fenster, umgestaltet `+` oder nicht `-`)
-- [ ] ⚠ **Questlog im Dungeonfenster** (ForeverQuests): die Quests des gewählten Dungeons direkt im Dungeonfenster als
-      Questlog anzeigen
 - [ ] ⚠ **Alle Addons über `/f move` verschieben** (alle Forever-Addons): ein gemeinsamer Verschiebe-Modus statt der
       einzelnen `move`-Befehle; Rechtsklick auf einen Rahmen öffnet direkt die passende Seite im Einstellungsmenü
 - [ ] ⚠ **Eigenen Bearbeitungsmodus bei Kampfbeginn beenden** (ForeverCore/alle Addons): offener Verschiebe-Modus
