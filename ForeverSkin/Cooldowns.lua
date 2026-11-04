@@ -2,7 +2,7 @@
 -- Flacher Rahmen mit Titelleiste, Spezialisierungs-Symbol klein links, ohne Suchleiste; die Seitenreiter bleiben
 -- Blizzards (wie die der Gruppensuche – auf Wunsch einheitlich), Kategorie-Überschriften (auch auf der Gruppen-Buff-Seite) als flache Balken mit feinem Pfeil, Zauber
 -- als Plätze wie in ForeverBags, Balken-Einträge flach, Fußleiste mit goldener Linie (Layout-Auswahl,
--- "Änderungen rückgängig"). Die Layout-Dialoge bleiben vorerst Blizzards.
+-- "Änderungen rückgängig"); die Layout-Dialoge (Neu, Umbenennen, Import) wie unsere Rückfrage-Fenster.
 -- Symbole können im Kampf gesperrt sein: wir lesen sie nie, sondern versetzen nur ihre Ränder.
 local _, ns = ...
 
@@ -195,6 +195,57 @@ local function Place(f)
     Portrait(f)
 end
 
+-- Layout-Dialoge (Neu, Umbenennen, Löschen, Import): wie unsere Rückfrage-Fenster (Popups.lua) – flach und dunkel mit
+-- goldener Linie oben; Namensfeld und Import-Feld flach, "Nur dieser Charakter" als flaches Kästchen, Knöpfe flach
+local function SkinInput(box)
+    if not box or done[box] or Forbidden(box) then return end
+    done[box] = true
+    for _, key in ipairs({ "Left", "Middle", "Right", "Mid" }) do ns.Hide(box[key]) end
+    local name = box:GetName()
+    if name then
+        for _, suffix in ipairs({ "Left", "Middle", "Right", "Mid" }) do ns.Hide(G(name .. suffix)) end
+    end
+    ns.HideTextures(box)
+    ns.Flat(box, ns.C.input, { -4, 6, 0, 6 })
+end
+local function SkinDialog(d)
+    if not d or Forbidden(d) then return end
+    for _, key in ipairs({ "AcceptButton", "CancelButton" }) do
+        if d[key] then ns.SkinButton(d[key]) end
+    end
+    if done[d] then return end
+    done[d] = true
+    ns.Hide(d.Border)
+    ns.HideTextures(d)
+    ns.Flat(d, ns.C.background)
+    local line = d:CreateTexture(nil, "BORDER", nil, -6)
+    line:SetTexture(WHITE)
+    line:SetVertexColor(ns.C.accent[1], ns.C.accent[2], ns.C.accent[3], 0.8)
+    line:SetPoint("TOPLEFT", 1, -1)
+    line:SetPoint("TOPRIGHT", -1, -1)
+    ns.OnePixel(line, true)
+    SkinInput(d.LayoutNameEditBox)
+    local import = d.ImportBox
+    if import and not Forbidden(import) then
+        ns.HideTextures(import)
+        ns.Flat(import, ns.C.input, -4)
+        if import.ScrollBar then ns.SkinScrollBar(import.ScrollBar) end
+    end
+    local check = d.CharacterSpecificLayoutCheckButton
+    local cb = check and (check.Button or check.CheckButton)
+    if cb and not Forbidden(cb) then ns.SkinCheck(cb) end
+    ns.Watch(d)
+end
+local function SkinDialogs()
+    for _, name in ipairs({ "CooldownViewerLayoutDialog", "CooldownViewerImportLayoutDialog" }) do
+        local d = G(name)
+        if d and not done[d] then
+            Step("dialog", function() SkinDialog(d) end)
+            d:HookScript("OnShow", function(self) pcall(SkinDialog, self) end)
+        end
+    end
+end
+
 local skinned
 local function SkinCooldowns(f)
     if not f or skinned or Forbidden(f) then return end
@@ -234,7 +285,9 @@ local events = CreateFrame("Frame")
 events:RegisterEvent("PLAYER_LOGIN")
 events:RegisterEvent("ADDON_LOADED")
 events:SetScript("OnEvent", function()
-    if skinned or not ns.GetDB().cooldowns then return end
+    if not ns.GetDB().cooldowns then return end
+    SkinDialogs()
+    if skinned then return end
     local f = G("CooldownViewerSettings")
     if f then Step("skin", function() SkinCooldowns(f) end) end
 end)

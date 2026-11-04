@@ -10,7 +10,7 @@
 
 - ForeverSkin: social window in the Forever look (first version) – flat frame and inner area, a footer bar with a gold line for the buttons, flat tabs at the bottom and on top (selected one gold), flat Battle.net bar and status dropdown; friends, who list and ignore list as grey rows with a fine border (mouse over and selected = gold); who list column headers and search box flat; raid tab buttons and "All assistant" flat. The raid groups and "Friends of friends" stay Blizzard's for now. Switch: /fskin » "Social window".
 
-- ForeverSkin: cooldown manager in the Forever look (first version) – flat frame with the spec icon in the title bar, side tabs like in the group finder, no search bar, category headings (also on the group buffs page) as flat bars with fine arrows, spells as dark slots like in ForeverBags, flat bars, a gold insert line while dragging and a footer bar with the layout dropdown and "Revert changes". The layout dialogs stay Blizzard's for now. Switch: /fskin » "Cooldown manager".
+- ForeverSkin: cooldown manager in the Forever look (first version) – flat frame with the spec icon in the title bar, side tabs like in the group finder, no search bar, category headings (also on the group buffs page) as flat bars with fine arrows, spells as dark slots like in ForeverBags, flat bars, a gold insert line while dragging and a footer bar with the layout dropdown and "Revert changes". The layout dialogs (new, rename, import) look like our confirmation dialogs: flat with a gold line on top, flat name and import fields, check box and buttons. Switch: /fskin » "Cooldown manager".
 
 ## 0.5b – November 2, 2026
 
