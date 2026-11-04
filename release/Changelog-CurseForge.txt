@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverSkin: calendar, clock and stopwatch in the Forever look (first version) – the calendar without Blizzard's stone frame: a flat header with month and year and a gold line, weekdays on a darker bar, the days as a flat grid with fine borders (mouse over and today = gold), days of other months dimmed; holiday pictures stay. The clock as a flat window with the time in the title bar, flat check boxes, dropdowns and message field; the stopwatch flat with a dark header and gold line. The event windows of the calendar stay Blizzard's for now. Switch: /fskin » "Calendar, clock and stopwatch".
+
 - ForeverSkin: auction house in the Forever look (first version) – flat frame with your gold in the title bar (Blizzard's money bar at the bottom hidden), flat tabs attached to the window (selected one gold), flat search bar, filter and buttons, the category list and result lists flat with grey rows (mouse over and selected = gold), flat column headers with the sort arrow, gold scroll bars. Money inputs and the sell item slot stay Blizzard's for now. Switch: /fskin » "Auction house".
 
 - ForeverSkin: inspect window in the Forever look (first version), built like the character window – no title bar, a small round portrait of the inspected player with a gold ring on the top left corner, the name in gold, a fine gold line; equipment slots like bag slots with a muted gold edge; the ornaments around the model are gone (model, its background and the faction crest stay). Switch: /fskin » "Inspect (other players)".
