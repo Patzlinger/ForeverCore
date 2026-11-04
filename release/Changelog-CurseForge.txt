@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- ForeverQuests: dungeon window – a new "Quest log" entry at the top of the list shows the quests in your quest log as cards in the same style as the dungeon quests: zone, objectives with progress, "In quest log" / "Ready to turn in", the dungeon a quest belongs to, quest chain, rewards and the share button. The tracker and the world map quest log stay as they are.
+- ForeverQuests: dungeon window – a new "Quest log" tab next to "Dungeons" and "Raids": on the left "All quests" and one entry per zone of your quest log, on the right your quests as cards in the same style as the dungeon quests: zone, objectives with progress, "In quest log" / "Ready to turn in", the dungeon a quest belongs to, quest chain, rewards and the share button. The tracker and the world map quest log stay as they are.
 
 - ForeverSkin: calendar, clock and stopwatch in the Forever look (first version) – the calendar without Blizzard's stone frame: a flat header with month and year and a gold line, weekdays on a darker bar, the days as a flat grid with fine borders (mouse over and today = gold), days of other months dimmed; holiday pictures stay. The clock as a flat window with the time in the title bar, flat check boxes, dropdowns and message field; the stopwatch flat with a dark header and gold line. The event windows (view, create/edit, mass invite, holiday and raid info, event and picture pickers) are flat with a dark title bar and gold line, flat buttons, input fields, dropdowns, check boxes, text boxes and scroll bars, gold dividers and no glowing RSVP buttons. Switch: /fskin » "Calendar, clock and stopwatch".
 

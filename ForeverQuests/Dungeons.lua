@@ -13,6 +13,7 @@ local onlyOwnFaction = true
 local hideCompleted = false -- Häkchen "Abgeschlossene ausblenden"
 local levelTabActive = true -- Reiter "Mein Levelbereich" (standardmäßig gewählt)
 local raidTabActive = false  -- Reiter "Schlachtzüge" (die anderen Reiter zeigen nur Dungeons)
+local logTabActive = false   -- Reiter "Questlog" (eigene Quests nach Gebieten)
 local LEVEL_EARLY = 2        -- Dungeons schon so viele Level vor dem Mindestlevel zeigen
 local refreshPending = false
 
@@ -27,7 +28,7 @@ function ns.ApplyBetaFilter()
     ns.DUNGEON_DATA = ALL_DUNGEONS
 end
 
-local LIST_WIDTH = 290
+local LIST_WIDTH = 320 -- (Platz für vier Reiter: Mein Level, Dungeons, Schlachtzüge, Questlog)
 local LIST_ROW_HEIGHT = 44
 local HEADER_HEIGHT = 40
 local FOOTER_HEIGHT = 40
@@ -329,11 +330,16 @@ local function CountQuests(dungeon)
     return remaining, completed
 end
 
--- Eintrag "Questlog" oben in der Liste: die Quests aus dem eigenen Questlog als Karten im Stil der Dungeonquests
--- (wird bei jedem Anzeigen neu aus dem Questlog gelesen; Tracker und Questlog der Weltkarte bleiben unverändert)
+-- Reiter "Questlog": die Quests aus dem eigenen Questlog als Karten im Stil der Dungeonquests. Links stehen wie bei
+-- den Dungeons Einträge – "Alle Quests" (QUESTLOG) und je Gebiet (Überschrift im Questlog) einer. Wird bei jedem
+-- Anzeigen neu aus dem Questlog gelesen; Tracker und Questlog der Weltkarte bleiben unverändert.
 local QUESTLOG = { name = "", isLog = true, quests = {} }
+local logZones = {}     -- [Gebietsname] = Eintrag (bleibt erhalten, damit die Auswahl beim Neuaufbau bestehen bleibt)
+local logZoneOrder = {} -- Gebiete in der Reihenfolge des Questlogs
 local function RefreshLogQuests()
-    QUESTLOG.name = ns.L("QUESTLOG_ENTRY")
+    QUESTLOG.name = ns.L("QUESTLOG_ALL")
+    for _, z in pairs(logZones) do z.quests = {} end
+    wipe(logZoneOrder)
     local quests, zone = {}, nil
     local num = C_QuestLog.GetNumQuestLogEntries and C_QuestLog.GetNumQuestLogEntries() or 0
     for i = 1, num do
@@ -342,8 +348,17 @@ local function RefreshLogQuests()
             if info.isHeader then
                 zone = info.title
             elseif not info.isHidden and info.questID and info.questID > 0 then
-                quests[#quests + 1] = { id = info.questID, name = info.title, zone = zone, isLog = true,
+                local quest = { id = info.questID, name = info.title, zone = zone, isLog = true,
                     level = (info.level and info.level > 0) and tostring(info.level) or nil }
+                quests[#quests + 1] = quest
+                local key = zone or "?"
+                local entry = logZones[key]
+                if not entry then
+                    entry = { name = key, isLog = true, quests = {} }
+                    logZones[key] = entry
+                end
+                if #entry.quests == 0 then logZoneOrder[#logZoneOrder + 1] = entry end
+                table.insert(entry.quests, quest)
             end
         end
     end
@@ -356,9 +371,9 @@ local function IsLogQuestReady(questID)
     return questID and C_QuestLog.IsComplete and C_QuestLog.IsComplete(questID) and true or false
 end
 
-local function LogReadyCount()
+local function LogReadyCount(entry)
     local n = 0
-    for _, quest in ipairs(QUESTLOG.quests) do
+    for _, quest in ipairs((entry or QUESTLOG).quests) do
         if IsLogQuestReady(quest.id) then n = n + 1 end
     end
     return n
@@ -1505,7 +1520,14 @@ RefreshDetail = function()
 
     local dungeon = selectedDungeon
     local isLog = dungeon ~= nil and dungeon.isLog == true
-    if isLog then RefreshLogQuests() end
+    if isLog then
+        RefreshLogQuests()
+        -- Gebiet ohne Quests mehr (alle abgegeben): "Alle Quests" zeigen
+        if #dungeon.quests == 0 and dungeon ~= QUESTLOG then
+            dungeon = QUESTLOG
+            selectedDungeon = QUESTLOG
+        end
+    end
     atlasButton:SetShown(dungeon ~= nil and dungeon.areaID ~= nil and IsAtlasLootAvailable())
     -- "Alle teilen" (ohne Gruppe blass) und "Gruppe" (nur in einer Gruppe) – beim Questlog nicht (gilt Dungeons)
     shareAllButton:SetShown(not isLog and #GetQuestsInLog(dungeon) > 0)
@@ -1544,7 +1566,7 @@ RefreshDetail = function()
     local pillList = {}
     if isLog then
         table.insert(pillList, { ns.L("QUESTLOG_COUNT", #dungeon.quests), { 0.18, 0.18, 0.22, 1 } })
-        local ready = LogReadyCount()
+        local ready = LogReadyCount(dungeon)
         if ready > 0 then table.insert(pillList, { ns.L("READY_COUNT", ready), STATUS.READY.pill }) end
     end
     if dungeon.levels then
@@ -1753,7 +1775,7 @@ RefreshDetail = function()
 
     -- Zusammenfassung bzw. Hinweis, wenn nichts angezeigt wird
     if isLog then
-        detailExtra:SetText(ns.L("QUESTLOG_COUNT", total) .. "  ·  " .. ns.L("READY_COUNT", LogReadyCount()))
+        detailExtra:SetText(ns.L("QUESTLOG_COUNT", total) .. "  ·  " .. ns.L("READY_COUNT", LogReadyCount(dungeon)))
         detailEmpty:SetText(ns.L("QUESTLOG_EMPTY"))
         detailEmpty:SetShown(shown == 0)
     elseif total == 0 then
@@ -2119,44 +2141,64 @@ RefreshList = function()
             if dungeon == selectedDungeon then selectedVisible = true end
         end
     end
-    -- (der Eintrag "Questlog" steht in jedem Reiter)
-    if selectedDungeon == QUESTLOG then selectedVisible = true end
-    -- Ist der gewählte Dungeon im Reiter nicht dabei, den ersten passenden wählen
-    if not selectedVisible and (levelTabActive or raidTabActive or (selectedDungeon and selectedDungeon.isRaid)) then
+    -- Reiter "Questlog": links "Alle Quests" und je Gebiet ein Eintrag (ohne Auge und Wappen; Anzahl der Quests,
+    -- Balken = Anteil der abgabebereiten); die Suche findet Gebiets- und Questnamen
+    if logTabActive then
+        RefreshLogQuests()
+        local entries = { QUESTLOG }
+        for _, zone in ipairs(logZoneOrder) do
+            local hit = filter == "" or zone.name:lower():find(filter, 1, true)
+            if not hit then
+                for _, quest in ipairs(zone.quests) do
+                    if (quest.name or ""):lower():find(filter, 1, true) then hit = true break end
+                end
+            end
+            if hit then entries[#entries + 1] = zone end
+        end
+        local found = false
+        for _, e in ipairs(entries) do if e == selectedDungeon then found = true end end
+        if not found then selectedDungeon = QUESTLOG end
+        for i, e in ipairs(entries) do
+            local button = GetListButton(i)
+            button.dungeon = e
+            button:ClearAllPoints()
+            button:SetPoint("TOPLEFT", listContent, "TOPLEFT", 4, -(i - 1) * LIST_ROW_HEIGHT)
+            button:SetWidth(width - 8)
+            button.eye:Hide()
+            button.factionIcon:Hide()
+            button.name:SetText(e == QUESTLOG and ns.L("QUESTLOG_ALL") or e.name)
+            if e == QUESTLOG then
+                button.name:SetTextColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3])
+            else
+                button.name:SetTextColor(0.95, 0.95, 0.95)
+            end
+            local count, ready = #e.quests, LogReadyCount(e)
+            button.sub:SetText("|cff8a8a8a" .. ns.L("QUESTLOG_COUNT", count) .. "  ·  " .. ns.L("READY_COUNT", ready) .. "|r")
+            if count > 0 then SetPill(button.countPill, count, { 0.22, 0.22, 0.27, 1 }) else button.countPill:Hide() end
+            button.progressBg:SetShown(count > 0)
+            if count > 0 and ready > 0 then
+                local barWidth = math.max(1, width - 8 - 34 - 44)
+                button.progressFill:SetWidth(math.max(1, barWidth * ready / count))
+                button.progressFill:Show()
+            else
+                button.progressFill:Hide()
+            end
+            local selected = e == selectedDungeon
+            button.selectBar:SetShown(selected)
+            button.background:SetColorTexture(1, 1, 1, selected and 0.08 or 0)
+            button:Show()
+        end
+        for i = #entries + 1, #listButtons do listButtons[i]:Hide() end
+        listContent:SetHeight(math.max(1, #entries * LIST_ROW_HEIGHT))
+        return
+    end
+    -- Ist der gewählte Dungeon im Reiter nicht dabei, den ersten passenden wählen (auch nach dem Reiter "Questlog")
+    if not selectedVisible and (levelTabActive or raidTabActive or (selectedDungeon and (selectedDungeon.isRaid
+        or selectedDungeon.isLog))) then
         selectedDungeon = visible[1]
     end
 
     local shown = 0
-    -- ganz oben: "Questlog" (eigene Quests als Karten) – ohne Auge und Wappen, Anzahl der Quests, Balken = Anteil
-    -- der abgabebereiten
-    do
-        local quests = RefreshLogQuests()
-        shown = 1
-        local button = GetListButton(1)
-        button.dungeon = QUESTLOG
-        button:ClearAllPoints()
-        button:SetPoint("TOPLEFT", listContent, "TOPLEFT", 4, 0)
-        button:SetWidth(width - 8)
-        button.eye:Hide()
-        button.factionIcon:Hide()
-        button.name:SetText(ns.L("QUESTLOG_ENTRY"))
-        button.name:SetTextColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3])
-        local ready = LogReadyCount()
-        button.sub:SetText("|cff8a8a8a" .. ns.L("QUESTLOG_COUNT", #quests) .. "  ·  " .. ns.L("READY_COUNT", ready) .. "|r")
-        if #quests > 0 then SetPill(button.countPill, #quests, { 0.22, 0.22, 0.27, 1 }) else button.countPill:Hide() end
-        button.progressBg:SetShown(#quests > 0)
-        if #quests > 0 and ready > 0 then
-            local barWidth = math.max(1, width - 8 - 34 - 44)
-            button.progressFill:SetWidth(math.max(1, barWidth * ready / #quests))
-            button.progressFill:Show()
-        else
-            button.progressFill:Hide()
-        end
-        local selected = selectedDungeon == QUESTLOG
-        button.selectBar:SetShown(selected)
-        button.background:SetColorTexture(1, 1, 1, selected and 0.08 or 0)
-        button:Show()
-    end
     for _, dungeon in ipairs(visible) do
         do
             shown = shown + 1
@@ -2295,10 +2337,11 @@ local function CreateWindow()
     searchBox = CreateFrame("EditBox", nil, listPanel, "BackdropTemplate")
     SetFlat(searchBox, { 0.06, 0.06, 0.08, 1 })
     searchBox:SetHeight(28)
-    -- Reiter: alle Dungeons / nur der eigene Levelbereich / Schlachtzüge
-    local tabWidth = math.floor((LIST_WIDTH - 16 - 12) / 3)
+    -- Reiter: alle Dungeons / nur der eigene Levelbereich / Schlachtzüge / Questlog
+    local tabWidth = math.floor((LIST_WIDTH - 16 - 18) / 4)
     local tabs = {}
     local function CurrentTab()
+        if logTabActive then return "log" end
         if raidTabActive then return "raid" end
         return levelTabActive and "level" or "all"
     end
@@ -2320,6 +2363,7 @@ local function CreateWindow()
     local function SelectTab(key)
         levelTabActive = key == "level"
         raidTabActive = key == "raid"
+        logTabActive = key == "log"
         UpdateTabs()
         listScroll:SetVerticalScroll(0)
         questScroll:SetVerticalScroll(0)
@@ -2334,18 +2378,22 @@ local function CreateWindow()
     local raidTab = ns.Style.CreateButton(listPanel, ns.L("TAB_RAIDS"), tabWidth, 24, function() SelectTab("raid") end,
         function(tooltip) tooltip:AddLine(ns.L("TIP_RAIDS"), 1, 1, 1, true) end)
     raidTab.key = "raid"
-    -- Reihenfolge: Mein Levelbereich (Standard) | Alle Dungeons | Schlachtzüge
+    local logTab = ns.Style.CreateButton(listPanel, ns.L("TAB_QUESTLOG"), tabWidth, 24, function() SelectTab("log") end,
+        function(tooltip) tooltip:AddLine(ns.L("TIP_QUESTLOG"), 1, 1, 1, true) end)
+    logTab.key = "log"
+    -- Reihenfolge: Mein Levelbereich (Standard) | Dungeons | Schlachtzüge | Questlog
     levelTab:SetPoint("TOPLEFT", 8, -8)
     allTab:SetPoint("LEFT", levelTab, "RIGHT", 6, 0)
     raidTab:SetPoint("LEFT", allTab, "RIGHT", 6, 0)
-    tabs = { levelTab, allTab, raidTab }
-    -- Breite nach Textlänge verteilen ("Mein Levelbereich" passte nicht in ein Drittel): jeder Reiter bekommt
+    logTab:SetPoint("LEFT", raidTab, "RIGHT", 6, 0)
+    tabs = { levelTab, allTab, raidTab, logTab }
+    -- Breite nach Textlänge verteilen ("Mein Levelbereich" passte nicht in ein Viertel): jeder Reiter bekommt
     -- seinen Text + Rand, der übrige Platz wird gleichmäßig aufgeteilt
     do
-        local total, natural, sum = LIST_WIDTH - 16 - 12, {}, 0
+        local total, natural, sum = LIST_WIDTH - 16 - 6 * (#tabs - 1), {}, 0
         for i, tab in ipairs(tabs) do
             local fs = tab:GetFontString()
-            natural[i] = math.ceil((fs and fs:GetStringWidth() or 0) + 16)
+            natural[i] = math.ceil((fs and fs:GetStringWidth() or 0) + 12)
             sum = sum + natural[i]
         end
         local extra = (total - sum) / #tabs
@@ -2666,9 +2714,10 @@ function ns.ShowDungeon(dungeon)
     selectedDungeon = dungeon
     -- Passenden Reiter wählen: Schlachtzüge bzw. "Alle Dungeons", wenn der Dungeon im aktuellen Reiter fehlt
     local isRaid = dungeon and dungeon.isRaid == true
-    if raidTabActive ~= isRaid or (levelTabActive and not IsDungeonInMyRange(dungeon)) then
+    if logTabActive or raidTabActive ~= isRaid or (levelTabActive and not IsDungeonInMyRange(dungeon)) then
         raidTabActive = isRaid
         levelTabActive = false
+        logTabActive = false
         if window.UpdateTabs then window.UpdateTabs() end
     end
     if searchBox and searchBox:GetText() ~= "" then searchBox:SetText("") end

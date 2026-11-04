@@ -179,7 +179,7 @@ local STRINGS = {
         ONLY_MY_FACTION = "Nur Quests meiner Fraktion",
         HIDE_COMPLETED = "Abgeschlossene ausblenden",
         REMAINING_COUNT = "%d verbleibend",
-        TAB_ALL = "Alle Dungeons",
+        TAB_ALL = "Dungeons",
         TAB_MY_LEVEL = "Mein Level",
         LEVEL_ABOVE = "Bis %d Level über mir",
         TIP_MY_LEVEL = "Zeigt nur Dungeons, deren Levelbereich zu deinem Level passt – mit dem Regler unten "
@@ -196,7 +196,10 @@ local STRINGS = {
         CHECK_DONE = "Fertig: %d in Ordnung, %d unbekannt, %d mit abweichendem Namen.",
         FACTION_HORDE = "Horde", FACTION_ALLIANCE = "Allianz", FACTION_BOTH = "Beide Fraktionen",
         STATUS_DONE = "Abgeschlossen", STATUS_ACTIVE = "Im Questlog",
-        STATUS_READY = "Abgabebereit", QUESTLOG_ENTRY = "Questlog", QUESTLOG_COUNT = "%d im Questlog",
+        STATUS_READY = "Abgabebereit", QUESTLOG_ALL = "Alle Quests", QUESTLOG_COUNT = "%d im Questlog",
+        TAB_QUESTLOG = "Questlog",
+        TIP_QUESTLOG = "Zeigt die Quests aus deinem Questlog – links nach Gebieten, rechts als Karten mit Zielen, "
+            .. "Fortschritt und Belohnungen. Tracker und Weltkarte bleiben unverändert.",
         READY_COUNT = "%d abgabebereit", QUESTLOG_DUNGEON = "Dungeon: %s",
         QUESTLOG_EMPTY = "Dein Questlog ist leer.",
         NO_DUNGEON = "Kein Dungeon ausgewählt",
@@ -433,7 +436,7 @@ local STRINGS = {
         ONLY_MY_FACTION = "Only quests for my faction",
         HIDE_COMPLETED = "Hide completed",
         REMAINING_COUNT = "%d remaining",
-        TAB_ALL = "All dungeons",
+        TAB_ALL = "Dungeons",
         TAB_MY_LEVEL = "My level",
         LEVEL_ABOVE = "Up to %d levels above me",
         TIP_MY_LEVEL = "Shows only dungeons whose level range fits your level – with the slider at the bottom "
@@ -450,7 +453,10 @@ local STRINGS = {
         CHECK_DONE = "Done: %d OK, %d unknown, %d with a different name.",
         FACTION_HORDE = "Horde", FACTION_ALLIANCE = "Alliance", FACTION_BOTH = "Both factions",
         STATUS_DONE = "Completed", STATUS_ACTIVE = "In quest log",
-        STATUS_READY = "Ready to turn in", QUESTLOG_ENTRY = "Quest log", QUESTLOG_COUNT = "%d in quest log",
+        STATUS_READY = "Ready to turn in", QUESTLOG_ALL = "All quests", QUESTLOG_COUNT = "%d in quest log",
+        TAB_QUESTLOG = "Quest log",
+        TIP_QUESTLOG = "Shows the quests in your quest log – by zone on the left, as cards with objectives, progress "
+            .. "and rewards on the right. The tracker and the world map stay as they are.",
         READY_COUNT = "%d ready", QUESTLOG_DUNGEON = "Dungeon: %s",
         QUESTLOG_EMPTY = "Your quest log is empty.",
         NO_DUNGEON = "No dungeon selected",
