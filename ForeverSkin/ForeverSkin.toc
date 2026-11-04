@@ -34,3 +34,4 @@ Channels.lua
 Character.lua
 Cooldowns.lua
 Social.lua
+Stable.lua
