@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverSkin: auction house in the Forever look (first version) – flat frame with your gold in the title bar (Blizzard's money bar at the bottom hidden), flat tabs attached to the window (selected one gold), flat search bar, filter and buttons, the category list and result lists flat with grey rows (mouse over and selected = gold), flat column headers with the sort arrow, gold scroll bars. Money inputs and the sell item slot stay Blizzard's for now. Switch: /fskin » "Auction house".
+
 - ForeverSkin: inspect window in the Forever look (first version), built like the character window – no title bar, a small round portrait of the inspected player with a gold ring on the top left corner, the name in gold, a fine gold line; equipment slots like bag slots with a muted gold edge; the ornaments around the model are gone (model, its background and the faction crest stay). Switch: /fskin » "Inspect (other players)".
 
 - ForeverSkin: hunter stable in the Forever look (first version) – flat frame with your gold in the title bar, flat inner areas instead of Blizzard's stone pictures, all active and stabled pet slots like bag slots in ForeverBags (dark field, fine border, mouse over and selected = gold), page arrows without boxes. Switch: /fskin » "Stable (hunters)".

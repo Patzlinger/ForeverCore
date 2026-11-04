@@ -36,3 +36,4 @@ Cooldowns.lua
 Social.lua
 Stable.lua
 Inspect.lua
+AuctionHouse.lua
