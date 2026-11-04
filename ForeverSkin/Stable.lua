@@ -88,6 +88,21 @@ local function HideMoneyBar(f)
     end
 end
 
+-- braune Zierleisten über und unter dem Modell: alle langen, dünnen Grafiken (breiter als 150, höchstens 14 hoch),
+-- die nicht von uns stammen, unsichtbar – in allen Unter-Rahmen
+local function HideStrips(frame, depth)
+    if not frame or Forbidden(frame) then return end
+    for _, r in ipairs({ frame:GetRegions() }) do
+        if r:IsObjectType("Texture") and not ns.IsMine(frame, r) and r:GetAlpha() > 0 then
+            local w, h = r:GetWidth() or 0, r:GetHeight() or 0
+            if w > 150 and h > 1.5 and h <= 14 then r:SetAlpha(0) end
+        end
+    end
+    if depth < 4 then
+        for _, child in ipairs({ frame:GetChildren() }) do HideStrips(child, depth + 1) end
+    end
+end
+
 -- "Kaufen" (Stallplatz): Blizzard setzt die roten Knopf-Grafiken teils neu – flach halten
 local function PurchaseButton()
     local b = G("PetStablePurchaseButton")
@@ -127,6 +142,7 @@ local function SkinStable()
         end
     end)
     Step("money", function() HideMoneyBar(f) end)
+    Step("strips", function() HideStrips(f, 1) end)
     Step("purchase", PurchaseButton)
     Step("slots", function()
         SkinSlot(G("PetStableCurrentPet")) -- (Vanilla-Fassung: ein aktueller Begleiter)
@@ -152,6 +168,7 @@ local function SkinStable()
         end
         pcall(PageArrows)
         pcall(HideMoneyBar, f)
+        pcall(HideStrips, f, 1)
         pcall(PurchaseButton)
     end)
 end
