@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- ForeverSkin: hunter stable in the Forever look (first version) – flat frame with the hunter icon in the title bar (no wooden top bar, no help button), the pet list flat with category bars and fine arrows, each pet a grey row with a round portrait (selected one gold), flat search, filter and counter; the 3D model stays with a fine border, flat buttons and specialization dropdown; "Active pets" on a dark bar with a gold line, the slots as round portraits with a ring like the NPC card. Switch: /fskin » "Stable (hunters)".
+- ForeverSkin: hunter stable in the Forever look (first version) – flat frame with your gold in the title bar, flat inner areas instead of Blizzard's stone pictures, all active and stabled pet slots like bag slots in ForeverBags (dark field, fine border, mouse over and selected = gold), page arrows without boxes. Switch: /fskin » "Stable (hunters)".
 
 - ForeverSkin: social window in the Forever look (first version) – flat frame and inner area, a footer bar with a gold line for the buttons, flat tabs at the bottom and on top (selected one gold), flat Battle.net bar and status dropdown; friends, who list and ignore list as grey rows with a fine border (mouse over and selected = gold); who list column headers and search box flat; raid tab buttons and "All assistant" flat. The raid groups and "Friends of friends" stay Blizzard's for now. Switch: /fskin » "Social window".
 

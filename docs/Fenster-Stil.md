@@ -22,7 +22,7 @@ Werte in Punkten des Fensters (vor `ns.Scaled`).
   **Links immer „Dein Gold: …“** – kommt automatisch mit `ns.SkinWindow` (`ns.HeaderGold`, aktualisiert sich bei
   jeder Gold-Änderung). Eigenes Gold dann nirgends sonst im Fenster (Blizzards Gold-Anzeigen ausblenden); wächst die
   Titelleiste nach oben, die Anzeige mitversetzen. Ausnahmen: Beute-Fenster (zu schmal), Optionen-Fenster, Makro-Fenster, Berufe, Talente, Gilde & Communitys,
-  Sammlungen/Vorlagen, Gruppensuche, Chat-Einstellungen/-Channels, Charakterfenster, Abklingzeiten-Manager, Sozialfenster samt Ignorierliste, Stall (kein Bezug zum Gold bzw. auf
+  Sammlungen/Vorlagen, Gruppensuche, Chat-Einstellungen/-Channels, Charakterfenster, Abklingzeiten-Manager, Sozialfenster samt Ignorierliste (kein Bezug zum Gold bzw. auf
   Wunsch) – Liste GOLD_SKIP in ForeverSkin/Core.lua.
 - **Variante ohne Titelleiste** (Anprobe, Charakterfenster): flache Fläche, Titel gold oben, kleines rundes Porträt
   mit goldenem Ring auf der oberen linken Ecke, feine goldene Linie unter dem Kopf.

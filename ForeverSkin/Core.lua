@@ -186,8 +186,7 @@ local goldTexts = {} -- [Fenster] = Text
 local GOLD_SKIP = { LootFrame = true, SettingsPanel = true, MacroFrame = true, ProfessionsBookFrame = true,
     ProfessionsFrame = true, PlayerSpellsFrame = true, CommunitiesFrame = true, CollectionsJournal = true,
     WardrobeFrame = true, LFGParentFrame = true, ChatConfigFrame = true, ChannelFrame = true,
-    CreateChannelPopup = true, CooldownViewerSettings = true, FriendsFrame = true,
-    StableFrame = true }
+    CreateChannelPopup = true, CooldownViewerSettings = true, FriendsFrame = true }
 -- Fenster ohne eigenen Namen, die ebenfalls keinen Kontostand bekommen (z. B. Ignorierliste am Sozialfenster)
 ns.noGold = setmetatable({}, { __mode = "k" })
 local function UpdateGold(fs)
