@@ -136,6 +136,24 @@ local function Scan(frame, depth)
     end
 end
 
+-- Ausrüstungsplätze mit mehr Luft unter der goldenen Linie (wie im Charakterfenster): die beiden obersten Plätze
+-- tiefer, die übrigen hängen darunter und wandern mit
+local SLOT_DOWN = 8
+local function PlaceSlots(f)
+    local inset = f.Inset or G("InspectFrameInset")
+    if not inset then return end
+    for _, s in ipairs({ { "InspectHeadSlot", "TOPLEFT", 4 }, { "InspectHandsSlot", "TOPRIGHT", -4 } }) do
+        local b = G(s[1])
+        if b and not Forbidden(b) then
+            local p, rel, rp, x, y = b:GetPoint(1)
+            if not (b:GetNumPoints() == 1 and p == s[2] and rel == inset and rp == s[2] and x == s[3] and y == -2 - SLOT_DOWN) then
+                b:ClearAllPoints()
+                b:SetPoint(s[2], inset, s[2], s[3], -2 - SLOT_DOWN)
+            end
+        end
+    end
+end
+
 local raised = setmetatable({}, { __mode = "k" })
 local function Raise(obj)
     if not obj or raised[obj] or not obj.GetNumPoints or obj:GetNumPoints() == 0 then return end
@@ -194,6 +212,7 @@ local function SkinInspect()
     Step("portrait", function() Portrait(f) end)
     Step("slots", function()
         for _, s in ipairs(SLOTS) do SkinSlot(G("Inspect" .. s .. "Slot")) end
+        PlaceSlots(f)
     end)
     Step("scan", function() Scan(f, 1) end)
     ns.Watch(f)
@@ -206,6 +225,7 @@ local function SkinInspect()
         if waited < 0.3 then return end
         waited = 0
         pcall(HideFrameArt, f)
+        pcall(PlaceSlots, f)
         pcall(Scan, f, 1)
         pcall(Portrait, f) -- (anderer Spieler betrachtet, ohne dass das Fenster zuging)
     end)

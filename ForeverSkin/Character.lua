@@ -1040,6 +1040,11 @@ local function SkinCharacter()
             end
         end
         waited = 0
+        -- Linie unter den 4 Reitern rechts nur, solange die Werte-Spalte offen ist (zugeklappt ragte sie sonst rechts
+        -- über das Fenster hinaus)
+        local rightHost = G("CharacterFrameRightPaneHost")
+        local rightOpen = rightHost and rightHost:IsVisible() and true or false
+        for _, l in ipairs(rightLines) do l:SetShown(rightOpen) end
         pcall(HideFrameArt, f)
         pcall(SkinExpandButton, f)
         pcall(Scan, f, 1)
