@@ -344,10 +344,236 @@ local function SkinSocial()
     end)
 end
 
+---------------------------------------------------------------------------
+-- Neues Sozialfenster (SocialUIFrame: Seitenreiter rechts, Battle.net-Leiste, Suche/Filter, Freundes-Karten) – das
+-- öffnet Forever mit O. Seitenreiter bleiben Blizzards (wie an der Gruppensuche). Teile nach Art gesucht, weil die
+-- Reiter-Seiten (Freunde, Kürzlich, Schnellbeitritt, Anfragen, Schlachtzug …) erst beim Öffnen entstehen.
+---------------------------------------------------------------------------
+local socialFrames = setmetatable({}, { __mode = "k" }) -- Text-Knöpfe, deren rote Grafiken laufend weg bleiben
+local tints = setmetatable({}, { __mode = "k" })        -- [Karte] = eigene Farbton-Fläche
+local headArrows = setmetatable({}, { __mode = "k" })   -- [Überschrift] = Pfeil
+
+local function SideTab(b)
+    return type(b.SelectedTexture) == "table" and type(b.Icon) == "table" and type(b.Background) == "table"
+end
+
+-- Symbol-Knopf (Menü, Einladen …): Blizzards Kasten weg, Symbol bleibt, flache Fläche dahinter
+local function SkinSquare(b)
+    if not b or done[b] or Forbidden(b) then return end
+    done[b] = true
+    local keep = {}
+    for _, key in ipairs({ "Icon", "ActionIcon" }) do if type(b[key]) == "table" then keep[b[key]] = true end end
+    ns.HideTextures(b, keep)
+    for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetHighlightTexture", "GetDisabledTexture" }) do
+        if b[get] then ns.Hide(b[get](b)) end
+    end
+    ns.Flat(b, C.button, 3)
+    ns.Hover(b)
+end
+
+-- Trennlinie (Blizzards "perks-divider"): unsichtbar, eigene feine goldene Linie an ihrer Stelle
+local function GoldDivider(owner, tex)
+    if type(tex) ~= "table" or done[tex] then return end
+    done[tex] = true
+    tex:SetAlpha(0)
+    local line = owner:CreateTexture(nil, "BORDER", nil, 2)
+    line:SetTexture(WHITE)
+    line:SetVertexColor(C.accent[1], C.accent[2], C.accent[3], 0.5)
+    line:SetPoint("LEFT", tex, "LEFT", 4, 0)
+    line:SetPoint("RIGHT", tex, "RIGHT", -4, 0)
+    ns.OnePixel(line, true)
+end
+
+-- Gruppen-Überschrift ("Favoriten 1/1", "Freundesliste 1/3"): flacher Balken, rechts feiner Pfeil statt Blizzards
+-- Minus/Plus (zugeklappt nach rechts, aufgeklappt nach unten)
+local function SkinListHeader(h)
+    if done[h] or Forbidden(h) then return end
+    done[h] = true
+    ns.HideTextures(h)
+    ns.Flat(h, C.header)
+    ns.Hover(h)
+    local cb = h.CollapseButton
+    if type(cb) == "table" and not Forbidden(cb) then
+        cb:SetAlpha(0)
+        local arrow = h:CreateTexture(nil, "OVERLAY", nil, 7)
+        arrow:SetTexture("Interface\\ChatFrame\\ChatFrameExpandArrow")
+        arrow:SetSize(10, 10)
+        arrow:SetPoint("CENTER", cb, "CENTER")
+        arrow:SetVertexColor(0.8, 0.8, 0.82)
+        headArrows[h] = arrow
+    end
+end
+local function HeaderArrow(h)
+    local arrow, cb = headArrows[h], h.CollapseButton
+    if not arrow or type(cb) ~= "table" then return end
+    local tex = (cb.GetNormalTexture and cb:GetNormalTexture()) or cb.Icon
+    local atlas = tex and tex.GetAtlas and tex:GetAtlas()
+    local collapsed = type(atlas) == "string" and (atlas:lower():find("plus") or atlas:lower():find("expand")) and true
+        or (h.IsCollapsed and h:IsCollapsed()) or false
+    arrow:SetRotation(collapsed and 0 or -math.pi / 2)
+end
+
+-- Freundes-Karte: grauer Balken mit feinem Rand (Maus darauf = gold), darüber ein dezenter Farbton nach Art –
+-- Battle.net blau, WoW-Freund gold, offline ohne (Blizzard setzt dafür sein Hintergrundbild, das unsichtbar bleibt)
+local function CardTint(card)
+    local tint = tints[card]
+    local atlas = card.Background and card.Background.GetAtlas and card.Background:GetAtlas()
+    atlas = type(atlas) == "string" and atlas:lower() or ""
+    if atlas:find("battlenet") then
+        tint:SetVertexColor(0.10, 0.30, 0.50, 0.35)
+    elseif atlas:find("disabled") then
+        tint:SetVertexColor(0, 0, 0, 0)
+    else
+        tint:SetVertexColor(0.45, 0.35, 0.05, 0.25)
+    end
+end
+local function SkinCard(card)
+    if not done[card] and not Forbidden(card) then
+        done[card] = true
+        ns.Hide(card.Background)
+        ns.Hide(card.GetHighlightTexture and card:GetHighlightTexture())
+        ns.Flat(card, C.button, { 0, 2, 0, 2 })
+        ns.Hover(card)
+        local tint = card:CreateTexture(nil, "BACKGROUND", nil, -7)
+        tint:SetTexture(WHITE)
+        tint:SetPoint("TOPLEFT", 1, -3)
+        tint:SetPoint("BOTTOMRIGHT", -1, 3)
+        tints[card] = tint
+        for _, key in ipairs({ "PartyButton", "RAFSummonButton" }) do SkinSquare(card[key]) end
+    end
+    if tints[card] then CardTint(card) end
+end
+
+local function SkinSocialSearch(box)
+    if not box or done[box] or Forbidden(box) then return end
+    done[box] = true
+    ns.Hide(box.NineSlice)
+    SkinSearch(box)
+end
+
+local function ScanSocial(frame, depth)
+    for _, child in ipairs({ frame:GetChildren() }) do
+        if not Forbidden(child) and not done[child] and not SideTab(child) then
+            if child.TopDivider then GoldDivider(child, child.TopDivider) end
+            if child.BottomDivider then GoldDivider(child, child.BottomDivider) end
+            if type(child.ScrollBox) == "table" and child.ScrollBox.ForEachFrame then socialFrames[child.ScrollBox] = "list" end
+            if type(child.Track) == "table" and (child.Track.Thumb or child.Back) then
+                done[child] = true
+                ns.SkinScrollBar(child)
+            elseif child:IsObjectType("DropdownButton") and type(child.Icon) == "table" and not child.Text then
+                SkinSquare(child) -- (Battle.net-Menü: Symbol-Knopf)
+            elseif child:IsObjectType("DropdownButton") then
+                done[child] = true
+                ns.SkinDropdown(child)
+            elseif child:IsObjectType("EditBox") and (type(child.searchIcon) == "table" or type(child.NineSlice) == "table") then
+                SkinSocialSearch(child)
+            elseif child:IsObjectType("Button") and not child:IsObjectType("CheckButton") then
+                local text = child.GetText and child:GetText()
+                if type(text) == "string" and text ~= "" and (type(child.Left) == "table" or child.buttonArtKit) then
+                    done[child] = true
+                    ns.SkinButton(child)
+                    socialFrames[child] = "button"
+                end
+            elseif depth < 5 then
+                ScanSocial(child, depth + 1)
+            end
+        end
+    end
+end
+
+local function SocialRows()
+    for obj, kind in pairs(socialFrames) do
+        if kind == "list" and obj:IsVisible() then
+            obj:ForEachFrame(function(entry)
+                if type(entry.CollapseButton) == "table" then
+                    SkinListHeader(entry)
+                    HeaderArrow(entry)
+                elseif type(entry.Background) == "table" and (entry.FriendName or entry.PresenceHolder) then
+                    SkinCard(entry)
+                end
+            end)
+        elseif kind == "button" and obj:IsVisible() then
+            -- (rote Knöpfe: Blizzard setzt die Grafiken teils neu)
+            for _, k in ipairs({ "Left", "Middle", "Right", "Center" }) do ns.Hide(obj[k]) end
+            ns.HideTextures(obj)
+        end
+    end
+end
+
+-- kleine Fenster daneben: Ignorierliste (Fenster mit Titelleiste), Battle.net-Nachricht und "nicht verfügbar"
+-- (Dialoge: flach mit goldener Linie oben)
+local function SkinSideDialog(d)
+    if not d or done[d] or Forbidden(d) then return end
+    done[d] = true
+    ns.Hide(d.Border)
+    ns.Flat(d, C.background)
+    local line = d:CreateTexture(nil, "BORDER", nil, -6)
+    line:SetTexture(WHITE)
+    line:SetVertexColor(C.accent[1], C.accent[2], C.accent[3], 0.8)
+    line:SetPoint("TOPLEFT", 1, -1)
+    line:SetPoint("TOPRIGHT", -1, -1)
+    ns.OnePixel(line, true)
+    local edit = d.EditBox
+    if type(edit) == "table" and not Forbidden(edit) then
+        ns.HideTextures(edit)
+        ns.Flat(edit, C.input, { -4, 2, -4, 2 })
+    end
+    for _, key in ipairs({ "UpdateButton", "CancelButton" }) do if d[key] then ns.SkinButton(d[key]) end end
+end
+
+local socialSkinned
+local function SkinSocialUI()
+    local f = G("SocialUIFrame")
+    if not f or socialSkinned or Forbidden(f) then return end
+    socialSkinned = true
+    ns.SkinWindow(f)
+    Step("bnet", function()
+        local bar = f.BattleNetBar
+        if not bar then return end
+        ns.Hide(bar.Background)
+        local box = bar.ControlsContainer
+        if box then
+            ns.Hide(box.BattleNetBackground)
+            local tag = box.PersonalBattleTagDisplay
+            if tag and not Forbidden(tag) then ns.Flat(tag, C.input) end
+        end
+    end)
+    Step("ignore", function()
+        local win = f.IgnoreListFrame
+        if win and not Forbidden(win) then
+            ns.noGold[win] = true
+            ns.SkinWindow(win)
+            for _, key in ipairs({ "BlockButton", "UnblockButton" }) do if win[key] then ns.SkinButton(win[key]) end end
+            if win.ScrollBox then socialFrames[win.ScrollBox] = "list" end
+        end
+    end)
+    Step("dialogs", function()
+        SkinSideDialog(f.BattleNetBroadcastFrame)
+        SkinSideDialog(f.BattleNetUnavailableNoticeFrame)
+    end)
+    Step("scan", function() ScanSocial(f, 1) end)
+    Step("rows", SocialRows)
+    ns.Watch(f)
+    local watch = CreateFrame("Frame", nil, f)
+    local waited = 0
+    watch:SetScript("OnUpdate", function(_, elapsed)
+        waited = waited + elapsed
+        if waited < 0.2 then return end
+        waited = 0
+        for _, key in ipairs({ "NineSlice", "PortraitContainer" }) do
+            if type(f[key]) == "table" then ns.Hide(f[key]) end
+        end
+        pcall(ScanSocial, f, 1)
+        pcall(SocialRows)
+        if ns.SkinOpenMenu then pcall(ns.SkinOpenMenu) end
+    end)
+end
+
 local events = CreateFrame("Frame")
 events:RegisterEvent("PLAYER_LOGIN")
 events:RegisterEvent("ADDON_LOADED")
 events:SetScript("OnEvent", function()
-    if skinned or not ns.GetDB().social or not G("FriendsFrame") then return end
-    Step("skin", SkinSocial)
+    if not ns.GetDB().social then return end
+    if not skinned and G("FriendsFrame") then Step("skin", SkinSocial) end
+    if not socialSkinned and G("SocialUIFrame") then Step("socialui", SkinSocialUI) end
 end)
