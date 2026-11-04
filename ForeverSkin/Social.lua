@@ -229,17 +229,23 @@ local function Place(f)
     local quick = G("QuickJoinFrame")
     local quickBox = quick and quick.ScrollBox
     if quickBox and quickBox:IsVisible() then ns.Fit(f, quickBox, nil, FOOTER + GAP + 4) end
-    -- Status-Auswahl ganz links zwischen Titelleiste und Innenfläche (Blizzard hängt sie an die Battle.net-Leiste)
+    -- Oberkante der Innenfläche (Blizzard setzt sie je nach Reiter anders), gemessen vom oberen Fensterrand
+    local insetTop = inset and inset:GetTop() and f:GetTop() and math.floor(f:GetTop() - inset:GetTop() + 0.5) or 60
+    -- Status-Auswahl links in der Ecke, mittig zwischen goldener Linie (23) und Innenfläche (Blizzard hängt sie an
+    -- die Battle.net-Leiste)
     local header = f.FriendsTabHeader
-    if header and header.StatusDropdown then Anchor(header.StatusDropdown, "LEFT", f, "TOPLEFT", 10, -53) end
-    -- Reiter oben in die Innenfläche eingerückt, die Freundesliste darunter
+    if header and header.StatusDropdown then
+        Anchor(header.StatusDropdown, "LEFT", f, "TOPLEFT", 8, -math.floor((23 + insetTop) / 2 + 0.5))
+    end
+    -- Reiter oben links in der Ecke der Innenfläche (6 Luft), die Freundesliste darunter
     local system = header and header.TabSystem
-    if system and system:IsVisible() then
-        Anchor(system, "TOPLEFT", f, "TOPLEFT", 12, -90)
+    if system and system:IsVisible() and inset then
+        Anchor(system, "TOPLEFT", inset, "TOPLEFT", 6, -6)
+        local below = insetTop + 6 + math.floor(system:GetHeight() or 24) + 6
         local list = G("FriendsListFrame")
-        if list and list.ScrollBox and list.ScrollBox:IsVisible() then ns.Fit(f, list.ScrollBox, 120, FOOTER + GAP + 4) end
+        if list and list.ScrollBox and list.ScrollBox:IsVisible() then ns.Fit(f, list.ScrollBox, below, FOOTER + GAP + 4) end
         local allies = G("RecentAlliesFrame")
-        if allies and allies.List and allies.List:IsVisible() then ns.Fit(f, allies.List, 120) end
+        if allies and allies.List and allies.List:IsVisible() then ns.Fit(f, allies.List, below) end
     end
     -- Suchfeld (Wer) wie bei Blizzard knapp über der Innenflächen-Unterkante
     local edit = G("WhoFrameEditBox")
