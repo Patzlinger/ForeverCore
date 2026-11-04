@@ -223,6 +223,12 @@ local function CreateFooter(f)
     -- goldenen Linie der Fußleiste
     local list = G("CalendarCreateEventInviteList")
     if list and not Forbidden(list) and (list:GetHeight() or 0) > 100 then list:SetHeight(list:GetHeight() - 17) end
+    -- (die schwarze Fläche "Einladungsliste wird abgerufen" hat eine feste Höhe – ebenso kürzen, sonst lag sie über
+    -- der Zeile mit "Spielername")
+    local retrieving = G("CalendarCreateEventFrameRetrievingFrame")
+    if retrieving and not Forbidden(retrieving) and (retrieving:GetHeight() or 0) > 100 then
+        retrieving:SetHeight(retrieving:GetHeight() - 17)
+    end
     local y = CREATE_FOOTER / 2
     for _, s in ipairs({ { "CalendarCreateEventMassInviteButton", "LEFT", 10 }, { "CalendarCreateEventRaidInviteButton", "LEFT", 10 },
         { "CalendarCreateEventCreateButton", "RIGHT", -10 } }) do
