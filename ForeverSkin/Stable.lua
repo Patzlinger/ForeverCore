@@ -117,7 +117,8 @@ end
 local function TextButtons(frame, depth)
     if not frame or Forbidden(frame) then return end
     for _, child in ipairs({ frame:GetChildren() }) do
-        if not Forbidden(child) then
+        -- (Geldanzeigen auslassen: deren Gold/Silber/Kupfer sind Knöpfe mit Zahl und Münze)
+        if not Forbidden(child) and not (child:GetName() or ""):lower():find("money") then
             local label = child:IsObjectType("Button") and not child:IsObjectType("CheckButton") and child.GetText
                 and child:GetText()
             if type(label) == "string" and label ~= "" then
@@ -131,6 +132,15 @@ end
 local function PurchaseButton()
     local f = G("PetStableFrame")
     if f then TextButtons(f, 1) end
+    -- Kosten etwas Abstand zum Doppelpunkt von "Kosten:"
+    local cost, label = G("PetStableCostMoneyFrame"), G("PetStableCostLabel")
+    if cost and label and not Forbidden(cost) then
+        local p, rel, rp, x = cost:GetPoint(1)
+        if not (cost:GetNumPoints() == 1 and p == "LEFT" and rel == label and rp == "RIGHT" and x == 8) then
+            cost:ClearAllPoints()
+            cost:SetPoint("LEFT", label, "RIGHT", 8, 0)
+        end
+    end
 end
 
 -- Blätter-Pfeile: Blizzard setzt ihre Grafiken beim An-/Ausgrauen neu – immer wieder unsichtbar (unser Pfeil bleibt)
