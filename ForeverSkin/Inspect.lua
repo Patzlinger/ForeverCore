@@ -155,18 +155,20 @@ local function PlaceSlots(f)
 end
 
 -- Seite PvP: Blizzard hängt den Rang ("Zivilist") 10 ÜBER die Unterkante der Saison-Zeile ("Saison 1 von …") –
--- steht dort Text, lagen beide übereinander. Dann den Rang mit Abstand darunter (sonst Blizzards Lage)
+-- beide lagen übereinander. Der Rang steht darum (auf Wunsch) mittig im dunklen Balken zwischen den beiden goldenen
+-- Linien oben (dort steht auf der Ausrüstungsseite "Stufe …")
 local function PlacePvP()
-    local pvp = G("InspectPVPFrame")
+    local f, pvp = G("InspectFrame"), G("InspectPVPFrame")
     local info = pvp and pvp.MainInfoFrame
-    local season, rank = info and info.CurrentSeasonField, info and info.CurrentRankField
-    if not (season and rank) or not pvp:IsVisible() then return end
-    local text = season:GetText()
-    local y = (type(text) == "string" and text ~= "") and -4 or 10
+    local rank = info and info.CurrentRankField
+    local inset = f and (f.Inset or G("InspectFrameInset"))
+    if not (rank and inset) or not pvp:IsVisible() or not (f:GetTop() and inset:GetTop()) then return end
+    local insetTop = f:GetTop() - inset:GetTop()
+    local y = -math.floor((24 + insetTop) / 2 + 0.5)
     local p, rel, rp, _, oy = rank:GetPoint(1)
-    if rank:GetNumPoints() == 1 and p == "TOP" and rel == season and rp == "BOTTOM" and oy == y then return end
+    if rank:GetNumPoints() == 1 and p == "CENTER" and rel == f and rp == "TOP" and oy == y then return end
     rank:ClearAllPoints()
-    rank:SetPoint("TOP", season, "BOTTOM", 0, y)
+    rank:SetPoint("CENTER", f, "TOP", 0, y)
 end
 
 local raised = setmetatable({}, { __mode = "k" })
