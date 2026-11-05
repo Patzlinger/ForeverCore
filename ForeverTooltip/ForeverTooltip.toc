@@ -11,5 +11,6 @@
 ## Dependencies: ForeverCore
 ## Group: ForeverCore
 ## SavedVariables: ForeverTooltipDB
+## SavedVariablesPerCharacter: ForeverTooltipCharDB
 
 ForeverTooltip.lua

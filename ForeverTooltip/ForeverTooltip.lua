@@ -428,15 +428,90 @@ do
         return (s:gsub("%.", T(",", ".")))
     end
     -- "1 Stärke = 2 Angriffskraft" bzw. bei kleinen Werten umgekehrt "20 Stärke = 1 Blockwert"
-    local function PerPoint(lines, statName, perPoint, what, suffix)
+    local function PerPoint(lines, statName, perPoint, what, suffix, note)
         if not perPoint or perPoint <= 0 then return end
-        suffix = suffix or ""
+        suffix, note = suffix or "", note and ("|cff8a8a8a" .. note .. "|r") or ""
         if perPoint >= 0.995 then
-            lines[#lines + 1] = "1 " .. statName .. " = " .. Fmt(perPoint) .. suffix .. " " .. what
+            lines[#lines + 1] = "1 " .. statName .. " = " .. Fmt(perPoint) .. suffix .. " " .. what .. note
         else
-            lines[#lines + 1] = Fmt(1 / perPoint) .. " " .. statName .. " = 1" .. suffix .. " " .. what
+            lines[#lines + 1] = Fmt(1 / perPoint) .. " " .. statName .. " = 1" .. suffix .. " " .. what .. note
         end
     end
+
+    -------------------------------------------------------------------------
+    -- Nachmessen beim Ausrüstungswechsel: Wie viel kommt von einem Punkt auf dem Gegenstand tatsächlich an (Talente/Buffs
+    -- mit Prozent-Bonus), und wie viel Leben/Mana bringt ein Punkt Ausdauer/Intelligenz wirklich? Vorher-Stand beim
+    -- Wechsel, Nachher-Stand kurz danach; Unterschied der Gegenstandswerte (C_Item.GetItemStats) gegen den Unterschied
+    -- beim Charakter. Je Charakter gespeichert (ForeverTooltipCharDB, keine Einstellung). Nur außerhalb des Kampfes.
+    -------------------------------------------------------------------------
+    local ITEM_KEYS = { [STR] = "ITEM_MOD_STRENGTH_SHORT", [AGI] = "ITEM_MOD_AGILITY_SHORT",
+        [STA] = "ITEM_MOD_STAMINA_SHORT", [INT] = "ITEM_MOD_INTELLECT_SHORT", [SPI] = "ITEM_MOD_SPIRIT_SHORT" }
+    local MIN_DELTA = 4 -- kleinere Unterschiede sind wegen der Rundung zu ungenau
+    local function CharDB()
+        if type(_G.ForeverTooltipCharDB) ~= "table" then _G.ForeverTooltipCharDB = {} end
+        local d = _G.ForeverTooltipCharDB
+        d.ratio = d.ratio or {}
+        return d
+    end
+    local function ItemStats(link)
+        local out = {}
+        if not link then return out end
+        local get = (C_Item and C_Item.GetItemStats) or _G.GetItemStats
+        local ok, stats = pcall(get, link)
+        if ok and type(stats) == "table" then
+            for s, key in pairs(ITEM_KEYS) do out[s] = tonumber(stats[key]) or 0 end
+        end
+        return out
+    end
+    local function Snapshot()
+        local snap = { hp = Num(UnitHealthMax, "player"), mana = Num(UnitPowerMax, "player", 0) }
+        for s in pairs(ITEM_KEYS) do
+            local ok, _, eff = pcall(UnitStat, "player", s)
+            snap[s] = (ok and type(eff) == "number" and not issecret(eff)) and eff or nil
+        end
+        return snap
+    end
+    local links = {}
+    local function RememberLinks()
+        for slot = 1, 19 do links[slot] = GetInventoryItemLink("player", slot) end
+    end
+    local function Measure(before, oldItem, newItem)
+        if InCombatLockdown() then return end
+        local after, d = Snapshot(), CharDB()
+        for s in pairs(ITEM_KEYS) do
+            local itemDelta = (newItem[s] or 0) - (oldItem[s] or 0)
+            local effDelta = before[s] and after[s] and (after[s] - before[s])
+            if effDelta and math.abs(itemDelta) >= MIN_DELTA then
+                local ratio = effDelta / itemDelta
+                -- nur Plausibles merken (sonst ist z. B. gleichzeitig ein Buff ausgelaufen)
+                if ratio >= 0.95 and ratio <= 1.6 then d.ratio[s] = ratio end
+            end
+            if effDelta and math.abs(effDelta) >= MIN_DELTA then
+                if s == STA and before.hp and after.hp then
+                    local per = (after.hp - before.hp) / effDelta
+                    if per >= 5 and per <= 40 then d.hpPerSta = per end
+                elseif s == INT and before.mana and after.mana and before.mana > 0 then
+                    local per = (after.mana - before.mana) / effDelta
+                    if per >= 5 and per <= 40 then d.manaPerInt = per end
+                end
+            end
+        end
+    end
+    local measure = CreateFrame("Frame")
+    measure:RegisterEvent("PLAYER_LOGIN")
+    measure:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
+    measure:SetScript("OnEvent", function(_, event, slot)
+        if event == "PLAYER_LOGIN" then RememberLinks() return end
+        if type(slot) ~= "number" then return end
+        local oldLink, newLink = links[slot], GetInventoryItemLink("player", slot)
+        links[slot] = newLink
+        if InCombatLockdown() or not GetDB().statPerPoint then return end
+        local before, oldItem, newItem = Snapshot(), ItemStats(oldLink), ItemStats(newLink)
+        C_Timer.After(1, function() pcall(Measure, before, oldItem, newItem) end)
+    end)
+
+    -- Grundwert mit Talenten/Buffs: aus der Messung, sonst die Spielregel
+    local function Ratio(stat) return CharDB().ratio[stat] end
 
     local function AddLines(frame)
         if not GetDB().statPerPoint or InCombatLockdown() then return end
@@ -461,9 +536,16 @@ do
             PerPoint(lines, name, crit and crit * 100, T("kritische Trefferchance", "critical strike chance"), " %")
             if ARMOR_PER_AGILITY then PerPoint(lines, name, ARMOR_PER_AGILITY, T("Rüstung", "armor")) end
         elseif stat == STA then
-            PerPoint(lines, name, Num(UnitHPPerStamina, "player"), T("Gesundheit", "health"))
+            -- gemessen (mit Talenten auf maximales Leben), sonst die Spielregel
+            local measured = CharDB().hpPerSta
+            PerPoint(lines, name, measured or Num(UnitHPPerStamina, "player"), T("Gesundheit", "health"),
+                nil, measured and T(" (gemessen)", " (measured)"))
         elseif stat == INT then
-            if not NO_MANA[class] then PerPoint(lines, name, MANA_PER_INTELLECT, T("Mana", "mana")) end
+            if not NO_MANA[class] then
+                local measured = CharDB().manaPerInt
+                PerPoint(lines, name, measured or MANA_PER_INTELLECT, T("Mana", "mana"), nil,
+                    measured and T(" (gemessen)", " (measured)"))
+            end
             local crit = Slope(GetSpellCritChanceFromStat, INT, eff)
             PerPoint(lines, name, crit and crit * 100, T("kritische Zaubertrefferchance", "spell critical strike chance"), " %")
         elseif stat == SPI and eff > 0 then
@@ -477,6 +559,16 @@ do
         GameTooltip:AddLine(" ")
         GameTooltip:AddLine(T("Pro Punkt", "Per point"), C.accent[1], C.accent[2], C.accent[3])
         for _, line in ipairs(lines) do GameTooltip:AddLine(line, 0.9, 0.9, 0.9) end
+        -- Talente/Buffs mit Prozent-Bonus: 1 Punkt auf einem Gegenstand zählt als mehr als 1 Punkt
+        local ratio = Ratio(stat)
+        if ratio and ratio > 1.005 then
+            GameTooltip:AddLine(string.format(T("Von Ausrüstung: 1 %s zählt als %s (+%d %% aus Talenten/Buffs, gemessen)",
+                "From gear: 1 %s counts as %s (+%d %% from talents/buffs, measured)"), name, Fmt(ratio),
+                math.floor((ratio - 1) * 100 + 0.5)), 0.4, 0.8, 0.4, true)
+        elseif not ratio then
+            GameTooltip:AddLine(T("Bonus aus Talenten/Buffs wird beim nächsten Ausrüstungswechsel gemessen.",
+                "Bonus from talents/buffs is measured on your next gear change."), 0.55, 0.55, 0.55, true)
+        end
         GameTooltip:Show()
     end
 
