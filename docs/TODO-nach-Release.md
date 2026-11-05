@@ -9,8 +9,7 @@ Auswirkung im Spiel.
 
 - [ ] ⚠ **Restliche Fenster überarbeiten** (ForeverSkin, Darstellung) – noch offen:
   - Große Fenster: Gildenränge und Gilden-Unterfenster (Gildenlog, News-Filter,
-    Gildeninfo-Text, Avatar-Auswahl), Auktionshaus-Feinschliff (Geld-Eingaben, Gegenstands-Platz beim Verkaufen,
-    Taschen von ForeverBags andocken), PvP-Punktetafel und -Ergebnis
+    Gildeninfo-Text, Avatar-Auswahl), PvP-Punktetafel und -Ergebnis
   - Kleine Fenster: Buch-/Brieftexte, Gildenurkunde/-einladung/-umbenennung, Rollenabfrage,
     Gruppeneinladung, PvP-Bereitschaft, Farbauswahl, Quest-Details-Popup, Modellvorschau, Auswahlfenster,
     Beuteverlauf, Währung übertragen, Schnelltastenbelegung, Sprechkopf, Sockeln (falls vorhanden)
