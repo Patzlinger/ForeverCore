@@ -58,6 +58,7 @@ ns.DEFAULTS = {
     lossColor = { 0.12, 0.12, 0.12 },
     healPrediction = true,
     hotPrediction = true,          -- eigene HoTs: schraffierte Fläche hinter der Heilvorhersage
+    powerSeparator = true,         -- feine Trennlinie zwischen Lebens- und Ressourcenbalken
     dotAboveV1 = false,            -- Merker: DoT-Leisten einmalig nach oben gesetzt (in den Standardwerten, damit er gespeichert wird)
     playerLevelV1 = false,         -- Merker: Stufe am Spielerrahmen einmalig eingeschaltet
     dotPrediction = true,          -- Ziel/Fokus: Schaden der eigenen DoTs als schraffierte Fläche am Lebensbalken

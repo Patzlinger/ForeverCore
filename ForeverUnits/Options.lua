@@ -362,6 +362,7 @@ do
         { key = "custom", label = T("Eigene Farbe", "Custom color") },
     }, G("lossColorMode"))
     Color(p, R + 4, -108, T("Eigene Farbe fehlende LP", "Custom missing health color"), "lossColor", false)
+    Check(p, R, -128, T("Trennlinie Leben / Ressource", "Divider line health / resource"), G("powerSeparator"))
 
     UI.Header(p, R, -152, T("Heilung und Schilde (eigene Optik)", "Healing and shields (own look)"))
     Check(p, R, -172, T("Heilvorhersage", "Heal prediction"), G("healPrediction"))

@@ -192,6 +192,9 @@ local function CreateUnitFrame(info)
     v.moverText:SetPoint("BOTTOM", c, "TOP", 0, 2)
     v.moverText:SetText(info.label)
     v.mover:Hide()
+    v.sep = v.top:CreateTexture(nil, "OVERLAY", nil, 5) -- feine Trennlinie zwischen Lebens- und Ressourcenbalken
+    v.sep:SetColorTexture(UI.COLOR.accent[1], UI.COLOR.accent[2], UI.COLOR.accent[3], 0.6)
+    v.sep:Hide()
     v.moverText:Hide()
 
     v.auras = {}
@@ -1314,6 +1317,17 @@ function ns.Layout(b)
         v.power:Hide()
         v.health:SetPoint("BOTTOMLEFT", v.content, "BOTTOMLEFT", left, bs)
         v.health:SetPoint("BOTTOMRIGHT", v.content, "BOTTOMRIGHT", right, bs)
+    end
+
+    -- Trennlinie (optional): oberste Zeile des Ressourcenbalkens
+    v.sep:ClearAllPoints()
+    if f.powerHeight > 0 and GetDB().powerSeparator ~= false then
+        v.sep:SetPoint("TOPLEFT", v.power, "TOPLEFT", 0, 0)
+        v.sep:SetPoint("TOPRIGHT", v.power, "TOPRIGHT", 0, 0)
+        v.sep:SetHeight(1)
+        v.sep:Show()
+    else
+        v.sep:Hide()
     end
 
     -- Texte. "stacked" (Standard): Stufe + Name oben, Lebenspunkte darunter – wie bei den
