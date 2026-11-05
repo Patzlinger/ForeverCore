@@ -8,13 +8,12 @@ Auswirkung im Spiel.
 ## Geplant
 
 - [ ] ⚠ **Restliche Fenster überarbeiten** (ForeverSkin, Darstellung) – noch offen:
-  - Große Fenster: Soziales nur noch „Freunde von Freunden“, eigenes Schlachtzug-Fenster (RaidParentFrame) und
-    Raid-Info; Transmogrifizierer samt „Set bearbeiten“, Gildenränge und Gilden-Unterfenster (Gildenlog, News-Filter,
+  - Große Fenster: Transmogrifizierer samt „Set bearbeiten“, Gildenränge und Gilden-Unterfenster (Gildenlog, News-Filter,
     Gildeninfo-Text, Avatar-Auswahl), Auktionshaus-Feinschliff (Geld-Eingaben, Gegenstands-Platz beim Verkaufen,
     Taschen von ForeverBags andocken), PvP-Punktetafel und -Ergebnis
   - Kleine Fenster: Buch-/Brieftexte, Gildenurkunde/-gründung/-einladung/-umbenennung, Rollenabfrage,
     Gruppeneinladung, PvP-Bereitschaft, Farbauswahl, Quest-Details-Popup, Modellvorschau, Auswahlfenster,
-    Beuteverlauf, Währung übertragen, Spieler melden, Schnelltastenbelegung, Sprechkopf, Sockeln (falls vorhanden)
+    Beuteverlauf, Währung übertragen, Schnelltastenbelegung, Sprechkopf, Sockeln (falls vorhanden)
   - Abgleich im Spiel: `/fskin fenster` (listet alle großen Fenster, umgestaltet `+` oder nicht `-`)
 - [ ] ⚠ **Markierungen über Blizzards Schnell-Ping-Menü:** Weltmarkierungen mit dem Ping-Rad verbinden; Zielmarkierungen
       (Totenkopf, Kreuz …) per Mouseover über Gegner ebenfalls über das Ping-Rad setzen (Addon klären, z. B. ForeverHelpers)
