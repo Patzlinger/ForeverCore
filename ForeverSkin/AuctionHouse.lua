@@ -20,7 +20,7 @@ local function Step(what, fn)
     if not ok and ns.UI.ReportError then ns.UI.ReportError("ForeverSkin", "auction/" .. what, err) end
 end
 
-local SCALE = 1.05 -- Auktionshaus 5 % größer als bei Blizzard
+local SCALE = 1.12 -- Auktionshaus standardmäßig 12 % größer als bei Blizzard (frei einstellbar mit dem Griff)
 local done = setmetatable({}, { __mode = "k" })
 local textButtons = setmetatable({}, { __mode = "k" }) -- Text-Knöpfe, deren Grafiken laufend unsichtbar bleiben
 
@@ -276,24 +276,36 @@ local function Place(f)
         end
     end
     -- Reiter innerhalb der Seiten: Text mittig, etwas höher (Luft zum Kasten)
-    local groups = {}
+    local list = {}
     for tab in pairs(innerTabs) do
         if tab:IsVisible() then
             ns.HideTextures(tab)
             pcall(RaiseTab, tab)
-            local parent = tab:GetParent()
-            groups[parent] = groups[parent] or {}
-            table.insert(groups[parent], tab)
+            list[#list + 1] = tab
         end
     end
-    -- alle Reiter einer Seite gleich hoch und auf gleicher Höhe wie ein nicht gewählter (Blizzard setzt den gewählten
-    -- tiefer und größer – "Auktionen" sah dann anders aus als "Gebote"). Nur unsere Fläche wird ausgerichtet (Blizzards
-    -- Knopf bleibt, wo er ist – die Reiter hängen aneinander, Verschieben zog die anderen mit)
-    for _, list in pairs(groups) do
-        local ref
-        for _, tab in ipairs(list) do
-            if not TabSelectedInner(tab) then ref = tab break end
+    -- alle Reiter einer Seite gleich hoch und auf gleicher Höhe wie der höchste (Blizzard setzt den gewählten tiefer –
+    -- "Auktionen" sah dann anders aus als "Gebote"). Dazu zählen auch Text-Knöpfe direkt daneben (der erste Reiter
+    -- wird teils als gewöhnlicher Knopf gebaut). Nur unsere Fläche wird ausgerichtet – Blizzards Knöpfe bleiben, wo sie
+    -- sind (die Reiter hängen aneinander, Verschieben zog die anderen mit).
+    local ref
+    for _, tab in ipairs(list) do
+        if not ref or (tab:GetTop() or 0) > (ref:GetTop() or 0) then ref = tab end
+    end
+    if ref then
+        local rl, rr, rt = ref:GetLeft(), ref:GetRight(), ref:GetTop()
+        local function Near(b)
+            local l, r, t = b:GetLeft(), b:GetRight(), b:GetTop()
+            if not (l and r and t and rl and rr and rt) or math.abs(t - rt) > 14 then return false end
+            return math.abs(l - rr) <= 20 or math.abs(rl - r) <= 20
         end
+        local seen = {}
+        for _, tab in ipairs(list) do seen[tab] = true end
+        for b in pairs(textButtons) do
+            if not seen[b] and b:IsVisible() and Near(b) then list[#list + 1] = b end
+        end
+    end
+    do
         local refTop, refBottom = ref and ref:GetTop(), ref and ref:GetBottom()
         for _, tab in ipairs(list) do
             local top, bot = tab:GetTop(), tab:GetBottom()
@@ -353,12 +365,63 @@ local function SkinAuctionHouse()
     Step("scan", function() Scan(f, 1) end)
     Step("rows", Rows)
     Step("place", function() Place(f) end)
-    -- Standard 5 % größer (auf Wunsch) – beim Öffnen, außerhalb des Kampfes
+    -- Größe: Standard SCALE (auf Wunsch größer als bei Blizzard), frei mit dem Griff unten rechts (gespeichert in
+    -- ForeverSkinDB.auctionScale; Rechtsklick auf den Griff = Standard). Nur außerhalb des Kampfes.
+    local function Wanted() return tonumber(ns.GetDB().auctionScale) or SCALE end
     local function Scale()
-        if not InCombatLockdown() and math.abs((f:GetScale() or 1) - SCALE) > 0.001 then f:SetScale(SCALE) end
+        if not InCombatLockdown() and math.abs((f:GetScale() or 1) - Wanted()) > 0.001 then f:SetScale(Wanted()) end
     end
     Scale()
     f:HookScript("OnShow", Scale)
+    local grip = CreateFrame("Button", nil, f)
+    grip:SetSize(14, 14)
+    grip:SetPoint("BOTTOMRIGHT", -1, 1)
+    grip:SetFrameLevel(f:GetFrameLevel() + 30)
+    grip:SetNormalTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up")
+    grip:SetHighlightTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Highlight")
+    grip:SetPushedTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Down")
+    grip:RegisterForClicks("RightButtonUp")
+    grip:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine(ns.T("Größe ändern", "Resize"))
+        GameTooltip:AddLine(ns.T("Ziehen: größer/kleiner · Rechtsklick: Standardgröße",
+            "Drag: bigger/smaller · Right-click: default size"), 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    grip:SetScript("OnLeave", GameTooltip_Hide)
+    -- (die linke obere Ecke bleibt beim Skalieren stehen)
+    local function KeepTopLeft(scale, left, top)
+        f:SetScale(scale)
+        f:ClearAllPoints()
+        f:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", left / scale, top / scale)
+    end
+    grip:SetScript("OnClick", function()
+        if InCombatLockdown() then return end
+        ns.GetDB().auctionScale = nil
+        local s = f:GetScale()
+        KeepTopLeft(SCALE, f:GetLeft() * s, f:GetTop() * s)
+    end)
+    grip:SetScript("OnMouseDown", function(self, button)
+        if button ~= "LeftButton" or InCombatLockdown() then return end
+        local s0 = f:GetScale()
+        local w, h = f:GetWidth() * s0, f:GetHeight() * s0
+        local left, top = f:GetLeft() * s0, f:GetTop() * s0
+        local ui = UIParent:GetEffectiveScale()
+        local cx, cy = GetCursorPosition()
+        cx, cy = cx / ui, cy / ui
+        self:SetScript("OnUpdate", function()
+            if InCombatLockdown() then return end
+            local x, y = GetCursorPosition()
+            x, y = x / ui, y / ui
+            local factor = ((w + x - cx) / w + (h + cy - y) / h) / 2
+            KeepTopLeft(math.max(0.7, math.min(1.6, s0 * factor)), left, top)
+        end)
+    end)
+    grip:SetScript("OnMouseUp", function(self, button)
+        if button ~= "LeftButton" then return end
+        self:SetScript("OnUpdate", nil)
+        ns.GetDB().auctionScale = math.floor(f:GetScale() * 100 + 0.5) / 100
+    end)
     -- Nach jedem Klick sofort nachsehen (und im nächsten Bild noch einmal): Blizzard setzt beim Klicken Reiter- und
     -- Kategorie-Grafiken neu – sonst waren sie bis zum nächsten Durchgang kurz zu sehen
     local function Refresh()
