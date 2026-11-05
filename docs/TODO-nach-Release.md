@@ -10,8 +10,8 @@ Auswirkung im Spiel.
 - [ ] ⚠ **Restliche Fenster überarbeiten** (ForeverSkin, Darstellung) – noch offen:
   - Große Fenster: Soziales nur noch „Freunde von Freunden“, eigenes Schlachtzug-Fenster (RaidParentFrame) und
     Raid-Info; Transmogrifizierer samt „Set bearbeiten“, Gildenränge und Gilden-Unterfenster (Gildenlog, News-Filter,
-    Gildeninfo-Text, Avatar-Auswahl), Auktionshaus-Feinschliff (Geld-Eingaben, Gegenstands-Platz beim Verkaufen, Taschen von ForeverBags andocken),
-    Termin-Fenster des Kalenders (Ansehen, Erstellen, Einladen), PvP-Punktetafel und -Ergebnis
+    Gildeninfo-Text, Avatar-Auswahl), Auktionshaus-Feinschliff (Geld-Eingaben, Gegenstands-Platz beim Verkaufen,
+    Taschen von ForeverBags andocken), PvP-Punktetafel und -Ergebnis
   - Kleine Fenster: Buch-/Brieftexte, Gildenurkunde/-gründung/-einladung/-umbenennung, Rollenabfrage,
     Gruppeneinladung, PvP-Bereitschaft, Farbauswahl, Quest-Details-Popup, Modellvorschau, Auswahlfenster,
     Beuteverlauf, Währung übertragen, Spieler melden, Schnelltastenbelegung, Sprechkopf, Sockeln (falls vorhanden)
