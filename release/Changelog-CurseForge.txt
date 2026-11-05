@@ -5,7 +5,7 @@
 
 - ForeverFrames / ForeverUnits: heal prediction now includes your own HoTs – a hatched area behind the normal heal prediction (estimated from the spell descriptions, shrinks with the remaining duration). Toggle in the options.
 - ForeverUnits / ForeverPlates: damage prediction of your own DoTs on target, focus and nameplates – a hatched area from the end of the health bar to the left; red when the DoTs should kill the target. Toggle in the options.
-- ForeverFrames / ForeverUnits: combat marker (crossed swords, bottom left) on raid and unit frames while the unit is in combat. Toggle in the options.
+- ForeverFrames / ForeverUnits: combat marker (crossed swords, right behind the name) on raid and unit frames while the unit is in combat. Toggle in the options.
 - ForeverPlates / ForeverUnits: proper gold/silver elite marker instead of the "+" next to the level (needs a full game restart).
 - ForeverCast: failed casts (also instant spells: not enough mana, out of range …) are shown in the failed color with the spell name; the cast bar sits a little higher by default.
 - ForeverUnits: DoT bars sit above the target/focus frame by default (existing "below" settings are switched once).

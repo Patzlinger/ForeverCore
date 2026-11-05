@@ -284,7 +284,6 @@ function ns.CreateVisuals(b)
     v.combat:SetTexture("Interface\\CharacterFrame\\UI-StateIcon")
     v.combat:SetTexCoord(0.5, 1, 0, 0.49)
     v.combat:SetSize(11, 11)
-    v.combat:SetPoint("BOTTOMLEFT", v.top, "BOTTOMLEFT", 1, 1)
     v.combat:Hide()
     for _, t in ipairs({ v.role, v.leader, v.mark, v.ready, v.incoming }) do t:Hide() end
 
@@ -800,11 +799,25 @@ do
 end
 
 -- Kampf-Marker (gekreuzte Schwerter) in der Ecke unten links, solange die Einheit im Kampf ist
+-- Kampf-Symbol direkt hinter den Namen setzen (je nach Ausrichtung des Namens)
+local function PlaceCombat(fs, icon, size)
+    local ok, w = pcall(fs.GetStringWidth, fs)
+    if not ok or type(w) ~= "number" then w = 0 end
+    local j = fs:GetJustifyH()
+    icon:SetSize(size, size)
+    icon:ClearAllPoints()
+    if j == "LEFT" then icon:SetPoint("LEFT", fs, "LEFT", w + 2, 0)
+    elseif j == "RIGHT" then icon:SetPoint("RIGHT", fs, "RIGHT", -(w + 2), 0)
+    else icon:SetPoint("LEFT", fs, "CENTER", w / 2 + 2, 0) end
+end
+
 local function UpdateCombat(b)
     local v, unit = b.ff, b.ffUnit
     if not GetDB().combatMarker or not unit then v.combat:Hide() return end
     local c = UnitAffectingCombat(unit)
-    v.combat:SetShown(not IsSecret(c) and c and true or false)
+    local on = not IsSecret(c) and c and true or false
+    if on then PlaceCombat(v.name, v.combat, 16) end
+    v.combat:SetShown(on)
 end
 
 local function UpdateIncoming(b)

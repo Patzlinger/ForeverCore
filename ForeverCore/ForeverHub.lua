@@ -4770,16 +4770,26 @@ local function OverInfo(spellID)
     return info
 end
 
-function UI.OverTimeRemaining(unit, kind)
-    local filter = kind == "heal" and "HELPFUL|PLAYER" or "HARMFUL|PLAYER"
-    local list
+local function CollectAuras(unit, filter)
+    local list = {}
     if C_UnitAuras and C_UnitAuras.GetUnitAuras then
         local ok, res = pcall(C_UnitAuras.GetUnitAuras, unit, filter)
         if ok and type(res) == "table" then list = res end
     end
-    if not list then return 0 end
+    if #list == 0 and C_UnitAuras and C_UnitAuras.GetAuraDataByIndex then
+        for i = 1, 40 do
+            local ok, a = pcall(C_UnitAuras.GetAuraDataByIndex, unit, i, filter)
+            if not ok or not a then break end
+            list[#list + 1] = a
+        end
+    end
+    return list
+end
+
+function UI.OverTimeRemaining(unit, kind)
+    local filter = kind == "heal" and "HELPFUL|PLAYER" or "HARMFUL|PLAYER"
     local now, total = GetTime(), 0
-    for _, a in ipairs(list) do
+    for _, a in ipairs(CollectAuras(unit, filter)) do
         local id, expires = a.spellId, a.expirationTime
         if id and expires and not Secret(id, expires) and expires > now then
             local info = OverInfo(id)
@@ -4789,6 +4799,31 @@ function UI.OverTimeRemaining(unit, kind)
         end
     end
     return total
+end
+
+-- Fehlersuche: /fover [Einheit] listet die eigenen HoTs/DoTs und was daraus gelesen wurde
+SLASH_FOREVEROVER1 = "/fover"
+SlashCmdList.FOREVEROVER = function(msg)
+    local unit = (msg and msg:match("%S+")) or "target"
+    local function P(t) UI.Chat("HoT/DoT", t) end
+    if not UnitExists(unit) then P("Einheit '" .. unit .. "' gibt es nicht (Ziel wählen oder /fover player).") return end
+    P("GetUnitAuras: " .. tostring(C_UnitAuras and C_UnitAuras.GetUnitAuras ~= nil) .. ", Beschreibung: "
+        .. tostring(C_Spell and C_Spell.GetSpellDescription ~= nil))
+    for _, filter in ipairs({ "HELPFUL|PLAYER", "HARMFUL|PLAYER" }) do
+        local list = CollectAuras(unit, filter)
+        P(filter .. ": " .. #list .. " Auren")
+        for _, a in ipairs(list) do
+            local id = a.spellId
+            if Secret(id) then P("  (geheim)") else
+                local desc = C_Spell and C_Spell.GetSpellDescription and C_Spell.GetSpellDescription(id)
+                local info = ParseOver(type(desc) == "string" and desc or "")
+                P(string.format("  %s (%s): %s", tostring(a.name), tostring(id),
+                    info and string.format("%s %d über %ss", info.kind, info.amount, info.seconds)
+                    or ("nicht erkannt – " .. tostring(desc):sub(1, 90))))
+            end
+        end
+    end
+    P(string.format("Summe: Heilung %d, Schaden %d", UI.OverTimeRemaining(unit, "heal"), UI.OverTimeRemaining(unit, "damage")))
 end
 
 ---------------------------------------------------------------------------

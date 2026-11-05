@@ -165,7 +165,6 @@ local function CreateUnitFrame(info)
     v.combat:SetTexture("Interface\\CharacterFrame\\UI-StateIcon")
     v.combat:SetTexCoord(0.5, 1, 0, 0.49)
     v.combat:SetSize(14, 14)
-    v.combat:SetPoint("CENTER", v.top, "BOTTOMLEFT", 4, 4)
     v.combat:Hide()
     v.leader = v.top:CreateTexture(nil, "OVERLAY")
     v.leader:SetTexture("Interface\\GroupFrame\\UI-Group-LeaderIcon")
@@ -863,11 +862,25 @@ local function UpdatePrediction(b)
 end
 
 -- Kampf-Marker (gekreuzte Schwerter) unten links, solange die Einheit im Kampf ist
+-- Kampf-Symbol direkt hinter den Namen setzen (je nach Ausrichtung des Namens)
+local function PlaceCombat(fs, icon, size)
+    local ok, w = pcall(fs.GetStringWidth, fs)
+    if not ok or type(w) ~= "number" then w = 0 end
+    local j = fs:GetJustifyH()
+    icon:SetSize(size, size)
+    icon:ClearAllPoints()
+    if j == "LEFT" then icon:SetPoint("LEFT", fs, "LEFT", w + 2, 0)
+    elseif j == "RIGHT" then icon:SetPoint("RIGHT", fs, "RIGHT", -(w + 2), 0)
+    else icon:SetPoint("LEFT", fs, "CENTER", w / 2 + 2, 0) end
+end
+
 local function UpdateCombat(b)
     local v, unit = b.v, b.unit
     if Look().combatMarker == false or not unit or not UnitExists(unit) then v.combat:Hide() return end
     local c = UnitAffectingCombat(unit)
-    v.combat:SetShown(not IsSecret(c) and c and true or false)
+    local on = not IsSecret(c) and c and true or false
+    if on then PlaceCombat(v.name, v.combat, 20) end
+    v.combat:SetShown(on)
 end
 
 local function UpdatePower(b)
