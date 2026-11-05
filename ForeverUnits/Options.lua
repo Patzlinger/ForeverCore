@@ -316,7 +316,8 @@ do
     }, F("hpFormat"))
     Check(p, R, -164, T("Energie als Zahl (ab 7 px Balkenhöhe)", "Power as number (from 7 px bar height)"), F("powerText"))
 
-    Check(p, R, -188, T("Regeneration pro Sekunde (Spieler)", "Regeneration per second (player)"), G("powerRegen"))
+    Check(p, R, -188, T("Regeneration/s", "Regeneration/s"), G("powerRegen"))
+    Check(p, R + 130, -188, T("5-Sekunden-Regel (Strich)", "Five-second rule (marker)"), G("fiveSecRule"))
 
     UI.Header(p, R, -212, T("Auren", "Auras"))
     Check(p, R, -232, T("Buffs", "Buffs"), F("buffs"))

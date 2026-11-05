@@ -901,7 +901,23 @@ local lastCast = 0
 do
     local ev = CreateFrame("Frame")
     ev:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
-    ev:SetScript("OnEvent", function() lastCast = GetTime() end)
+    -- Fünf-Sekunden-Regel beginnt nur bei Zaubern, die Mana kosten (Zauberdaten sind auch im Kampf lesbar)
+    ev:SetScript("OnEvent", function(_, _, _, _, spellID)
+        local costsMana = true
+        if spellID and not IsSecret(spellID) then
+            local fn = (C_Spell and C_Spell.GetSpellPowerCost) or GetSpellPowerCost
+            if fn then
+                local ok, costs = pcall(fn, spellID)
+                if ok and type(costs) == "table" then
+                    costsMana = false
+                    for _, c in ipairs(costs) do
+                        if c.type == 0 and (c.cost or 0) > 0 then costsMana = true end
+                    end
+                end
+            end
+        end
+        if costsMana then lastCast = GetTime() end
+    end)
 end
 -- Messwert als Ersatz, wenn die Schnittstelle im Kampf nichts Lesbares liefert: Zuwachs der letzten ~6 s
 local samples = {}
@@ -950,6 +966,48 @@ local function RegenText(b, pType, pToken, cur)
     -- gleiche Farbe wie die Zahl, mit Abstand davor
     if rate >= 10 then return string.format("   +%d/s", math.floor(rate + 0.5)) end
     return string.format("   +%.1f/s", rate)
+end
+
+-- Fünf-Sekunden-Regel sichtbar: ein feiner, leuchtender Strich wandert nach jedem Manazauber in 5 s über den
+-- Manabalken des Spielerrahmens (am Ende beginnt die Regeneration). Abschaltbar (fiveSecRule).
+do
+    local drv = CreateFrame("Frame")
+    drv:SetScript("OnUpdate", function()
+        local b = ns.frames.player
+        local v = b and b.v
+        if not v then return end
+        local age = GetTime() - lastCast
+        local on = b:IsVisible() and GetDB().fiveSecRule ~= false and lastPType == 0 and age < 5 and v.power:IsShown()
+        if not on then
+            if v.fsr then v.fsr:Hide() end
+            return
+        end
+        if not v.fsr then
+            v.fsr = v.power:CreateTexture(nil, "OVERLAY", nil, 3)
+            v.fsr:SetTexture("Interface\\Buttons\\WHITE8X8")
+            v.fsr:SetBlendMode("ADD")
+            v.fsr:SetVertexColor(0.75, 0.9, 1, 0.8)
+            v.fsr:SetWidth(3)
+        end
+        local w = v.power:GetWidth() or 0
+        v.fsr:ClearAllPoints()
+        v.fsr:SetPoint("TOPLEFT", v.power, "TOPLEFT", (age / 5) * math.max(0, w - 3), 0)
+        v.fsr:SetPoint("BOTTOMLEFT", v.power, "BOTTOMLEFT", (age / 5) * math.max(0, w - 3), 0)
+        v.fsr:Show()
+    end)
+end
+
+-- Fehlersuche: /fregen zeigt, was die Schnittstelle liefert (im Kampf nochmal aufrufen)
+SLASH_FORFREGEN1 = "/fregen"
+SlashCmdList.FORFREGEN = function()
+    local function S(x) return IsSecret(x) and "GESPERRT" or tostring(x) end
+    local base, casting
+    if GetManaRegen then base, casting = GetManaRegen() end
+    local pt = UnitPowerType("player")
+    print("|cffffd100ForeverUnits Regen|r Kampf: " .. tostring(InCombatLockdown()) .. " | Art: " .. S(pt)
+        .. " | Mana-Regen Grund/Zauber: " .. S(base) .. " / " .. S(casting)
+        .. " | Energie-Regen: " .. S(GetPowerRegenForPowerType and GetPowerRegenForPowerType(3) or nil)
+        .. " | Ressource: " .. S(UnitPower("player")))
 end
 
 local function UpdatePower(b)

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- ForeverUnits: a thin glowing marker sweeps across the mana bar of the player frame for 5 seconds after each mana spell (five-second rule; switchable, on by default). New /fregen command shows what the game reports about regeneration.
 - ForeverSkin: auction house 12 % larger by default and freely resizable with the grip at the bottom right (right-click: default size); categories keep the Forever look after clicking (subcategories), the "Duration" dropdown is flat, and the inner tabs (Auctions / Bids) have centered text and a little room to the list.
 
 - ForeverSkin: the "Friends of …" window (right-click a Battle.net friend » view friends) now uses the Forever look.
