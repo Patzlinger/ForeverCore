@@ -932,15 +932,67 @@ local function ManaCost(spellID)
     end
 end
 
+-- Mana mitführen: Ist der Wert lesbar, gilt er (und Obergrenze, Regenerationswerte werden gemerkt). Ist er gesperrt
+-- (im Kampf), rechnen wir weiter – wie bei den HoT/DoT-Vorhersagen: letzter lesbarer Wert + Regeneration (Fünf-
+-- Sekunden-Regel) − Kosten der eigenen gewirkten Zauber (mm.OnCast).
+local mm = { lastCast = 0, live = true }
+local function Readable(x)
+    return type(x) == "number" and not (issecretvalue and issecretvalue(x)) and not (issecret and issecret(x))
+end
+local function ManaNow()
+    local now = GetTime()
+    local m = UnitPower("player", 0)
+    if Readable(m) then
+        mm.cur, mm.t, mm.live = m, now, true
+        local mx = UnitPowerMax("player", 0)
+        if Readable(mx) and mx > 0 then mm.max = mx end
+        if GetManaRegen then
+            local ok, base, casting = pcall(GetManaRegen)
+            if ok then
+                if Readable(base) and base > 0 then mm.base = base end
+                if Readable(casting) and casting > 0 then mm.casting = casting end
+            end
+        end
+        return m
+    end
+    mm.live = false
+    if not mm.cur then return end
+    local regen = ((now - mm.lastCast < 5) and (mm.casting or mm.base)) or mm.base or 0
+    mm.cur = mm.cur + regen * (now - (mm.t or now))
+    if mm.max and mm.cur > mm.max then mm.cur = mm.max end
+    mm.t = now
+    return mm.cur
+end
+function ns.CastCountOnCast(spellID)
+    local cost = spellID and not (issecret and issecret(spellID)) and ManaCost(spellID)
+    if not cost then return end
+    mm.lastCast = GetTime()
+    if not mm.live and mm.cur then mm.cur = math.max(0, mm.cur - cost) end
+end
+function ns.CastCountEstimating() return mm.live == false end
+
+-- Fehlersuche: /fbcast zeigt, warum (k)eine Zahlen erscheinen
+SLASH_FORBARSCAST1 = "/fbcast"
+SlashCmdList.FORBARSCAST = function()
+    local m = UnitPower("player", 0)
+    local withSpell, withCost = 0, 0
+    for _, def in ipairs(ns.BAR_DEFS) do
+        for _, button in ipairs(GetAllButtons(def)) do
+            local id = button.fbBorder and ActionSpell(button)
+            if id then
+                withSpell = withSpell + 1
+                if ManaCost(id) then withCost = withCost + 1 end
+            end
+        end
+    end
+    print(string.format("|cffffd100ForeverBars Zauber/Mana|r Option an: %s | Mana lesbar: %s | gemerkt: %s | Kampf: %s | Knöpfe mit Zauber: %d, davon mit Manakosten: %d",
+        tostring(ns.db and ns.db.castCount), tostring(Readable(m)), tostring(mm.cur and math.floor(mm.cur)),
+        tostring(InCombatLockdown()), withSpell, withCost))
+end
+
 function ns.UpdateCastCounts()
     local on = ns.db and ns.db.castCount
-    local mana
-    if on then
-        local m = UnitPower("player", 0)
-        -- im Kampf gesperrt: issecret erkennt es nicht überall zuverlässig, darum rechnet unten zusätzlich ein pcall
-        local locked = (issecretvalue and issecretvalue(m)) or (issecret and issecret(m))
-        if not locked and type(m) == "number" then mana = m end
-    end
+    local mana = on and ManaNow() or nil
     for _, def in ipairs(ns.BAR_DEFS) do
         for _, button in ipairs(GetAllButtons(def)) do
             local fs = button.fbCastCount
@@ -3495,12 +3547,19 @@ function ns.SetupBars()
         local f = CreateFrame("Frame")
         f:RegisterUnitEvent("UNIT_POWER_UPDATE", "player")
         f:RegisterUnitEvent("UNIT_MAXPOWER", "player")
+        f:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
         for _, e in ipairs({ "ACTIONBAR_SLOT_CHANGED", "ACTIONBAR_PAGE_CHANGED", "UPDATE_SHAPESHIFT_FORM", "SPELLS_CHANGED",
             "PLAYER_LEVEL_UP", "PLAYER_ENTERING_WORLD" }) do
             pcall(f.RegisterEvent, f, e)
         end
-        f:SetScript("OnEvent", function()
-            if not ns.db or not ns.db.castCount or pending then return end
+        -- gesperrtes Mana (Kampf): geschätzt weiterführen, zweimal pro Sekunde
+        C_Timer.NewTicker(0.5, function()
+            if ns.db and ns.db.castCount and ns.CastCountEstimating() then ns.UpdateCastCounts() end
+        end)
+        f:SetScript("OnEvent", function(_, event, _, _, spellID)
+            if not ns.db or not ns.db.castCount then return end
+            if event == "UNIT_SPELLCAST_SUCCEEDED" then ns.CastCountOnCast(spellID) end
+            if pending then return end
             pending = true
             C_Timer.After(0.1, function()
                 pending = false
