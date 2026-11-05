@@ -12,6 +12,31 @@ local FOOTER = 36
 local function Forbidden(obj) return obj and obj.IsForbidden and obj:IsForbidden() end
 
 local done = setmetatable({}, { __mode = "k" })
+local boxes = setmetatable({}, { __mode = "k" }) -- flach gemachte Kästen (der größte ist die Liste)
+local dropdowns = setmetatable({}, { __mode = "k" })
+local shifted = setmetatable({}, { __mode = "k" })
+
+-- Mehr Luft (auf Wunsch): Auswahlliste DROP_DOWN tiefer (weg von der goldenen Linie oben), die Liste oben genauso viel
+-- tiefer und unten LIST_UP höher (weg von der Linie der unteren Leiste). Einmal je Teil, auf Blizzards Lage gerechnet.
+local DROP_DOWN, LIST_UP = 4, 8
+local function Shift(frame, topDelta, bottomDelta)
+    if shifted[frame] or not ns.CanMove(frame) then return end
+    local n = frame:GetNumPoints()
+    if n == 0 then return end
+    shifted[frame] = true
+    local points = {}
+    for i = 1, n do points[i] = { frame:GetPoint(i) } end
+    frame:ClearAllPoints()
+    for _, p in ipairs(points) do
+        local point, rel, relPoint, x, y = p[1], p[2], p[3], p[4] or 0, p[5] or 0
+        if point:find("BOTTOM") and n > 1 then y = y + bottomDelta else y = y + topDelta end
+        frame:SetPoint(point, rel, relPoint, x, y)
+    end
+    -- nur oben verankert (feste Höhe): unten über die Höhe kürzen
+    if n == 1 and bottomDelta ~= 0 and topDelta - bottomDelta < 0 then
+        frame:SetHeight(math.max(20, frame:GetHeight() - (bottomDelta - topDelta)))
+    end
+end
 
 local function IsDropdown(child)
     return (child.IsObjectType and child:IsObjectType("DropdownButton")) or type(child.SetupMenu) == "function"
@@ -37,12 +62,14 @@ local function Scan(frame, depth, close)
                 if child.SetBackdrop and child.GetBackdrop and child:GetBackdrop() then pcall(child.ClearBackdrop, child) end
                 ns.HideTextures(child)
                 ns.Flat(child, C.input)
+                boxes[child] = true
             end
             if type(child.Track) == "table" and (child.Track.Thumb or child.Back) then
                 done[child] = true
                 ns.SkinScrollBar(child)
             elseif IsDropdown(child) then
                 done[child] = true
+                dropdowns[child] = true
                 ns.SkinDropdown(child)
             elseif child:IsObjectType("Button") and not child:IsObjectType("CheckButton") and child.GetText
                 and (child:GetText() or "") ~= "" and (child:GetWidth() or 0) > 60 then
@@ -85,6 +112,14 @@ local function Place(f)
         title:ClearAllPoints()
         title:SetPoint("CENTER", f, "TOP", 0, -math.floor(TITLE / 2) - 1)
     end
+    for d in pairs(dropdowns) do Shift(d, -DROP_DOWN, -DROP_DOWN) end
+    local list, height
+    for box in pairs(boxes) do
+        local h = box:GetHeight() or 0
+        if not height or h > height then list, height = box, h end
+    end
+    -- (ein Kasten, der nur oben hängt, wird oben tiefer gesetzt und um beides kürzer)
+    if list then Shift(list, -DROP_DOWN, LIST_UP) end
     table.sort(buttons, function(a, b) return (a:GetLeft() or 0) < (b:GetLeft() or 0) end)
     local y = math.floor(FOOTER / 2)
     for i, b in ipairs(buttons) do
