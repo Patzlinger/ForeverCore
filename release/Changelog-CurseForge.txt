@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- ForeverCast: new slider "Instants/DoTs shown for" – how long the instant/DoT popups below the cast bar stay visible (1–10 s, default unchanged at 2.5 s).
+- ForeverBags: new category filter next to the search (equipment, consumables, trade goods, reagents, quest, junk, new, other) – other items are dimmed, also in the bank and the saved view of other characters.
+
 - ForeverQuests: the dungeon window now remembers the real quest rewards from the game (quest log and the quest text at the NPC, account-wide) and shows them instead of Questie's Classic data – Forever changed some rewards. Items the server doesn't know are shown greyed out with an explanation instead of an endless "Retrieving item information".
 
 ## 0.51b – November 5, 2026

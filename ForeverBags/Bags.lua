@@ -181,6 +181,28 @@ local function CreateSlot(bag, slot)
     return button
 end
 
+-- Kategorie-Filter (Knopf neben der Suche): passt ein Gegenstand zur gewählten Kategorie? Nicht passende werden nur
+-- abgedunkelt wie bei der Suche – die Plätze bleiben, wo sie sind (geht so auch im Kampf). Gewählt wird je Sitzung
+-- (ns.bagCategory; nil = alle). Gegenstandsart aus C_Item.GetItemInfoInstant (ohne Serverdaten sofort bekannt).
+do
+    local CLASS = { [2] = "EQUIP", [4] = "EQUIP", [0] = "CONSUMABLE", [7] = "TRADE", [9] = "TRADE", [3] = "TRADE",
+        [5] = "REAGENT", [12] = "QUEST" }
+    ns.BAG_CATEGORIES = { "ALL", "EQUIP", "CONSUMABLE", "TRADE", "REAGENT", "QUEST", "JUNK", "NEW", "OTHER" }
+    -- item = Gegenstands-ID oder Link; quality, isQuest, isNew soweit bekannt
+    function ns.ItemInCategory(item, quality, isQuest, isNew)
+        local cat = ns.bagCategory
+        if not cat or cat == "ALL" then return true end
+        if not item then return false end
+        if cat == "NEW" then return isNew and true or false end
+        if cat == "JUNK" then return quality == 0 end
+        if cat == "QUEST" and isQuest then return true end
+        local ok, _, _, _, _, _, classID = pcall(C_Item.GetItemInfoInstant, item)
+        local kind = ok and classID and CLASS[classID] or nil
+        if cat == "OTHER" then return kind == nil and quality ~= 0 and not isQuest end
+        return kind == cat
+    end
+end
+
 -- Anzeige eines Platzes aus den Taschendaten (geht auch im Kampf: keine geschützten Änderungen).
 -- Auch für das Bankfenster (Bank.lua).
 function ns.UpdateSlot(button, bag, slot)
@@ -214,6 +236,13 @@ function ns.UpdateSlot(button, bag, slot)
     -- Hintergrund) – das hat Bank und Taschen komplett abgedunkelt.
     local searching = searchBox and strtrim(searchBox:GetText() or "") ~= ""
     local filtered = searching and info and info.isFiltered
+    -- Kategorie-Filter (siehe ns.ItemInCategory): leere Plätze bei aktiver Kategorie ebenfalls abdunkeln
+    if not filtered and ns.bagCategory and ns.bagCategory ~= "ALL" then
+        local questInfo = info and C_Container.GetContainerItemQuestInfo and C_Container.GetContainerItemQuestInfo(bag, slot)
+        local isQuest = questInfo and (questInfo.isQuestItem or questInfo.questID ~= nil)
+        local isNew = info and C_NewItems and C_NewItems.IsNewItem and C_NewItems.IsNewItem(bag, slot)
+        filtered = not ns.ItemInCategory(info and (info.itemID or info.hyperlink), info and info.quality, isQuest, isNew)
+    end
     if button.SetMatchesSearch then
         button:SetMatchesSearch(not filtered)
     else
@@ -397,7 +426,7 @@ local function ShowOffline(entry, placer)
             local color = q and q >= 2 and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[q]
             b.quality:SetShown(color ~= nil and ns.db.qualityBorder)
             if color then b.quality:SetVertexColor(color.r, color.g, color.b) end
-            b:SetAlpha(MatchesSearch(b.link) and 1 or 0.3)
+            b:SetAlpha(MatchesSearch(b.link) and ns.ItemInCategory(b.link, q, false, false) and 1 or 0.3)
             if item then used = used + 1 end
             b:Show()
         end
@@ -1023,10 +1052,31 @@ local function CreateWindow()
     keyToggle:HookScript("OnLeave", HideTip)
     keyToggle:Hide()
 
+    -- Kategorie-Filter (links neben dem Schlüsselbund): Auswahl aus ns.BAG_CATEGORIES, je Sitzung
+    local catButton = UI.Button(window, L("CAT_ALL"), 96, function(self)
+        local list = {}
+        for _, key in ipairs(ns.BAG_CATEGORIES) do list[#list + 1] = { key = key, label = L("CAT_" .. key) } end
+        UI.ChoiceMenu(self, list, function() return ns.bagCategory or "ALL" end, function(key)
+            ns.bagCategory = key ~= "ALL" and key or nil
+            self:SetText(L("CAT_" .. key))
+            -- gewählte Kategorie in Gold, "Alle" normal
+            local fs = self:GetFontString()
+            if fs then
+                if ns.bagCategory then fs:SetTextColor(C.accent[1], C.accent[2], C.accent[3]) else fs:SetTextColor(1, 1, 1) end
+            end
+            ns.LayoutBags()
+            if ns.LayoutBank then pcall(ns.LayoutBank) end
+        end)
+    end)
+    if UI.AddArrow then UI.AddArrow(catButton) end
+    catButton:SetPoint("RIGHT", keyToggle, "LEFT", -4, 0)
+    catButton:HookScript("OnEnter", function(self) SimpleTip(self, L("TIP_CATEGORY")) end)
+    catButton:HookScript("OnLeave", HideTip)
+
     -- Suche (eigene Taschen: Blizzards Taschensuche, gilt wie bei Blizzard auch für die Bank)
     searchBox = UI.EditBox(window, 100, 22)
     searchBox:SetPoint("LEFT", viewButton, "RIGHT", 4, 0)
-    searchBox:SetPoint("RIGHT", keyToggle, "LEFT", -4, 0)
+    searchBox:SetPoint("RIGHT", catButton, "LEFT", -4, 0)
     local placeholder = searchBox:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     placeholder:SetPoint("LEFT", 7, 0)
     placeholder:SetText(L("SEARCH"))

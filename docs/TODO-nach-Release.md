@@ -16,21 +16,7 @@ Auswirkung im Spiel.
     Gruppeneinladung, PvP-Bereitschaft, Farbauswahl, Quest-Details-Popup, Modellvorschau, Auswahlfenster,
     Beuteverlauf, Währung übertragen, Spieler melden, Schnelltastenbelegung, Sprechkopf, Sockeln (falls vorhanden)
   - Abgleich im Spiel: `/fskin fenster` (listet alle großen Fenster, umgestaltet `+` oder nicht `-`)
-- [ ] ⚠ **ForeverFrames:** (Trennlinie zwischen Lebens- und Ressourcenbalken gibt es seit 0.51b in ForeverUnits;
-      der gemeinsame Verschiebe-Modus mit Rechtsklick ins Menü und Ende bei Kampfbeginn ist seit Hub v72 fertig)
-  - Trennlinie auch bei den ForeverFrames-Gruppenrahmen (falls gewünscht)
-  - Mana- und Energie-Regeneration anzeigbar machen
-  - Mana zusätzlich in % anzeigbar
-- [ ] ⚠ **ForeverCast:** Länge der Sofortzauber-Punkte (Instant-Dots) einstellbar machen – Standardwert bleibt wie er ist
 - [ ] ⚠ **Markierungen über Blizzards Schnell-Ping-Menü:** Weltmarkierungen mit dem Ping-Rad verbinden; Zielmarkierungen
       (Totenkopf, Kreuz …) per Mouseover über Gegner ebenfalls über das Ping-Rad setzen (Addon klären, z. B. ForeverHelpers)
 - [ ] ⚠ **Essen/Trinken-Makro** (ForeverHelpers): Makro, das automatisch das beste Essen bzw. Getränk aus den Taschen
       nimmt
-- [ ] ⚠ **ForeverBags:** Taschen nach Kategorien filterbar machen
-
-## Verschoben (erst testen können, wenn der Server läuft)
-
-- [ ] ⚠ **Optional: `Character.lua` aufteilen** (ForeverSkin, gut 1000 Zeilen) – reine Ordnung, ändert nichts im
-      Spiel; die Teile greifen eng ineinander, darum nur mit gründlichem Test im Spiel. Der übrige doppelte Code liegt
-      seit 2026-11-05 gemeinsam in `Core.lua` (`ns.SkinSearchBox`, `ns.Anchor`, `ns.KeyOf`, `ns.ToggleState`,
-      `ns.KeepInvisible`, `ns.KeepHidden`, `ns.CanMove`)

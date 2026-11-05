@@ -55,6 +55,7 @@ local DEFAULTS = {
     showCraft = true,
     showExpect = true,
     showInstant = true,
+    instantHold = 2.5,  -- so lange bleiben die Spontanzauber-/DoT-Einblendungen voll sichtbar (Sekunden)
     showMelee = true,
     showCombo = false,  -- Combopunkte zeigen ForeverUnits/ForeverPlates; hier nur auf Wunsch
     hideBlizzard = true,
@@ -1050,15 +1051,16 @@ end
 
 local function UpdatePopups(now)
     local changed = false
+    local hold = tonumber(GetDB().instantHold) or POPUP_HOLD -- einstellbar (Regler "Anzeigedauer"), Standard 2,5 s
     for i = #popupOrder, 1, -1 do
         local f = popupOrder[i]
         local age = now - f.shownAt
-        if age > POPUP_HOLD + POPUP_FADE then
+        if age > hold + POPUP_FADE then
             f:Hide()
             table.remove(popupOrder, i)
             changed = true
-        elseif age > POPUP_HOLD then
-            f:SetAlpha(1 - (age - POPUP_HOLD) / POPUP_FADE)
+        elseif age > hold then
+            f:SetAlpha(1 - (age - hold) / POPUP_FADE)
         end
     end
     if changed then LayoutPopups() end
@@ -1711,6 +1713,11 @@ local heightSlider = UI.Slider(options, R + 2, -254, T("Höhe", "Height"), 12, 4
     GetDB().height = value
     ApplySize()
 end), { width = 170, unit = " px" })
+-- Anzeigedauer der Spontanzauber-/DoT-Einblendungen (als Feld: die Datei ist nahe an Luas Grenze von 200 lokalen Variablen)
+options.instantHoldSlider = UI.Slider(options, R + 2, -294, T("Anzeigedauer Spontanzauber/DoTs", "Instants/DoTs shown for"),
+    1, 10, 0.5, Safe("Einstellungen", function(value)
+        GetDB().instantHold = value
+    end), { width = 170, unit = " s" })
 
 -- Spell-Queue-Fenster einstellen (Spieleinstellung "SpellQueueWindow")
 UI.Header(options, L + 2, -334, T("Spell-Queue-Fenster", "Spell queue window"), 568)
@@ -1833,6 +1840,7 @@ options:SetScript("OnShow", Safe("Einstellungen", function()
     end
     widthSlider:Load(GetDB().width)
     heightSlider:Load(GetDB().height)
+    options.instantHoldSlider:Load(tonumber(GetDB().instantHold) or DEFAULTS.instantHold)
     unitHeightSlider:Load(GetDB().unitHeight)
     lookBtn.Load()
     posX:Load()
