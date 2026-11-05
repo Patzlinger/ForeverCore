@@ -598,14 +598,16 @@ end
 
 local function ShowLive(placer)
     local index, used, total = 0, 0, 0
-    local sorted = ns.SortByCategoryOn()
+    -- im Kampf nicht neu ordnen (Knöpfe dürfen sich nicht bewegen) – Plätze nur auffrischen
+    local sortMode = ns.SortByCategoryOn()
+    local sorted = sortMode and not InCombatLockdown()
     local entries = {}
     for _, bag in ipairs(ns.BagIDs()) do
         local count = SlotCount(bag)
         for slot, button in pairs(buttons[bag] or {}) do
             if slot > count then button:Hide() end -- Tasche getauscht: kleinere Tasche
         end
-        if count > 0 and not sorted then placer:StartBag() end
+        if count > 0 and not sortMode then placer:StartBag() end
         for slot = 1, count do
             local button = buttons[bag] and buttons[bag][slot]
             if button then
@@ -623,7 +625,9 @@ local function ShowLive(placer)
                         button:SetPoint("TOPLEFT", content, "TOPLEFT", x, -y)
                     end
                 end
-                UpdateSlot(button, bag, slot)
+                -- ein Fehler an einem Platz (z. B. gesperrte Werte im Kampf) darf nicht die ganze Tasche abbrechen
+                local ok, err = pcall(UpdateSlot, button, bag, slot)
+                if not ok and UI.ReportError then UI.ReportError("ForeverBags", "slot", err) end
                 index = index + 1
                 total = total + 1
                 if itemID then used = used + 1 end
@@ -632,7 +636,7 @@ local function ShowLive(placer)
     end
     if sorted then
         PlaceSorted(placer, entries)
-    elseif not InCombatLockdown() then
+    elseif not sortMode and not InCombatLockdown() then
         HideGroupLabels()
     end
     return index, used, total
@@ -1132,8 +1136,10 @@ local function CreateWindow()
     keyToggle:Hide()
 
     -- Anordnung (links neben dem Schlüsselbund): wie in den Taschen oder nach Kategorie sortiert (ns.db.sortMode)
+    -- (kleiner Symbol-Knopf wie Schlüsselbund und Taschenleiste – mit Text war die Werkzeugzeile zu voll; gold = nach
+    -- Kategorie)
     local MODES = { { key = "BAGS", label = L("ORDER_BAGS") }, { key = "CATEGORY", label = L("ORDER_CATEGORY") } }
-    local catButton = UI.Button(window, "", 104, function(self)
+    local catButton = UI.Button(window, "", 22, function(self)
         UI.ChoiceMenu(self, MODES, function() return ns.db.sortMode == "CATEGORY" and "CATEGORY" or "BAGS" end, function(key)
             if InCombatLockdown() then ns.Print(L("COMBAT_LATER")) return end
             ns.db.sortMode = key == "CATEGORY" and "CATEGORY" or nil
@@ -1141,14 +1147,30 @@ local function CreateWindow()
             ns.LayoutBags()
         end)
     end)
+    catButton.icon = catButton:CreateTexture(nil, "ARTWORK")
+    catButton.icon:SetPoint("TOPLEFT", 3, -3)
+    catButton.icon:SetPoint("BOTTOMRIGHT", -3, 3)
+    catButton.icon:SetTexture("Interface\\Icons\\INV_Misc_Note_02")
+    catButton.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
     function catButton.Load()
-        catButton:SetText(L(ns.db.sortMode == "CATEGORY" and "ORDER_CATEGORY" or "ORDER_BAGS"))
+        local on = ns.db.sortMode == "CATEGORY"
+        catButton.icon:SetDesaturated(not on)
+        catButton.icon:SetAlpha(on and 1 or 0.7)
+        if catButton.SetBackdropBorderColor then
+            local c = on and C.accent or C.border
+            catButton:SetBackdropBorderColor(c[1], c[2], c[3], 1)
+        end
     end
     catButton.Load()
-    if UI.AddArrow then UI.AddArrow(catButton) end
     catButton:SetPoint("RIGHT", keyToggle, "LEFT", -4, 0)
-    catButton:HookScript("OnEnter", function(self) SimpleTip(self, L("TIP_CATEGORY")) end)
-    catButton:HookScript("OnLeave", HideTip)
+    catButton:HookScript("OnEnter", function(self)
+        SimpleTip(self, L(ns.db.sortMode == "CATEGORY" and "ORDER_CATEGORY" or "ORDER_BAGS") .. "\n|cffbbbbbb"
+            .. L("TIP_CATEGORY") .. "|r")
+    end)
+    catButton:HookScript("OnLeave", function(self)
+        HideTip()
+        self.Load() -- (Blizzards Knopf färbt den Rand beim Verlassen zurück)
+    end)
 
     -- Suche (eigene Taschen: Blizzards Taschensuche, gilt wie bei Blizzard auch für die Bank)
     searchBox = UI.EditBox(window, 100, 22)
