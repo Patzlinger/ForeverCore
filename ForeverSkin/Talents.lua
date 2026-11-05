@@ -105,8 +105,39 @@ local function Inspecting(f)
     return false
 end
 local book
+-- Suchfeld beim Betrachten an dieselbe Stelle wie im eigenen Talentfenster (oben rechts): die Lage im eigenen Fenster
+-- wird gemerkt (dort bleibt alles wie bei Blizzard); fehlt sie noch, oben rechts. Die Auswahlliste hängt am Suchfeld.
+local ownSearchPoints, inspectMoved
+local function PlaceSearch(f)
+    local search = FindSearchBox(f, 1)
+    if not search or not ns.CanMove(search) then return end
+    if not Inspecting(f) then
+        if inspectMoved then
+            -- zurück im eigenen Fenster: Blizzards Lage wiederherstellen (falls Blizzard sie nicht selbst neu setzt)
+            inspectMoved = nil
+            if ownSearchPoints then
+                search:ClearAllPoints()
+                for _, p in ipairs(ownSearchPoints) do search:SetPoint(unpack(p)) end
+            end
+            return
+        end
+        local points = {}
+        for i = 1, search:GetNumPoints() do points[i] = { search:GetPoint(i) } end
+        if #points > 0 then ownSearchPoints = points end
+        return
+    end
+    local wanted = ownSearchPoints or { { "TOPRIGHT", f, "TOPRIGHT", -60, -34 } }
+    local p1 = { search:GetPoint(1) }
+    if inspectMoved and p1[1] == wanted[1][1] and p1[2] == wanted[1][2] and p1[4] == wanted[1][4] and p1[5] == wanted[1][5] then
+        return
+    end
+    inspectMoved = true
+    search:ClearAllPoints()
+    for _, p in ipairs(wanted) do search:SetPoint(unpack(p)) end
+end
 local function UpdateSpellbookButton(f)
     if book then book:SetShown(not Inspecting(f)) end
+    pcall(PlaceSearch, f)
 end
 
 local function AddSpellbookButton(f)
