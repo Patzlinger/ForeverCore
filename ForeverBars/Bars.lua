@@ -322,9 +322,9 @@ end
 
 -- Position der Tastenbelegung auf dem Knopf
 local HOTKEY_POSITIONS = {
-    TOPRIGHT = { "TOPRIGHT", -2, -3, "RIGHT" },
-    TOPLEFT = { "TOPLEFT", 3, -3, "LEFT" },
-    TOP = { "TOP", 0, -3, "CENTER" },
+    TOPRIGHT = { "TOPRIGHT", -1, -1, "RIGHT" }, -- dicht in der Ecke (Abstand zur Anzahl unten rechts)
+    TOPLEFT = { "TOPLEFT", 2, -1, "LEFT" },
+    TOP = { "TOP", 0, -1, "CENTER" },
 }
 
 -- Lange Tastennamen kürzen, damit sie auf den Knopf passen (Blizzard kürzt nur teilweise, z. B. "Mausrad hoch")
@@ -425,6 +425,8 @@ local function UpdateButtonLook(button)
     end
     if count then
         count:SetAlpha(db.showCounts and 1 or 0)
+        count:ClearAllPoints()
+        count:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -1, 1) -- ganz in die untere rechte Ecke
         SetTextFont(count, db.fontSize)
     end
 
@@ -1381,10 +1383,10 @@ local function CreateOwnButton(name, showTooltip)
     button.cooldown = CreateFrame("Cooldown", nil, button, "CooldownFrameTemplate")
     button.cooldown:SetAllPoints(button.icon)
     button.Count = button:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
-    button.Count:SetPoint("BOTTOMRIGHT", -2, 2)
+    button.Count:SetPoint("BOTTOMRIGHT", -1, 1)
     -- Tastenbelegung (Text setzt UpdateOwnHotkeys; Schrift und Platz wie bei den Aktionsknöpfen)
     button.HotKey = button:CreateFontString(nil, "OVERLAY", "NumberFontNormalSmallGray")
-    button.HotKey:SetPoint("TOPRIGHT", -2, -3)
+    button.HotKey:SetPoint("TOPRIGHT", -1, -1)
     button:SetScript("OnEnter", function(self)
         local mode = ns.db.buttonTooltip
         if mode == "NEVER" or (mode == "NOCOMBAT" and InCombatLockdown()) or not self.fbEntry then return end
@@ -2626,7 +2628,7 @@ local function MarkButton(parent, size, name)
     -- Tastenbelegung oben rechts (Text setzt ns.UpdateOwnHotkeys)
     button.HotKey = button:CreateFontString(nil, "OVERLAY")
     SetTextFont(button.HotKey, ns.db.fontSize)
-    button.HotKey:SetPoint("TOPRIGHT", -2, -3)
+    button.HotKey:SetPoint("TOPRIGHT", -1, -1)
     button.HotKey:SetJustifyH("RIGHT")
     if name then markButtonNames[#markButtonNames + 1] = name end
     button:HookScript("OnEnter", function(self)
