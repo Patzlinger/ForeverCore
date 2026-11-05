@@ -22,7 +22,7 @@ Werte in Punkten des Fensters (vor `ns.Scaled`).
   **Links immer „Dein Gold: …“** – kommt automatisch mit `ns.SkinWindow` (`ns.HeaderGold`, aktualisiert sich bei
   jeder Gold-Änderung). Eigenes Gold dann nirgends sonst im Fenster (Blizzards Gold-Anzeigen ausblenden); wächst die
   Titelleiste nach oben, die Anzeige mitversetzen. Ausnahmen: Beute-Fenster (zu schmal), Optionen-Fenster, Makro-Fenster, Berufe, Talente, Gilde & Communitys,
-  Sammlungen/Vorlagen, Gruppensuche, Chat-Einstellungen/-Channels, Charakterfenster, Abklingzeiten-Manager, Sozialfenster samt Ignorierliste (kein Bezug zum Gold bzw. auf
+  Sammlungen/Vorlagen, Gruppensuche, Chat-Einstellungen/-Channels, Charakterfenster, Abklingzeiten-Manager, Spieler melden, Sozialfenster samt Ignorierliste (kein Bezug zum Gold bzw. auf
   Wunsch) – Liste GOLD_SKIP in ForeverSkin/Core.lua.
 - **Variante ohne Titelleiste** (Anprobe, Charakterfenster, Betrachten): flache Fläche, Titel gold oben, kleines rundes Porträt
   mit goldenem Ring auf der oberen linken Ecke, feine goldene Linie unter dem Kopf.
@@ -76,7 +76,7 @@ Werte in Punkten des Fensters (vor `ns.Scaled`).
   übrigen Schritte nicht auf und ist im Chat sichtbar.
 - Erst-beim-Öffnen geladene Fenster: `ADDON_LOADED` (Blizzard-Addon) + `PLAYER_LOGIN` + Öffnungs-Ereignis.
   Rückfrage-Fenster entstehen teils erst beim Anzeigen (`hooksecurefunc("StaticPopup_Show", …)`).
-- Schalter in `ns.DEFAULTS` und als Haken in `/fskin` (Einstellungsseite darunter verlängern).
+- Schalter in `ns.DEFAULTS` (immer an – Haken je Fenster gibt es seit 2026-11-05 auf Wunsch nicht mehr; wer den Stil nicht will, schaltet ForeverSkin aus).
 - Andocken: ForeverBags hängt die Taschen an Händler, Bank und Handel – bei neuen Fenstern mit Gegenständen
   (z. B. Auktionshaus) gleich mit vorsehen.
 
@@ -135,7 +135,7 @@ Werte in Punkten des Fensters (vor `ns.Scaled`).
 ## 8. Ablauf für ein neues Fenster
 
 1. Fenster mit `/fskin maus` ansehen lassen (Namen, gesperrte Teile) – nicht raten.
-2. Datei in `ForeverSkin/` anlegen (in die `.toc`), Schalter + Haken, Laden wie oben.
+2. Datei in `ForeverSkin/` anlegen (in die `.toc`), Schalter in `ns.DEFAULTS`, Laden wie oben.
 3. Aufbau nach Abschnitt 2, Zeilen/Plätze nach 3, Bedienelemente nach 4, Effekte nach 5, Robustheit nach 6.
 4. Prüflauf, Changelog, Commit; beim Spieler Screenshots von **allen Reitern/Zuständen** erbitten (leer, gefüllt,
    ausgegraut).

@@ -2,7 +2,7 @@
 -- Grundsatz (wie beim Spielmenü in ForeverCore): Blizzards Fenster, Knöpfe und Funktionen bleiben dieselben. Wir
 -- machen nur Blizzards Grafiken unsichtbar (SetAlpha 0) und legen eigene flache Grafiken als zusätzliche Ebenen
 -- (Texturen) darunter. Es wird nichts in Blizzards Tabellen geschrieben und nichts verschoben – darum gibt es auch
--- keine Blockier-Fehler, und Ausschalten = Addon aus (oder Haken in den Einstellungen) + /reload.
+-- keine Blockier-Fehler, und Ausschalten = Addon aus + /reload (Schalter je Fenster gibt es seit 2026-11-05 nicht mehr).
 local ADDON_NAME, ns = ...
 local UI = ForeverHub.UI
 local T = UI.T
@@ -37,6 +37,7 @@ ns.DEFAULTS = {
     inspect = true,  -- Betrachten (Ausrüstung anderer Spieler)
     auction = true,  -- Auktionshaus
     calendar = true, -- Kalender, Uhr und Stoppuhr
+    report = true,   -- Spieler melden (Kundensupport)
     size = 100,      -- Größe von Gespräch, Quest, Händler und Lehrer in Prozent (100 = Grundgröße SIZE_BASE)
 }
 
@@ -68,7 +69,13 @@ function ns.GetDB()
     end
     db.scale = nil
     for k, v in pairs(ns.DEFAULTS) do
-        if db[k] == nil then db[k] = v end
+        -- Fenster-Schalter gibt es seit 2026-11-05 nicht mehr (auf Wunsch): alle Fenster immer im Forever-Stil, auch
+        -- wenn früher einer ausgeschaltet war. Wer den Stil nicht will, schaltet ForeverSkin in der Addon-Liste aus.
+        if type(v) == "boolean" then
+            db[k] = v
+        elseif db[k] == nil then
+            db[k] = v
+        end
     end
     return db
 end
@@ -1283,64 +1290,24 @@ end
 ---------------------------------------------------------------------------
 -- Einstellungsseite und Befehl
 ---------------------------------------------------------------------------
+-- (Die Schalter je Fenster gibt es seit 2026-11-05 nicht mehr – alle Fenster immer im Forever-Stil, siehe ns.GetDB)
 local options
-local checks = {}
 local function Build()
-    options = UI.SettingsPanel("ForeverSkinOptions", T("ForeverSkin – Einstellungen (Prototyp)", "ForeverSkin – Settings (prototype)"),
-        460, 832, { key = "ForeverSkin", group = UI.SETTINGS_GROUPS.comfort, label = T("Fenster-Stil", "Window style") })
+    options = UI.SettingsPanel("ForeverSkinOptions", T("ForeverSkin – Einstellungen", "ForeverSkin – Settings"),
+        460, 190, { key = "ForeverSkin", group = UI.SETTINGS_GROUPS.comfort, label = T("Fenster-Stil", "Window style") })
     local W = 420
     UI.Header(options, 18, -40, T("Fenster im Forever-Stil", "Windows in the Forever look"), W)
-    local reload
-    local function Check(y, label, key)
-        local cb = UI.Check(options, 14, y, label, ns.Safe(T("Einstellungen", "Settings"), function(checked)
-            ns.GetDB()[key] = checked
-            reload:Show()
-        end))
-        checks[#checks + 1] = { cb = cb, key = key }
-    end
-    Check(-62, T("NPC-Gespräch", "NPC dialog"), "gossip")
-    Check(-86, T("Quest-Dialog (Annehmen, Fortschritt, Abgeben)", "Quest dialog (accept, progress, turn in)"), "quest")
-    Check(-110, T("Händler", "Vendor"), "merchant")
-    Check(-134, T("Lehrer (mit „Leisten aktualisieren“)", "Trainer (with \"Update bars\")"), "trainer")
-    Check(-158, T("Rückfrage-Fenster", "Confirmation dialogs"), "popup")
-    Check(-182, T("Optionen-Fenster (Rahmen, Liste, Knöpfe)", "Options window (frame, list, buttons)"), "settings")
-    Check(-206, T("Flugkarte", "Flight map"), "taxi")
-    Check(-230, T("Beute-Fenster", "Loot window"), "loot")
-    Check(-254, T("Makro-Fenster", "Macro window"), "macro")
-    Check(-278, T("Handelsfenster", "Trade window"), "trade")
-    Check(-302, T("Briefkasten", "Mailbox"), "mail")
-    Check(-326, T("Wappenrock-Gestaltung", "Tabard design"), "tabard")
-    Check(-350, T("Anprobe", "Dressing room"), "dressup")
-    Check(-374, T("Berufe-Fenster", "Professions window"), "professions")
-    Check(-398, T("Talentfenster", "Talents window"), "talents")
-    Check(-422, T("Gilde & Communitys", "Guild & Communities"), "communities")
-    Check(-446, T("Vorlagen (Transmogrifikation)", "Appearances (transmogrify)"), "wardrobe")
-    Check(-470, T("Menüs (Rechtsklick auf Einheiten)", "Menus (right-click on units)"), "menus")
-    Check(-494, T("Suche nach Gruppe (Reiter zum Dungeonfenster)", "Group finder (tab to dungeon window)"), "groupFinder")
-    Check(-518, T("Chat-Einstellungen und Chat-Channels", "Chat settings and chat channels"), "chatConfig")
-    Check(-542, T("Charakterfenster", "Character window"), "character")
-    Check(-566, T("Abklingzeiten-Manager", "Cooldown manager"), "cooldowns")
-    Check(-590, T("Sozialfenster (Kontakte, Wer, Schlachtzug)", "Social window (contacts, who, raid)"), "social")
-    Check(-614, T("Stall (Jäger)", "Stable (hunters)"), "stable")
-    Check(-638, T("Betrachten (andere Spieler)", "Inspect (other players)"), "inspect")
-    Check(-662, T("Auktionshaus", "Auction house"), "auction")
-    Check(-686, T("Kalender, Uhr und Stoppuhr", "Calendar, clock and stopwatch"), "calendar")
-    local size = UI.Slider(options, 22, -714, T("Größe von Gespräch, Quest, Händler, Lehrer", "Size of dialog, quest, vendor, trainer"),
+    local size = UI.Slider(options, 22, -66, T("Größe von Gespräch, Quest, Händler, Lehrer", "Size of dialog, quest, vendor, trainer"),
         80, 120, 5, function(v)
             ns.GetDB().size = v
             ns.RescaleAll()
         end, { unit = " %", width = 220 })
-    UI.Hint(options, 22, -754, W - 12, T("Änderungen gelten nach dem Neuladen. Gefällt dir der Stil nicht, schalte " ..
-        "ForeverSkin in der Addon-Liste aus – dann ist alles wieder wie vorher.",
-        "Changes apply after reloading. If you don't like the look, turn ForeverSkin off in the addon list – " ..
-        "everything is back as before."))
-    reload = UI.Button(options, T("Neu laden", "Reload"), 120, function() ReloadUI() end)
-    reload:SetPoint("BOTTOMLEFT", 14, 14)
-    reload:Hide()
+    UI.Hint(options, 22, -110, W - 12, T("Alle umgestalteten Fenster erscheinen im Forever-Stil. Gefällt dir der Stil nicht, " ..
+        "schalte ForeverSkin in der Addon-Liste aus – dann ist alles wieder wie vorher.",
+        "All restyled windows use the Forever look. If you don't like it, turn ForeverSkin off in the addon list – " ..
+        "everything is back as before.")):SetWordWrap(true)
     options:HookScript("OnShow", function()
-        local db = ns.GetDB()
-        for _, c in ipairs(checks) do c.cb:SetChecked(db[c.key] and true or false) end
-        size:SetValue(tonumber(db.size) or 100)
+        size:SetValue(tonumber(ns.GetDB().size) or 100)
     end)
 end
 

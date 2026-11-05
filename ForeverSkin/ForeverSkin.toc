@@ -38,3 +38,4 @@ Stable.lua
 Inspect.lua
 AuctionHouse.lua
 Calendar.lua
+Report.lua
