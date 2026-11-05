@@ -4807,9 +4807,9 @@ SlashCmdList.FOREVEROVER = function(msg)
     local unit = (msg and msg:match("%S+")) or "target"
     local function P(t) UI.Chat("HoT/DoT", t) end
     if not UnitExists(unit) then P("Einheit '" .. unit .. "' gibt es nicht (Ziel wählen oder /fover player).") return end
-    P("GetUnitAuras: " .. tostring(C_UnitAuras and C_UnitAuras.GetUnitAuras ~= nil) .. ", Beschreibung: "
+    P("Einheit: " .. tostring(UnitName(unit)) .. " | GetUnitAuras: " .. tostring(C_UnitAuras and C_UnitAuras.GetUnitAuras ~= nil) .. ", Beschreibung: "
         .. tostring(C_Spell and C_Spell.GetSpellDescription ~= nil))
-    for _, filter in ipairs({ "HELPFUL|PLAYER", "HARMFUL|PLAYER" }) do
+    for _, filter in ipairs({ "HELPFUL|PLAYER", "HARMFUL|PLAYER", "HELPFUL", "HARMFUL" }) do
         local list = CollectAuras(unit, filter)
         P(filter .. ": " .. #list .. " Auren")
         for _, a in ipairs(list) do
