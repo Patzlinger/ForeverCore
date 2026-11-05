@@ -356,6 +356,17 @@ local function NewPlacer(columns, gap)
         if not self.started then return SLOT end
         return self.col > 0 and (self.y + SLOT) or (self.y - gap)
     end
+    -- Überschriftzeile (z. B. Schlüsselbund) in neuer Reihe; Rückgabe: y der Zeile
+    function p:Header(h)
+        if self.col > 0 then
+            self.col = 0
+            self.y = self.y + SLOT + gap
+        end
+        local y = self.y
+        self.y = y + h + gap
+        self.started = true
+        return y
+    end
     function p:Finish()
         for i = self.seps + 1, #separators do separators[i]:Hide() end
     end
@@ -519,6 +530,88 @@ local function ShowLive(placer)
     return index, used, total
 end
 
+---------------------------------------------------------------------------
+-- Schlüsselbund: eigener, auf-/zuklappbarer Abschnitt unter den Taschen (standardmäßig zu). Zählt nicht bei den
+-- freien Plätzen mit. In diesem Client ist Behälter -1 der Schlüsselbund, sonst Enum.BagIndex.Keyring.
+---------------------------------------------------------------------------
+local KEY_HEADER = 18
+local keyHeader
+local function KeyringID()
+    local bi = Enum and Enum.BagIndex
+    return (bi and bi.Keyring) or -1
+end
+
+local function KeyringButtons()
+    return buttons[KeyringID()] or {}
+end
+
+local function HideKeyring()
+    if keyHeader then keyHeader:Hide() end
+    if not InCombatLockdown() then
+        for _, b in pairs(KeyringButtons()) do b:Hide() end
+    end
+end
+
+local function CreateKeyHeader()
+    keyHeader = CreateFrame("Button", nil, content)
+    keyHeader:SetHeight(KEY_HEADER)
+    keyHeader.icon = keyHeader:CreateTexture(nil, "ARTWORK")
+    keyHeader.icon:SetSize(14, 14)
+    keyHeader.icon:SetPoint("LEFT", 2, 0)
+    keyHeader.text = keyHeader:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    keyHeader.text:SetPoint("LEFT", keyHeader.icon, "RIGHT", 4, 0)
+    local hl = keyHeader:CreateTexture(nil, "HIGHLIGHT")
+    hl:SetAllPoints()
+    hl:SetColorTexture(1, 1, 1, 0.06)
+    keyHeader:SetScript("OnClick", function()
+        if InCombatLockdown() then ns.Print(L("COMBAT_LATER")) return end
+        ns.db.keyringOpen = not ns.db.keyringOpen
+        ns.LayoutBags()
+    end)
+end
+
+-- Abschnitt zeichnen (nur eigene Taschen); gibt nichts zurück
+local function ShowKeyring(placer)
+    local bag = KeyringID()
+    local count = SlotCount(bag)
+    if count <= 0 then HideKeyring() return end
+    if not keyHeader then CreateKeyHeader() end
+    local open = ns.db.keyringOpen and true or false
+    local y = placer:Header(KEY_HEADER)
+    keyHeader:ClearAllPoints()
+    keyHeader:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
+    keyHeader:SetPoint("TOPRIGHT", content, "TOPRIGHT", 0, -y)
+    keyHeader.icon:SetTexture(open and "Interface\\Buttons\\UI-MinusButton-Up" or "Interface\\Buttons\\UI-PlusButton-Up")
+    local used = 0
+    for slot = 1, count do
+        if C_Container.GetContainerItemID(bag, slot) then used = used + 1 end
+    end
+    keyHeader.text:SetText(string.format("%s (%d/%d)", L("KEYRING"), used, count))
+    keyHeader:Show()
+    if not open then
+        if not InCombatLockdown() then for _, b in pairs(KeyringButtons()) do b:Hide() end end
+        return
+    end
+    if not InCombatLockdown() then
+        for slot = 1, count do
+            if not (buttons[bag] and buttons[bag][slot]) then CreateSlot(bag, slot) end
+        end
+    end
+    placer:StartBag()
+    for slot = 1, count do
+        local button = buttons[bag] and buttons[bag][slot]
+        if button then
+            local x, py = placer:Next()
+            if not InCombatLockdown() then
+                button:ClearAllPoints()
+                button:SetPoint("TOPLEFT", content, "TOPLEFT", x, -py)
+                button:Show()
+            end
+            UpdateSlot(button, bag, slot)
+        end
+    end
+end
+
 local function ViewLabel()
     if not view then return L("VIEW_MINE") end
     local c = ns.CharacterData(view.key)
@@ -546,9 +639,11 @@ function ns.LayoutBags()
     if live then
         for i = 1, #offline do offline[i]:Hide() end
         _, used, total = ShowLive(placer)
+        ShowKeyring(placer)
         UpdateBagBar()
     else
         local entry = ns.CharacterData(view.key) or {}
+        HideKeyring()
         _, used, total = ShowOffline(entry, placer)
     end
     placer:Finish()
