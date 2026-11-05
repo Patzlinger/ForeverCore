@@ -8,7 +8,7 @@ Auswirkung im Spiel.
 ## Geplant
 
 - [ ] ⚠ **Restliche Fenster überarbeiten** (ForeverSkin, Darstellung) – noch offen:
-  - Große Fenster: Transmogrifizierer samt „Set bearbeiten“, Gildenränge und Gilden-Unterfenster (Gildenlog, News-Filter,
+  - Große Fenster: Gildenränge und Gilden-Unterfenster (Gildenlog, News-Filter,
     Gildeninfo-Text, Avatar-Auswahl), Auktionshaus-Feinschliff (Geld-Eingaben, Gegenstands-Platz beim Verkaufen,
     Taschen von ForeverBags andocken), PvP-Punktetafel und -Ergebnis
   - Kleine Fenster: Buch-/Brieftexte, Gildenurkunde/-einladung/-umbenennung, Rollenabfrage,
