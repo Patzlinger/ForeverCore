@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverQuests: quest rewards in the dungeon window no longer stay at "Item … (loading …)" – if the server doesn't answer, it asks again a few times and shows the name from Questie's item data meanwhile.
+
 - ForeverTooltip: the character window's attribute tooltips (Strength, Agility, Stamina, Intellect, Spirit) now also show what one point gives your character, e.g. "1 Strength = 2 attack power" or "20 Agility = 1 % critical strike chance" (values from the game, for your class and level; out of combat only; can be turned off in the settings). Bonuses from talents and buffs are measured on each gear change: how much of one point on an item really arrives, and how much health/mana one point of Stamina/Intellect really gives.
 
 - New: setup assistant on the first start of every character – language, player names, which addons to use and the basic switches in four short steps. Run it again any time with /forever setup (or /forever einrichtung).

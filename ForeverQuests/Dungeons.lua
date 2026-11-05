@@ -1048,16 +1048,34 @@ end
 
 -- Name, Link, Seltenheit und Symbol eines Gegenstands. Ist er noch nicht geladen,
 -- wird er angefordert und das Fenster danach aktualisiert.
+-- Antwortet der Server nicht (seit dem Live-Start bei manchen Gegenständen), wird nach ITEM_RETRY Sekunden erneut
+-- gefragt (höchstens ITEM_MAX_TRIES-mal); bis dahin steht der Name aus Questies Gegenstandsdaten da.
+local ITEM_RETRY, ITEM_MAX_TRIES = 8, 3
+local itemTries = {}
+local function QuestieItemName(itemID)
+    local loader = _G.QuestieLoader
+    local db = type(loader) == "table" and loader.ImportModule and loader:ImportModule("QuestieDB")
+    if not (db and db.QueryItemSingle) then return nil end
+    local ok, name = pcall(db.QueryItemSingle, itemID, "name")
+    return ok and type(name) == "string" and name ~= "" and name or nil
+end
 local function GetRewardInfo(itemID)
     local name, link, quality = C_Item.GetItemInfo(itemID)
     local icon = C_Item.GetItemIconByID and C_Item.GetItemIconByID(itemID)
-    if not name and not pendingItems[itemID] and Item and Item.CreateFromItemID then
-        pendingItems[itemID] = true
+    local asked = pendingItems[itemID]
+    if not name and (itemTries[itemID] or 0) < ITEM_MAX_TRIES
+        and (not asked or GetTime() - asked > ITEM_RETRY) and Item and Item.CreateFromItemID then
+        pendingItems[itemID] = GetTime()
+        itemTries[itemID] = (itemTries[itemID] or 0) + 1
+        if C_Item.RequestLoadItemDataByID then pcall(C_Item.RequestLoadItemDataByID, itemID) end
         Item:CreateFromItemID(itemID):ContinueOnItemLoad(function()
             pendingItems[itemID] = nil
             RequestRefresh()
         end)
+        -- falls keine Antwort kommt: später neu aufbauen, dabei wird erneut gefragt
+        C_Timer.After(ITEM_RETRY + 0.5, function() if pendingItems[itemID] then RequestRefresh() end end)
     end
+    if not name then name = QuestieItemName(itemID) end
     return name, link, quality, icon
 end
 
