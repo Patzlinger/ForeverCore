@@ -939,13 +939,33 @@ local mm = { lastCast = 0, live = true }
 local function Readable(x)
     return type(x) == "number" and not (issecretvalue and issecretvalue(x)) and not (issecret and issecret(x))
 end
+-- Ist das Mana gesperrt (Normalfall in diesem Client), das Maximum aber lesbar: das Spiel rechnet selbst. Eine
+-- Stufenkurve über den Prozentwert (Schritt k bei k × Kosten ÷ Maximum, Wert k) liefert direkt die Anzahl der Zauber,
+-- und UnitPowerPercent(..., Kurve) darf sie – auch gesperrt – in einen Text schreiben.
+local curves = {}
+local function CountCurve(cost, max)
+    local key = cost .. ":" .. max
+    local c = curves[key]
+    if c ~= nil then return c or nil end
+    local ok, curve = pcall(function()
+        local cv = C_CurveUtil.CreateCurve()
+        cv:SetType(Enum.LuaCurveType.Step)
+        cv:AddPoint(0, 0)
+        for k = 1, math.min(99, math.floor(max / cost)) do
+            cv:AddPoint(math.max(0.000001, (k * cost) / max - 0.00001), k)
+        end
+        return cv
+    end)
+    curves[key] = (ok and curve) or false
+    return ok and curve or nil
+end
 local function ManaNow()
     local now = GetTime()
     local m = UnitPower("player", 0)
+    local mx = UnitPowerMax("player", 0)
+    if Readable(mx) and mx > 0 then mm.max = mx end
     if Readable(m) then
         mm.cur, mm.t, mm.live = m, now, true
-        local mx = UnitPowerMax("player", 0)
-        if Readable(mx) and mx > 0 then mm.max = mx end
         if GetManaRegen then
             local ok, base, casting = pcall(GetManaRegen)
             if ok then
@@ -1039,8 +1059,17 @@ function ns.UpdateCastCounts()
                             fs:SetText(n)
                             if n > 0 then fs:SetTextColor(0.55, 0.78, 1) else fs:SetTextColor(1, 0.3, 0.3) end
                         end
+                    elseif mm.max and UnitPowerPercent then
+                        -- gesperrtes Mana: Anzahl über die Kurve vom Spiel berechnen lassen
+                        local curve = CountCurve(cost, mm.max)
+                        if curve then
+                            local okSet = pcall(function() fs:SetText(UnitPowerPercent("player", 0, false, curve)) end)
+                            if okSet then fs:SetTextColor(0.55, 0.78, 1) end
+                        end
                     end
-                    fs:SetShown((fs:GetText() or "") ~= "")
+                    -- (der Text kann gesperrt sein: Vergleich im pcall, im Zweifel zeigen)
+                    local okText, hasText = pcall(function() return (fs:GetText() or "") ~= "" end)
+                    fs:SetShown((not okText) or hasText)
                 end
             elseif fs then
                 fs:Hide()
