@@ -1016,7 +1016,7 @@ end
 ---------------------------------------------------------------------------
 local CLASS_ATLAS = {
     elite = "Interface\\AddOns\\ForeverCore\\Media\\EliteGold", worldboss = "Interface\\AddOns\\ForeverCore\\Media\\EliteGold",
-    rareelite = "Interface\\AddOns\\ForeverCore\\Media\\EliteSilver", rare = "UI-HUD-UnitFrame-Target-PortraitOn-Boss-Rare-Star",
+    rareelite = "Interface\\AddOns\\ForeverCore\\Media\\RareEliteSilver", rare = "Interface\\AddOns\\ForeverCore\\Media\\RareSilver",
 }
 -- Eigene Grafik (Pfad) oder Blizzard-Atlas; false, wenn nicht ladbar
 local function SetClassTex(tex, src)
