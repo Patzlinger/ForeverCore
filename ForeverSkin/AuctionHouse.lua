@@ -20,6 +20,7 @@ local function Step(what, fn)
     if not ok and ns.UI.ReportError then ns.UI.ReportError("ForeverSkin", "auction/" .. what, err) end
 end
 
+local SCALE = 1.05 -- Auktionshaus 5 % größer als bei Blizzard
 local done = setmetatable({}, { __mode = "k" })
 local textButtons = setmetatable({}, { __mode = "k" }) -- Text-Knöpfe, deren Grafiken laufend unsichtbar bleiben
 
@@ -60,12 +61,64 @@ end
 
 -- Kategorie links: grauer Balken, gewählt (Blizzards "SelectedTexture" sichtbar) bzw. Maus darauf = gold
 local function CategorySelected(b) return type(b.SelectedTexture) == "table" and b.SelectedTexture:IsShown() end
+-- Blizzards Grafiken der Kategorie unsichtbar – auch immer wieder: beim Auf-/Zuklappen setzt Blizzard sie neu (z. B.
+-- die dunkleren Unterkategorien), sonst erschien nach dem ersten Klick Blizzards Aussehen
+local function HideCategoryArt(b)
+    for _, key in ipairs({ "Lines", "NormalTexture", "HighlightTexture", "SelectedTexture" }) do ns.Hide(b[key]) end
+    for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetHighlightTexture" }) do
+        if b[get] then ns.Hide(b[get](b)) end
+    end
+end
 local function SkinCategory(b)
     if done[b] or Forbidden(b) then return end
     done[b] = true
-    for _, key in ipairs({ "Lines", "NormalTexture", "HighlightTexture", "SelectedTexture" }) do ns.Hide(b[key]) end
+    HideCategoryArt(b)
     ns.Flat(b, C.button, { 0, 1, 0, 1 })
     ns.Hover(b, CategorySelected)
+end
+
+-- Ältere Auswahlliste (UIDropDownMenuTemplate, z. B. "Dauer" beim Verkaufen): Rahmen ohne eigenen Knopf-Typ, mit
+-- Left/Middle/Right-Grafik und einem Pfeil-Knopf (.Button) – flach wie unsere Auswahllisten, eigener feiner Pfeil
+local function SkinOldDropdown(dd)
+    if done[dd] or Forbidden(dd) then return end
+    done[dd] = true
+    for _, key in ipairs({ "Left", "Middle", "Right" }) do ns.Hide(dd[key]) end
+    local name = dd:GetName()
+    if name then for _, s in ipairs({ "Left", "Middle", "Right" }) do ns.Hide(G(name .. s)) end end
+    local button = dd.Button
+    for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetHighlightTexture", "GetDisabledTexture" }) do
+        if button[get] then ns.Hide(button[get](button)) end
+    end
+    local look = ns.Flat(dd, C.button)
+    if look then
+        -- sichtbare Fläche: wie Blizzards Kasten (die Vorlage hat links und oben/unten leeren Rand)
+        look.fill:ClearAllPoints()
+        look.fill:SetPoint("TOPLEFT", dd, "TOPLEFT", 18, -2)
+        look.fill:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 2, -2)
+        local arrow = dd:CreateTexture(nil, "OVERLAY", nil, 7)
+        arrow:SetTexture("Interface\\ChatFrame\\ChatFrameExpandArrow")
+        arrow:SetSize(10, 10)
+        arrow:SetPoint("RIGHT", look.fill, "RIGHT", -8, 0)
+        arrow:SetRotation(-math.pi / 2)
+        arrow:SetVertexColor(0.8, 0.8, 0.82)
+        look.mine[arrow] = true
+    end
+    ns.Hover(dd)
+    if dd.Text and dd.Text.SetTextColor then dd.Text:SetTextColor(0.95, 0.95, 0.95) end
+end
+
+-- Reiter innerhalb einer Seite (z. B. "Auktionen" / "Gebote"): flach, Text mittig, TAB_UP höher als bei Blizzard
+-- (Luft zum Kasten darunter); gezählt wird je Reiter einmal auf Blizzards Lage
+local TAB_UP = 4
+local innerTabs = setmetatable({}, { __mode = "k" })
+local raised = setmetatable({}, { __mode = "k" }) -- [Reiter] = von uns gesetztes y
+local function RaiseTab(tab)
+    if tab:GetNumPoints() ~= 1 or not ns.CanMove(tab) then return end
+    local p, rel, rp, x, y = tab:GetPoint(1)
+    if innerTabs[rel] then return end -- (hängt am Reiter davor: rutscht mit)
+    if raised[tab] and math.abs((y or 0) - raised[tab]) < 0.01 then return end
+    raised[tab] = (y or 0) + TAB_UP
+    tab:SetPoint(p, rel, rp, x, (y or 0) + TAB_UP)
 end
 
 -- Zeile einer Ergebnisliste: grauer Balken mit feinem Rand (statt Blizzards Streifen), gewählt bzw. Maus darauf gold
@@ -108,6 +161,7 @@ local function Rows()
             box:ForEachFrame(function(entry)
                 if kind == "category" then
                     if type(entry.SelectedTexture) == "table" then SkinCategory(entry) end
+                    if done[entry] then HideCategoryArt(entry) end
                 elseif type(entry.SelectedHighlight) == "table" or type(entry.HighlightTexture) == "table" then
                     SkinRow(entry)
                 end
@@ -135,14 +189,29 @@ local function Scan(frame, depth)
             if type(child.Track) == "table" and (child.Track.Thumb or child.Back) then
                 done[child] = true
                 ns.SkinScrollBar(child)
-            elseif child:IsObjectType("DropdownButton") then
+            elseif child:IsObjectType("DropdownButton") or type(child.SetupMenu) == "function" then
                 done[child] = true
                 ns.SkinDropdown(child)
+            elseif not child:IsObjectType("Button") and type(child.Button) == "table" and type(child.Text) == "table"
+                and (type(child.Left) == "table" or type(child.Middle) == "table") then
+                SkinOldDropdown(child) -- (ältere Auswahlliste, z. B. "Dauer")
             elseif child:IsObjectType("EditBox") and (type(child.searchIcon) == "table" or type(child.SearchIcon) == "table") then
                 SkinSearch(child)
             elseif child:IsObjectType("Button") and not child:IsObjectType("CheckButton") then
                 local text = child.GetText and child:GetText()
-                if type(text) == "string" and text ~= "" and type(child.Left) == "table" and type(child.Right) == "table"
+                local key = ((ns.KeyOf(frame, child) or "") .. "|" .. name):lower()
+                local isTab = type(child.SetTabSelected) == "function"
+                    or (key:find("tab") and not key:find("table") and depth > 1) -- (Kaufen/Verkaufen/Auktionen: Stufe 1)
+                if type(text) == "string" and text ~= "" and isTab and not (key:find("buytab") or key:find("selltab")
+                    or key:find("|auctionstab") or key:find("^auctionstab")) then
+                    -- Reiter innerhalb einer Seite ("Auktionen" / "Gebote")
+                    done[child] = true
+                    ns.SkinTab(child, function(t)
+                        if type(t.isSelected) == "boolean" then return t.isSelected end
+                        return t.IsEnabled and not t:IsEnabled()
+                    end)
+                    innerTabs[child] = true
+                elseif type(text) == "string" and text ~= "" and type(child.Left) == "table" and type(child.Right) == "table"
                     and not name:find("money") then
                     done[child] = true
                     FlatButton(child)
@@ -169,6 +238,13 @@ local function Place(f)
             if prev then Anchor(tab, "LEFT", prev, "RIGHT", 8, 0) else Anchor(tab, "TOPLEFT", f, "BOTTOMLEFT", 6, 1) end
             pcall(ns.CenterText, tab)
             prev = tab
+        end
+    end
+    -- Reiter innerhalb der Seiten: Text mittig, etwas höher (Luft zum Kasten)
+    for tab in pairs(innerTabs) do
+        if tab:IsVisible() then
+            pcall(ns.CenterText, tab)
+            pcall(RaiseTab, tab)
         end
     end
     -- rote Knöpfe flach halten
@@ -213,6 +289,12 @@ local function SkinAuctionHouse()
     Step("scan", function() Scan(f, 1) end)
     Step("rows", Rows)
     Step("place", function() Place(f) end)
+    -- Standard 5 % größer (auf Wunsch) – beim Öffnen, außerhalb des Kampfes
+    local function Scale()
+        if not InCombatLockdown() and math.abs((f:GetScale() or 1) - SCALE) > 0.001 then f:SetScale(SCALE) end
+    end
+    Scale()
+    f:HookScript("OnShow", Scale)
     ns.Watch(f)
     -- Blizzard baut Seiten beim Reiterwechsel und Suchen; solange offen, neue Teile umgestalten
     local watch = CreateFrame("Frame", nil, f)

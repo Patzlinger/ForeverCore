@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverSkin: auction house 5 % larger by default; categories keep the Forever look after clicking (subcategories), the "Duration" dropdown is flat, and the inner tabs (Auctions / Bids) have centered text and a little room to the list.
+
 - ForeverSkin: the "Friends of …" window (right-click a Battle.net friend » view friends) now uses the Forever look.
 
 - Settings: new "View: Simple / Expert" button next to the search field (test). Simple shows only the core options of each page and closes the gaps; Expert is unchanged.
