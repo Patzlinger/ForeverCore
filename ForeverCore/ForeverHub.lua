@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 69
+local VERSION = 70
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -2134,6 +2134,19 @@ end
 -- geaendert, aber noch nicht neu geladen?
 local function IsPending(name) return IsLoaded(name) ~= IsEnabled(name) end
 
+-- für den Einrichtungsassistenten (Setup.lua): installierte Forever-Addons und An/Aus wie im Hub-Fenster
+hub.setup = {
+    Addons = function()
+        local list = {}
+        for _, k in ipairs(KNOWN) do
+            if IsInstalled(k.name) then list[#list + 1] = { name = k.name, icon = TocIcon(k.name) } end
+        end
+        return list
+    end,
+    IsEnabled = IsEnabled, SetEnabled = SetEnabled, IsPending = IsPending, GetDB = GetDB,
+    ApplyMode = function() ApplyMode() end,
+}
+
 local function BuildHubWindow()
     local list, cmdOf = {}, {}
     for _, k in ipairs(KNOWN) do
@@ -3275,6 +3288,11 @@ local function MaybeWelcome()
         return
     end
     db.welcomeDone = true -- sofort merken: erscheint auch dann nie wieder, wenn man es einfach schliesst
+    -- seit v70: Einrichtungsassistent (Setup.lua); die Frage nach anderen Addons kommt dort am Ende
+    if UI.ShowSetup then
+        UI.ShowSetup(function() pcall(MaybeAskConflicts, true) end)
+        return
+    end
     hub.ShowWelcome()
     pcall(MaybeAskConflicts, true) -- beim ersten Start: als einzige Frage gleich neben der Begrüßung
 end
@@ -3647,6 +3665,8 @@ SlashCmdList["FOREVERHUB"] = function(msg)
         UI.ShowTransfer("import")
     elseif msg == "leistung" or msg == "performance" or msg == "perf" then
         UI.ShowPerformance()
+    elseif msg == "einrichtung" or msg == "setup" then
+        if UI.ShowSetup then UI.ShowSetup() end
     else
         hub.ToggleWindow()
     end

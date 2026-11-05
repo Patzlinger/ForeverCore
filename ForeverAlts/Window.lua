@@ -1,5 +1,6 @@
 -- ForeverAlts – Window.lua: Übersicht aller Charaktere als Tabelle (Klick auf eine Spaltenüberschrift sortiert).
--- Maus über einer Zeile: alle Einzelheiten; Klick auf einen Beruf: Rezepte; Knöpfe am Ende: Taschen/Bank (ForeverBags), Ausblenden.
+-- Maus über einer Zeile: alle Einzelheiten; Klick auf die Zeile: Ausrüstung (Gear.lua); Klick auf einen Beruf: Rezepte;
+-- Knöpfe am Ende: Ausrüstung, Taschen/Bank (ForeverBags), Ausblenden.
 local ADDON_NAME, ns = ...
 local UI, T = ns.UI, ns.T
 local C = UI.COLOR
@@ -22,7 +23,7 @@ local COLUMNS = {
     { key = "honor",  title = function() return T("Ehre", "Honor") end,          width = 64,  sort = "honor" },
     { key = "last",   title = function() return T("Letzter Login", "Last login") end, width = 96, sort = "updated" },
     -- Knöpfe Taschen / Bank / Ausblenden am Zeilenende (mit Trennlinie davor), immer sichtbar
-    { key = "actions", title = function() return "" end, width = 82, fixed = true },
+    { key = "actions", title = function() return "" end, width = 106, fixed = true },
 }
 
 local window, scroll, content, footer, headerButtons, toggles
@@ -140,8 +141,8 @@ local function RowTooltip(row)
     end
     tip:AddLine(" ")
     if c.hidden then tip:AddLine(T("Ausgeblendet", "Hidden"), 0.9, 0.4, 0.4) end
-    tip:AddLine(T("Klick auf einen Beruf: Rezepte · Knöpfe rechts: Taschen, Bank, Ausblenden",
-        "Click a profession: recipes · buttons on the right: bags, bank, hide"), 0.5, 0.5, 0.5, true)
+    tip:AddLine(T("Klick: Ausrüstung · Klick auf einen Beruf: Rezepte · Knöpfe rechts: Ausrüstung, Taschen, Bank, Ausblenden",
+        "Click: gear · click a profession: recipes · buttons on the right: gear, bags, bank, hide"), 0.5, 0.5, 0.5, true)
     tip:Show()
 end
 
@@ -214,6 +215,14 @@ end
 
 local function BuildActions(row)
     row.actions = {
+        -- Charakterübersicht: Ausrüstung wie im Charakterfenster (Gear.lua)
+        ActionButton(row, "Interface\\Icons\\INV_Chest_Chain", function(entry)
+            ns.ShowGear(entry.key, window)
+        end, function(self)
+            ButtonTip(self, T("Ausrüstung ansehen", "Show gear"), self.enabled
+                and T("Wie im Charakterfenster – Stand vom letzten Login.", "Like the character window – as of the last login.")
+                or T("Noch unbekannt – einmal mit diesem Charakter einloggen.", "Not known yet – log in with this character once."))
+        end),
         -- Klick zeigt die Taschen, ein zweiter Klick (wenn sie gerade zu sehen sind) blendet sie wieder aus
         ActionButton(row, "Interface\\Icons\\INV_Misc_Bag_08", function(entry)
             local bags = BagsAPI()
@@ -284,6 +293,10 @@ local function GetRow(i)
     row.profButtons = {}
     for k = 1, 5 do row.profButtons[k] = ProfButton(row) end
     BuildActions(row)
+    -- Klick auf die Zeile: Charakterübersicht (Ausrüstung) dieses Charakters
+    row:SetScript("OnClick", function(self)
+        if self.entry and self.entry.data.gear then ns.ShowGear(self.entry.key, window) end
+    end)
     row:SetScript("OnEnter", RowTooltip)
     row:SetScript("OnLeave", function() UI.GetTooltip():Hide() end)
     rows[i] = row
@@ -387,11 +400,12 @@ local function LayoutActions(row, entry, x)
     local bags = BagsAPI()
     local hasBags = bags and bags.FreeSlots and bags.FreeSlots(entry.key) ~= nil
     local hasBank = bags and bags.HasBank and bags.HasBank(entry.key)
-    row.actions[1]:SetUsable(hasBags and true or false)
-    row.actions[2]:SetUsable(hasBank and true or false)
-    row.actions[3]:SetUsable(not entry.me)
+    row.actions[1]:SetUsable(entry.data.gear ~= nil)
+    row.actions[2]:SetUsable(hasBags and true or false)
+    row.actions[3]:SetUsable(hasBank and true or false)
+    row.actions[4]:SetUsable(not entry.me)
     -- ausgeblendet: Auge zum Wiedereinblenden statt des X
-    row.actions[3].icon:SetTexture(entry.data.hidden and "Interface\\Icons\\INV_Misc_Eye_01"
+    row.actions[4].icon:SetTexture(entry.data.hidden and "Interface\\Icons\\INV_Misc_Eye_01"
         or "Interface\\Buttons\\UI-GroupLoot-Pass-Up")
     row.sep:ClearAllPoints()
     row.sep:SetPoint("TOPLEFT", row, "TOPLEFT", x - 6, -4)

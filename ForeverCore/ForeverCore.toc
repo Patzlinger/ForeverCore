@@ -12,3 +12,4 @@
 
 ForeverHub.lua
 Movers.lua
+Setup.lua

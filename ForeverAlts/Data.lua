@@ -5,7 +5,7 @@
 --
 -- Aufbau: ForeverAltsData.chars["Name-Realm"] = {
 --     name, realm, class, race, faction, level, maxLevel, xp, xpMax, rested, resting, money, zone, subZone,
---     ilvl, updated (Zeit), profs = { { name, rank, max, icon } },
+--     ilvl, updated (Zeit), profs = { { name, rank, max, icon } }, gear = { [Platz] = { link, icon, quality } },
 --     questCount, quests = { [questID] = { title, level, complete, done, total, dungeon, raid } },
 -- }
 local ADDON_NAME, ns = ...
@@ -359,6 +359,25 @@ local function ReadTitle(c)
     c.title = (title and title ~= "") and title or nil
 end
 
+-- Ausrüstung (für die Charakterübersicht anderer Charaktere): je Platz Link, Symbol und Qualität – alles gleich beim
+-- Lesen gemerkt, damit die Übersicht später ohne nachgeladene Gegenstandsdaten auskommt
+local GEAR_SLOTS = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 }
+local function ReadGear(c)
+    local gear = {}
+    for _, slot in ipairs(GEAR_SLOTS) do
+        local link = GetInventoryItemLink("player", slot)
+        if link and not issecret(link) then
+            gear[slot] = { link = link, icon = GetInventoryItemTexture("player", slot),
+                quality = GetInventoryItemQuality and GetInventoryItemQuality("player", slot) or nil }
+        end
+    end
+    c.gear = gear
+    if GetAverageItemLevel then
+        local ok, _, equipped = pcall(GetAverageItemLevel)
+        if ok and equipped then c.ilvl = math.floor(equipped + 0.5) end
+    end
+end
+
 -- Alles des eingeloggten Charakters neu lesen (what = nil: alles; "money"/"xp"/"quests"/"profs": nur das)
 function ns.Update(what)
     if InCombatLockdown() then
@@ -389,10 +408,8 @@ function ns.Update(what)
     if not what or what == "title" then ReadTitle(c) end
     if not what or what == "mail" or what == "mailbox" then ReadMail(c, what == "mailbox") end
     if not what or what == "quests" then c.quests, c.questCount = ReadQuests() end
-    if not what and GetAverageItemLevel then
-        local ok, _, equipped = pcall(GetAverageItemLevel)
-        if ok and equipped then c.ilvl = math.floor(equipped + 0.5) end
-    end
+    if not what or what == "gear" then ReadGear(c) end
+    if ns.RefreshGear then ns.RefreshGear() end
     if ns.RefreshWindow then ns.RefreshWindow() end
 end
 
@@ -444,6 +461,7 @@ local EVENTS = {
     CURRENCY_DISPLAY_UPDATE = "honor",
     UPDATE_PENDING_MAIL = "mail", MAIL_INBOX_UPDATE = "mailbox", MAIL_SHOW = "mailbox",
     KNOWN_TITLES_UPDATE = "title", PLAYER_TITLE_CHANGED = "title",
+    PLAYER_EQUIPMENT_CHANGED = "gear",
 }
 local events = CreateFrame("Frame")
 events:RegisterEvent("PLAYER_LOGIN")

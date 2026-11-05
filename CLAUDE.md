@@ -233,7 +233,7 @@ umgebauten Einstellungsfenster lesen).
 - Belegt (keine Doppelungen!):
   | Befehl | Addon |
   |---|---|
-  | /forever, /fhub, /fmove; /forever profile, export, import, options, reset, leistung | ForeverHub |
+  | /forever, /fhub, /fmove; /forever profile, export, import, options, reset, leistung, einrichtung (setup) | ForeverHub |
   | /ff, /foreverframes | ForeverFrames |
   | /fu, /foreverunits | ForeverUnits |
   | /fcast, /forevercast | ForeverCast |

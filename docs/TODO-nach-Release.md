@@ -25,9 +25,6 @@ Auswirkung im Spiel.
   - Mana- und Energie-Regeneration anzeigbar machen
   - Mana zusätzlich in % anzeigbar
 - [ ] ⚠ **ForeverCast:** Länge der Sofortzauber-Punkte (Instant-Dots) einstellbar machen – Standardwert bleibt wie er ist
-- [ ] ⚠ **ForeverBars:** neue Zauberränge standardmäßig **nicht** mehr automatisch in die Leiste legen (als Option
-      behalten, Standard aus)
-- [ ] ⚠ **ForeverAlts:** Charakterübersicht (Ausrüstung wie im Charakterfenster) für andere Charaktere anzeigen
 - [ ] ⚠ **Markierungen über Blizzards Schnell-Ping-Menü:** Weltmarkierungen mit dem Ping-Rad verbinden; Zielmarkierungen
       (Totenkopf, Kreuz …) per Mouseover über Gegner ebenfalls über das Ping-Rad setzen (Addon klären, z. B. ForeverHelpers)
 - [ ] ⚠ **Essen/Trinken-Makro** (ForeverHelpers): Makro, das automatisch das beste Essen bzw. Getränk aus den Taschen
@@ -36,8 +33,6 @@ Auswirkung im Spiel.
 - [ ] ⚠ **Aufschlüsselung der Werte** (Charakterfenster/Tooltip): je Klasse/Spezialisierung/Talenten zeigen, was ein
       Punkt bringt (z. B. 1 Angriffskraft = …, 1 Stärke = …)
 - [ ] ⚠ **ForeverPlates:** Bedrohungs-/Aggro-Anzeige überarbeiten
-- [ ] ⚠ **Erster Start:** kurzer Einrichtungsassistent im Hub, der die wichtigsten Schalter einmal abfragt (neues
-      Fenster beim ersten Login)
 
 ## Verschoben (erst testen können, wenn der Server läuft)
 

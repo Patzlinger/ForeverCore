@@ -16,5 +16,6 @@
 Data.lua
 Recipes.lua
 ProfessionTab.lua
+Gear.lua
 Window.lua
 Options.lua

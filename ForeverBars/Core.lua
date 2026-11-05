@@ -111,7 +111,8 @@ ns.defaults = {
     procGlow = "FOREVER",    -- Leuchten bei Procs: "FOREVER" (goldener Rahmen), "BLIZZARD", "OFF"
     hideOutOfCombat = false, -- alle Leisten außerhalb des Kampfes abblenden (auf oocAlpha, Maus darüber = voll)
     oocAlpha = 30,           -- Deckkraft außerhalb des Kampfes (%)
-    autoRankUp = true,       -- neu gelernten Rang automatisch auf die Aktionsknöpfe mit dem niedrigeren Rang legen
+    autoRankUp = false,      -- neu gelernten Rang automatisch auf die Aktionsknöpfe mit dem niedrigeren Rang legen
+                             -- (seit 2026-11-05 standardmäßig aus; wer es will, schaltet es im Menü ein)
     showHotkeys = true,
     showMacroNames = false,
     showCounts = true,
