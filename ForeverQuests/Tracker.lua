@@ -2341,6 +2341,8 @@ function ns.CreateTracker()
     Style.SetFlat(overlay, { 0.10, 0.10, 0.12, 0.75 },
         { Style.COLOR.accent[1], Style.COLOR.accent[2], Style.COLOR.accent[3], 1 })
     overlay:EnableMouse(true)
+    overlay:HookScript("OnEnter", function(self) local h = _G.ForeverHub and _G.ForeverHub.UI if h and h.ShowMoverTip then h.ShowMoverTip(self, "ForeverQuests") end end)
+    overlay:HookScript("OnLeave", function(self) local h = _G.ForeverHub and _G.ForeverHub.UI if h and h.HideMoverTip then h.HideMoverTip(self) end end)
     overlay:RegisterForDrag("LeftButton")
     overlay:SetScript("OnMouseUp", function(_, button) -- Rechtsklick: Einstellungen (wie bei den Leisten)
         local hub = _G.ForeverHub and _G.ForeverHub.UI

@@ -3192,6 +3192,14 @@ function ns.SetUnlocked(unlocked)
     if ns.RefreshOptions then ns.RefreshOptions() end
 end
 
+-- Kampfbeginn (Hub: Verschiebe-Modus endet): Griffe weg (nur unsere eigenen Rahmen), Leisten werden nach dem Kampf neu gelegt
+function ns.CombatLock()
+    if not ns.unlocked then return end
+    ns.unlocked = false
+    for _, mover in pairs(movers) do mover:Hide() end
+    ns.RequestLayout()
+end
+
 -- Blizzard-Schnelltastenbelegung: Maus auf einen Knopf legen und Taste drücken
 function ns.OpenKeybindMode()
     if InCombatLockdown() then

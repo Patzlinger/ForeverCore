@@ -8,6 +8,7 @@ local hub = _G.ForeverHub
 local UI = hub and hub.UI
 if UI and UI.RegisterMovable then
     UI.RegisterMovable(addonName, function() return not ns.unlocked end, function(locked)
-        if ns.SetUnlocked then ns.SetUnlocked(not locked) end
+        if locked and InCombatLockdown() and ns.CombatLock then ns.CombatLock()
+        elseif ns.SetUnlocked then ns.SetUnlocked(not locked) end
     end)
 end

@@ -318,6 +318,8 @@ anchor.text = anchor:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 anchor.text:SetPoint("CENTER")
 anchor.text:SetText(T("Tooltip\nziehen zum Verschieben", "Tooltip\ndrag to move"))
 anchor:Hide()
+anchor:HookScript("OnEnter", function(self) if UI.ShowMoverTip then UI.ShowMoverTip(self, "ForeverTooltip") end end)
+anchor:HookScript("OnLeave", function(self) if UI.HideMoverTip then UI.HideMoverTip(self) end end)
 
 local function PlaceAnchor()
     local d = GetDB()

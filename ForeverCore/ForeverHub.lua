@@ -1824,12 +1824,30 @@ local function AddonUnlocked(addon)
     return UI.AnyUnlocked()
 end
 
+-- Hinweis beim Darüberfahren über entsperrte Fenster (wie bei den Aktionsleisten): was Maustasten hier tun
+function UI.ShowMoverTip(owner, title, noRightClick)
+    local tip = UI.GetTooltip and UI.GetTooltip() or GameTooltip
+    tip:SetOwner(owner, "ANCHOR_TOP")
+    tip:AddLine(title, 1, 0.82, 0)
+    tip:AddLine(T("Linke Maustaste halten: verschieben (Umschalt = nicht einrasten)", "Hold left mouse button: move (Shift = no snapping)"), 1, 1, 1, true)
+    tip:AddLine(T("Rechtsklick: Einstellungen dieses Addons", "Right-click: settings for this addon"), 1, 1, 1, true)
+    tip:Show()
+end
+function UI.HideMoverTip(owner)
+    local tip = UI.GetTooltip and UI.GetTooltip() or GameTooltip
+    if not owner or tip:GetOwner() == owner then tip:Hide() end
+end
+
 function UI.TagMover(frame, addon, opts)
     if not frame or not addon then return end
     local t = tagged[frame]
     if t then t.addon = addon return end
     t = { addon = addon }
     tagged[frame] = t
+    if frame.HookScript then
+        pcall(frame.HookScript, frame, "OnEnter", function(self) if AddonUnlocked(t.addon) then UI.ShowMoverTip(self, t.addon) end end)
+        pcall(frame.HookScript, frame, "OnLeave", function(self) UI.HideMoverTip(self) end)
+    end
     if not (opts and opts.noRightClick) and frame.HookScript then
         pcall(frame.HookScript, frame, "OnMouseUp", function(self, button)
             if button ~= "RightButton" or InCombatLockdown() or not self:IsVisible() then return end
@@ -1888,8 +1906,8 @@ local function StopMoveGrid()
 end
 
 -- lock = true/false; nil = umschalten (ist etwas entsperrt -> alles sperren, sonst alles entsperren)
-function UI.MoveAll(lock)
-    if InCombatLockdown() then
+function UI.MoveAll(lock, force)
+    if InCombatLockdown() and not force then
         UI.Chat("Forever", T("Im Kampf nicht möglich.", "Not possible in combat."))
         return
     end
@@ -1943,6 +1961,20 @@ do
     f:SetScript("OnEvent", function()
         local qk = _G.QuickKeybindFrame
         if qk and qk.HookScript then qk:HookScript("OnShow", function() pcall(EndMoveForKeybind) end) end
+    end)
+end
+
+-- Kampfbeginn: Verschiebe-Modus beenden (alles sperren) und das Einstellungsfenster schließen, damit nichts im Weg ist
+-- und keine entsperrten Rahmen Klicks abfangen. Die Addons sperren nur ihre eigenen Schalter (pcall je Addon).
+do
+    local f = CreateFrame("Frame")
+    f:RegisterEvent("PLAYER_REGEN_DISABLED")
+    f:SetScript("OnEvent", function()
+        if _G.ForeverHub ~= hub then return end
+        local was = UI.AnyUnlocked()
+        if was then pcall(UI.MoveAll, true, true) end
+        UI.CloseSettings()
+        if was then UI.Chat("Forever", T("Kampf: Verschieben beendet, Fenster geschlossen.", "Combat: move mode ended, windows closed.")) end
     end)
 end
 
