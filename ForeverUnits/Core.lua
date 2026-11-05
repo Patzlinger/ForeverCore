@@ -59,6 +59,7 @@ ns.DEFAULTS = {
     healPrediction = true,
     hotPrediction = true,          -- eigene HoTs: schraffierte Fläche hinter der Heilvorhersage
     dotAboveV1 = false,            -- Merker: DoT-Leisten einmalig nach oben gesetzt (in den Standardwerten, damit er gespeichert wird)
+    playerLevelV1 = false,         -- Merker: Stufe am Spielerrahmen einmalig eingeschaltet
     dotPrediction = true,          -- Ziel/Fokus: Schaden der eigenen DoTs als schraffierte Fläche am Lebensbalken
     combatMarker = true,           -- Schwerter-Symbol unten links, solange die Einheit im Kampf ist
     shields = true,
@@ -93,7 +94,7 @@ ns.DEFAULTS = {
     frames = {
         -- Spieler und Ziel spiegelbildlich: gleiche Größe, gleiche Höhe, gleicher Abstand zur Bildschirmmitte
         -- (Spieler = Bezug); das Ziel des Ziels sitzt wie bisher rechts unten am Ziel (+171 / −23)
-        player = FrameDefaults({ width = 212, height = 45, x = -238, y = -154 }),
+        player = FrameDefaults({ width = 212, height = 45, x = -238, y = -154, levelShow = true }),
         target = FrameDefaults({ width = 212, height = 45, x = 238, y = -154, portraitSide = "RIGHT", levelShow = true,
             buffs = true, debuffs = true, dotBars = true }),
         targettarget = FrameDefaults({ width = 110, height = 24, x = 409, y = -177, powerHeight = 0,
@@ -137,6 +138,10 @@ function ns.GetDB()
             db.frames.target.dotBars = true
             db.frames.focus.dotBars = true
             db.dotDefaultV2 = true
+        end
+        if not db.playerLevelV1 then
+            if db.frames.player then db.frames.player.levelShow = true end
+            db.playerLevelV1 = true
         end
         if not db.dotAboveV1 then
             for _, k in ipairs({ "target", "focus" }) do

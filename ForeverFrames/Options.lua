@@ -498,6 +498,7 @@ do
     }, nil, 120)
     W.Color(p, L + 240, y - 134, "", "nameColor", false)
     W.Slider(p, L, y - 162, T("Max. Zeichen (0 = alle)", "Max. characters (0 = all)"), "nameMaxChars", 0, 20, 1, nil)
+    W.Check(p, L, -246, T("Stufe vor dem Namen zeigen", "Show level before the name"), "levelShow")
 
     -- Status (links unten)
     y = -276

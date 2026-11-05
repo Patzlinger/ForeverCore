@@ -527,7 +527,9 @@ local function UpdateName(b)
         -- Spieler: Vor-/Nachname nach der Hub-Einstellung; NPC-Begleiter (Gefolge) behalten ihren Namen
         local isPlayer = UnitIsPlayer(unit)
         if not IsSecret(isPlayer) and isPlayer and UI.PlayerName then name = UI.PlayerName(name) end
-        v.name:SetText(ns.Utf8Sub(name or "", db.nameMaxChars))
+        local lvl = db.levelShow ~= false and UnitLevel(unit)
+        local prefix = (not IsSecret(lvl) and lvl and lvl > 0) and ("|cffb0b0b0" .. lvl .. "|r ") or ""
+        v.name:SetText(prefix .. ns.Utf8Sub(name or "", db.nameMaxChars))
     end
     v.name:SetTextColor(TextColor(db.nameColorMode, "nameColor", unit))
     v.hp:SetTextColor(TextColor(db.hpColorMode, "hpColor", unit))
@@ -1261,6 +1263,7 @@ ns.On("UNIT_DISPLAYPOWER", "Energie", ForUnit(function(b)
     UpdatePowerType(b)
     UpdatePower(b)
 end))
+ns.On("UNIT_LEVEL", "Name", ForUnit(function(b) UpdateName(b) end))
 ns.On("UNIT_NAME_UPDATE", "Name", ForUnit(function(b)
     UpdateName(b)
     UpdateHealthColor(b)

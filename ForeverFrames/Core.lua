@@ -71,6 +71,7 @@ ns.DEFAULTS = {
     -- Aufteilung: oberes Drittel Name, Mitte Lebenspunkte, unteres Drittel frei fuer Symbole
     nameShow = true, nameSize = 11, namePoint = "TOP", nameX = 0, nameY = -4,
     nameColorMode = "white", nameColor = { 1, 1, 1 }, nameMaxChars = 0,
+    levelShow = true,                 -- Stufe (grau) vor dem Namen
     -- Lebenspunkte-Text
     hpShow = true, hpFormat = "percent", hpSize = 10, hpPoint = "CENTER", hpX = 0, hpY = 2,
     hpColorMode = "white", hpColor = { 1, 1, 1 }, hpShort = true, hpHideFull = true,
