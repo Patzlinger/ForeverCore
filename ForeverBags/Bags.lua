@@ -181,26 +181,85 @@ local function CreateSlot(bag, slot)
     return button
 end
 
--- Kategorie-Filter (Knopf neben der Suche): passt ein Gegenstand zur gewählten Kategorie? Nicht passende werden nur
--- abgedunkelt wie bei der Suche – die Plätze bleiben, wo sie sind (geht so auch im Kampf). Gewählt wird je Sitzung
--- (ns.bagCategory; nil = alle). Gegenstandsart aus C_Item.GetItemInfoInstant (ohne Serverdaten sofort bekannt).
+-- Sortierung nach Kategorie (Knopf neben der Suche, ns.db.sortMode = "CATEGORY"): Die Plätze werden in der Anzeige
+-- nach Kategorie gruppiert (je Gruppe eine kleine Überschrift), innerhalb nach Qualität und Gegenstand; leere Plätze
+-- am Ende. Die Gegenstände bleiben in den Taschen, wo sie sind – nur die Anzeige ist geordnet. Gegenstandsart aus
+-- C_Item.GetItemInfoInstant (ohne Serverdaten sofort bekannt).
 do
     local CLASS = { [2] = "EQUIP", [4] = "EQUIP", [0] = "CONSUMABLE", [7] = "TRADE", [9] = "TRADE", [3] = "TRADE",
         [5] = "REAGENT", [12] = "QUEST" }
-    ns.BAG_CATEGORIES = { "ALL", "EQUIP", "CONSUMABLE", "TRADE", "REAGENT", "QUEST", "JUNK", "NEW", "OTHER" }
-    -- item = Gegenstands-ID oder Link; quality, isQuest, isNew soweit bekannt
-    function ns.ItemInCategory(item, quality, isQuest, isNew)
-        local cat = ns.bagCategory
-        if not cat or cat == "ALL" then return true end
-        if not item then return false end
-        if cat == "NEW" then return isNew and true or false end
-        if cat == "JUNK" then return quality == 0 end
-        if cat == "QUEST" and isQuest then return true end
+    ns.BAG_CATEGORIES = { "EQUIP", "CONSUMABLE", "TRADE", "REAGENT", "QUEST", "OTHER", "JUNK", "EMPTY" }
+    local RANK = {}
+    for i, key in ipairs(ns.BAG_CATEGORIES) do RANK[key] = i end
+    -- item = Gegenstands-ID oder Link (nil = leerer Platz)
+    function ns.ItemCategory(item, quality, isQuest)
+        if not item then return "EMPTY" end
+        if quality == 0 then return "JUNK" end
+        if isQuest then return "QUEST" end
         local ok, _, _, _, _, _, classID = pcall(C_Item.GetItemInfoInstant, item)
-        local kind = ok and classID and CLASS[classID] or nil
-        if cat == "OTHER" then return kind == nil and quality ~= 0 and not isQuest end
-        return kind == cat
+        return (ok and classID and CLASS[classID]) or "OTHER"
     end
+    -- entries: { { item, quality, isQuest, … } } – ordnet sie (in place) und merkt die Kategorie in entry.cat
+    function ns.SortByCategory(entries)
+        for i, e in ipairs(entries) do
+            e.cat = ns.ItemCategory(e.item, e.quality, e.isQuest)
+            e.order = i
+            local okID, id = pcall(C_Item.GetItemInfoInstant, e.item or 0)
+            e.id = (e.item and okID and tonumber(id)) or 0
+        end
+        table.sort(entries, function(a, b)
+            if a.cat ~= b.cat then return RANK[a.cat] < RANK[b.cat] end
+            if (a.quality or -1) ~= (b.quality or -1) then return (a.quality or -1) > (b.quality or -1) end
+            if a.id ~= b.id then return a.id < b.id end
+            return a.order < b.order
+        end)
+        return entries
+    end
+    function ns.SortByCategoryOn() return ns.db and ns.db.sortMode == "CATEGORY" end
+end
+
+-- Überschriften der Gruppen (Sortierung nach Kategorie)
+local groupLabels = {}
+local function GroupLabel(n, text, y)
+    local fs = groupLabels[n]
+    if not fs then
+        fs = content:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        fs:SetJustifyH("LEFT")
+        groupLabels[n] = fs
+    end
+    fs:SetText(text)
+    fs:SetTextColor(C.accent[1], C.accent[2], C.accent[3])
+    fs:ClearAllPoints()
+    fs:SetPoint("TOPLEFT", content, "TOPLEFT", 2, -y)
+    fs:Show()
+end
+local function HideGroupLabels(from)
+    for i = from or 1, #groupLabels do groupLabels[i]:Hide() end
+end
+local GROUP_HEAD = 14 -- Höhe einer Gruppen-Überschrift
+
+-- Plätze nach Kategorie geordnet hinsetzen (entries aus ShowLive/ShowOffline: { button, item, quality, isQuest });
+-- je Gruppe eine Überschrift. Im Kampf werden die Knöpfe nicht bewegt (das holt das Ende des Kampfes nach).
+local function PlaceSorted(placer, entries)
+    ns.SortByCategory(entries)
+    local labels, last = 0, nil
+    local free = not InCombatLockdown()
+    for _, e in ipairs(entries) do
+        if e.cat ~= last then
+            last = e.cat
+            local y = placer:Header(GROUP_HEAD)
+            if free then
+                labels = labels + 1
+                GroupLabel(labels, L("CAT_" .. e.cat), y)
+            end
+        end
+        local x, y = placer:Next()
+        if free then
+            e.button:ClearAllPoints()
+            e.button:SetPoint("TOPLEFT", content, "TOPLEFT", x, -y)
+        end
+    end
+    if free then HideGroupLabels(labels + 1) end
 end
 
 -- Anzeige eines Platzes aus den Taschendaten (geht auch im Kampf: keine geschützten Änderungen).
@@ -236,13 +295,6 @@ function ns.UpdateSlot(button, bag, slot)
     -- Hintergrund) – das hat Bank und Taschen komplett abgedunkelt.
     local searching = searchBox and strtrim(searchBox:GetText() or "") ~= ""
     local filtered = searching and info and info.isFiltered
-    -- Kategorie-Filter (siehe ns.ItemInCategory): leere Plätze bei aktiver Kategorie ebenfalls abdunkeln
-    if not filtered and ns.bagCategory and ns.bagCategory ~= "ALL" then
-        local questInfo = info and C_Container.GetContainerItemQuestInfo and C_Container.GetContainerItemQuestInfo(bag, slot)
-        local isQuest = questInfo and (questInfo.isQuestItem or questInfo.questID ~= nil)
-        local isNew = info and C_NewItems and C_NewItems.IsNewItem and C_NewItems.IsNewItem(bag, slot)
-        filtered = not ns.ItemInCategory(info and (info.itemID or info.hyperlink), info and info.quality, isQuest, isNew)
-    end
     if button.SetMatchesSearch then
         button:SetMatchesSearch(not filtered)
     else
@@ -406,17 +458,23 @@ local function ShowOffline(entry, placer)
     local containers = view.kind == "bank" and entry.bank or entry.bags
     local index, used, total = 0, 0, 0
     local ids = view.kind == "bank" and ns.BankIDs() or ns.BagIDs()
+    local sorted = ns.SortByCategoryOn()
+    local entries = {}
     for _, bag in ipairs(ids) do
         local c = containers and containers[bag]
-        if c and (c.size or 0) > 0 then placer:StartBag() end
+        if c and (c.size or 0) > 0 and not sorted then placer:StartBag() end
         for slot = 1, (c and c.size or 0) do
             index = index + 1
             total = total + 1
             local b = OfflineButton(index)
             local item = c[slot]
-            local x, y = placer:Next()
-            b:ClearAllPoints()
-            b:SetPoint("TOPLEFT", content, "TOPLEFT", x, -y)
+            if sorted then
+                entries[#entries + 1] = { button = b, item = item and item[1], quality = item and item[4], isQuest = false }
+            else
+                local x, y = placer:Next()
+                b:ClearAllPoints()
+                b:SetPoint("TOPLEFT", content, "TOPLEFT", x, -y)
+            end
             b.fbagsBag = bag
             b.fbagsEdge:SetBackdropBorderColor(unpack(EdgeColor(bag)))
             b.link = item and item[1]
@@ -426,12 +484,17 @@ local function ShowOffline(entry, placer)
             local color = q and q >= 2 and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[q]
             b.quality:SetShown(color ~= nil and ns.db.qualityBorder)
             if color then b.quality:SetVertexColor(color.r, color.g, color.b) end
-            b:SetAlpha(MatchesSearch(b.link) and ns.ItemInCategory(b.link, q, false, false) and 1 or 0.3)
+            b:SetAlpha(MatchesSearch(b.link) and 1 or 0.3)
             if item then used = used + 1 end
             b:Show()
         end
     end
     for i = index + 1, #offline do offline[i]:Hide() end
+    if sorted then
+        PlaceSorted(placer, entries)
+    else
+        HideGroupLabels()
+    end
     return index, used, total
 end
 
@@ -535,26 +598,42 @@ end
 
 local function ShowLive(placer)
     local index, used, total = 0, 0, 0
+    local sorted = ns.SortByCategoryOn()
+    local entries = {}
     for _, bag in ipairs(ns.BagIDs()) do
         local count = SlotCount(bag)
         for slot, button in pairs(buttons[bag] or {}) do
             if slot > count then button:Hide() end -- Tasche getauscht: kleinere Tasche
         end
-        if count > 0 then placer:StartBag() end
+        if count > 0 and not sorted then placer:StartBag() end
         for slot = 1, count do
             local button = buttons[bag] and buttons[bag][slot]
             if button then
-                local x, y = placer:Next()
-                if not InCombatLockdown() then
-                    button:ClearAllPoints()
-                    button:SetPoint("TOPLEFT", content, "TOPLEFT", x, -y)
+                local itemID = C_Container.GetContainerItemID(bag, slot)
+                if sorted then
+                    local info = itemID and C_Container.GetContainerItemInfo(bag, slot)
+                    local quest = itemID and C_Container.GetContainerItemQuestInfo
+                        and C_Container.GetContainerItemQuestInfo(bag, slot)
+                    entries[#entries + 1] = { button = button, item = itemID, quality = info and info.quality,
+                        isQuest = quest and (quest.isQuestItem or quest.questID ~= nil) or false }
+                else
+                    local x, y = placer:Next()
+                    if not InCombatLockdown() then
+                        button:ClearAllPoints()
+                        button:SetPoint("TOPLEFT", content, "TOPLEFT", x, -y)
+                    end
                 end
                 UpdateSlot(button, bag, slot)
                 index = index + 1
                 total = total + 1
-                if C_Container.GetContainerItemID(bag, slot) then used = used + 1 end
+                if itemID then used = used + 1 end
             end
         end
+    end
+    if sorted then
+        PlaceSorted(placer, entries)
+    elseif not InCombatLockdown() then
+        HideGroupLabels()
     end
     return index, used, total
 end
@@ -1052,22 +1131,20 @@ local function CreateWindow()
     keyToggle:HookScript("OnLeave", HideTip)
     keyToggle:Hide()
 
-    -- Kategorie-Filter (links neben dem Schlüsselbund): Auswahl aus ns.BAG_CATEGORIES, je Sitzung
-    local catButton = UI.Button(window, L("CAT_ALL"), 96, function(self)
-        local list = {}
-        for _, key in ipairs(ns.BAG_CATEGORIES) do list[#list + 1] = { key = key, label = L("CAT_" .. key) } end
-        UI.ChoiceMenu(self, list, function() return ns.bagCategory or "ALL" end, function(key)
-            ns.bagCategory = key ~= "ALL" and key or nil
-            self:SetText(L("CAT_" .. key))
-            -- gewählte Kategorie in Gold, "Alle" normal
-            local fs = self:GetFontString()
-            if fs then
-                if ns.bagCategory then fs:SetTextColor(C.accent[1], C.accent[2], C.accent[3]) else fs:SetTextColor(1, 1, 1) end
-            end
+    -- Anordnung (links neben dem Schlüsselbund): wie in den Taschen oder nach Kategorie sortiert (ns.db.sortMode)
+    local MODES = { { key = "BAGS", label = L("ORDER_BAGS") }, { key = "CATEGORY", label = L("ORDER_CATEGORY") } }
+    local catButton = UI.Button(window, "", 104, function(self)
+        UI.ChoiceMenu(self, MODES, function() return ns.db.sortMode == "CATEGORY" and "CATEGORY" or "BAGS" end, function(key)
+            if InCombatLockdown() then ns.Print(L("COMBAT_LATER")) return end
+            ns.db.sortMode = key == "CATEGORY" and "CATEGORY" or nil
+            self.Load()
             ns.LayoutBags()
-            if ns.LayoutBank then pcall(ns.LayoutBank) end
         end)
     end)
+    function catButton.Load()
+        catButton:SetText(L(ns.db.sortMode == "CATEGORY" and "ORDER_CATEGORY" or "ORDER_BAGS"))
+    end
+    catButton.Load()
     if UI.AddArrow then UI.AddArrow(catButton) end
     catButton:SetPoint("RIGHT", keyToggle, "LEFT", -4, 0)
     catButton:HookScript("OnEnter", function(self) SimpleTip(self, L("TIP_CATEGORY")) end)
