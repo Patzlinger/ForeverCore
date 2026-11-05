@@ -973,7 +973,7 @@ function ns.CastCountEstimating() return mm.live == false end
 
 -- Fehlersuche: /fbcast zeigt, warum (k)eine Zahlen erscheinen
 SLASH_FORBARSCAST1 = "/fbcast"
-SlashCmdList.FORBARSCAST = function()
+function ns.CastCountDiag()
     local m = UnitPower("player", 0)
     local withSpell, withCost = 0, 0
     for _, def in ipairs(ns.BAR_DEFS) do
@@ -988,7 +988,11 @@ SlashCmdList.FORBARSCAST = function()
     print(string.format("|cffffd100ForeverBars Zauber/Mana|r Option an: %s | Mana lesbar: %s | gemerkt: %s | Kampf: %s | Knöpfe mit Zauber: %d, davon mit Manakosten: %d",
         tostring(ns.db and ns.db.castCount), tostring(Readable(m)), tostring(mm.cur and math.floor(mm.cur)),
         tostring(InCombatLockdown()), withSpell, withCost))
+    local okMath = pcall(function() return m / 2 end)
+    print("|cffffd100ForeverBars Zauber/Mana|r Rechnen mit dem Mana möglich: " .. tostring(okMath)
+        .. " | issecretvalue: " .. tostring(issecretvalue and issecretvalue(m)) .. " | issecret: " .. tostring(issecret and issecret(m)))
 end
+SlashCmdList.FORBARSCAST = ns.CastCountDiag
 
 function ns.UpdateCastCounts()
     local on = ns.db and ns.db.castCount
