@@ -65,6 +65,42 @@ end
 -- beide, jedes einmal
 local NAMES = { "ReportFrame", "ReportCheatingDialog" }
 local skinned = {}
+
+-- Titel ("Der WoW-Kundensupport") mittig in unsere Titelleiste und "Melden" mittig in die untere Leiste (mit Luft zur
+-- goldenen Linie). Beide werden am Aufbau erkannt: der Titel ist der oberste Text, "Melden" der unterste Knopf mit Text.
+local function Place(f)
+    local top, bottom = f:GetTop(), f:GetBottom()
+    if not top or not bottom then return end
+    local title, titleTop, button, buttonBottom
+    local function Walk(frame, depth)
+        for _, r in ipairs({ frame:GetRegions() }) do
+            if r:IsObjectType("FontString") and r:IsShown() and (r:GetText() or "") ~= "" then
+                local t = r:GetTop()
+                if t and top - t < 40 and (not titleTop or t > titleTop) then title, titleTop = r, t end
+            end
+        end
+        for _, child in ipairs({ frame:GetChildren() }) do
+            if not Forbidden(child) then
+                if child:IsObjectType("Button") and child:IsShown() and child.GetText and (child:GetText() or "") ~= "" then
+                    local b = child:GetBottom()
+                    if b and b - bottom < 40 and (not buttonBottom or b < buttonBottom) then button, buttonBottom = child, b end
+                elseif depth < 3 then
+                    Walk(child, depth + 1)
+                end
+            end
+        end
+    end
+    Walk(f, 1)
+    if title then
+        title:ClearAllPoints()
+        title:SetPoint("CENTER", f, "TOP", 0, -math.floor(TITLE / 2) - 1)
+    end
+    if button and ns.CanMove(button) then
+        button:ClearAllPoints()
+        button:SetPoint("CENTER", f, "BOTTOM", 0, math.floor(FOOTER / 2))
+    end
+end
+
 local function SkinReport(f)
     if not f or skinned[f] or Forbidden(f) then return end
     skinned[f] = true
@@ -81,9 +117,14 @@ local function SkinReport(f)
     ns.ContentBox(f, FOOTER, TITLE + 8)
     local close = ns.FindCloseButton(f)
     Step("scan", function() Scan(f, 1, close) end)
+    Step("place", function() Place(f) end)
     ns.Watch(f)
     -- Blizzard baut den Inhalt je nach Meldung (Spieler, Gildensuche, Chat …) neu: beim Öffnen nochmal durchsehen
-    f:HookScript("OnShow", function(self) pcall(Scan, self, 1, close) end)
+    f:HookScript("OnShow", function(self)
+        pcall(Scan, self, 1, close)
+        pcall(Place, self)
+        C_Timer.After(0, function() pcall(Place, self) end) -- (Blizzard setzt die Lage teils erst nach dem Öffnen)
+    end)
 end
 
 local events = CreateFrame("Frame")
