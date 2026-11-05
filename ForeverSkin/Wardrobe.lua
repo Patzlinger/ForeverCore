@@ -147,7 +147,7 @@ local function SkinWardrobe(f)
     local waited = 0
     watch:SetScript("OnUpdate", function(_, elapsed)
         waited = waited + elapsed
-        if waited < 0.3 then return end
+        if waited < ns.Tick(0.3) then return end
         waited = 0
         for _, key in ipairs({ "NineSlice", "PortraitContainer" }) do
             if type(f[key]) == "table" then

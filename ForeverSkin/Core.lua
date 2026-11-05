@@ -1237,6 +1237,7 @@ function ns.Watch(frame)
     frame:HookScript("OnShow", function()
         openWindows[frame] = true
         driver:Show()
+        ns.MarkBusy(2)
     end)
     frame:HookScript("OnHide", function()
         openWindows[frame] = false
@@ -1245,6 +1246,25 @@ function ns.Watch(frame)
     end)
     if frame:IsShown() then openWindows[frame] = true driver:Show() end
 end
+
+-- Takt der Nachprüfung in den umgestalteten Fenstern (sie schauen nach, ob Blizzard etwas neu gebaut oder wieder
+-- eingeblendet hat): schnell (base) nur, solange damit gearbeitet wird – die ersten 2 s nach dem Öffnen, 2 s nach
+-- jedem Klick und solange die Maus über einem offenen umgestalteten Fenster ist (auch beim Scrollen); sonst einmal je
+-- Sekunde. Spart Rechenzeit und vor allem Datenmüll (bei offenem Charakterfenster gemessen: 17 MB statt 3 MB)
+local busyUntil = 0
+function ns.MarkBusy(seconds)
+    busyUntil = math.max(busyUntil, GetTime() + (seconds or 2))
+end
+function ns.Tick(base)
+    if GetTime() < busyUntil then return base end
+    for frame, open in pairs(openWindows) do
+        if open and frame:IsVisible() and frame:IsMouseOver() then return base end
+    end
+    return math.max(base, 1)
+end
+local busyEvents = CreateFrame("Frame")
+busyEvents:RegisterEvent("GLOBAL_MOUSE_DOWN")
+busyEvents:SetScript("OnEvent", function() ns.MarkBusy(2) end)
 
 -- dunkle Farbcodes im Text aufhellen (für Pergament gedacht: z. B. dunkelblaue Quest-Namen) – auf der dunklen
 -- Fläche sonst kaum lesbar

@@ -205,7 +205,7 @@ local function SkinTalents()
     local waited = 0
     watch:SetScript("OnUpdate", function(_, elapsed)
         waited = waited + elapsed
-        if waited < 0.2 then return end
+        if waited < ns.Tick(0.2) then return end
         waited = 0
         pcall(HideFrameArt, f)
         pcall(FindTabs, f, 1)

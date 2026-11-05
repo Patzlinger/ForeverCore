@@ -265,7 +265,7 @@ local function SkinTabard()
     watch:SetScript("OnUpdate", function(_, elapsed)
         pcall(HideBlizzardButtonArt)
         waited = waited + elapsed
-        if waited < 0.2 then return end
+        if waited < ns.Tick(0.2) then return end
         waited = 0
         pcall(Place, f)
     end)

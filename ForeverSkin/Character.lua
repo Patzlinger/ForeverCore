@@ -977,9 +977,11 @@ local function SkinCharacter()
         if tab and not Forbidden(tab) then tab:HookScript("OnClick", Fast) end
     end
     watch:SetScript("OnUpdate", function(_, elapsed)
-        pcall(SkinRepHeaders) -- (jedes Bild: Blizzard setzt die Leisten der Ruf-Überschriften neu)
+        -- (jedes Bild: Blizzard setzt die Leisten der Ruf-Überschriften neu – nur, solange die Ruf-Seite offen ist)
+        local repPage = G("ReputationFrame")
+        if repPage and repPage:IsVisible() then pcall(SkinRepHeaders) end
         waited = waited + elapsed
-        if waited < 0.3 and GetTime() > fastUntil then return end
+        if waited < ns.Tick(0.3) and GetTime() > fastUntil then return end
         local rep = G("ReputationFrame")
         if rep and rep:IsVisible() then pcall(FindRepHeaders) end
         pcall(FindPageHeaders, f, 1)

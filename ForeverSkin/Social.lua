@@ -320,7 +320,7 @@ local function SkinSocial()
     local waited = 0
     watch:SetScript("OnUpdate", function(_, elapsed)
         waited = waited + elapsed
-        if waited < 0.2 then return end
+        if waited < ns.Tick(0.2) then return end
         waited = 0
         if type(f.NineSlice) == "table" then ns.Hide(f.NineSlice) end
         pcall(SkinTopTabs, f)
@@ -550,7 +550,7 @@ local function SkinSocialUI()
     local waited = 0
     watch:SetScript("OnUpdate", function(_, elapsed)
         waited = waited + elapsed
-        if waited < 0.2 then return end
+        if waited < ns.Tick(0.2) then return end
         waited = 0
         for _, key in ipairs({ "NineSlice", "PortraitContainer" }) do
             if type(f[key]) == "table" then ns.Hide(f[key]) end

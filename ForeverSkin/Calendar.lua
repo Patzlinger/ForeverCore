@@ -117,7 +117,7 @@ local function SkinCalendar()
     local waited = 0
     watch:SetScript("OnUpdate", function(_, elapsed)
         waited = waited + elapsed
-        if waited < 0.3 then return end
+        if waited < ns.Tick(0.3) then return end
         waited = 0
         pcall(ns.HideTextures, f)
         pcall(ns.HideTextures, G("CalendarTodayFrame"))
@@ -281,7 +281,7 @@ local function SkinEventFrame(f)
         local waited = 0
         watch:SetScript("OnUpdate", function(_, elapsed)
             waited = waited + elapsed
-            if waited < 0.3 then return end
+            if waited < ns.Tick(0.3) then return end
             waited = 0
             pcall(SortButtons)
         end)

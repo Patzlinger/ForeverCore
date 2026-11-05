@@ -151,7 +151,7 @@ local function SkinChannels()
             if h:IsVisible() then pcall(HideBars, h) end
         end
         waited = waited + elapsed
-        if waited < 0.1 then return end
+        if waited < ns.Tick(0.1) then return end
         waited = 0
         for _, key in ipairs({ "NineSlice", "PortraitContainer" }) do
             if type(f[key]) == "table" then ns.Hide(f[key]) end

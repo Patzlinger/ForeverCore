@@ -722,7 +722,7 @@ local function SkinGroupFinder()
     local waited = 0
     watch:SetScript("OnUpdate", function(_, elapsed)
         waited = waited + elapsed
-        if waited < 0.2 then return end
+        if waited < ns.Tick(0.2) then return end
         waited = 0
         -- (Fehler beim Ausblenden einmal melden statt still zu schlucken – sonst fehlte jeder Hinweis)
         local ok, err = pcall(HideFrameArt, f)

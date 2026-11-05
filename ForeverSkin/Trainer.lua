@@ -243,7 +243,7 @@ local function SkinTrainer()
     local waited = 0
     watch:SetScript("OnUpdate", function(_, elapsed)
         waited = waited + elapsed
-        if waited < 0.2 then return end
+        if waited < ns.Tick(0.2) then return end
         waited = 0
         pcall(SkinRows)
         -- Blizzard setzt die Größe (v. a. beim Klassenlehrer) teils nachträglich zurück: wieder wie das Gespräch
