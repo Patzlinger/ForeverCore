@@ -534,8 +534,7 @@ end
 -- Schlüsselbund: eigener, auf-/zuklappbarer Abschnitt unter den Taschen (standardmäßig zu). Zählt nicht bei den
 -- freien Plätzen mit. In diesem Client ist Behälter -1 der Schlüsselbund, sonst Enum.BagIndex.Keyring.
 ---------------------------------------------------------------------------
-local KEY_HEADER = 18
-local keyHeader
+local keyToggle -- Knopf in der Werkzeugzeile (neben dem Taschen-Symbol)
 local function KeyringID()
     local bi = Enum and Enum.BagIndex
     return (bi and bi.Keyring) or -1
@@ -546,59 +545,56 @@ local function KeyringButtons()
 end
 
 local function HideKeyring()
-    if keyHeader then keyHeader:Hide() end
+    if keyToggle then keyToggle:Hide() end
     if not InCombatLockdown() then
         for _, b in pairs(KeyringButtons()) do b:Hide() end
     end
 end
 
-local function CreateKeyHeader()
-    keyHeader = CreateFrame("Button", nil, content)
-    keyHeader:SetHeight(KEY_HEADER)
-    keyHeader.icon = keyHeader:CreateTexture(nil, "ARTWORK")
-    keyHeader.icon:SetSize(14, 14)
-    keyHeader.icon:SetPoint("LEFT", 2, 0)
-    keyHeader.text = keyHeader:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    keyHeader.text:SetPoint("LEFT", keyHeader.icon, "RIGHT", 4, 0)
-    local hl = keyHeader:CreateTexture(nil, "HIGHLIGHT")
-    hl:SetAllPoints()
-    hl:SetColorTexture(1, 1, 1, 0.06)
-    keyHeader:SetScript("OnClick", function()
-        if InCombatLockdown() then ns.Print(L("COMBAT_LATER")) return end
-        ns.db.keyringOpen = not ns.db.keyringOpen
-        ns.LayoutBags()
-    end)
+function ns.ToggleKeyring()
+    if InCombatLockdown() then ns.Print(L("COMBAT_LATER")) return end
+    ns.db.keyringOpen = not ns.db.keyringOpen
+    ns.LayoutBags()
 end
 
--- Abschnitt zeichnen (nur eigene Taschen); gibt nichts zurück
+-- Abschnitt zeichnen (nur eigene Taschen): nur die Plätze mit Schlüsseln plus ein freier Platz (zum Ablegen),
+-- nicht alle 32 Plätze des Schlüsselbunds. Die Knöpfe behalten ihre echte Platznummer.
 local function ShowKeyring(placer)
     local bag = KeyringID()
     local count = SlotCount(bag)
     if count <= 0 then HideKeyring() return end
-    if not keyHeader then CreateKeyHeader() end
-    local open = ns.db.keyringOpen and true or false
-    local y = placer:Header(KEY_HEADER)
-    keyHeader:ClearAllPoints()
-    keyHeader:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
-    keyHeader:SetPoint("TOPRIGHT", content, "TOPRIGHT", 0, -y)
-    keyHeader.icon:SetTexture(open and "Interface\\Buttons\\UI-MinusButton-Up" or "Interface\\Buttons\\UI-PlusButton-Up")
-    local used = 0
-    for slot = 1, count do
-        if C_Container.GetContainerItemID(bag, slot) then used = used + 1 end
+    if keyToggle then
+        keyToggle:Show()
+        keyToggle.icon:SetDesaturated(not ns.db.keyringOpen)
+        keyToggle.icon:SetAlpha(ns.db.keyringOpen and 1 or 0.7)
     end
-    keyHeader.text:SetText(string.format("%s (%d/%d)", L("KEYRING"), used, count))
-    keyHeader:Show()
+    local open = ns.db.keyringOpen and true or false
     if not open then
         if not InCombatLockdown() then for _, b in pairs(KeyringButtons()) do b:Hide() end end
         return
     end
-    if not InCombatLockdown() then
-        for slot = 1, count do
-            if not (buttons[bag] and buttons[bag][slot]) then CreateSlot(bag, slot) end
+    local shown, firstEmpty = {}, nil
+    for slot = 1, count do
+        if C_Container.GetContainerItemID(bag, slot) then
+            shown[#shown + 1] = slot
+        elseif not firstEmpty then
+            firstEmpty = slot
         end
     end
+    if firstEmpty then shown[#shown + 1] = firstEmpty end
+    if not InCombatLockdown() then
+        for _, slot in ipairs(shown) do
+            if not (buttons[bag] and buttons[bag][slot]) then CreateSlot(bag, slot) end
+        end
+        local visible = {}
+        for _, slot in ipairs(shown) do visible[slot] = true end
+        for slot, b in pairs(KeyringButtons()) do
+            if not visible[slot] then b:Hide() end
+        end
+    end
+    if #shown == 0 then return end
     placer:StartBag()
-    for slot = 1, count do
+    for _, slot in ipairs(shown) do
         local button = buttons[bag] and buttons[bag][slot]
         if button then
             local x, py = placer:Next()
@@ -1014,10 +1010,22 @@ local function CreateWindow()
     bagsToggle:HookScript("OnEnter", function(self) SimpleTip(self, L("TIP_BAGBAR")) end)
     bagsToggle:HookScript("OnLeave", HideTip)
 
+    -- Schlüsselbund-Knopf (links neben dem Taschen-Symbol, gleiche Größe)
+    keyToggle = UI.Button(window, "", 22, function() ns.ToggleKeyring() end)
+    keyToggle:SetPoint("RIGHT", bagsToggle, "LEFT", -4, 0)
+    keyToggle.icon = keyToggle:CreateTexture(nil, "ARTWORK")
+    keyToggle.icon:SetPoint("TOPLEFT", 3, -3)
+    keyToggle.icon:SetPoint("BOTTOMRIGHT", -3, 3)
+    keyToggle.icon:SetTexture("Interface\\Icons\\INV_Misc_Key_14")
+    keyToggle.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    keyToggle:HookScript("OnEnter", function(self) SimpleTip(self, L("TIP_KEYRING")) end)
+    keyToggle:HookScript("OnLeave", HideTip)
+    keyToggle:Hide()
+
     -- Suche (eigene Taschen: Blizzards Taschensuche, gilt wie bei Blizzard auch für die Bank)
     searchBox = UI.EditBox(window, 100, 22)
     searchBox:SetPoint("LEFT", viewButton, "RIGHT", 4, 0)
-    searchBox:SetPoint("RIGHT", bagsToggle, "LEFT", -4, 0)
+    searchBox:SetPoint("RIGHT", keyToggle, "LEFT", -4, 0)
     local placeholder = searchBox:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     placeholder:SetPoint("LEFT", 7, 0)
     placeholder:SetText(L("SEARCH"))
