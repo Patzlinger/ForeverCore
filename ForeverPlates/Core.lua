@@ -750,13 +750,13 @@ local function PlaceTop(fp)
     local o = fp.overlay
     local y = TopOffset(fp)
     fp.name:ClearAllPoints()
-    fp.name:SetPoint("BOTTOMLEFT", o, "TOPLEFT", 1, y)
+    fp.name:SetPoint("BOTTOMLEFT", o, "TOPLEFT", 1, y + 2) -- 2 px höher: Unterlängen (g, j, y) ragen sonst in die Leiste
     fp.name:SetPoint("RIGHT", fp.classIcon, "LEFT", -2, 0)
     fp.level:ClearAllPoints()
     fp.level:SetPoint("BOTTOMRIGHT", o, "TOPRIGHT", -1, y)
     fp.classIcon:ClearAllPoints()
     fp.classIcon:SetPoint("RIGHT", fp.level, "LEFT", -1, 0)
-    local top = y + 11
+    local top = y + 13
     local deb = fp.auras.debuffs
     if deb then
         deb:ClearAllPoints()
