@@ -111,6 +111,7 @@ end
 -- (Luft zum Kasten darunter); gezählt wird je Reiter einmal auf Blizzards Lage
 local TAB_UP = 4
 local innerTabs = setmetatable({}, { __mode = "k" })
+local fillInset = setmetatable({}, { __mode = "k" }) -- [Reiter] = zuletzt gesetzter Ausgleich unserer Fläche
 local function TabSelectedInner(t)
     if type(t.isSelected) == "boolean" then return t.isSelected end
     return t.IsEnabled and not t:IsEnabled()
@@ -236,16 +237,23 @@ local function Place(f)
     end
     -- Reiter direkt am Fenster angeheftet, 8 Abstand – auf gleicher Höhe wie weitere Reiter anderer Addons daneben
     -- (z. B. Auctionator: deren Oberkante zählt), sonst 1 unter dem Fenster
-    local tabY = 1
+    local tabY = 5 -- (ohne fremde Reiter: etwas ins Fenster hinein, wie Blizzards Reiter)
     local bottom = f:GetBottom()
-    for _, child in ipairs({ f:GetChildren() }) do
-        local name = not Forbidden(child) and child:GetName()
-        if name and name:find("^Auctionator") and child:IsObjectType("Button") and child:IsShown() then
-            local top = child:GetTop()
-            if top and bottom then tabY = math.floor(top - bottom + 0.5) end
-            break
+    local function FindForeignTab(frame, depth)
+        for _, child in ipairs({ frame:GetChildren() }) do
+            local name = not Forbidden(child) and child:GetName()
+            if name and name:find("Auctionator") and child:IsObjectType("Button") and child:IsShown()
+                and child:GetTop() and bottom and child:GetTop() - bottom < 40 then
+                return child
+            end
+            if depth < 2 and not Forbidden(child) then
+                local found = FindForeignTab(child, depth + 1)
+                if found then return found end
+            end
         end
     end
+    local foreign = FindForeignTab(f, 1)
+    if foreign and bottom then tabY = math.floor(foreign:GetTop() - bottom + 0.5) end
     local prev
     for _, key in ipairs({ "BuyTab", "SellTab", "AuctionsTab" }) do
         local tab = f[key]
@@ -268,23 +276,26 @@ local function Place(f)
         end
     end
     -- alle Reiter einer Seite gleich hoch und auf gleicher Höhe wie ein nicht gewählter (Blizzard setzt den gewählten
-    -- tiefer und größer – "Auktionen" sah dann anders aus als "Gebote")
+    -- tiefer und größer – "Auktionen" sah dann anders aus als "Gebote"). Nur unsere Fläche wird ausgerichtet (Blizzards
+    -- Knopf bleibt, wo er ist – die Reiter hängen aneinander, Verschieben zog die anderen mit)
     for _, list in pairs(groups) do
         local ref
         for _, tab in ipairs(list) do
             if not TabSelectedInner(tab) then ref = tab break end
         end
-        local refTop, refH = ref and ref:GetTop(), ref and ref:GetHeight()
+        local refTop, refBottom = ref and ref:GetTop(), ref and ref:GetBottom()
         for _, tab in ipairs(list) do
-            if ref and tab ~= ref and refTop and tab:GetNumPoints() == 1 and ns.CanMove(tab) then
-                if refH and math.abs((tab:GetHeight() or 0) - refH) > 0.5 then tab:SetHeight(refH) end
-                local top = tab:GetTop()
-                if top and math.abs(refTop - top) > 0.5 then
-                    local p, rel, rp, x, y = tab:GetPoint(1)
-                    y = (y or 0) + (refTop - top)
-                    tab:SetPoint(p, rel, rp, x, y)
-                    raised[tab] = y -- (gilt als unsere Lage: nicht nochmal anheben)
-                end
+            local top, bot = tab:GetTop(), tab:GetBottom()
+            local t, b = 0, 0
+            if ref and refTop and refBottom and top and bot then
+                t, b = math.floor(top - refTop + 0.5), math.floor(refBottom - bot + 0.5)
+            end
+            local key = t .. ":" .. b
+            if fillInset[tab] ~= key then
+                fillInset[tab] = key
+                ns.Flat(tab, C.button, { 0, t, 0, b })
+                local selected = TabSelectedInner(tab)
+                ns.EdgeColor(tab, selected and C.accent or C.border, selected and 0.9 or 1)
             end
             pcall(ns.CenterText, tab)
         end
