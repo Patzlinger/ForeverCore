@@ -96,3 +96,18 @@ Hub-Funktionen, Einstellungen, Profile, Minimap-Knopf oder /fmove einbindet.
 - Einstellungen wirken sofort (kein "Übernehmen"-Knopf), ein "Zurücksetzen" pro Bereich ist gern gesehen
 - Blizzard-Einstellungen (CVars, Tastenbelegung) nur auf ausdrücklichen Wunsch des Spielers ändern
 
+## Gesperrte Werte (secret values) – Helfer seit Hub v76
+
+Einheiten-Abfragen (Leben, Mana, GUID, Auren …) liefern im Kampf – Mana auch außerhalb – gesperrte Werte. Erlaubt ist nur das Anzeigen
+(`SetText`, `StatusBar:SetValue`, `string.format("%s", …)`). Rechnen, Vergleichen, Tabellenschlüssel und `#` werfen Fehler.
+
+| Funktion | Zweck |
+|---|---|
+| `UI.IsSecret(…)` | true, wenn irgendein Wert gesperrt ist (nutzt `issecretvalue`; ein globales `issecret` gibt es nicht) |
+| `UI.Readable(x)` | ist x eine echte, lesbare Zahl? |
+| `UI.Try(fn, …)` | fn im `pcall`, Ergebnis oder nil |
+| `UI.StepCurve(schritt, max, cap)` | Stufenkurve: Wert k ab k × schritt ÷ max (cap Stufen, Standard 99) |
+| `UI.SetStepCount(fs, unit, powerType, schritt, max, cap)` | schreibt „wie oft passt schritt in den aktuellen Wert“ per `UnitPowerPercent`/`UnitHealthPercent` + Kurve in einen Text, auch bei gesperrtem Wert (powerType nil = Leben); Rückgabe true/false |
+
+Vorbild: ForeverBars „Zauber pro Mana“ (Maximum ist lesbar, aktuelles Mana nicht – die Kurve rechnet im Spiel). Geschützte Funktionen im Kampf
+nie aufrufen; `tools/check.ps1` meldet `issecret(` ohne lokale Definition vor der ersten Benutzung.

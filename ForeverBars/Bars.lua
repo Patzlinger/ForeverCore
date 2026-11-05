@@ -918,7 +918,7 @@ local function ActionSpell(button)
     if type(slot) ~= "number" and button.GetAttribute then slot = button:GetAttribute("action") end
     if type(slot) ~= "number" or not GetActionInfo then return end
     local ok, kind, id = pcall(GetActionInfo, slot)
-    if not ok or not id or (issecret and issecret(id)) then return end
+    if not ok or not id or _G.ForeverHub.UI.IsSecret(id) then return end
     if kind == "macro" and GetMacroSpell then
         local okm, spell = pcall(GetMacroSpell, id)
         if not okm or not spell then return end
@@ -935,7 +935,7 @@ local function ManaCost(spellID)
     if not ok or type(list) ~= "table" then return end
     for _, c in ipairs(list) do
         local cost = c.cost
-        if c.type == 0 and type(cost) == "number" and not (issecret and issecret(cost)) and cost > 0 then return cost end
+        if c.type == 0 and _G.ForeverHub.UI.Readable(cost) and cost > 0 then return cost end
     end
 end
 
@@ -943,29 +943,11 @@ end
 -- (im Kampf), rechnen wir weiter – wie bei den HoT/DoT-Vorhersagen: letzter lesbarer Wert + Regeneration (Fünf-
 -- Sekunden-Regel) − Kosten der eigenen gewirkten Zauber (mm.OnCast).
 local mm = { lastCast = 0, live = true }
-local function Readable(x)
-    return type(x) == "number" and not (issecretvalue and issecretvalue(x)) and not (issecret and issecret(x))
-end
--- Ist das Mana gesperrt (Normalfall in diesem Client), das Maximum aber lesbar: das Spiel rechnet selbst. Eine
--- Stufenkurve über den Prozentwert (Schritt k bei k × Kosten ÷ Maximum, Wert k) liefert direkt die Anzahl der Zauber,
--- und UnitPowerPercent(..., Kurve) darf sie – auch gesperrt – in einen Text schreiben.
-local curves = {}
-local function CountCurve(cost, max)
-    local key = cost .. ":" .. max
-    local c = curves[key]
-    if c ~= nil then return c or nil end
-    local ok, curve = pcall(function()
-        local cv = C_CurveUtil.CreateCurve()
-        cv:SetType(Enum.LuaCurveType.Step)
-        cv:AddPoint(0, 0)
-        for k = 1, math.min(99, math.floor(max / cost)) do
-            cv:AddPoint(math.max(0.000001, (k * cost) / max - 0.00001), k)
-        end
-        return cv
-    end)
-    curves[key] = (ok and curve) or false
-    return ok and curve or nil
-end
+-- Gesperrte Werte: gemeinsame Helfer des Hubs (UI.IsSecret, UI.Readable, UI.SetStepCount – siehe ForeverHub.lua).
+-- Ist das Mana gesperrt (Normalfall in diesem Client), das Maximum aber lesbar, rechnet das Spiel selbst: eine
+-- Stufenkurve über den Prozentwert liefert direkt die Anzahl der Zauber (UI.SetStepCount).
+local HubUI = _G.ForeverHub.UI
+local Readable = HubUI.Readable
 local function ManaNow()
     local now = GetTime()
     local m = UnitPower("player", 0)
@@ -991,7 +973,7 @@ local function ManaNow()
     return mm.cur
 end
 function ns.CastCountOnCast(spellID)
-    local cost = spellID and not (issecret and issecret(spellID)) and ManaCost(spellID)
+    local cost = spellID and not HubUI.IsSecret(spellID) and ManaCost(spellID)
     if not cost then return end
     mm.lastCast = GetTime()
     if not mm.live and mm.cur then mm.cur = math.max(0, mm.cur - cost) end
@@ -1039,7 +1021,7 @@ function ns.CastCountDiag()
     end)
     local okMath = pcall(function() return m / 2 end)
     print("|cffffd100ForeverBars Zauber/Mana|r Rechnen mit dem Mana möglich: " .. tostring(okMath)
-        .. " | issecretvalue: " .. tostring(issecretvalue and issecretvalue(m)) .. " | issecret: " .. tostring(issecret and issecret(m)))
+        .. " | gesperrt (UI.IsSecret): " .. tostring(HubUI.IsSecret(m)))
 end
 SlashCmdList.FORBARSCAST = ns.CastCountDiag
 
@@ -1068,11 +1050,7 @@ function ns.UpdateCastCounts()
                         end
                     elseif mm.max and UnitPowerPercent then
                         -- gesperrtes Mana: Anzahl über die Kurve vom Spiel berechnen lassen
-                        local curve = CountCurve(cost, mm.max)
-                        if curve then
-                            local okSet = pcall(function() fs:SetText(UnitPowerPercent("player", 0, false, curve)) end)
-                            if okSet then fs:SetTextColor(0.55, 0.78, 1) end
-                        end
+                        if HubUI.SetStepCount(fs, "player", 0, cost, mm.max) then fs:SetTextColor(0.55, 0.78, 1) end
                     end
                     -- (der Text kann gesperrt sein: Vergleich im pcall, im Zweifel zeigen)
                     local okText, hasText = pcall(function() return (fs:GetText() or "") ~= "" end)

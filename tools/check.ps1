@@ -111,6 +111,16 @@ foreach ($addon in $targets) {
         if ($count -ge 195) { $errors.Add("$rel – $count lokale Variablen auf oberster Ebene (Lua-Grenze 200): auslagern") }
         elseif ($count -ge 185) { $warnings.Add("$rel – $count lokale Variablen auf oberster Ebene (Grenze 200)") }
 
+        # 7: "issecret(" gibt es nicht als globale Funktion (nur issecretvalue). Jede Datei, die es nutzt, braucht eine
+        #    eigene lokale Definition – und sie muss VOR der ersten Benutzung stehen (sonst ruft die Datei nil auf).
+        #    Besser: UI.IsSecret aus dem Hub (ForeverCore).
+        $use = [regex]::Match($text, '(?<![\w.])issecret\(')
+        if ($use.Success) {
+            $def = [regex]::Match($text, '(?m)^local\s+(?:function\s+)?(?:\w+\s*,\s*)*issecret\b|^local\s+function\s+issecret\b')
+            if (-not $def.Success) { $errors.Add("$rel – issecret( ohne eigene lokale Definition (gibt es nicht global; UI.IsSecret nutzen)") }
+            elseif ($def.Index -gt $use.Index) { $errors.Add("$rel – issecret( wird vor seiner lokalen Definition benutzt (Zeile " + (($text.Substring(0, $use.Index) -split "`n").Count) + ")") }
+        }
+
         # 5: UI.AfterCombat(Schlüssel, Funktion, Addon) – zuerst der Schlüssel: Fehler, wenn gleich eine Funktion
         #    kommt ("AfterCombat(function" oder nur ein Name ohne zweiten Wert, z. B. "AfterCombat(Relayout)")
         foreach ($m in [regex]::Matches($text, '(?:UI|HUB|hub)\.AfterCombat\(\s*(function\b|[A-Za-z_][\w.]*\s*\))')) {

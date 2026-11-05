@@ -889,7 +889,9 @@ local function UpdateHealth(fp)
         fp.hpPct:SetAlpha(a)
     end
     -- Finishing-Bereich
-    if d.execute and fp.enemy and UnitHealthPercent and ExecCurve() then
+    -- (bei fremd getaggten, für mich grauen Mobs bleibt die Leiste grau: kein Finishing-Bereich)
+    local tapped = UnitIsTapDenied and UnitIsTapDenied(unit)
+    if d.execute and fp.enemy and UnitHealthPercent and ExecCurve() and (IsSecret(tapped) or not tapped) then
         fp.exec:SetAlpha(UnitHealthPercent(unit, true, ExecCurve()))
     else
         fp.exec:SetAlpha(0)
@@ -1723,6 +1725,7 @@ H.PLAYER_TARGET_CHANGED = function()
 end
 H.UNIT_HEALTH = function(unit) local fp = plates[unit] if fp and fp.enemy then UpdateHealth(fp) end end
 H.UNIT_MAXHEALTH = H.UNIT_HEALTH
+H.UNIT_FLAGS = H.UNIT_HEALTH -- Tap-Status (grau/getaggt) ändert sich -> Finishing-Bereich neu entscheiden
 H.UNIT_AURA = function(unit) local fp = plates[unit] if fp and fp.enemy and db.dotPrediction then UpdateDot(fp) end end
 if UI.OnOverTimeChange then UI.OnOverTimeChange(function() for _, fp in pairs(plates) do if fp.enemy and fp.unit then UpdateDot(fp) end end end) end
 C_Timer.NewTicker(1, function() for _, fp in pairs(plates) do if fp.dotOn and fp.unit then UpdateDot(fp) end end end)

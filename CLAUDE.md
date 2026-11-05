@@ -145,6 +145,13 @@ Neue Einzelheiten dort eintragen, hier nur Regeln.
   - Addons rufen sich nur über `UI.API.<Addon>` auf; Nachrichten mit `UI.On` / `UI.Fire`
   - Spielernamen nur für Spieler mit `UI.PlayerName(name)` kürzen; Fehler über `UI.ReportError` / `UI.Safe`
   - Minimap-Knopf über `UI.MinimapButton`, in `KNOWN` eintragen; `/fmove` über `UI.RegisterMovable`
+  - **Gesperrte Werte (secret values) und Kampf:** Zahlen/Texte aus Einheiten-Abfragen (Leben, Mana, GUID, Auren …) sind im
+    Kampf – Mana auch außerhalb – gesperrt. Anzeigen geht (`SetText`, `StatusBar:SetValue`, `"%s"`), **rechnen, vergleichen,
+    als Tabellenschlüssel oder `#` nie**. Dafür nur die Hub-Helfer: `UI.IsSecret(…)`, `UI.Readable(x)`, `UI.Try(fn, …)`,
+    `UI.SetStepCount(fs, unit, powerType, schritt, max)` (Anzahl per Kurve auch bei gesperrtem Wert, Vorbild: ForeverBars
+    „Zauber pro Mana“). **Es gibt kein globales `issecret`** (nur `issecretvalue`) – `tools/check.ps1` meldet die Benutzung ohne
+    lokale Definition. Geschützte Funktionen (`PickupSpellBookItem`, Taschenplätze, Anker geschützter Rahmen) im Kampf nie
+    aufrufen (`InCombatLockdown()` prüfen oder `UI.AfterCombat`); auch ein `pcall` verhindert `ADDON_ACTION_BLOCKED` nicht.
 
 ## 7. Design (verbindlich für alle Fenster)
 Vorbild ist der flache Stil aus ForeverQuests; `ForeverHub.UI` und `Style.lua` (ForeverQuests/ForeverBars) setzen

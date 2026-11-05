@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 75
+local VERSION = 76
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -213,6 +213,67 @@ function UI.Safe(addon, where, fn)
         local ok, err = pcall(fn, ...)
         if not ok then UI.ReportError(addon, where, err) end
     end
+end
+
+---------------------------------------------------------------------------
+-- Gesperrte Werte ("secret values"): Zahlen/Texte aus Einheiten-Abfragen (Leben, Mana, GUID, Auren …) sind im Kampf,
+-- bei manchen Werten (Mana!) auch ausserhalb, für Addons gesperrt. Erlaubt: anzeigen (SetText, StatusBar:SetValue,
+-- Format "%s"). VERBOTEN: rechnen, vergleichen, als Tabellenschluessel, Laenge – das wirft einen Fehler.
+-- Einheitliche Helfer statt eigener Kopien in jedem Addon:
+--   UI.IsSecret(…)            true, wenn irgendein Wert gesperrt ist (nur issecretvalue; es gibt KEIN globales issecret)
+--   UI.Readable(x)            echte, lesbare Zahl?
+--   UI.Try(fn, …)             fn im pcall, Ergebnis oder nil
+--   UI.StepCurve(step, max, cap)           Stufenkurve: Wert k ab k × step ÷ max (Anzahl "k-mal passt hinein")
+--   UI.SetStepCount(fs, unit, powerType, step, max, cap)
+--       schreibt "wie oft passt step in den aktuellen Wert" per Kurve in einen Text – auch bei gesperrtem Wert
+--       (powerType nil = Leben). Beispiel: Zauber pro Mana in ForeverBars.
+---------------------------------------------------------------------------
+function UI.IsSecret(...)
+    if not issecretvalue then return false end
+    for i = 1, select("#", ...) do
+        if issecretvalue((select(i, ...))) then return true end
+    end
+    return false
+end
+
+function UI.Readable(x) return type(x) == "number" and not UI.IsSecret(x) end
+
+function UI.Try(fn, ...)
+    local ok, v = pcall(fn, ...)
+    if ok then return v end
+end
+
+SHARED.stepCurves = SHARED.stepCurves or {}
+function UI.StepCurve(step, max, cap)
+    if not (UI.Readable(step) and UI.Readable(max)) or step <= 0 or max <= 0 then return nil end
+    cap = cap or 99
+    local key = step .. ":" .. max .. ":" .. cap
+    local cached = SHARED.stepCurves[key]
+    if cached ~= nil then return cached or nil end
+    local ok, curve = pcall(function()
+        local cv = C_CurveUtil.CreateCurve()
+        cv:SetType(Enum.LuaCurveType.Step)
+        cv:AddPoint(0, 0)
+        for k = 1, math.min(cap, math.floor(max / step)) do
+            cv:AddPoint(math.max(0.000001, (k * step) / max - 0.00001), k)
+        end
+        return cv
+    end)
+    SHARED.stepCurves[key] = (ok and curve) or false
+    return ok and curve or nil
+end
+
+function UI.SetStepCount(fs, unit, powerType, step, max, cap)
+    local curve = UI.StepCurve(step, max, cap)
+    if not curve then return false end
+    local ok = pcall(function()
+        if powerType ~= nil then
+            fs:SetText(UnitPowerPercent(unit, powerType, false, curve))
+        else
+            fs:SetText(UnitHealthPercent(unit, true, curve))
+        end
+    end)
+    return ok
 end
 
 -- Aenderungen an geschuetzten Rahmen sind im Kampf verboten: sofort ausfuehren oder bis nach dem Kampf
