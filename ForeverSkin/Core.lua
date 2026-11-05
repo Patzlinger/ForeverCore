@@ -38,6 +38,7 @@ ns.DEFAULTS = {
     auction = true,  -- Auktionshaus
     calendar = true, -- Kalender, Uhr und Stoppuhr
     report = true,   -- Spieler melden (Kundensupport)
+    registrar = true, -- Gildenregistrator (Satzung kaufen)
     size = 100,      -- Größe von Gespräch, Quest, Händler und Lehrer in Prozent (100 = Grundgröße SIZE_BASE)
 }
 
