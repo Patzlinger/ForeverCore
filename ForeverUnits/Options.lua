@@ -367,6 +367,8 @@ do
     Color(p, R + 220, -175, "", "healColor", true)
     Check(p, R, -196, T("Schilde (Absorption)", "Shields (absorbs)"), G("shields"))
     Color(p, R + 220, -199, "", "shieldColor", true)
+    Check(p, R, -220, T("HoT-Vorhersage", "HoT prediction"), G("hotPrediction"))
+    Check(p, R + 130, -220, T("DoT-Schaden am Ziel", "DoT damage on target"), G("dotPrediction"))
 
     UI.Header(p, R, -244, T("Skin (Test)", "Skin (test)"))
     Choice(p, R, -266, T("Aussehen", "Style"), 170, {

@@ -454,6 +454,7 @@ do
     }, "layout", 130)
     W.Check(p, R, -100, T("Heilabsorption", "Heal absorbs"), "healAbsorbs")
     W.Color(p, R + 220, -103, "", "healAbsorbColor", true)
+    W.Check(p, R, -120, T("HoT-Vorhersage (eigene, schraffiert)", "HoT prediction (own, hatched)"), "hotPrediction")
 
     W.Header(p, R, -140, T("Hervorhebungen", "Highlights"))
     W.Check(p, R, -160, T("Aktuelles Ziel umranden", "Border around target"), "targetHighlight")

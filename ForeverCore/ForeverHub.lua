@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 66
+local VERSION = 67
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -4699,6 +4699,96 @@ do
             end
         end)
     end)
+end
+
+---------------------------------------------------------------------------
+-- Schaden/Heilung ueber Zeit (DoT/HoT) der eigenen Auren auf einer Einheit (v67):
+-- UI.OverTimeRemaining(unit, "heal"|"damage") -> noch ausstehende Menge (Zahl, 0 wenn keine/nicht lesbar).
+-- Menge je Zauber aus der Zauberbeschreibung ("... 1.234 ueber 12 Sek."), anteilig nach Restdauer.
+-- Schaetzung: nutzt die aktuellen Werte des Spielers, keine Tick-Genauigkeit.
+---------------------------------------------------------------------------
+UI.HATCH_TEXTURE = "Interface\\RaidFrame\\Shield-Overlay" -- Schraffur fuer Vorhersage-Balken
+
+local function Secret(...)
+    if not issecretvalue then return false end
+    for i = 1, select("#", ...) do if issecretvalue((select(i, ...))) then return true end end
+    return false
+end
+
+local overInfo = {} -- [spellID] = { amount, seconds, kind } | false (keine Ueber-Zeit-Wirkung)
+local HEAL_WORDS = { "heil", "heal", "gesundheit", "health" }
+local DMG_WORDS = { "schaden", "damage" }
+
+local function FirstPos(text, words)
+    local best
+    for _, w in ipairs(words) do
+        local p = text:find(w, 1, true)
+        if p and (not best or p < best) then best = p end
+    end
+    return best
+end
+
+local function ToNumber(s) return tonumber((s:gsub("[%.,%s]", ""))) end
+
+local function ParseOver(desc)
+    desc = desc:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+    local pos, finish, seconds = desc:find("über%s+(%d+[%.,]?%d*)%s*[Ss]e")
+    if not pos then pos, finish, seconds = desc:find("over%s+(%d+[%.,]?%d*)%s*[Ss]e") end
+    if not pos then return nil end
+    seconds = tonumber((seconds:gsub(",", ".")))
+    -- Menge: erst hinter der Zeitangabe ("ueber 12 Sek. 1234 Gesundheit"), sonst die letzte Zahl davor
+    local amount, at = desc:sub(finish + 1):match("^[^%d]*(%d[%d%.,]*)()")
+    if amount then
+        local rest = desc:sub(finish + at, finish + at + 12):lower()
+        if rest:match("^%s*sek") or rest:match("^%s*sec") or rest:match("^%s*min") then amount = nil end
+    end
+    local segment
+    if amount then
+        segment = desc:sub(math.max(1, pos - 40), finish + at + 30):lower()
+    else
+        for n in desc:sub(1, pos - 1):gmatch("(%d[%d%.,]*)") do amount = n end
+        segment = desc:sub(math.max(1, pos - 60), finish + 30):lower()
+    end
+    amount = amount and ToNumber(amount)
+    if not (amount and amount > 0 and seconds and seconds > 0) then return nil end
+    local h, d = FirstPos(segment, HEAL_WORDS), FirstPos(segment, DMG_WORDS)
+    local kind = (h and (not d or h < d)) and "heal" or (d and "damage") or nil
+    if not kind then return nil end
+    return { amount = amount, seconds = seconds, kind = kind }
+end
+
+local function OverInfo(spellID)
+    local cached = overInfo[spellID]
+    if cached ~= nil then return cached or nil end
+    local desc = C_Spell and C_Spell.GetSpellDescription and C_Spell.GetSpellDescription(spellID)
+    if type(desc) ~= "string" or Secret(desc) or desc == "" then
+        if C_Spell and C_Spell.RequestLoadSpellData then pcall(C_Spell.RequestLoadSpellData, spellID) end
+        return nil -- noch nicht geladen: spaeter nochmal
+    end
+    local info = ParseOver(desc)
+    overInfo[spellID] = info or false
+    return info
+end
+
+function UI.OverTimeRemaining(unit, kind)
+    local filter = kind == "heal" and "HELPFUL|PLAYER" or "HARMFUL|PLAYER"
+    local list
+    if C_UnitAuras and C_UnitAuras.GetUnitAuras then
+        local ok, res = pcall(C_UnitAuras.GetUnitAuras, unit, filter)
+        if ok and type(res) == "table" then list = res end
+    end
+    if not list then return 0 end
+    local now, total = GetTime(), 0
+    for _, a in ipairs(list) do
+        local id, expires = a.spellId, a.expirationTime
+        if id and expires and not Secret(id, expires) and expires > now then
+            local info = OverInfo(id)
+            if info and info.kind == kind then
+                total = total + info.amount * math.min(1, (expires - now) / info.seconds)
+            end
+        end
+    end
+    return total
 end
 
 ---------------------------------------------------------------------------

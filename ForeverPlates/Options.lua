@@ -208,6 +208,7 @@ do
     Check(T("Forever-Rahmen (dunkler Grund, feiner Rand)", "Forever frame (dark background, fine border)"), "skin")
     Check(T("Stufe neben dem Namen", "Level next to the name"), "showLevel")
     Check(T("Symbol für Elite, Rar und Boss", "Icon for elite, rare and boss"), "classIcon")
+    Check(T("DoT-Schaden auf der Leiste (schraffiert)", "DoT damage on the bar (hatched)"), "dotPrediction")
     Check(T("Andere dämpfen, solange ein Ziel gewählt ist", "Dim the others while you have a target"), "dimOthers")
     Check(T("Gegner außer Reichweite blasser (Zauber der Klasse)", "Enemies out of range fainter (class spell)"), "rangeFade")
     Gap()

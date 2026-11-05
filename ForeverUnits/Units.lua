@@ -36,12 +36,14 @@ end
 local function LayoutOverlays(v)
     local w, h = v.health:GetSize()
     local fill = v.health:GetStatusBarTexture()
-    for _, bar in ipairs({ v.heal, v.shield, v.absorb }) do
+    for _, bar in ipairs({ v.heal, v.hot, v.dot, v.shield, v.absorb }) do
         bar:ClearAllPoints()
         bar:SetSize(w, h)
     end
     v.heal:SetPoint("TOPLEFT", fill, "TOPRIGHT")
-    v.shield:SetPoint("TOPLEFT", v.heal:GetStatusBarTexture(), "TOPRIGHT")
+    v.hot:SetPoint("TOPLEFT", v.heal:GetStatusBarTexture(), "TOPRIGHT")
+    v.dot:SetPoint("TOPRIGHT", fill, "TOPRIGHT")
+    v.shield:SetPoint("TOPLEFT", v.hot:GetStatusBarTexture(), "TOPRIGHT")
     v.absorb:SetPoint("TOPRIGHT", fill, "TOPRIGHT")
 end
 
@@ -139,6 +141,13 @@ local function CreateUnitFrame(info)
     v.clip:SetFrameLevel(c:GetFrameLevel() + 2)
     v.clip:SetClipsChildren(true)
     v.heal = NewOverlay(v.clip, false)
+    v.hot = NewOverlay(v.clip, false) -- eigene HoTs: schraffiert
+    v.dot = NewOverlay(v.clip, true)  -- eigene DoTs auf dem Ziel: schraffiert, vom Lebensbalken-Ende nach links
+    for _, bar in ipairs({ v.hot, v.dot }) do
+        bar:SetStatusBarTexture(UI.HATCH_TEXTURE)
+        bar:GetStatusBarTexture():SetHorizTile(true)
+        bar:GetStatusBarTexture():SetVertTile(true)
+    end
     v.shield = NewOverlay(v.clip, false)
     v.absorb = NewOverlay(v.clip, true)
     v.health:SetScript("OnSizeChanged", function() LayoutOverlays(v) end)
@@ -811,7 +820,7 @@ local function UpdatePrediction(b)
     local v, look, unit = b.v, Look(), b.unit
     local c = GetCalc()
     if not c or not UnitGetDetailedHealPrediction then
-        v.heal:SetValue(0) v.shield:SetValue(0) v.absorb:SetValue(0)
+        v.heal:SetValue(0) v.hot:SetValue(0) v.dot:SetValue(0) v.shield:SetValue(0) v.absorb:SetValue(0)
         return
     end
     UnitGetDetailedHealPrediction(unit, "player", c)
@@ -819,6 +828,28 @@ local function UpdatePrediction(b)
     if not IsSecret(max) and (not max or max <= 0) then max = 1 end
     v.heal:SetMinMaxValues(0, max)
     if look.healPrediction ~= false then v.heal:SetValue((c:GetIncomingHeals())) else v.heal:SetValue(0) end
+    -- eigene HoTs (Freund) bzw. DoTs (Feind): schraffierte Fläche, Schätzung aus den Zauberbeschreibungen
+    v.hot:SetMinMaxValues(0, max)
+    v.dot:SetMinMaxValues(0, max)
+    local hot, dot = 0, 0
+    if UI.OverTimeRemaining then
+        local hostile = UnitCanAttack("player", unit)
+        if not IsSecret(hostile) and hostile then
+            if look.dotPrediction ~= false and (b.key == "target" or b.key == "focus" or b.key == "targettarget") then
+                dot = UI.OverTimeRemaining(unit, "damage")
+            end
+        elseif look.hotPrediction ~= false then
+            hot = UI.OverTimeRemaining(unit, "heal")
+        end
+    end
+    v.hot:SetValue(hot)
+    v.dot:SetValue(dot)
+    v.overOn = hot > 0 or dot > 0
+    if dot > 0 then
+        local cur = UnitHealth(unit)
+        local lethal = not IsSecret(cur) and cur and dot >= cur
+        if lethal then v.dot:SetStatusBarColor(1, 0.1, 0.1, 1) else v.dot:SetStatusBarColor(0.95, 0.35, 0.2, 0.85) end
+    end
     v.shield:SetMinMaxValues(0, max)
     if look.shields ~= false then v.shield:SetValue((c:GetDamageAbsorbs())) else v.shield:SetValue(0) end
     v.absorb:SetMinMaxValues(0, max)
@@ -1224,6 +1255,7 @@ function ns.Layout(b)
     v.powerBg:SetTexture(tex)
     local hc, sc, ac = look.healColor, look.shieldColor, look.healAbsorbColor
     if hc then v.heal:SetStatusBarColor(hc[1], hc[2], hc[3], hc[4] or 1) end
+    if hc then v.hot:SetStatusBarColor(math.min(1, hc[1] + 0.25), math.min(1, hc[2] + 0.25), math.min(1, hc[3] + 0.25), 0.9) end
     if sc then v.shield:SetStatusBarColor(sc[1], sc[2], sc[3], sc[4] or 1) end
     if ac then v.absorb:SetStatusBarColor(ac[1], ac[2], ac[3], ac[4] or 1) end
 
@@ -1455,6 +1487,11 @@ end))
 ns.On("UNIT_HEAL_PREDICTION", T("Heilvorhersage", "Heal prediction"), ForUnit(UpdatePrediction))
 ns.On("UNIT_ABSORB_AMOUNT_CHANGED", T("Schilde", "Shields"), ForUnit(UpdatePrediction))
 ns.On("UNIT_HEAL_ABSORB_AMOUNT_CHANGED", T("Heilabsorption", "Heal absorbs"), ForUnit(UpdatePrediction))
+ns.On("UNIT_AURA", T("HoT/DoT-Vorhersage", "HoT/DoT prediction"), ForUnit(UpdatePrediction))
+-- Flächen schrumpfen mit der Restdauer: sekündlich nachziehen, solange eine sichtbar ist
+C_Timer.NewTicker(1, function()
+    for _, b in pairs(ns.frames) do if b:IsVisible() and b.v and b.v.overOn then pcall(UpdatePrediction, b) end end
+end)
 ns.On("UNIT_POWER_UPDATE", T("Energie", "Power"), ForUnit(UpdatePower))
 ns.On("UNIT_MAXPOWER", T("Energie", "Power"), ForUnit(UpdatePower))
 ns.On("UNIT_DISPLAYPOWER", T("Energie", "Power"), ForUnit(UpdatePower))

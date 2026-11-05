@@ -206,17 +206,18 @@ end
 local function LayoutOverlays(v)
     local w, h = v.health:GetSize()
     local fill = v.health:GetStatusBarTexture()
-    for _, bar in ipairs({ v.heal, v.shield, v.absorb }) do
+    for _, bar in ipairs({ v.heal, v.hot, v.shield, v.absorb }) do
         bar:ClearAllPoints()
         bar:SetSize(w, h)
     end
     v.heal:SetPoint("TOPLEFT", fill, "TOPRIGHT")
+    v.hot:SetPoint("TOPLEFT", v.heal:GetStatusBarTexture(), "TOPRIGHT")
     if GetDB().shieldStyle == "right" then
         v.shield:SetReverseFill(true)
         v.shield:SetPoint("TOPRIGHT", v.health, "TOPRIGHT")
     else
         v.shield:SetReverseFill(false)
-        v.shield:SetPoint("TOPLEFT", v.heal:GetStatusBarTexture(), "TOPRIGHT")
+        v.shield:SetPoint("TOPLEFT", v.hot:GetStatusBarTexture(), "TOPRIGHT")
     end
     v.absorb:SetPoint("TOPRIGHT", fill, "TOPRIGHT")
 end
@@ -250,6 +251,10 @@ function ns.CreateVisuals(b)
     v.clip:SetFrameLevel(c:GetFrameLevel() + 2)
     v.clip:SetClipsChildren(true)
     v.heal = NewOverlayBar(v.clip, false)
+    v.hot = NewOverlayBar(v.clip, false) -- HoTs: schraffiert, hinter der normalen Heilvorhersage
+    v.hot:SetStatusBarTexture(UI.HATCH_TEXTURE)
+    v.hot:GetStatusBarTexture():SetHorizTile(true)
+    v.hot:GetStatusBarTexture():SetVertTile(true)
     v.shield = NewOverlayBar(v.clip, false)
     v.absorb = NewOverlayBar(v.clip, true)
     v.health:SetScript("OnSizeChanged", function() LayoutOverlays(v) end)
@@ -360,6 +365,7 @@ function ns.ApplyButtonLayout(b)
     v.power:SetStatusBarTexture(tex)
     v.powerBg:SetTexture(tex)
     v.heal:SetStatusBarColor(ns.Color("healColor"))
+    do local r, g, bl = ns.Color("healColor") v.hot:SetStatusBarColor(math.min(1, r + 0.25), math.min(1, g + 0.25), math.min(1, bl + 0.25), 0.9) end
     v.shield:SetStatusBarColor(ns.Color("shieldColor"))
     v.absorb:SetStatusBarColor(ns.Color("healAbsorbColor"))
 
@@ -616,6 +622,7 @@ local function UpdatePrediction(b)
     local c = GetCalc()
     if not c or not UnitGetDetailedHealPrediction then
         v.heal:SetValue(0)
+        v.hot:SetValue(0)
         v.shield:SetValue(0)
         v.absorb:SetValue(0)
         return
@@ -632,6 +639,10 @@ local function UpdatePrediction(b)
     -- Werte nur durchreichen (kein "x and y or 0": das waere ein Test auf einen geheimen Wert)
     v.heal:SetMinMaxValues(0, max)
     if db.healPrediction then v.heal:SetValue((c:GetIncomingHeals())) else v.heal:SetValue(0) end
+    v.hot:SetMinMaxValues(0, max)
+    local hot = db.hotPrediction ~= false and UI.OverTimeRemaining and UI.OverTimeRemaining(unit, "heal") or 0
+    v.hot:SetValue(hot)
+    v.hotOn = hot > 0
     v.shield:SetMinMaxValues(0, max)
     if db.shields then v.shield:SetValue((c:GetDamageAbsorbs())) else v.shield:SetValue(0) end
     v.absorb:SetMinMaxValues(0, max)
@@ -1230,7 +1241,9 @@ ns.On("UNIT_FLAGS", "Status", ForUnit(StatusAndColor))
 ns.On("PLAYER_FLAGS_CHANGED", "Status", ForUnit(StatusAndColor))
 ns.On("UNIT_THREAT_SITUATION_UPDATE", "Bedrohung", ForUnit(UpdateThreat))
 -- im Kampf ist das nur noch ein kurzer Abgleich (Blizzard-Anzeige zeichnet selbst)
-ns.On("UNIT_AURA", T("Auren", "Auras"), ForUnit(function(b) ns.UpdateAuras(b) end))
+ns.On("UNIT_AURA", T("Auren", "Auras"), ForUnit(function(b) ns.UpdateAuras(b) UpdatePrediction(b) end))
+-- HoT-Fläche schrumpft mit der Restdauer: sekündlich nachziehen, solange eine sichtbar ist
+C_Timer.NewTicker(1, function() ForEachShown(function(b) if b.ff and b.ff.hotOn then UpdatePrediction(b) end end) end)
 ns.On("PLAYER_TARGET_CHANGED", "Ziel", function() ForEachShown(UpdateTarget) end)
 ns.On("RAID_TARGET_UPDATE", "Zielmarkierung", function() ForEachShown(UpdateMark) end)
 ns.On("INCOMING_RESURRECT_CHANGED", T("Wiederbelebung", "Resurrection"), ForUnit(UpdateIncoming))

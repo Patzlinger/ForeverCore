@@ -32,6 +32,7 @@ ns.DEFAULTS = {
     dimOthers = true,         -- übrige Plaketten leicht gedämpft, solange ein Ziel gewählt ist
     showLevel = true,         -- Stufe neben dem Namen
     classIcon = true,         -- Symbol für Elite/Rar/Boss vor der Stufe
+    dotPrediction = true,     -- Schaden der eigenen DoTs als schraffierte Fläche auf der Lebensleiste (rot = tödlich)
     healthText = true,        -- Leben auf der Leiste
     healthValue = true,       --   als Zahl (links)
     healthPercent = true,     --   in Prozent (rechts)
@@ -480,6 +481,21 @@ local function Setup(plate, frame)
     o:SetMinMaxValues(0, 1)
     o:SetValue(1)
     fp.bar, fp.overlay = o, o
+    -- Schaden der eigenen DoTs: schraffierte Fläche vom Ende der Lebensleiste nach links (geklippt auf die Leiste)
+    local clip = CreateFrame("Frame", nil, o)
+    clip:SetAllPoints(o)
+    clip:SetFrameLevel(o:GetFrameLevel() + 1)
+    clip:SetClipsChildren(true)
+    local dot = CreateFrame("StatusBar", nil, clip)
+    dot:SetStatusBarTexture(UI.HATCH_TEXTURE)
+    dot:GetStatusBarTexture():SetHorizTile(true)
+    dot:GetStatusBarTexture():SetVertTile(true)
+    dot:SetReverseFill(true)
+    dot:SetMinMaxValues(0, 1)
+    dot:SetValue(0)
+    dot:SetPoint("TOPRIGHT", o:GetStatusBarTexture(), "TOPRIGHT")
+    o:HookScript("OnSizeChanged", function(_, w, h) dot:SetSize(w, h) end)
+    fp.dot = dot
     fp.bg = o:CreateTexture(nil, "BACKGROUND")
     fp.bg:SetAllPoints()
     fp.gloss = o:CreateTexture(nil, "ARTWORK", nil, 2)
@@ -816,11 +832,27 @@ local function CopyBlizzardColor(fp)
     ApplyBarColor(fp)
 end
 
+-- Schaden der eigenen DoTs auf dem Gegner (Schätzung aus den Zauberbeschreibungen); rot = voraussichtlich tödlich
+local function UpdateDot(fp)
+    local unit = fp.unit
+    local dmg = 0
+    if db.dotPrediction and fp.enemy and unit and UI.OverTimeRemaining then dmg = UI.OverTimeRemaining(unit, "damage") end
+    fp.dot:SetMinMaxValues(0, UnitHealthMax(unit))
+    fp.dot:SetValue(dmg)
+    fp.dotOn = dmg > 0
+    if dmg > 0 then
+        local cur = UnitHealth(unit)
+        if not IsSecret(cur) and cur and dmg >= cur then fp.dot:SetStatusBarColor(1, 0.1, 0.1, 1)
+        else fp.dot:SetStatusBarColor(0.95, 0.35, 0.2, 0.85) end
+    end
+end
+
 local function UpdateHealth(fp)
     local unit, d = fp.unit, db
     -- StatusBar verträgt geheime Werte
     fp.bar:SetMinMaxValues(0, UnitHealthMax(unit))
     fp.bar:SetValue(UnitHealth(unit))
+    UpdateDot(fp)
     if not d.healthText then
         fp.hpValue:SetText("")
         fp.hpPct:SetText("")
@@ -1680,6 +1712,8 @@ H.PLAYER_TARGET_CHANGED = function()
 end
 H.UNIT_HEALTH = function(unit) local fp = plates[unit] if fp and fp.enemy then UpdateHealth(fp) end end
 H.UNIT_MAXHEALTH = H.UNIT_HEALTH
+H.UNIT_AURA = function(unit) local fp = plates[unit] if fp and fp.enemy and db.dotPrediction then UpdateDot(fp) end end
+C_Timer.NewTicker(1, function() for _, fp in pairs(plates) do if fp.dotOn and fp.unit then UpdateDot(fp) end end end)
 H.UNIT_THREAT_LIST_UPDATE = function(unit) local fp = plates[unit] if fp then UpdateThreat(fp) end end
 H.UNIT_THREAT_SITUATION_UPDATE = function() for _, fp in pairs(plates) do UpdateThreat(fp) end end
 H.PLAYER_REGEN_ENABLED = H.UNIT_THREAT_SITUATION_UPDATE

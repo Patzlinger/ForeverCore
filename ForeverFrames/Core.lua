@@ -48,6 +48,7 @@ ns.DEFAULTS = {
     powerMode = "all",               -- "all" | "mana" | "none"
     powerHeight = 4,
     healPrediction = true,
+    hotPrediction = true,             -- eigene HoTs als schraffierte Fläche hinter der Heilvorhersage
     healColor = { 0.3, 1, 0.45, 0.45 },
     shields = true,
     shieldColor = { 0.85, 0.95, 1, 0.5 },
