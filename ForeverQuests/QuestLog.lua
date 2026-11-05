@@ -723,12 +723,31 @@ local function FadeMapTrackingMenu()
 end
 
 -- Blizzards Rädchen (Questlog-Einstellungen) unsichtbar und ohne Maus – ersetzt durch unseres
+local listFadeHooked = false
 local function FadeBlizzardSettings(area)
     for _, holder in ipairs({ area, _G.QuestScrollFrame, _G.QuestMapFrame }) do
         local dropdown = holder and (holder.SettingsDropdown or holder.SettingsButton)
         if dropdown then
             Fade(dropdown)
             if dropdown.EnableMouse then dropdown:EnableMouse(false) end
+        end
+    end
+    -- Blizzards Questliste selbst (unter unserer): unsichtbar – ihr Text ("Keine Quests …", Einträge) schimmerte sonst
+    -- durch. Nur Deckkraft, nichts versteckt oder umgebaut; Blizzard setzt sie beim Öffnen teils zurück
+    local list = _G.QuestScrollFrame
+    if list and list ~= area and list.SetAlpha then
+        Fade(list)
+        if list.HookScript and not listFadeHooked then
+            listFadeHooked = true -- (Merker hier, nicht in Blizzards Rahmen)
+            local busy = false
+            list:HookScript("OnShow", function(self) self:SetAlpha(0) end)
+            hooksecurefunc(list, "SetAlpha", function(self, a)
+                if a and a > 0 and not busy then
+                    busy = true
+                    self:SetAlpha(0)
+                    busy = false
+                end
+            end)
         end
     end
     -- Blizzards Rollbalken der Questliste: gehört zu Blizzards Liste unter unserer und bewegt nichts
@@ -754,7 +773,8 @@ local function CreatePanel(area)
     -- über allen Teilen von Blizzards Liste; fängt deren Maus ab (Blizzards Liste darunter bleibt unberührt)
     panel:SetFrameLevel(area:GetFrameLevel() + 60)
     panel:EnableMouse(true)
-    Style.SetFlat(panel, color.background)
+    -- voll deckend (die Grundfarbe ist leicht durchscheinend – Blizzards Liste darunter schimmerte durch)
+    Style.SetFlat(panel, { color.background[1], color.background[2], color.background[3], 1 })
 
     -- Kopfzeile: Suche | Anzahl | Filter | Dungeons | Rädchen
     local header = HeaderBar(panel, HEADER_HEIGHT)

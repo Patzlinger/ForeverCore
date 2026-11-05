@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fixed: ForeverQuests' quest log on the world map – text of Blizzard's quest list underneath no longer shines through.
+
 
 - ForeverFrames / ForeverUnits: heal prediction now includes your own HoTs – a hatched area behind the normal heal prediction (estimated from the spell descriptions, shrinks with the remaining duration). Toggle in the options.
 - ForeverUnits / ForeverPlates: damage prediction of your own DoTs on target, focus and nameplates – a hatched area from the end of the health bar to the left; red when the DoTs should kill the target. Toggle in the options.
