@@ -383,8 +383,43 @@ local function RefreshLogQuests()
             end
         end
     end
-    QUESTLOG.quests = quests
+    -- je Gebiet: abgabebereite zuerst, dann nach Stufe (niedrige zuerst), dann nach Name
+    local function Ready(q) return C_QuestLog.IsComplete and C_QuestLog.IsComplete(q.id) and true or false end
+    local function Order(a, b)
+        local ra, rb = Ready(a), Ready(b)
+        if ra ~= rb then return ra end
+        local la, lb = tonumber(a.level) or 0, tonumber(b.level) or 0
+        if la ~= lb then return la < lb end
+        return (a.name or "") < (b.name or "")
+    end
+    for _, z in ipairs(logZoneOrder) do table.sort(z.quests, Order) end
+    -- Eintrag "Abgabebereit" (oben in der Liste, nur wenn es welche gibt): alle fertigen Quests, nach Gebiet geordnet
+    QUESTLOG.name = ns.L("QUESTLOG_READY_LIST")
+    local ready = {}
+    for _, z in ipairs(logZoneOrder) do
+        for _, q in ipairs(z.quests) do if Ready(q) then ready[#ready + 1] = q end end
+    end
+    QUESTLOG.quests = ready
     return quests
+end
+
+-- Erfahrung und Gold, die eine Quest im Questlog bringt (vom Spiel, außerhalb des Kampfes lesbar)
+local function LogRewardXPMoney(questID)
+    local xp, money = 0, 0
+    if GetQuestLogRewardXP then
+        local ok, v = pcall(GetQuestLogRewardXP, questID)
+        if ok and type(v) == "number" and not (issecretvalue and issecretvalue(v)) then xp = v end
+    end
+    if GetQuestLogRewardMoney then
+        local ok, v = pcall(GetQuestLogRewardMoney, questID)
+        if ok and type(v) == "number" and not (issecretvalue and issecretvalue(v)) then money = v end
+    end
+    return xp, money
+end
+local function MoneyText(copper)
+    if copper <= 0 then return nil end
+    if GetMoneyString then return GetMoneyString(copper, true) end
+    return math.floor(copper / 10000) .. "g"
 end
 
 -- Questlog-Quest abgabebereit (alle Ziele erfüllt)?
@@ -1328,7 +1363,13 @@ local function GetQuestEntry(index)
         entry:SetScript("OnClick", function(self, button)
             local quest = self.quest
             if quest and button == "RightButton" then
-                OpenQuestMenu(self, quest.id)
+                -- Questlog: das Menü des Trackers (Details, Anheften, Teilen, Abbrechen …)
+                if quest.isLog and ns.OpenTrackerQuestMenu and C_QuestLog.GetLogIndexForQuestID(quest.id) then
+                    ns.OpenTrackerQuestMenu(self, quest.id, false)
+                    C_Timer.After(0.5, RequestRefresh)
+                else
+                    OpenQuestMenu(self, quest.id)
+                end
                 return
             end
             if quest and IsModifiedClick("CHATLINK") then
@@ -1366,6 +1407,22 @@ local function GetQuestEntry(index)
                 tooltip:AddLine(ns.L("SHARE_NOT_PUSHABLE"), 1, 0.3, 0.3)
             end
         end)
+
+        -- Reiter Questlog: Quest auf der Karte zeigen (Blizzards Questdetails an der Weltkarte; nicht im Kampf)
+        entry.mapButton = ns.Style.CreateButton(entry, ns.L("BTN_LOG_MAP"), 54, 16, function(self)
+            local quest = self:GetParent().quest
+            if quest and quest.id and QuestMapFrame_OpenToQuestDetails and not InCombatLockdown() then
+                QuestMapFrame_OpenToQuestDetails(quest.id)
+            end
+        end, function(tooltip) tooltip:AddLine(ns.L("TIP_LOG_MAP")) end)
+        -- Reiter Questlog: im Tracker oben anheften bzw. lösen (wie im Rechtsklick-Menü des Trackers)
+        entry.pinButton = ns.Style.CreateButton(entry, ns.L("BTN_LOG_PIN"), 70, 16, function(self)
+            local quest = self:GetParent().quest
+            if quest and quest.id and ns.ToggleQuestPinned then
+                ns.ToggleQuestPinned(quest.id)
+                RequestRefresh()
+            end
+        end, function(tooltip) tooltip:AddLine(ns.L("TIP_LOG_PIN")) end)
 
         -- Farbstreifen links: grün = abgeschlossen, gelb = im Questlog, grau = offen
         entry.stripe = entry:CreateTexture(nil, "ARTWORK")
@@ -1716,7 +1773,19 @@ RefreshDetail = function()
     if isLog then
         table.insert(pillList, { ns.L("QUESTLOG_COUNT", #dungeon.quests), { 0.18, 0.18, 0.22, 1 } })
         local ready = LogReadyCount(dungeon)
-        if ready > 0 then table.insert(pillList, { ns.L("READY_COUNT", ready), STATUS.READY.pill }) end
+        if ready > 0 and dungeon ~= QUESTLOG then table.insert(pillList, { ns.L("READY_COUNT", ready), STATUS.READY.pill }) end
+        -- Summe der Belohnungen (Erfahrung, Gold) – zeigt, wo sich ein Abstecher lohnt
+        local xpSum, moneySum = 0, 0
+        for _, q in ipairs(dungeon.quests) do
+            local xp, money = LogRewardXPMoney(q.id)
+            xpSum, moneySum = xpSum + xp, moneySum + money
+        end
+        if xpSum > 0 then
+            table.insert(pillList, { ns.L("REWARD_XP", BreakUpLargeNumbers and BreakUpLargeNumbers(xpSum) or xpSum),
+                { 0.16, 0.30, 0.16, 1 } })
+        end
+        local m = MoneyText(moneySum)
+        if m then table.insert(pillList, { m, { 0.18, 0.18, 0.22, 1 } }) end
     end
     if dungeon.levels then
         table.insert(pillList, { ns.L("LEVEL", ColoredLevels(dungeon.levels)), { 0.18, 0.18, 0.22, 1 } })
@@ -1802,6 +1871,14 @@ RefreshDetail = function()
                 if inDungeon then
                     table.insert(parts, "|cff4fc3f7" .. ns.L("QUESTLOG_DUNGEON", Localized(inDungeon, "name")) .. "|r")
                 end
+                -- Belohnung: Erfahrung und Gold
+                local xp, money = LogRewardXPMoney(quest.id)
+                if xp > 0 then table.insert(parts, "|cff9be37b" .. ns.L("REWARD_XP", BreakUpLargeNumbers and BreakUpLargeNumbers(xp) or xp) .. "|r") end
+                local m = MoneyText(money)
+                if m then table.insert(parts, m) end
+                if ns.IsQuestPinned and ns.IsQuestPinned(quest.id) then
+                    table.insert(parts, "|cffffd100" .. ns.L("LOG_PINNED") .. "|r")
+                end
             elseif quest.giverItemID then
                 if quest.zone then table.insert(parts, where) end
             else
@@ -1851,20 +1928,33 @@ RefreshDetail = function()
             -- Reihenfolge rechts in der Titelzeile: [Status] [Fraktion] [Level] [Teilen] [Kartenpunkt]
             local hasWaypoint = quest.x ~= nil and quest.y ~= nil
             local hasShare = status == "ACTIVE" or status == "READY"
+            -- Questlog: zusätzlich "Karte" und "Anheften"/"Lösen"
+            local hasLogButtons = quest.isLog and (status == "ACTIVE" or status == "READY")
             entry.waypointButton:SetShown(hasWaypoint)
             entry.shareButton:SetShown(hasShare)
+            entry.mapButton:SetShown(hasLogButtons and true or false)
+            entry.pinButton:SetShown(hasLogButtons and true or false)
+            if hasLogButtons then
+                entry.pinButton:SetText(ns.L(ns.IsQuestPinned and ns.IsQuestPinned(quest.id) and "BTN_LOG_UNPIN" or "BTN_LOG_PIN"))
+                entry.mapButton:SetAlpha(InCombatLockdown() and 0.45 or 1)
+            end
             -- Ohne Gruppe bzw. bei nicht teilbaren Quests nur blass anzeigen (Tooltip nennt den Grund)
             entry.shareButton:SetAlpha(hasShare and CanShareQuest(quest) and 1 or 0.45)
             local anchor -- Element, links neben das das nächste gesetzt wird
-            entry.shareButton:ClearAllPoints()
-            if hasWaypoint then anchor = entry.waypointButton end
-            if hasShare then
+            local function Place(button)
+                button:ClearAllPoints()
                 if anchor then
-                    entry.shareButton:SetPoint("RIGHT", anchor, "LEFT", -4, 0)
+                    button:SetPoint("RIGHT", anchor, "LEFT", -4, 0)
                 else
-                    entry.shareButton:SetPoint("TOPRIGHT", -8, -5)
+                    button:SetPoint("TOPRIGHT", -8, -5)
                 end
-                anchor = entry.shareButton
+                anchor = button
+            end
+            if hasWaypoint then anchor = entry.waypointButton end
+            if hasShare then Place(entry.shareButton) end
+            if hasLogButtons then
+                Place(entry.mapButton)
+                Place(entry.pinButton)
             end
             entry.levelPill:ClearAllPoints()
             if anchor then
@@ -1895,7 +1985,8 @@ RefreshDetail = function()
             local pillSpace = entry.levelPill:GetWidth() + (entry.statusPill:IsShown() and entry.statusPill:GetWidth() + 4 or 0)
                 + (#factionIcons > 0 and entry.factionFrame:GetWidth() + 4 or 0)
                 + (hasWaypoint and entry.waypointButton:GetWidth() + 4 or 0)
-                + (hasShare and entry.shareButton:GetWidth() + 4 or 0) + 20
+                + (hasShare and entry.shareButton:GetWidth() + 4 or 0)
+                + (hasLogButtons and entry.mapButton:GetWidth() + entry.pinButton:GetWidth() + 8 or 0) + 20
             entry.title:SetWidth(math.max(80, width - 12 - pillSpace))
             entry.info:SetWidth(width - 24)
             entry.info:SetText(table.concat(lines, "\n"))
@@ -2314,8 +2405,9 @@ RefreshList = function()
     -- Balken = Anteil der abgabebereiten); die Suche findet Gebiets- und Questnamen
     if logTabActive then
         RefreshLogQuests()
-        -- (nur die Gebiete – "Alle Quests" auf Wunsch entfernt)
+        -- oben "Abgabebereit" (nur wenn es fertige Quests gibt), darunter die Gebiete
         local entries = {}
+        if #QUESTLOG.quests > 0 and filter == "" then entries[1] = QUESTLOG end
         for _, zone in ipairs(logZoneOrder) do
             local hit = filter == "" or zone.name:lower():find(filter, 1, true)
             if not hit then
@@ -2336,7 +2428,7 @@ RefreshList = function()
             button:SetWidth(width - 8)
             button.eye:Hide()
             button.factionIcon:Hide()
-            button.name:SetText(e == QUESTLOG and ns.L("QUESTLOG_ALL") or e.name)
+            button.name:SetText(e.name)
             if e == QUESTLOG then
                 button.name:SetTextColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3])
             else

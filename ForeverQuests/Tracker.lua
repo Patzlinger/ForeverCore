@@ -457,6 +457,10 @@ local function OpenQuestMenu(owner, questID, inLog)
     })
     ns.Style.ShowMenu(owner, items, { atCursor = true })
 end
+-- auch für den Reiter "Questlog" im Dungeonfenster (gleiches Menü, gleiches Anheften)
+ns.OpenTrackerQuestMenu = OpenQuestMenu
+ns.ToggleQuestPinned = TogglePinned
+function ns.IsQuestPinned(questID) return questID and ns.db.pinned[questID] and true or false end
 
 ---------------------------------------------------------------------------
 -- Zeilen und Rahmen im Tracker

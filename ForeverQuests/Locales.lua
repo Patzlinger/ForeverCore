@@ -198,6 +198,10 @@ local STRINGS = {
         STATUS_DONE = "Abgeschlossen", STATUS_ACTIVE = "Im Questlog",
         STATUS_READY = "Abgabebereit", QUESTLOG_ALL = "Alle Quests", QUESTLOG_COUNT = "%d im Questlog",
         TAB_QUESTLOG = "Questlog", BTN_LOG = "Log",
+        QUESTLOG_READY_LIST = "Abgabebereit", REWARD_XP = "+%s EP", LOG_PINNED = "angeheftet",
+        BTN_LOG_MAP = "Karte", TIP_LOG_MAP = "Quest auf der Weltkarte zeigen (Details, Ziele, Abgabe) – nicht im Kampf",
+        BTN_LOG_PIN = "Anheften", BTN_LOG_UNPIN = "Lösen",
+        TIP_LOG_PIN = "Quest im Tracker oben anheften bzw. wieder lösen. Rechtsklick auf die Karte: alle Befehle (Teilen, Abbrechen …)",
         TIP_LOG_TAB = "Öffnet das Dungeonfenster im Reiter Questlog: deine Quests nach Gebieten als Karten mit Zielen und Belohnungen",
         TIP_QUESTLOG = "Zeigt die Quests aus deinem Questlog – links nach Gebieten, rechts als Karten mit Zielen, "
             .. "Fortschritt und Belohnungen. Tracker und Weltkarte bleiben unverändert.",
@@ -457,6 +461,10 @@ local STRINGS = {
         STATUS_DONE = "Completed", STATUS_ACTIVE = "In quest log",
         STATUS_READY = "Ready to turn in", QUESTLOG_ALL = "All quests", QUESTLOG_COUNT = "%d in quest log",
         TAB_QUESTLOG = "Quest log", BTN_LOG = "Log",
+        QUESTLOG_READY_LIST = "Ready to turn in", REWARD_XP = "+%s XP", LOG_PINNED = "pinned",
+        BTN_LOG_MAP = "Map", TIP_LOG_MAP = "Show the quest on the world map (details, objectives, turn-in) – not in combat",
+        BTN_LOG_PIN = "Pin", BTN_LOG_UNPIN = "Unpin",
+        TIP_LOG_PIN = "Pin the quest to the top of the tracker or unpin it. Right-click the card: all commands (share, abandon …)",
         TIP_LOG_TAB = "Opens the dungeon window on the Quest log tab: your quests by zone as cards with objectives and rewards",
         TIP_QUESTLOG = "Shows the quests in your quest log – by zone on the left, as cards with objectives, progress "
             .. "and rewards on the right. The tracker and the world map stay as they are.",
