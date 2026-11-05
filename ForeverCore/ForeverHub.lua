@@ -3683,7 +3683,8 @@ function UI.ShowPerformance()
     end
     table.sort(rows, function(a, b) return (a.recent or a.kb or 0) > (b.recent or b.kb or 0) end)
     UI.Chat("Forever", T("Leistung der Forever-Addons", "Performance of the Forever addons")
-        .. (hasProfiler and T(" (ms je Bild: aktuell / Sitzung / Spitze, Speicher)", " (ms per frame: recent / session / peak, memory)")
+        .. (hasProfiler and T(" (ms je Bild: aktuell / Sitzung / Spitze (Bilder über 50/100 ms), Speicher – Spitzen gelten seit dem Spielstart, auch über /reload)",
+            " (ms per frame: recent / session / peak (frames over 50/100 ms), memory – peaks count since the game started, also across /reload)")
             or T(" (Rechenzeit misst dieser Client nicht – nur Speicher)", " (this client doesn't measure CPU time – memory only)")))
     local function MS(v) return v and string.format("%.2f", v) or "–" end
     for _, r in ipairs(rows) do
