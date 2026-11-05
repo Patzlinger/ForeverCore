@@ -2998,6 +2998,29 @@ function ns.ToggleQuestLogTab()
     end
 end
 
+-- Dungeonfenster im Reiter "Mein Level" öffnen (Knopf "Dungeons" im Tracker); ist er schon offen, schließen
+function ns.ToggleDungeonsLevelTab()
+    if not EnsureWindow() then return end
+    if window:IsShown() and levelTabActive then
+        window:Hide()
+        return
+    end
+    local wasLevel = levelTabActive
+    logTabActive, levelTabActive, raidTabActive = false, true, false
+    -- (anderer Reiter vorher: der erste passende Dungeon wird gewählt, sonst bleibt die Auswahl)
+    if not wasLevel or (selectedDungeon and (selectedDungeon.isLog or not IsDungeonInMyRange(selectedDungeon))) then
+        selectedDungeon = nil
+    end
+    if window.UpdateTabs then window.UpdateTabs() end
+    if searchBox and searchBox:GetText() ~= "" then searchBox:SetText("") end
+    if window:IsShown() then
+        RefreshList()
+        RefreshDetail()
+    else
+        window:Show()
+    end
+end
+
 -- Dungeonfenster öffnen und einen bestimmten Dungeon auswählen
 function ns.ShowDungeon(dungeon)
     if not EnsureWindow() then return end

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverQuests: the tracker's "Dungeons" button opens the dungeon window on the "My level" tab, "Log" opens the quest log tab (a second click closes it).
+
 - ForeverCast: "Failed" is no longer shown for too-early key presses (e.g. mashing Sinister Strike).
 - ForeverQuests: the quest log tab in the dungeon window is now useful on its own – a "Ready to turn in" entry at the top, quests sorted ready-first and by level, XP and gold per quest and per zone, buttons to show a quest on the map and to pin it in the tracker, and right-click opens the tracker's quest menu (share, abandon …).
 

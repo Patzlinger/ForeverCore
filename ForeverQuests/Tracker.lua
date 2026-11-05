@@ -2246,7 +2246,10 @@ function ns.CreateTracker()
     -- Knöpfe rechts in der Titelleiste: Dungeons, Filter, Menü
     -- Texte kommen aus Locales.lua; Tooltips werden erst beim Anzeigen übersetzt
     dungeonButton = Style.CreateButton(headerBar, ns.L("BTN_DUNGEONS"), 62, 18,
-        function() ns.ToggleDungeons() end, function(tooltip) tooltip:AddLine(ns.L("TIP_DUNGEONS")) end)
+        -- (öffnet im Reiter "Mein Level"; "Log" daneben öffnet den Reiter "Questlog")
+        function()
+            if ns.ToggleDungeonsLevelTab then ns.ToggleDungeonsLevelTab() else ns.ToggleDungeons() end
+        end, function(tooltip) tooltip:AddLine(ns.L("TIP_DUNGEONS")) end)
     dungeonButton:SetPoint("RIGHT", -4, 0)
 
     -- "Log": öffnet das Dungeonfenster im Reiter Questlog (eigene Quests als Karten)
