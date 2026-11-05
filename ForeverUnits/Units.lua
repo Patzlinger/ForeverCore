@@ -36,12 +36,13 @@ end
 local function LayoutOverlays(v)
     local w, h = v.health:GetSize()
     local fill = v.health:GetStatusBarTexture()
-    for _, bar in ipairs({ v.heal, v.hot, v.dot, v.shield, v.absorb }) do
+    for _, bar in ipairs({ v.heal, v.hotFill, v.hot, v.dot, v.shield, v.absorb }) do
         bar:ClearAllPoints()
         bar:SetSize(w, h)
     end
     v.heal:SetPoint("TOPLEFT", fill, "TOPRIGHT")
     v.hot:SetPoint("TOPLEFT", v.heal:GetStatusBarTexture(), "TOPRIGHT")
+    v.hotFill:SetPoint("TOPLEFT", v.heal:GetStatusBarTexture(), "TOPRIGHT")
     v.dot:SetPoint("TOPRIGHT", fill, "TOPRIGHT")
     v.shield:SetPoint("TOPLEFT", v.hot:GetStatusBarTexture(), "TOPRIGHT")
     v.absorb:SetPoint("TOPRIGHT", fill, "TOPRIGHT")
@@ -141,6 +142,7 @@ local function CreateUnitFrame(info)
     v.clip:SetFrameLevel(c:GetFrameLevel() + 2)
     v.clip:SetClipsChildren(true)
     v.heal = NewOverlay(v.clip, false)
+    v.hotFill = NewOverlay(v.clip, false) -- Grundfläche unter der Schraffur
     v.hot = NewOverlay(v.clip, false) -- eigene HoTs: schraffiert
     v.dot = NewOverlay(v.clip, true)  -- eigene DoTs auf dem Ziel: schraffiert, vom Lebensbalken-Ende nach links
     for _, bar in ipairs({ v.hot, v.dot }) do
@@ -825,7 +827,7 @@ local function UpdatePrediction(b)
     local v, look, unit = b.v, Look(), b.unit
     local c = GetCalc()
     if not c or not UnitGetDetailedHealPrediction then
-        v.heal:SetValue(0) v.hot:SetValue(0) v.dot:SetValue(0) v.shield:SetValue(0) v.absorb:SetValue(0)
+        v.heal:SetValue(0) v.hot:SetValue(0) v.hotFill:SetValue(0) v.dot:SetValue(0) v.shield:SetValue(0) v.absorb:SetValue(0)
         return
     end
     UnitGetDetailedHealPrediction(unit, "player", c)
@@ -835,6 +837,7 @@ local function UpdatePrediction(b)
     if look.healPrediction ~= false then v.heal:SetValue((c:GetIncomingHeals())) else v.heal:SetValue(0) end
     -- eigene HoTs (Freund) bzw. DoTs (Feind): schraffierte Fläche, Schätzung aus den Zauberbeschreibungen
     v.hot:SetMinMaxValues(0, max)
+    v.hotFill:SetMinMaxValues(0, max)
     v.dot:SetMinMaxValues(0, max)
     local hot, dot = 0, 0
     if UI.OverTimeRemaining then
@@ -848,6 +851,7 @@ local function UpdatePrediction(b)
         end
     end
     v.hot:SetValue(hot)
+    v.hotFill:SetValue(hot)
     v.dot:SetValue(dot)
     v.overOn = hot > 0 or dot > 0
     if dot > 0 then
@@ -1283,7 +1287,10 @@ function ns.Layout(b)
     v.powerBg:SetTexture(tex)
     local hc, sc, ac = look.healColor, look.shieldColor, look.healAbsorbColor
     if hc then v.heal:SetStatusBarColor(hc[1], hc[2], hc[3], hc[4] or 1) end
-    if hc then v.hot:SetStatusBarColor(math.min(1, hc[1] + 0.25), math.min(1, hc[2] + 0.25), math.min(1, hc[3] + 0.25), 0.9) end
+    if hc then
+        v.hot:SetStatusBarColor(math.min(1, hc[1] + 0.5), math.min(1, hc[2] + 0.5), math.min(1, hc[3] + 0.5), 1)
+        v.hotFill:SetStatusBarColor(math.min(1, hc[1] + 0.2), math.min(1, hc[2] + 0.2), math.min(1, hc[3] + 0.2), 0.4)
+    end
     if sc then v.shield:SetStatusBarColor(sc[1], sc[2], sc[3], sc[4] or 1) end
     if ac then v.absorb:SetStatusBarColor(ac[1], ac[2], ac[3], ac[4] or 1) end
 

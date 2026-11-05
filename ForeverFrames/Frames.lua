@@ -206,12 +206,13 @@ end
 local function LayoutOverlays(v)
     local w, h = v.health:GetSize()
     local fill = v.health:GetStatusBarTexture()
-    for _, bar in ipairs({ v.heal, v.hot, v.shield, v.absorb }) do
+    for _, bar in ipairs({ v.heal, v.hotFill, v.hot, v.shield, v.absorb }) do
         bar:ClearAllPoints()
         bar:SetSize(w, h)
     end
     v.heal:SetPoint("TOPLEFT", fill, "TOPRIGHT")
     v.hot:SetPoint("TOPLEFT", v.heal:GetStatusBarTexture(), "TOPRIGHT")
+    v.hotFill:SetPoint("TOPLEFT", v.heal:GetStatusBarTexture(), "TOPRIGHT")
     if GetDB().shieldStyle == "right" then
         v.shield:SetReverseFill(true)
         v.shield:SetPoint("TOPRIGHT", v.health, "TOPRIGHT")
@@ -251,6 +252,7 @@ function ns.CreateVisuals(b)
     v.clip:SetFrameLevel(c:GetFrameLevel() + 2)
     v.clip:SetClipsChildren(true)
     v.heal = NewOverlayBar(v.clip, false)
+    v.hotFill = NewOverlayBar(v.clip, false) -- Grundfläche unter der Schraffur
     v.hot = NewOverlayBar(v.clip, false) -- HoTs: schraffiert, hinter der normalen Heilvorhersage
     v.hot:SetStatusBarTexture(UI.HATCH_TEXTURE)
     v.hot:GetStatusBarTexture():SetHorizTile(true)
@@ -370,7 +372,9 @@ function ns.ApplyButtonLayout(b)
     v.power:SetStatusBarTexture(tex)
     v.powerBg:SetTexture(tex)
     v.heal:SetStatusBarColor(ns.Color("healColor"))
-    do local r, g, bl = ns.Color("healColor") v.hot:SetStatusBarColor(math.min(1, r + 0.25), math.min(1, g + 0.25), math.min(1, bl + 0.25), 0.9) end
+    do local r, g, bl = ns.Color("healColor")
+        v.hot:SetStatusBarColor(math.min(1, r + 0.5), math.min(1, g + 0.5), math.min(1, bl + 0.5), 1)
+        v.hotFill:SetStatusBarColor(math.min(1, r + 0.2), math.min(1, g + 0.2), math.min(1, bl + 0.2), 0.4) end
     v.shield:SetStatusBarColor(ns.Color("shieldColor"))
     v.absorb:SetStatusBarColor(ns.Color("healAbsorbColor"))
 
@@ -628,6 +632,7 @@ local function UpdatePrediction(b)
     if not c or not UnitGetDetailedHealPrediction then
         v.heal:SetValue(0)
         v.hot:SetValue(0)
+        v.hotFill:SetValue(0)
         v.shield:SetValue(0)
         v.absorb:SetValue(0)
         return
@@ -645,8 +650,10 @@ local function UpdatePrediction(b)
     v.heal:SetMinMaxValues(0, max)
     if db.healPrediction then v.heal:SetValue((c:GetIncomingHeals())) else v.heal:SetValue(0) end
     v.hot:SetMinMaxValues(0, max)
+    v.hotFill:SetMinMaxValues(0, max)
     local hot = db.hotPrediction ~= false and UI.OverTimeRemaining and UI.OverTimeRemaining(unit, "heal") or 0
     v.hot:SetValue(hot)
+    v.hotFill:SetValue(hot)
     v.hotOn = hot > 0
     v.shield:SetMinMaxValues(0, max)
     if db.shields then v.shield:SetValue((c:GetDamageAbsorbs())) else v.shield:SetValue(0) end
