@@ -111,6 +111,10 @@ end
 -- (Luft zum Kasten darunter); gezählt wird je Reiter einmal auf Blizzards Lage
 local TAB_UP = 4
 local innerTabs = setmetatable({}, { __mode = "k" })
+local function TabSelectedInner(t)
+    if type(t.isSelected) == "boolean" then return t.isSelected end
+    return t.IsEnabled and not t:IsEnabled()
+end
 local raised = setmetatable({}, { __mode = "k" }) -- [Reiter] = von uns gesetztes y
 local function RaiseTab(tab)
     if tab:GetNumPoints() ~= 1 or not ns.CanMove(tab) then return end
@@ -230,21 +234,59 @@ local function Place(f)
         local obj = f[key]
         if type(obj) == "table" and obj:GetAlpha() > 0 then obj:SetAlpha(0) end
     end
-    -- Reiter direkt am Fenster angeheftet, 8 Abstand
+    -- Reiter direkt am Fenster angeheftet, 8 Abstand – auf gleicher Höhe wie weitere Reiter anderer Addons daneben
+    -- (z. B. Auctionator: deren Oberkante zählt), sonst 1 unter dem Fenster
+    local tabY = 1
+    local bottom = f:GetBottom()
+    for _, child in ipairs({ f:GetChildren() }) do
+        local name = not Forbidden(child) and child:GetName()
+        if name and name:find("^Auctionator") and child:IsObjectType("Button") and child:IsShown() then
+            local top = child:GetTop()
+            if top and bottom then tabY = math.floor(top - bottom + 0.5) end
+            break
+        end
+    end
     local prev
     for _, key in ipairs({ "BuyTab", "SellTab", "AuctionsTab" }) do
         local tab = f[key]
         if tab and tab:IsShown() then
-            if prev then Anchor(tab, "LEFT", prev, "RIGHT", 8, 0) else Anchor(tab, "TOPLEFT", f, "BOTTOMLEFT", 6, 1) end
+            if prev then Anchor(tab, "LEFT", prev, "RIGHT", 8, 0) else Anchor(tab, "TOPLEFT", f, "BOTTOMLEFT", 6, tabY) end
+            ns.HideTextures(tab) -- (Blizzard zeigt beim Umschalten seine Reiter-Grafiken wieder)
             pcall(ns.CenterText, tab)
             prev = tab
         end
     end
     -- Reiter innerhalb der Seiten: Text mittig, etwas höher (Luft zum Kasten)
+    local groups = {}
     for tab in pairs(innerTabs) do
         if tab:IsVisible() then
-            pcall(ns.CenterText, tab)
+            ns.HideTextures(tab)
             pcall(RaiseTab, tab)
+            local parent = tab:GetParent()
+            groups[parent] = groups[parent] or {}
+            table.insert(groups[parent], tab)
+        end
+    end
+    -- alle Reiter einer Seite gleich hoch und auf gleicher Höhe wie ein nicht gewählter (Blizzard setzt den gewählten
+    -- tiefer und größer – "Auktionen" sah dann anders aus als "Gebote")
+    for _, list in pairs(groups) do
+        local ref
+        for _, tab in ipairs(list) do
+            if not TabSelectedInner(tab) then ref = tab break end
+        end
+        local refTop, refH = ref and ref:GetTop(), ref and ref:GetHeight()
+        for _, tab in ipairs(list) do
+            if ref and tab ~= ref and refTop and tab:GetNumPoints() == 1 and ns.CanMove(tab) then
+                if refH and math.abs((tab:GetHeight() or 0) - refH) > 0.5 then tab:SetHeight(refH) end
+                local top = tab:GetTop()
+                if top and math.abs(refTop - top) > 0.5 then
+                    local p, rel, rp, x, y = tab:GetPoint(1)
+                    y = (y or 0) + (refTop - top)
+                    tab:SetPoint(p, rel, rp, x, y)
+                    raised[tab] = y -- (gilt als unsere Lage: nicht nochmal anheben)
+                end
+            end
+            pcall(ns.CenterText, tab)
         end
     end
     -- rote Knöpfe flach halten
@@ -295,6 +337,20 @@ local function SkinAuctionHouse()
     end
     Scale()
     f:HookScript("OnShow", Scale)
+    -- Nach jedem Klick sofort nachsehen (und im nächsten Bild noch einmal): Blizzard setzt beim Klicken Reiter- und
+    -- Kategorie-Grafiken neu – sonst waren sie bis zum nächsten Durchgang kurz zu sehen
+    local function Refresh()
+        if not f:IsVisible() then return end
+        pcall(Scan, f, 1)
+        pcall(Rows)
+        pcall(Place, f)
+    end
+    local clicks = CreateFrame("Frame", nil, f)
+    clicks:RegisterEvent("GLOBAL_MOUSE_UP")
+    clicks:SetScript("OnEvent", function()
+        Refresh()
+        C_Timer.After(0, Refresh)
+    end)
     ns.Watch(f)
     -- Blizzard baut Seiten beim Reiterwechsel und Suchen; solange offen, neue Teile umgestalten
     local watch = CreateFrame("Frame", nil, f)
