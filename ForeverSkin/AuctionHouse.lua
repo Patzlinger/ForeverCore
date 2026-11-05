@@ -237,7 +237,9 @@ local function Place(f)
     end
     -- Reiter direkt am Fenster angeheftet, 8 Abstand – auf gleicher Höhe wie weitere Reiter anderer Addons daneben
     -- (z. B. Auctionator: deren Oberkante zählt), sonst 1 unter dem Fenster
-    local tabY = 5 -- (ohne fremde Reiter: etwas ins Fenster hinein, wie Blizzards Reiter)
+    -- Die Knöpfe selbst bleiben fest (1 unter dem Fenster): Auctionators Reiter hängen an unseren – sie an deren Höhe
+    -- zu schieben zog jene mit (die Reiter wanderten Bild für Bild). Nur unsere Fläche wird auf Auctionators Höhe gesetzt.
+    local tabY = 1
     local bottom = f:GetBottom()
     local function FindForeignTab(frame, depth)
         for _, child in ipairs({ frame:GetChildren() }) do
@@ -253,13 +255,22 @@ local function Place(f)
         end
     end
     local foreign = FindForeignTab(f, 1)
-    if foreign and bottom then tabY = math.floor(foreign:GetTop() - bottom + 0.5) end
     local prev
     for _, key in ipairs({ "BuyTab", "SellTab", "AuctionsTab" }) do
         local tab = f[key]
         if tab and tab:IsShown() then
             if prev then Anchor(tab, "LEFT", prev, "RIGHT", 8, 0) else Anchor(tab, "TOPLEFT", f, "BOTTOMLEFT", 6, tabY) end
             ns.HideTextures(tab) -- (Blizzard zeigt beim Umschalten seine Reiter-Grafiken wieder)
+            -- unsere Fläche auf die Höhe der fremden Reiter (nur die Fläche – der Knopf bleibt, siehe oben)
+            local d = 0
+            if foreign and foreign:GetTop() and tab:GetTop() then d = math.floor(foreign:GetTop() - tab:GetTop() + 0.5) end
+            local key2 = "b" .. d
+            if fillInset[tab] ~= key2 then
+                fillInset[tab] = key2
+                ns.Flat(tab, C.button, { 0, -d, 0, d })
+                local selected = TabSelectedInner(tab) -- (gleiche Regel wie TabSelected weiter unten)
+                ns.EdgeColor(tab, selected and C.accent or C.border, selected and 0.9 or 1)
+            end
             pcall(ns.CenterText, tab)
             prev = tab
         end
