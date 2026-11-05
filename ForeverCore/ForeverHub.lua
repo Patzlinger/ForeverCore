@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 72
+local VERSION = 73
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -1794,7 +1794,11 @@ local movables, movableOrder = SHARED.movables, SHARED.movableOrder
 
 function UI.RegisterMovable(name, isLocked, setLocked)
     if not movables[name] then movableOrder[#movableOrder + 1] = name end
-    movables[name] = { isLocked = isLocked, setLocked = setLocked }
+    -- Entsperren über den Hub weckt die gelben Rahmen der Fenster (UI.WakeMoverOutlines, siehe unten)
+    movables[name] = { isLocked = isLocked, setLocked = function(lock, ...)
+        setLocked(lock, ...)
+        if not lock and UI.WakeMoverOutlines then UI.WakeMoverOutlines() end
+    end }
 end
 
 -- Ist irgendein angemeldetes Addon gerade entsperrt?
@@ -1885,18 +1889,41 @@ local function Outline(frame, addon)
     return o
 end
 
-C_Timer.NewTicker(0.3, function()
-    if _G.ForeverHub ~= hub then return end
-    for frame, t in pairs(tagged) do
-        local show = frame:IsVisible() and AddonUnlocked(t.addon)
-        local o = outlines[frame]
-        if show then
-            Outline(frame, t.addon):Show()
-        elseif o then
-            o:Hide()
+do -- (eigener Block: hält die Zahl der lokalen Variablen auf oberster Ebene klein)
+    local function UpdateOutlines()
+        if _G.ForeverHub ~= hub then return end
+        for frame, t in pairs(tagged) do
+            local show = frame:IsVisible() and AddonUnlocked(t.addon)
+            local o = outlines[frame]
+            if show then
+                Outline(frame, t.addon):Show()
+            elseif o then
+                o:Hide()
+            end
         end
     end
-end)
+
+    -- Rahmen nachführen (v73): schnell (0,3 s) nur, solange etwas entsperrt ist – danach hält der Zeitgeber an. Gestartet
+    -- beim Entsperren über den Hub (UI.MoveAll, angemeldete Sperr-Schalter); entsperrt sich ein Addon an seinem eigenen
+    -- Schalter vorbei, merkt es die langsame Rückfall-Prüfung (alle 2 s, nur "ist irgendetwas entsperrt?").
+    local outlineTicker
+    local function StartOutlines()
+        if outlineTicker or _G.ForeverHub ~= hub then return end
+        UpdateOutlines()
+        outlineTicker = C_Timer.NewTicker(0.3, function()
+            UpdateOutlines()
+            if not UI.AnyUnlocked() and outlineTicker then
+                outlineTicker:Cancel()
+                outlineTicker = nil
+            end
+        end)
+    end
+    UI.WakeMoverOutlines = StartOutlines
+    C_Timer.NewTicker(2, function()
+        if outlineTicker or _G.ForeverHub ~= hub or not next(tagged) then return end
+        if UI.AnyUnlocked() then StartOutlines() end
+    end)
+end
 
 -- Raster, solange der gemeinsame Verschiebe-Modus laeuft; endet von selbst, wenn alles gesperrt ist
 local moveTicker
