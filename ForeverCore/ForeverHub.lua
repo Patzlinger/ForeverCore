@@ -3516,8 +3516,7 @@ local function LeatrixDefs() return {
       feature = T("Kartenfenster-Umbau, Gebietsstufen", "Simple map frame, zone levels") },
 } end
 
-local function LeatrixAddon(d) return d.addon or LEATRIX end
-local function LeatrixKey(d) return d.forever .. ">" .. LeatrixAddon(d) end
+local function LeatrixKey(d) return d.forever .. ">" .. (d.addon or LEATRIX) end
 
 -- vor Leatrix' eigenem Laden: gewünschte Werte in dessen Datenbank (LeaPlusDB / LeaMapsDB) setzen (gilt ab diesem
 -- Laden). Wir merken uns, was wir abgeschaltet haben (leatrixOff; für Leatrix Plus mit dem nackten Schlüssel wie bisher,
@@ -3529,7 +3528,7 @@ local function ApplyLeatrix(addonName)
     local turnedOff = {}
     for _, d in ipairs(LeatrixDefs()) do
         local lea = _G[d.db or "LeaPlusDB"]
-        if LeatrixAddon(d) == addonName and type(lea) == "table" then
+        if (d.addon or LEATRIX) == addonName and type(lea) == "table" then
             local function Mark(k) return d.addon and (d.addon .. ":" .. k) or k end
             local useLeatrix = choice[LeatrixKey(d)] == "other"
             if not useLeatrix and IsEnabled(d.forever) then
@@ -3589,8 +3588,8 @@ local function ConflictPairs()
     end
     -- Leatrix Plus: einzelne Funktionen statt des ganzen Addons
     for _, d in ipairs(LeatrixDefs()) do
-        if IsInstalled(LeatrixAddon(d)) and IsInstalled(d.forever) then
-            list[#list + 1] = { c = d, other = LeatrixAddon(d), leatrix = d }
+        if IsInstalled(d.addon or LEATRIX) and IsInstalled(d.forever) then
+            list[#list + 1] = { c = d, other = d.addon or LEATRIX, leatrix = d }
         end
     end
     return list
