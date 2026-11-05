@@ -121,6 +121,17 @@ foreach ($addon in $targets) {
             elseif ($def.Index -gt $use.Index) { $errors.Add("$rel – issecret( wird vor seiner lokalen Definition benutzt (Zeile " + (($text.Substring(0, $use.Index) -split "`n").Count) + ")") }
         }
 
+        # 8: Kampflog (COMBAT_LOG_EVENT_UNFILTERED / CombatLogGetCurrentEventInfo) ist für Addons gesperrt – schon das
+        #    Anmelden löst ADDON_ACTION_FORBIDDEN aus. Kommentare zählen nicht.
+        $lineNo = 0
+        foreach ($line in ($text -split "`n")) {
+            $lineNo++
+            $code = $line -replace '--.*$', ''
+            if ($code -match 'COMBAT_LOG_EVENT|CombatLogGetCurrentEventInfo') {
+                $errors.Add("$rel – Zeile $($lineNo): Kampflog ist für Addons gesperrt (ADDON_ACTION_FORBIDDEN)")
+            }
+        }
+
         # 5: UI.AfterCombat(Schlüssel, Funktion, Addon) – zuerst der Schlüssel: Fehler, wenn gleich eine Funktion
         #    kommt ("AfterCombat(function" oder nur ein Name ohne zweiten Wert, z. B. "AfterCombat(Relayout)")
         foreach ($m in [regex]::Matches($text, '(?:UI|HUB|hub)\.AfterCombat\(\s*(function\b|[A-Za-z_][\w.]*\s*\))')) {

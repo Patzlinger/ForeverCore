@@ -152,6 +152,8 @@ Neue Einzelheiten dort eintragen, hier nur Regeln.
     „Zauber pro Mana“). **Es gibt kein globales `issecret`** (nur `issecretvalue`) – `tools/check.ps1` meldet die Benutzung ohne
     lokale Definition. Geschützte Funktionen (`PickupSpellBookItem`, Taschenplätze, Anker geschützter Rahmen) im Kampf nie
     aufrufen (`InCombatLockdown()` prüfen oder `UI.AfterCombat`); auch ein `pcall` verhindert `ADDON_ACTION_BLOCKED` nicht.
+    Das **Kampflog** (`COMBAT_LOG_EVENT_UNFILTERED`, `CombatLogGetCurrentEventInfo`) ist für Addons gesperrt – schon das
+    Anmelden löst `ADDON_ACTION_FORBIDDEN` aus (2026-11-05 in ForeverCast); `tools/check.ps1` meldet es.
 
 ## 7. Design (verbindlich für alle Fenster)
 Vorbild ist der flache Stil aus ForeverQuests; `ForeverHub.UI` und `Style.lua` (ForeverQuests/ForeverBars) setzen
