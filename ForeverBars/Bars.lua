@@ -2331,15 +2331,24 @@ local function LayoutContainer(def, cfg, holder)
         -- verschiebt, wird einmal je Sitzung gemerkt (ForeverBarsDB._totemMove) und im Chat gemeldet.
         if not frame.fbTotemWatch then
             frame.fbTotemWatch = true
-            local reported = false
-            hooksecurefunc(frame, "SetPoint", function(self, point, rel)
-                if reported or self.fbPositioning or not InCombatLockdown() then return end
-                reported = true
+            -- (aufgezeichnet wird im Kampf und in den ersten 3 Sekunden nach Kampfbeginn – das Verrutschen passiert
+            -- beim Betreten des Kampfes, kurz bevor die Sperre greift; dazu auch Bewegungen des Halters)
+            local reported = {}
+            local function Record(what, self, point, rel)
+                if reported[what] then return end
+                local start = ns.totemCombatStart or 0
+                if not InCombatLockdown() and GetTime() - start > 3 then return end
+                reported[what] = true
                 local relName = type(rel) == "table" and rel.GetName and rel:GetName() or tostring(rel)
-                ns.db._totemMove = { when = date("%d.%m. %H:%M"), point = tostring(point), rel = relName,
-                    stack = debugstack and debugstack(2, 12, 0) or "?" }
-                ns.Print(L("TOTEM_MOVED"))
+                ns.db._totemMove = ns.db._totemMove or {}
+                ns.db._totemMove[what] = { when = date("%d.%m. %H:%M:%S"), point = tostring(point), rel = relName,
+                    locked = InCombatLockdown() and true or false, stack = debugstack and debugstack(3, 14, 0) or "?" }
+                if what == "frame" then ns.Print(L("TOTEM_MOVED")) end
+            end
+            hooksecurefunc(frame, "SetPoint", function(self, point, rel)
+                if not self.fbPositioning then Record("frame", self, point, rel) end
             end)
+            hooksecurefunc(holder, "SetPoint", function(self, point, rel) Record("holder", self, point, rel) end)
         end
     end
     -- Mindestgröße, damit der Halter auch dann Platz hat, wenn Blizzard das Element gerade ausblendet
@@ -3673,6 +3682,7 @@ function ns.SetupBars()
     end
     events:SetScript("OnEvent", function(_, event, ...)
         if event == "PLAYER_REGEN_DISABLED" then
+            ns.totemCombatStart = GetTime() -- (Fehlersuche Totemleiste, siehe LayoutContainer)
             -- Kampf beginnt: Testmodus beenden (Leisten werden nach dem Kampf wieder wie eingestellt)
             if ns.testMode then ns.SetTestMode(false) end
         elseif event == "PLAYER_REGEN_ENABLED" then
