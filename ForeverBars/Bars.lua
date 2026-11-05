@@ -988,6 +988,28 @@ function ns.CastCountDiag()
     print(string.format("|cffffd100ForeverBars Zauber/Mana|r Option an: %s | Mana lesbar: %s | gemerkt: %s | Kampf: %s | Knöpfe mit Zauber: %d, davon mit Manakosten: %d",
         tostring(ns.db and ns.db.castCount), tostring(Readable(m)), tostring(mm.cur and math.floor(mm.cur)),
         tostring(InCombatLockdown()), withSpell, withCost))
+    -- weitere Wege zu einer lesbaren Zahl (Maximum, Prozent über Kurve, Kostenanteil)
+    local function Probe(label, fn)
+        local ok, v = pcall(fn)
+        local readable = ok and Readable(v)
+        print("|cffffd100ForeverBars Zauber/Mana|r " .. label .. ": " .. (ok and (readable and tostring(v) or "gesperrt/keine Zahl") or "Fehler/nicht vorhanden"))
+    end
+    Probe("Maximum", function() return UnitPowerMax("player", 0) end)
+    Probe("Prozent (UnitPowerPercent)", function() return UnitPowerPercent("player", 0) end)
+    Probe("Prozent mit Skala 100", function() return UnitPowerPercent("player", 0, false, CurveConstants.ScaleTo100) end)
+    Probe("Kurven-Werkzeug", function() return C_CurveUtil and C_CurveUtil.CreateCurve and 1 or nil end)
+    Probe("Kostenanteil des ersten Zaubers", function()
+        for _, def in ipairs(ns.BAR_DEFS) do
+            for _, button in ipairs(GetAllButtons(def)) do
+                local id = button.fbBorder and ActionSpell(button)
+                if id and ManaCost(id) then
+                    for _, c in ipairs(C_Spell.GetSpellPowerCost(id)) do
+                        if c.type == 0 then return c.costPercent end
+                    end
+                end
+            end
+        end
+    end)
     local okMath = pcall(function() return m / 2 end)
     print("|cffffd100ForeverBars Zauber/Mana|r Rechnen mit dem Mana möglich: " .. tostring(okMath)
         .. " | issecretvalue: " .. tostring(issecretvalue and issecretvalue(m)) .. " | issecret: " .. tostring(issecret and issecret(m)))
