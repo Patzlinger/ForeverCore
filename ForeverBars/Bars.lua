@@ -1150,11 +1150,29 @@ local function KnowsSpell(spellID)
     return IsSpellKnown and IsSpellKnown(spellID) or false
 end
 
+-- Zusätzlich über den Namen (die Zauber-ID unterscheidet sich je Client; Name = Schreibweise des Spiels): Schurke
+-- "Gifte" und Magier "Comprehend Scroll" (Schriftrolle erfassen). Gefunden wird nur, was der Charakter kennt.
+-- /fbspell <Name> listet passende Zauber mit ID, falls ein Name nicht trifft.
+local CLASS_TRADE_NAMES = { "Poisons", "Gifte", "Comprehend Scroll", "Comprehend Scrolls" }
+
 local function ProfessionSpells()
     local list = {}
     local function AddClassTrades()
+        local have = {}
+        for _, e in ipairs(list) do have[e.spell] = true end
         for _, spellID in ipairs(CLASS_TRADE_SPELLS) do
-            if KnowsSpell(spellID) then table.insert(list, { spell = spellID, icon = SpellIcon(spellID) }) end
+            if KnowsSpell(spellID) and not have[spellID] then
+                have[spellID] = true
+                table.insert(list, { spell = spellID, icon = SpellIcon(spellID) })
+            end
+        end
+        for _, spellName in ipairs(CLASS_TRADE_NAMES) do
+            local info = C_Spell and C_Spell.GetSpellInfo and C_Spell.GetSpellInfo(spellName)
+            local id = info and info.spellID
+            if id and not have[id] and KnowsSpell(id) then
+                have[id] = true
+                table.insert(list, { spell = id, icon = info.iconID or SpellIcon(id) })
+            end
         end
         return list
     end
@@ -1183,6 +1201,27 @@ local function ProfessionSpells()
         end
     end
     return AddClassTrades()
+end
+
+-- Fehlersuche: /fbspell <Namensteil> listet Zauber im Zauberbuch mit ID (z. B. /fbspell scroll)
+SLASH_FORBARSSPELL1 = "/fbspell"
+SlashCmdList.FORBARSSPELL = function(msg)
+    msg = (msg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
+    if msg == "" then print("|cffffd100ForeverBars|r /fbspell <Namensteil>") return end
+    local found = 0
+    pcall(function()
+        for line = 1, C_SpellBook.GetNumSpellBookSkillLines() do
+            local sl = C_SpellBook.GetSpellBookSkillLineInfo(line)
+            for i = sl.itemIndexOffset + 1, sl.itemIndexOffset + sl.numSpellBookItems do
+                local info = C_SpellBook.GetSpellBookItemInfo(i, Enum.SpellBookSpellBank.Player)
+                if info and info.name and info.name:lower():find(msg, 1, true) then
+                    found = found + 1
+                    print(string.format("|cffffd100ForeverBars|r %s  (ID %s, %s)", info.name, tostring(info.spellID), tostring(sl.name)))
+                end
+            end
+        end
+    end)
+    if found == 0 then print("|cffffd100ForeverBars|r nichts gefunden für: " .. msg) end
 end
 
 -- Berufs-Zauber zu einem Zauber (oder nil, wenn es kein Berufs-Zauber des Charakters ist)
