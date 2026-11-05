@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverSkin: the close cross in all restyled windows is the same as in the Forever windows (it sometimes showed as a dash) and sits centered in the title bar.
+
 - Fixed: inspect window, PvP page – the rank ("Civilian") no longer overlaps the season line (a Blizzard layout issue).
 
 - Fixed: ForeverQuests' quest log on the world map – text of Blizzard's quest list underneath no longer shines through.

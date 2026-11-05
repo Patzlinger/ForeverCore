@@ -313,7 +313,14 @@ function ns.SkinWindow(frame, keep, light)
             if not light then ns.HideTextures(child) end
         end
     end
-    ns.SkinClose(frame.CloseButton or (name and _G[name .. "CloseButton"]))
+    local close = frame.CloseButton or (name and _G[name .. "CloseButton"])
+    ns.SkinClose(close)
+    -- Kreuz mittig in unserer Titelleiste (23 hoch) – Blizzards Knopf sitzt je nach Vorlage versetzt
+    if close and close.ClearAllPoints and not (close.IsForbidden and close:IsForbidden())
+        and not (close.GetText and close:GetText() and close:GetText() ~= "") then
+        close:ClearAllPoints()
+        close:SetPoint("CENTER", frame, "TOPRIGHT", -12, -12)
+    end
     ns.HeaderGold(frame) -- Kontostand links in der Titelleiste (Stilregel)
 end
 
@@ -768,8 +775,14 @@ function ns.SkinClose(button)
         if button[get] then ns.Hide(button[get](button)) end
     end
     local look = { mine = {}, lines = {} }
+    -- Linien auf einem eigenen kleinen Rahmen in der Mitte des Knopfs (wie UI.CloseButton im Hub, 20 × 20): direkt
+    -- auf Blizzards Knopf griff die Drehung teils nicht – das Kreuz erschien dann als "—"
+    local holder = CreateFrame("Frame", nil, button)
+    holder:SetSize(20, 20)
+    holder:SetPoint("CENTER")
+    holder:EnableMouse(false)
     for i, angle in ipairs({ 45, -45 }) do
-        local line = button:CreateTexture(nil, "OVERLAY")
+        local line = holder:CreateTexture(nil, "ARTWORK")
         line:SetSize(12, 2)
         line:SetPoint("CENTER")
         line:SetColorTexture(1, 1, 1, 1)
