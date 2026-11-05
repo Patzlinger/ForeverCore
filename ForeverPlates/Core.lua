@@ -972,9 +972,14 @@ end
 -- Name und Stufe
 ---------------------------------------------------------------------------
 local CLASS_ATLAS = {
-    elite = "nameplates-icon-elite-gold", worldboss = "nameplates-icon-elite-gold",
-    rareelite = "nameplates-icon-elite-silver", rare = "UI-HUD-UnitFrame-Target-PortraitOn-Boss-Rare-Star",
+    elite = "Interface\\AddOns\\ForeverCore\\Media\\EliteGold", worldboss = "Interface\\AddOns\\ForeverCore\\Media\\EliteGold",
+    rareelite = "Interface\\AddOns\\ForeverCore\\Media\\EliteSilver", rare = "UI-HUD-UnitFrame-Target-PortraitOn-Boss-Rare-Star",
 }
+-- Eigene Grafik (Pfad) oder Blizzard-Atlas; false, wenn nicht ladbar
+local function SetClassTex(tex, src)
+    if src:find("^Interface") then tex:SetTexture(src) tex:SetTexCoord(0, 1, 0, 1) return true end
+    return tex:SetAtlas(src)
+end
 local function UpdateName(fp)
     local unit = fp.unit
     local nm = UnitName(unit)
@@ -991,7 +996,7 @@ local function UpdateName(fp)
     if IsSecret(cls) then cls = nil end
     -- Symbol für Elite/Rar/Boss (Blizzards Drache bzw. Stern); ohne Symbol bleibt nur ein schmaler Platzhalter
     local atlas = db.classIcon and cls and CLASS_ATLAS[cls]
-    if atlas and fp.classIcon:SetAtlas(atlas) ~= false then
+    if atlas and SetClassTex(fp.classIcon, atlas) ~= false then
         fp.classIcon:SetSize(12, 12)
         fp.classIcon:Show()
     else

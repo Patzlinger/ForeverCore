@@ -681,10 +681,16 @@ end
 local CLASSIFICATION = { elite = "+", rareelite = "R+", rare = "R", worldboss = "B" }
 -- Blizzards Symbole (dieselben wie an den Namensplaketten dieses Clients)
 local CLASS_ATLAS = {
-    elite = "nameplates-icon-elite-gold", worldboss = "nameplates-icon-elite-gold",
-    rareelite = "nameplates-icon-elite-silver", rare = "UI-HUD-UnitFrame-Target-PortraitOn-Boss-Rare-Star",
+    elite = "Interface\\AddOns\\ForeverCore\\Media\\EliteGold", worldboss = "Interface\\AddOns\\ForeverCore\\Media\\EliteGold",
+    rareelite = "Interface\\AddOns\\ForeverCore\\Media\\EliteSilver", rare = "UI-HUD-UnitFrame-Target-PortraitOn-Boss-Rare-Star",
 }
 ns.CLASS_ATLAS = CLASS_ATLAS
+
+-- Eigene Grafik (Pfad) oder Blizzard-Atlas; false, wenn nicht ladbar
+local function SetClassTex(tex, src)
+    if src:find("^Interface") then tex:SetTexture(src) tex:SetTexCoord(0, 1, 0, 1) return true end
+    return tex:SetAtlas(src)
+end
 
 local function UpdateName(b)
     local v, f, unit = b.v, FrameDB(b.key), b.unit
@@ -699,13 +705,13 @@ local function UpdateName(b)
     if ns.SkinClassification then ns.SkinClassification(b, cls0) end
     -- Symbol für Elite/Rar/Boss (an Spielern nie: die sind "normal")
     local atlas = f.classIcon and cls0 and CLASS_ATLAS[cls0]
-    if atlas and v.classIcon:SetAtlas(atlas) ~= false then v.classIcon:Show() else v.classIcon:Hide() end
+    if atlas and SetClassTex(v.classIcon, atlas) ~= false then v.classIcon:Show() else v.classIcon:Hide() end
     if not f.levelShow then v.level:SetText("") return end
     local level = UnitLevel(unit)
     if IsSecret(level) then v.level:SetText(level) v.level:SetTextColor(1, 0.82, 0) return end
     local text = (level and level > 0) and tostring(level) or "??"
     local cls = UnitClassification(unit)
-    if not IsSecret(cls) and CLASSIFICATION[cls] then text = text .. CLASSIFICATION[cls] end
+    if not IsSecret(cls) and CLASSIFICATION[cls] and not (atlas and v.classIcon:IsShown()) then text = text .. CLASSIFICATION[cls] end
     v.level:SetText(text)
     -- Farbe nach den klassischen Erfahrungsregeln (gemeinsam im Hub; Blizzards Funktion faerbt zu frueh grau)
     if level and level > 0 then
