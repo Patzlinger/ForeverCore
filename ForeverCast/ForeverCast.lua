@@ -458,6 +458,19 @@ local function ReadDescription(spellID)
     if GetSpellDescription then return GetSpellDescription(spellID) end
 end
 
+-- Essen und Trinken (Verbrauchsgüter): "Stellt über 21 Sek. 4410 Gesundheit wieder her. Muss sitzen bleiben" bzw. "…
+-- 4200 Mana …". Nicht als Heilung/Schaden über Zeit anzeigen, sondern einfach "+4410 Leben  +4200 Mana".
+-- Erkannt an der Sitz-Bedingung (seated/sitzen) plus Gesundheit/Mana.
+local function FindRestore(desc, lower)
+    if not (lower:find("seated") or lower:find("sitz") or lower:find("remain")) then return nil end
+    local health = desc:match("(%d[%d%.,]*)%s*[Gg]esundheit") or desc:match("(%d[%d%.,]*)%s*[Ll]ebenspunkte")
+        or desc:match("(%d[%d%.,]*)%s*[Hh]ealth") or desc:match("(%d[%d%.,]*)%s*[Hh]it [Pp]oints")
+    local mana = desc:match("(%d[%d%.,]*)%s*[Mm]ana")
+    health, mana = health and ParseNumber(health), mana and ParseNumber(mana)
+    if not (health and health > 0) and not (mana and mana > 0) then return nil end
+    return { restoreHealth = health and health > 0 and health or nil, restoreMana = mana and mana > 0 and mana or nil }
+end
+
 local function GetExpectation(spellID)
     if not spellID or IsSecret(spellID) then return nil end
     local cached = expectCache[spellID]
@@ -478,6 +491,14 @@ local function GetExpectation(spellID)
 
     -- Reihenfolge: Bereich "14 bis 22" → ueber Zeit (DoT/HoT) → Waffenschaden → einzelne Zahl
     local lower = desc:lower()
+    local restore = FindRestore(desc, lower)
+    if restore then
+        local total = (restore.restoreHealth or 0) + (restore.restoreMana or 0)
+        restore.low, restore.high = total, total
+        restore.heal, restore.physical = restore.restoreHealth ~= nil, false
+        expectCache[spellID] = restore
+        return restore
+    end
     local entry
     local byCombo, comboKind, comboUnit = FindComboRanges(desc)
     local low, high = FindRange(desc)
@@ -532,7 +553,13 @@ local function FormatExpectation(expect)
     local color = expect.heal and "|cff66ff66" or "|cffffaa55"
     local kind = expect.heal and T("Heilung", "healing") or T("Schaden", "damage")
     local text
-    if expect.duration then
+    if expect.restoreHealth or expect.restoreMana then
+        -- Essen/Trinken: einfach, was es bringt
+        local parts = {}
+        if expect.restoreHealth then parts[#parts + 1] = string.format("|cff66ff66+%s %s|r", FormatNumber(expect.restoreHealth), T("Leben", "health")) end
+        if expect.restoreMana then parts[#parts + 1] = string.format("|cff6699ff+%s Mana|r", FormatNumber(expect.restoreMana)) end
+        return table.concat(parts, "   ")
+    elseif expect.duration then
         -- Dauer statt Schaden (z. B. Zerhaeckseln, Nierenhieb): neutral, ohne Krit
         local function Secs(v) return (string.format("%.1f", v):gsub("%.0$", "")) end
         local value = expect.low == expect.high and Secs(expect.low) or (Secs(expect.low) .. "–" .. Secs(expect.high))
