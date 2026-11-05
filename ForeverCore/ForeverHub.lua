@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 68
+local VERSION = 69
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -3673,6 +3673,8 @@ function UI.ShowPerformance()
                     return ok and type(v) == "number" and v or nil
                 end
                 row.recent, row.session, row.peak = Metric("RecentAverageTime"), Metric("SessionAverageTime"), Metric("PeakTime")
+                -- wie oft ein Bild über 50 bzw. 100 ms brauchte (einmal = Lade-Hänger, steigend = Ruckler im Spiel)
+                row.over50, row.over100 = Metric("CountTimeOver50Ms"), Metric("CountTimeOver100Ms")
             end
             local ok, kb = pcall(GetAddOnMemoryUsage, name)
             row.kb = ok and type(kb) == "number" and kb or nil
@@ -3686,7 +3688,9 @@ function UI.ShowPerformance()
     local function MS(v) return v and string.format("%.2f", v) or "–" end
     for _, r in ipairs(rows) do
         local mem = r.kb and (r.kb >= 1024 and string.format("%.1f MB", r.kb / 1024) or string.format("%d KB", r.kb)) or "–"
-        local cpu = hasProfiler and (MS(r.recent) .. " / " .. MS(r.session) .. " / " .. MS(r.peak) .. "  ·  ") or ""
+        local over = (r.over50 or r.over100) and string.format("  (%s/%s)", r.over50 and math.floor(r.over50) or "–",
+            r.over100 and math.floor(r.over100) or "–") or ""
+        local cpu = hasProfiler and (MS(r.recent) .. " / " .. MS(r.session) .. " / " .. MS(r.peak) .. over .. "  ·  ") or ""
         print(string.format("   |cffffcc00%s|r  %s%s", r.name, cpu, mem))
     end
 end
