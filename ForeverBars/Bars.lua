@@ -2326,6 +2326,21 @@ local function LayoutContainer(def, cfg, holder)
         for _, name in ipairs({ "MultiCastSummonSpellButton", "MultiCastRecallSpellButton" }) do
             if _G[name] then StyleButton(_G[name]) end
         end
+        -- Fehlersuche (2026-11-05): Die Totemleiste rutschte im Kampf aus dem Halter. Im Kampf dürfen wir sie nicht
+        -- zurücksetzen (geschützter Rahmen) – nach dem Kampf schon (PLAYER_REGEN_ENABLED unten). Wer sie im Kampf
+        -- verschiebt, wird einmal je Sitzung gemerkt (ForeverBarsDB._totemMove) und im Chat gemeldet.
+        if not frame.fbTotemWatch then
+            frame.fbTotemWatch = true
+            local reported = false
+            hooksecurefunc(frame, "SetPoint", function(self, point, rel)
+                if reported or self.fbPositioning or not InCombatLockdown() then return end
+                reported = true
+                local relName = type(rel) == "table" and rel.GetName and rel:GetName() or tostring(rel)
+                ns.db._totemMove = { when = date("%d.%m. %H:%M"), point = tostring(point), rel = relName,
+                    stack = debugstack and debugstack(2, 12, 0) or "?" }
+                ns.Print(L("TOTEM_MOVED"))
+            end)
+        end
     end
     -- Mindestgröße, damit der Halter auch dann Platz hat, wenn Blizzard das Element gerade ausblendet
     local minSize = def.minSize or 1
@@ -3663,6 +3678,19 @@ function ns.SetupBars()
         elseif event == "PLAYER_REGEN_ENABLED" then
             if layoutPending then ns.ApplyLayout() end
             ns.UpgradeRanksAfterCombat()
+            -- Totemleiste: hat Blizzard sie im Kampf verschoben, nach dem Kampf zurück in ihren Halter
+            local totem = _G.MultiCastActionBarFrame
+            local holder = totem and totem.fbHolder
+            if holder and not totem.fbPositioning then
+                local _, rel = totem:GetPoint(1)
+                if rel ~= holder then
+                    totem.fbPositioning = true
+                    if totem:GetParent() ~= holder then totem:SetParent(holder) end
+                    totem:ClearAllPoints()
+                    totem:SetPoint("CENTER", holder, "CENTER")
+                    totem.fbPositioning = false
+                end
+            end
         elseif event == "LEARNED_SPELL_IN_TAB" or event == "LEARNED_SPELL_IN_SKILL_LINE" then
             ns.OnSpellLearned((...)) -- erster Wert: die Zauber-ID
             ns.RequestLayout() -- Berufeleiste: neuer Berufs-Zauber
