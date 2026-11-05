@@ -28,7 +28,7 @@ ns.BUFFS = {
     -- Druide
     { key = "motw", class = "DRUID", self = true, group = true,
       lines = { { 1126, 5232, 6756, 5234, 8907, 9884, 9885 } }, also = { 21849, 21850 } },
-    { key = "thorns", class = "DRUID", self = true, optional = true,
+    { key = "thorns", class = "DRUID", self = true,
       lines = { { 467, 782, 1075, 8914, 9756, 9910 } } },
     -- Paladin: irgendein Segen / irgendeine Aura
     { key = "blessing", class = "PALADIN", self = true,

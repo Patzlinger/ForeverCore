@@ -21,7 +21,7 @@ local DEFAULTS = {
     ownBuffs = true,
     rankCheck = true,       -- niedrigerer Rang aktiv als bekannt?
     groupBuffs = true,      -- Gruppen-Buffs (fehlende bei anderen / bei mir)
-    optionalBuffs = false,  -- z. B. Dornen, Schattenschutz
+    optionalBuffs = false,  -- z. B. Schattenschutz (Dornen werden immer verfolgt)
     food = true,
     drink = true,
     tierCheck = true,       -- besseres Essen/Trinken fuer die Stufe moeglich?
@@ -713,7 +713,7 @@ UI.Header(options, L, -32, T("Buffs", "Buffs"), 280)
 Check(options, L - 4, -54, T("Eigene Buffs", "Own buffs"), "ownBuffs")
 Check(options, L - 4, -78, T("Höchsten Rang prüfen", "Check for highest rank"), "rankCheck")
 Check(options, L - 4, -102, T("Gruppen-Buffs (bei anderen und bei mir)", "Group buffs (others and me)"), "groupBuffs")
-Check(options, L - 4, -126, T("Auch Dornen / Schattenschutz", "Also Thorns / Shadow Protection"), "optionalBuffs")
+Check(options, L - 4, -126, T("Auch Schattenschutz", "Also Shadow Protection"), "optionalBuffs")
 
 UI.Header(options, L, -170, T("Essen und Trinken", "Food and drink"), 280)
 Check(options, L - 4, -192, T("Essen dabei", "Carry food"), "food")
