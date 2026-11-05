@@ -926,6 +926,15 @@ local function ScheduleBlizzard(delay)
     end)
 end
 
+-- Frame samt Unterrahmen (für "Maus aus": sonst zeigt die unsichtbare Blizzard-Leiste weiter ihren Tooltip)
+local function MouseList(frame, out, depth)
+    out[#out + 1] = frame
+    if depth > 0 and frame.GetChildren then
+        for _, child in ipairs({ frame:GetChildren() }) do MouseList(child, out, depth - 1) end
+    end
+    return out
+end
+
 function ns.UpdateBlizzardStatus()
     if not (ns.db and UI.HideBlizzard) then return end
     local any = false
@@ -934,7 +943,7 @@ function ns.UpdateBlizzardStatus()
     local xpCfg, repCfg = Cfg("xp"), Cfg("rep")
     local manager = _G.StatusTrackingBarManager
     if manager and ns.db.hideStatusBlizzard and xpCfg and repCfg and xpCfg.enabled and repCfg.enabled then
-        UI.HideBlizzard(manager, { when = function()
+        UI.HideBlizzard(manager, { noMouse = MouseList(manager, {}, 4), when = function()
             return ns.db.hideStatusBlizzard and xpCfg.enabled and repCfg.enabled
         end })
         if not manager.fbStatusHooked then
@@ -961,7 +970,7 @@ function ns.UpdateBlizzardStatus()
         if c then
             any = true
             if ShouldHide(c) then
-                UI.HideBlizzard(c, { when = function() return ShouldHide(c) end })
+                UI.HideBlizzard(c, { noMouse = MouseList(c, {}, 4), when = function() return ShouldHide(c) end })
             else
                 UI.ShowBlizzard(c)
             end
@@ -980,7 +989,7 @@ function ns.UpdateBlizzardStatus()
             local on = (i == 1 and xp and xp.enabled) or (i == 2 and rep and rep.enabled)
             if f then
                 if ns.db.hideStatusBlizzard and on then
-                    UI.HideBlizzard(f, { when = function() return ns.db.hideStatusBlizzard end })
+                    UI.HideBlizzard(f, { noMouse = MouseList(f, {}, 3), when = function() return ns.db.hideStatusBlizzard end })
                 else
                     UI.ShowBlizzard(f)
                 end
