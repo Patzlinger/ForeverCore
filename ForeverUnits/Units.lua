@@ -1092,11 +1092,19 @@ local function DruidMana(b)
     v.manaText:SetFormattedText("%s", ns.ShortNumber(cur))
     m:Show()
     v.manaText:Show()
+    v.manaText:SetTextColor(0.35, 0.6, 1) -- Mana blau
+    return pType
 end
 
 local function UpdatePower(b)
     local v, f, unit = b.v, FrameDB(b.key), b.unit
-    if unit == "player" then DruidMana(b) end
+    local formType
+    if unit == "player" then formType = DruidMana(b) end
+    -- Druide in Tiergestalt: die Zahl der Hauptressource in ihrer Farbe (Wut rot, Energie gelb), damit man sie vom
+    -- blauen Mana unterscheidet; sonst Standardfarbe
+    if formType == 1 then v.pw:SetTextColor(1, 0.25, 0.25) v.pwTinted = true
+    elseif formType == 3 then v.pw:SetTextColor(1, 0.88, 0.2) v.pwTinted = true
+    elseif v.pwTinted then v.pw:SetTextColor(1, 1, 1) v.pwTinted = nil end
     if f.powerHeight <= 0 then return end
     local pType, pToken = UnitPowerType(unit)
     local c = PowerBarColor and not IsSecret(pType, pToken) and (PowerBarColor[pToken] or PowerBarColor[pType])
