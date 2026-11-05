@@ -4,6 +4,10 @@
 
 - ForeverSkin: the "Friends of …" window (right-click a Battle.net friend » view friends) now uses the Forever look.
 
+- Settings: new "View: Simple / Expert" button next to the search field (test). Simple shows only the core options of each page and closes the gaps; Expert is unchanged.
+- ForeverUnits: the player and target frames are 10% wider by default (a one-time update of the old default width), so the power text no longer clips.
+- ForeverUnits: the player frame shows the current mana/energy regeneration per second next to the power number (switchable, updated twice per second; mana switches to the casting value for 5 s after a spell).
+- ForeverPlates: the DoT damage prediction on nameplates now also works when the nameplate's GUID is locked in combat (taken from target/focus/mouseover) and updates on target change.
 - ForeverSkin: the "Report player" window (customer support) now uses the Forever look.
 - ForeverSkin: the settings no longer have a switch per window – all restyled windows always use the Forever look (to get Blizzard's look back, turn ForeverSkin off in the addon list).
 

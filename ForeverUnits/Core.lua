@@ -61,6 +61,8 @@ ns.DEFAULTS = {
     powerSeparator = true,         -- feine Trennlinie zwischen Lebens- und Ressourcenbalken
     dotAboveV1 = false,            -- Merker: DoT-Leisten einmalig nach oben gesetzt (in den Standardwerten, damit er gespeichert wird)
     playerLevelV1 = false,         -- Merker: Stufe am Spielerrahmen einmalig eingeschaltet
+    powerRegen = true,             -- Spielerrahmen: Regenerationsrate (Mana/Energie) neben der Zahl der Ressource
+    widthV1 = false,               -- Merker: Spieler-/Zielrahmen einmalig 10 % breiter (in den Standardwerten, damit er gespeichert wird)
     dotPrediction = true,          -- Ziel/Fokus: Schaden der eigenen DoTs als schraffierte Fläche am Lebensbalken
     combatMarker = true,           -- Schwerter-Symbol unten links, solange die Einheit im Kampf ist
     shields = true,
@@ -95,8 +97,8 @@ ns.DEFAULTS = {
     frames = {
         -- Spieler und Ziel spiegelbildlich: gleiche Größe, gleiche Höhe, gleicher Abstand zur Bildschirmmitte
         -- (Spieler = Bezug); das Ziel des Ziels sitzt wie bisher rechts unten am Ziel (+171 / −23)
-        player = FrameDefaults({ width = 212, height = 45, x = -238, y = -154, levelShow = true }),
-        target = FrameDefaults({ width = 212, height = 45, x = 238, y = -154, portraitSide = "RIGHT", levelShow = true,
+        player = FrameDefaults({ width = 233, height = 45, x = -238, y = -154, levelShow = true }),
+        target = FrameDefaults({ width = 233, height = 45, x = 238, y = -154, portraitSide = "RIGHT", levelShow = true,
             buffs = true, debuffs = true, dotBars = true }),
         targettarget = FrameDefaults({ width = 110, height = 24, x = 409, y = -177, powerHeight = 0,
             fontSize = 10, portrait = "none", portraitSide = "RIGHT", hpFormat = "percent", powerText = false }),
@@ -143,6 +145,12 @@ function ns.GetDB()
         if not db.playerLevelV1 then
             if db.frames.player then db.frames.player.levelShow = true end
             db.playerLevelV1 = true
+        end
+        if not db.widthV1 then -- Spieler und Ziel (spiegelbildlich) von 212 auf 233 px, nur wenn noch der alte Standard
+            for _, k in ipairs({ "player", "target" }) do
+                if db.frames[k] and db.frames[k].width == 212 then db.frames[k].width = 233 end
+            end
+            db.widthV1 = true
         end
         if not db.dotAboveV1 then
             for _, k in ipairs({ "target", "focus" }) do

@@ -844,6 +844,8 @@ local function UpdateDot(fp)
     local unit = fp.unit
     local dmg = 0
     if db.dotPrediction and fp.enemy and unit and UI.OverTimeRemaining then dmg = UI.OverTimeRemaining(unit, "damage") end
+    local bw, bh = fp.bar:GetSize()
+    if bw and bw > 0 then fp.dot:SetSize(bw, bh) fp.dotFill:SetSize(bw, bh) end -- Größe sicherstellen (wie bei den Rahmen)
     fp.dot:SetMinMaxValues(0, UnitHealthMax(unit))
     fp.dot:SetValue(dmg)
     fp.dotFill:SetMinMaxValues(0, UnitHealthMax(unit))
@@ -1716,7 +1718,7 @@ H.PLAYER_TARGET_CHANGED = function()
     ForAll(function(fp)
         UpdateTargetState(fp)
         UpdateCombo(fp)
-        if fp.enemy and fp.unit then ApplyLook(fp) end
+        if fp.enemy and fp.unit then ApplyLook(fp) UpdateDot(fp) end
     end)
 end
 H.UNIT_HEALTH = function(unit) local fp = plates[unit] if fp and fp.enemy then UpdateHealth(fp) end end

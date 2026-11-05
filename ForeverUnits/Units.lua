@@ -895,6 +895,33 @@ local function UpdateCombat(b)
     v.combat:SetShown(on)
 end
 
+-- Regeneration pro Sekunde (nur Spielerrahmen, Mana und Energie): Mana innerhalb von 5 s nach einem Zauber mit dem
+-- "Zauberwert" (Casting), sonst Grundwert; Energie aus dem aktuellen Wert der Schnittstelle (inkl. Tempo)
+local lastCast = 0
+do
+    local ev = CreateFrame("Frame")
+    ev:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
+    ev:SetScript("OnEvent", function() lastCast = GetTime() end)
+end
+local function RegenText(b, pType, pToken)
+    if b.unit ~= "player" or GetDB().powerRegen == false or IsSecret(pType, pToken) then return end
+    local rate
+    if pType == 0 then
+        if GetManaRegen then
+            local base, casting = GetManaRegen()
+            rate = (GetTime() - lastCast < 5) and casting or base
+        end
+    elseif pType == 3 then
+        if GetPowerRegenForPowerType then rate = GetPowerRegenForPowerType(3)
+        elseif GetPowerRegen then rate = (GetPowerRegen()) end
+    else
+        return
+    end
+    if type(rate) ~= "number" or IsSecret(rate) or rate <= 0 then return end
+    if rate >= 10 then return string.format(" |cff9be37b+%d/s|r", math.floor(rate + 0.5)) end
+    return string.format(" |cff9be37b+%.1f/s|r", rate)
+end
+
 local function UpdatePower(b)
     local v, f, unit = b.v, FrameDB(b.key), b.unit
     if f.powerHeight <= 0 then return end
@@ -914,7 +941,7 @@ local function UpdatePower(b)
     end
     if f.powerText and f.powerHeight >= 7 then
         if IsSecret(cur, max) or (max and max > 0) then
-            v.pw:SetFormattedText("%s", ns.ShortNumber(cur))
+            v.pw:SetFormattedText("%s%s", ns.ShortNumber(cur), RegenText(b, pType, pToken) or "")
         else
             v.pw:SetText("")
         end
@@ -1546,6 +1573,11 @@ if UI.OnOverTimeChange then UI.OnOverTimeChange(function() for _, b in pairs(ns.
 -- Flächen schrumpfen mit der Restdauer: sekündlich nachziehen, solange eine sichtbar ist
 C_Timer.NewTicker(1, function()
     for _, b in pairs(ns.frames) do if b:IsVisible() and b.v and b.v.overOn then pcall(UpdatePrediction, b) end end
+end)
+-- Regenerationsrate aktuell halten (Fünf-Sekunden-Regel, Tempo, Buffs): zweimal pro Sekunde nur am Spielerrahmen
+C_Timer.NewTicker(0.5, function()
+    local b = ns.frames.player
+    if b and b:IsVisible() and b.v and GetDB().powerRegen ~= false then pcall(UpdatePower, b) end
 end)
 ns.On("UNIT_POWER_UPDATE", T("Energie", "Power"), ForUnit(UpdatePower))
 ns.On("UNIT_MAXPOWER", T("Energie", "Power"), ForUnit(UpdatePower))

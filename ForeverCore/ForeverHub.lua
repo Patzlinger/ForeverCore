@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 73
+local VERSION = 74
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -2671,11 +2671,11 @@ end
 
 -- alle Texte einer Seite einsammeln (graue Erklärtexte, Eingabefelder und Werte in Auswahllisten nicht)
 local function CrawlPage(frame, page, path, list, depth)
-    if depth > 10 or frame:IsObjectType("EditBox") then return end
+    if depth > 10 or frame:IsObjectType("EditBox") or frame.fcSimpleHidden then return end
     local isControl = frame ~= page.frame and (frame:IsObjectType("Button") or frame:IsObjectType("Slider"))
     if not (isControl and frame.fcArrow) then
         for _, r in ipairs({ frame:GetRegions() }) do
-            if r:IsObjectType("FontString") and r ~= page.frame.TitleText and r ~= page.frame.SubText then
+            if r:IsObjectType("FontString") and r ~= page.frame.TitleText and r ~= page.frame.SubText and not r.fcSimpleHidden then
                 local text = r:GetText()
                 local font = r:GetFontObject()
                 local fname = font and font.GetName and font:GetName() or ""
@@ -2864,6 +2864,241 @@ local function BuildSearch(f)
     end)
 end
 
+---------------------------------------------------------------------------
+-- Einfach-Modus (TEST, v74): Knopf oben im Einstellungsfenster. Blendet je Seite Experten-Abschnitte/-Reiter aus und
+-- rückt die Elemente darunter nach oben (Lücken schließen). Die Seiten der Addons bleiben unangetastet; Experte =
+-- alles wie zuvor. Zum Entfernen: diesen Block, die Zeile "UI.Simple.Apply(page)" in UI.OpenSettings, den Knopf in
+-- SettingsWindow und die zwei "fcSimpleHidden"-Zeilen in CrawlPage löschen.
+---------------------------------------------------------------------------
+UI.Simple = {}
+do
+    local S = UI.Simple
+
+    function S.IsOn() return type(_G.ForeverHubDB) == "table" and _G.ForeverHubDB.simpleMode == true end
+    function S.Set(on)
+        if type(_G.ForeverHubDB) ~= "table" then _G.ForeverHubDB = {} end
+        _G.ForeverHubDB.simpleMode = on and true or nil
+    end
+
+    -- Was im Einfach-Modus wegfällt (nach Überschrift bzw. Reitername). Funktionen, damit die Sprache erst beim Anzeigen gilt.
+    local RULES = {
+        ForeverUnits = function() return {
+            tabs = { T("Optik", "Look") },
+            sections = { T("Ausrichten (wenn entsperrt)", "Alignment (when unlocked)"), T("Alles", "Everything"),
+                T("DoT-Leisten (nur Ziel und Fokus)", "DoT bars (target and focus only)"),
+                T("Position (X/Y ab Bildschirmmitte)", "Position (X/Y from screen center)") } } end,
+        ForeverFrames = function() return { tabs = { T("Optik", "Look"), T("Symbole", "Icons") } } end,
+        ForeverPlates = function() return {
+            tabs = { T("Schadenszahlen", "Damage text") },
+            sections = { T("Sonstiges", "Other"), T("Farben nach Bedrohung", "Colors by threat"), T("Verbündete", "Allies") } } end,
+        ForeverCast = function() return {
+            sections = { T("Spell-Queue-Fenster", "Spell queue window"), T("Position (X/Y ab Bildschirmmitte)", "Position (X/Y from screen center)"),
+                T("Look", "Look") } } end,
+        ["ForeverHelpers.vendor"] = function() return {
+            sections = { T("Grenzen beim Nachkaufen", "Restock limits"), T("Munition (Jäger)", "Ammo (hunter)"), T("Anzeige", "Display"),
+                T("Position (X/Y ab Bildschirmmitte)", "Position (X/Y from screen center)") } } end,
+        ["ForeverHelpers.loot"] = function() return { sections = { T("Position", "Position"), T("Testmodus", "Test mode") } } end,
+        ["ForeverHelpers.buffs"] = function() return { sections = { T("Eigene Liste", "Own list"), T("Anzeige", "Display") } } end,
+        ForeverAlts = function() return { sections = { T("Mit anderen Forever-Addons", "With other Forever addons") } } end,
+        ForeverChat = function() return {
+            sections = { T("Position und Sperre", "Position and lock"), T("Instant Messaging", "Instant messaging"), T("Farben", "Colors") } } end,
+        ForeverTooltip = function() return { sections = { T("Ort", "Position") } } end,
+    }
+
+    -- alles auf den ursprünglichen Stand zurück (Zeige-Zustand, Positionen, Abschnittsliste)
+    function S.Restore(panel)
+        local st = panel.fcSimple
+        if not st then return end
+        for _, it in ipairs(st.items) do
+            if it.hid then it.obj:Show() it.obj.fcSimpleHidden = nil end
+            if it.moved then
+                it.obj:ClearAllPoints()
+                for _, p in ipairs(it.pts) do it.obj:SetPoint(p[1], p[2], p[3], p[4], p[5]) end
+            end
+        end
+        panel.fcSections = st.allSecs
+        for _, s in ipairs(st.allSecs) do
+            s.y = s.origY or s.y
+            if s.box then
+                s.box.fill:Show()
+                for _, e in ipairs(s.box.edges) do e:Show() end
+            end
+        end
+        panel.fcSimple = nil
+    end
+
+    function S.Panel(panel, rule)
+        S.Restore(panel)
+        local secs = panel.fcSections
+        if not rule or not rule.set or not secs then return end
+        local isHidden, anyHidden = {}, false
+        for _, s in ipairs(secs) do
+            local text = s.fs:GetText()
+            if text and rule.set[text] then isHidden[s] = true anyHidden = true end
+        end
+        if not anyHidden then return end
+
+        -- Spalte und Bereich jedes Abschnitts (gleiche Regeln wie UI.LayoutSections), mit den ursprünglichen Werten
+        local GAP = 12
+        local info = {}
+        for _, s in ipairs(secs) do
+            s.origY = s.y
+            local cap = math.huge
+            if s.width < 400 then
+                for _, o in ipairs(secs) do
+                    if o.x > s.x + 20 then cap = math.min(cap, o.x - 8 - GAP) end
+                end
+            end
+            local hl, nextY = s.x - 8, nil
+            for _, o in ipairs(secs) do
+                if o ~= s and o.y < s.y and ((o.x < cap and o.x + 8 > hl) or o.width >= 400) then
+                    if not nextY or o.y > nextY then nextY = o.y end
+                end
+            end
+            info[s] = { hl = hl, cap = cap, top = s.y, nextY = nextY, delta = nextY and (s.y - nextY) or 0 }
+        end
+        local hiddenList = {}
+        for _, s in ipairs(secs) do if isHidden[s] then hiddenList[#hiddenList + 1] = info[s] end end
+
+        -- Wie weit rückt ein Element an (x, y) nach oben, bzw. fällt es in einen ausgeblendeten Abschnitt?
+        local function Place(x, y)
+            local shift = 0
+            for _, h in ipairs(hiddenList) do
+                if x >= h.hl - 4 and x < h.cap then
+                    if y <= h.top + 2 and (not h.nextY or y > h.nextY + 2) then return true, 0 end
+                    if h.nextY and y <= h.nextY + 2 then shift = shift + h.delta end
+                end
+            end
+            return false, shift
+        end
+
+        local skip = {}
+        for _, s in ipairs(secs) do if s.box then skip[s.box.fill] = true end end
+        if panel.header then skip[panel.header] = true end
+        local items = {}
+        local function Add(obj)
+            if skip[obj] then return end
+            local n = obj.GetNumPoints and obj:GetNumPoints() or 0
+            local pts, x, y = {}, nil, nil
+            for i = 1, n do
+                local point, rel, relPoint, px, py = obj:GetPoint(i)
+                pts[i] = { point, rel, relPoint, px, py }
+                if rel == panel and point == "TOPLEFT" and not x then x, y = px, py end
+            end
+            if x then items[#items + 1] = { obj = obj, pts = pts, x = x, y = y } end
+        end
+        for _, c in ipairs({ panel:GetChildren() }) do Add(c) end
+        for _, r in ipairs({ panel:GetRegions() }) do Add(r) end
+
+        for _, it in ipairs(items) do
+            local hide, shift = Place(it.x, it.y)
+            if hide then
+                if it.obj:IsShown() then it.obj:Hide() it.obj.fcSimpleHidden = true it.hid = true end
+            elseif shift ~= 0 then
+                it.obj:ClearAllPoints()
+                for _, p in ipairs(it.pts) do
+                    it.obj:SetPoint(p[1], p[2], p[3], p[4], p[2] == panel and (p[5] + shift) or p[5])
+                end
+                it.moved = true
+            end
+        end
+
+        local visible = {}
+        for _, s in ipairs(secs) do
+            if isHidden[s] then
+                if s.box then
+                    s.box.fill:Hide()
+                    for _, e in ipairs(s.box.edges) do e:Hide() end
+                end
+            else
+                local _, shift = Place(s.x, s.y)
+                s.y = s.y + shift
+                visible[#visible + 1] = s
+            end
+        end
+        panel.fcSimple = { items = items, allSecs = secs }
+        panel.fcSections = visible
+        C_Timer.After(0, function() UI.LayoutSections(panel) end)
+    end
+
+    -- Reiter-Knöpfe ausblenden, die übrigen rücken nach links
+    function S.Tabs(frame, rule)
+        local old = frame.fcSimpleTabs
+        if old then
+            for _, t in ipairs(old) do
+                t.b:Show()
+                t.b:ClearAllPoints()
+                for _, p in ipairs(t.pts) do t.b:SetPoint(p[1], p[2], p[3], p[4], p[5]) end
+            end
+            frame.fcSimpleTabs = nil
+        end
+        if not rule or not rule.tabs then return end
+        local names = {}
+        for _, n in ipairs(rule.tabs) do names[n] = true end
+        local row, rowY = {}, nil
+        for _, c in ipairs({ frame:GetChildren() }) do
+            if c:IsObjectType("Button") and c.GetText and names[c:GetText() or ""] then
+                local point, rel, _, _, py = c:GetPoint(1)
+                if point == "TOPLEFT" and rel == frame then rowY = py break end
+            end
+        end
+        if not rowY then return end
+        for _, c in ipairs({ frame:GetChildren() }) do
+            if c:IsObjectType("Button") and c:GetNumPoints() == 1 then
+                local point, rel, relPoint, px, py = c:GetPoint(1)
+                if point == "TOPLEFT" and rel == frame and math.abs(py - rowY) < 0.5 then
+                    row[#row + 1] = { b = c, pts = { { point, rel, relPoint, px, py } }, x = px }
+                end
+            end
+        end
+        table.sort(row, function(a, b) return a.x < b.x end)
+        local cursor, activeHidden, firstVisible = row[1].x, false, nil
+        for _, t in ipairs(row) do
+            if names[t.b:GetText() or ""] then
+                if not t.b:IsEnabled() then activeHidden = true end
+                t.b:Hide()
+            else
+                t.b:ClearAllPoints()
+                t.b:SetPoint("TOPLEFT", frame, "TOPLEFT", cursor, rowY)
+                cursor = cursor + t.b:GetWidth() + 4
+                firstVisible = firstVisible or t.b
+            end
+        end
+        frame.fcSimpleTabs = row
+        if activeHidden and firstVisible then firstVisible:Click() end
+    end
+
+    local function Walk(frame, fn, depth)
+        if frame.fcSections then fn(frame) end
+        if depth >= 5 then return end
+        for _, c in ipairs({ frame:GetChildren() }) do Walk(c, fn, depth + 1) end
+    end
+
+    function S.Apply(page)
+        local frame = page and page.frame
+        if not frame then return end
+        local make = S.IsOn() and RULES[page.key]
+        local rule = make and make() or nil
+        if rule then
+            rule.set = {}
+            for _, n in ipairs(rule.sections or {}) do rule.set[n] = true end
+        end
+        Walk(frame, function(panel) S.Panel(panel, rule) end, 0)
+        S.Tabs(frame, rule)
+        searchIndex = nil -- Suche neu aufbauen (versteckte Einstellungen nicht anbieten)
+    end
+
+    function S.Label()
+        if S.IsOn() then return T("Ansicht: Einfach", "View: Simple") end
+        return T("Ansicht: Experte", "View: Expert")
+    end
+
+    function S.Refresh()
+        if settingsWin and settingsWin.simpleBtn then settingsWin.simpleBtn:SetText(S.Label()) end
+        if settingsCurrent then S.Apply(settingsCurrent) end
+    end
+end
+
 local function SettingsWindow()
     if settingsWin then return settingsWin end
     local f = UI.Window("ForeverSettingsWindow", UI.NAME, NAV_W + 2 + PAGE_W, PAGE_H)
@@ -2906,8 +3141,23 @@ local function SettingsWindow()
         KeepAbove(content, 1)
         if f.CloseButton then f.CloseButton:SetFrameLevel(base + 60) end -- Schließen-Kreuz über der Titelleiste der Seite
         if f.search then f.search:SetFrameLevel(base + 60) end -- Suchfeld ebenso
+        if f.simpleBtn then f.simpleBtn:SetFrameLevel(base + 60) end -- Einfach-/Experten-Knopf ebenso
     end
     BuildSearch(f)
+    -- Einfach-Modus (Test): Knopf links neben dem Suchfeld
+    f.simpleBtn = UI.Button(f, UI.Simple.Label(), 124, function()
+        UI.Simple.Set(not UI.Simple.IsOn())
+        UI.Simple.Refresh()
+    end)
+    f.simpleBtn:SetPoint("RIGHT", f.search, "LEFT", -6, 0)
+    f.simpleBtn:HookScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+        GameTooltip:SetText(T("Einfach / Experte", "Simple / Expert"))
+        GameTooltip:AddLine(T("Einfach zeigt nur die wichtigsten Einstellungen, Experte alle. Klick schaltet um.",
+            "Simple shows only the most important settings, Expert shows all. Click to switch."), 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    f.simpleBtn:HookScript("OnLeave", function() GameTooltip:Hide() end)
     hooksecurefunc(f, "SetFrameLevel", Levels)
     f.fcLevels = Levels
     Levels()
@@ -3033,6 +3283,7 @@ function UI.OpenSettings(which)
     end
     if settingsCurrent and settingsCurrent ~= page and settingsCurrent.frame then settingsCurrent.frame:fcRawHide() end
     settingsCurrent = page
+    UI.Simple.Apply(page) -- Einfach-Modus (Test)
     page.frame:ClearAllPoints()
     page.frame:SetPoint("TOPLEFT", f.content, "TOPLEFT", page.frame.fcInsetX or 0,
         (page.frame.fcShift or 0) - (page.frame.fcInsetY or 0))
@@ -5076,10 +5327,37 @@ overEvents:SetScript("OnEvent", function(_, event, _, a, b, c)
     end
 end)
 
+-- GUID einer Einheit. Namensplaketten ("nameplateN") sind im Kampf oft gesperrt: dann ueber Ziel/Fokus/Mouseover
+-- gleichsetzen, sonst die zuletzt ausserhalb des Kampfes gelesene GUID dieser Plakette nehmen.
+do -- eigener Block: spart oberste Locals (Grenze 200)
+local plateGuids = {}
+local function GuidOf(unit)
+    local g = UnitGuid(unit)
+    if g then
+        if unit:find("^nameplate") then plateGuids[unit] = g end
+        return g
+    end
+    for _, tok in ipairs({ "target", "focus", "mouseover", "softenemy" }) do
+        local ok, same = pcall(UnitIsUnit, unit, tok)
+        if ok and same and not Secret(same) then
+            local tg = UnitGuid(tok)
+            if tg then return tg end
+        end
+    end
+    return plateGuids[unit]
+end
+
+do
+    local f = CreateFrame("Frame")
+    f:RegisterEvent("NAME_PLATE_UNIT_ADDED")
+    f:RegisterEvent("NAME_PLATE_UNIT_REMOVED")
+    f:SetScript("OnEvent", function(_, _, unit) if unit then plateGuids[unit] = nil end end)
+end
+
 function UI.OverTimeRemaining(unit, kind)
     local filter = kind == "heal" and "HELPFUL|PLAYER" or "HARMFUL|PLAYER"
     local now, total, found = GetTime(), 0, false
-    local guid = UnitGuid(unit)
+    local guid = GuidOf(unit)
     local fresh = {}
     for _, a in ipairs(CollectAuras(unit, filter)) do
         local id, expires = a.spellId, a.expirationTime
@@ -5109,6 +5387,7 @@ function UI.OverTimeRemaining(unit, kind)
         end
     end
     return total
+end
 end
 
 -- Fehlersuche: /fover [Einheit] listet die eigenen HoTs/DoTs und was daraus gelesen wurde
