@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverQuests: dungeon window, Quest log tab – clearer: zone headings between the cards under "All quests", rewards collapsed by default (click to open, remembered), no quest chain on quest log cards. New "Log" button in the tracker header opens the dungeon window right on the Quest log tab.
+
 - ForeverSkin: the close cross in all restyled windows is the same as in the Forever windows (it sometimes showed as a dash) and sits centered in the title bar; windows with Blizzard's newer flat frame (e.g. the loot window) no longer keep the red cross.
 
 - Fixed: inspect window, PvP page – the rank ("Civilian") no longer overlaps the season line (a Blizzard layout issue).

@@ -341,6 +341,7 @@ end
 local QUESTLOG = { name = "", isLog = true, quests = {} }
 local logZones = {}     -- [Gebietsname] = Eintrag (bleibt erhalten, damit die Auswahl beim Neuaufbau bestehen bleibt)
 local logZoneOrder = {} -- Gebiete in der Reihenfolge des Questlogs
+local logQuestCache = {} -- [Quest-ID] = Eintrag (bleibt über Neuaufbauten erhalten)
 local function RefreshLogQuests()
     QUESTLOG.name = ns.L("QUESTLOG_ALL")
     for _, z in pairs(logZones) do z.quests = {} end
@@ -353,8 +354,14 @@ local function RefreshLogQuests()
             if info.isHeader then
                 zone = info.title
             elseif not info.isHidden and info.questID and info.questID > 0 then
-                local quest = { id = info.questID, name = info.title, zone = zone, isLog = true,
-                    level = (info.level and info.level > 0) and tostring(info.level) or nil }
+                -- dieselbe Tabelle je Quest behalten (z. B. merkt sich das Fenster daran, ob die Belohnungen offen sind)
+                local quest = logQuestCache[info.questID]
+                if not quest then
+                    quest = { id = info.questID, isLog = true }
+                    logQuestCache[info.questID] = quest
+                end
+                quest.name, quest.zone = info.title, zone
+                quest.level = (info.level and info.level > 0) and tostring(info.level) or nil
                 quests[#quests + 1] = quest
                 local key = zone or "?"
                 local entry = logZones[key]
@@ -1010,6 +1017,15 @@ local RequestRefresh, RefreshDetail
 local pendingItems = {}
 -- Welche Quests ihre Belohnungen gerade ausgeklappt zeigen (standardmäßig eingeklappt)
 local rewardsExpanded = {}
+-- Belohnungen aufgeklappt? Ohne eigene Wahl: Dungeonquests aufgeklappt, Questlog-Karten zugeklappt (übersichtlicher)
+function ns.RewardsExpanded(quest)
+    local v = rewardsExpanded[quest]
+    if v == nil then return not quest.isLog end
+    return v
+end
+local function ToggleRewards(quest)
+    rewardsExpanded[quest] = not ns.RewardsExpanded(quest)
+end
 
 local function GetQualityColor(quality)
     if quality and C_Item and C_Item.GetItemQualityColor then
@@ -1115,7 +1131,7 @@ local function LayoutRewards(entry, quest, width, chain)
         return 0
     end
 
-    local expanded = rewardsExpanded[quest] ~= false -- Standard: aufgeklappt
+    local expanded = ns.RewardsExpanded(quest) -- Standard: aufgeklappt (Questlog-Karten: zugeklappt)
     entry.rewardToggle.text:SetText(ns.L("REWARDS_COUNT", #own + #final))
     entry.rewardToggle.arrow:SetRotation(expanded and -math.pi / 2 or 0)
     entry.rewardToggle:Show()
@@ -1222,7 +1238,7 @@ local function GetQuestEntry(index)
                 return
             end
             if quest and self.rewardToggle and self.rewardToggle:IsShown() then
-                rewardsExpanded[quest] = rewardsExpanded[quest] == false
+                ToggleRewards(quest)
                 RefreshDetail()
             end
         end)
@@ -1328,7 +1344,7 @@ local function GetQuestEntry(index)
         toggle:SetScript("OnClick", function(self)
             local quest = self:GetParent().quest
             if not quest then return end
-            rewardsExpanded[quest] = rewardsExpanded[quest] == false
+            ToggleRewards(quest)
             RefreshDetail()
         end)
         toggle:SetWidth(160)
@@ -1341,6 +1357,27 @@ local function GetQuestEntry(index)
         questEntries[index] = entry
     end
     return entry
+end
+
+-- Gebiets-Überschrift im Reiter Questlog ("Alle Quests"): Gebietsname in Gold mit Anzahl, darunter feine Linie
+local zoneHeaders = {}
+local ZONE_HEADER_HEIGHT = 22
+local function GetZoneHeader(index)
+    local h = zoneHeaders[index]
+    if not h then
+        h = CreateFrame("Frame", nil, questContent)
+        h:SetHeight(ZONE_HEADER_HEIGHT)
+        h.text = h:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        h.text:SetPoint("LEFT", 2, 1)
+        h.text:SetJustifyH("LEFT")
+        local line = h:CreateTexture(nil, "ARTWORK")
+        line:SetPoint("BOTTOMLEFT", 0, 3)
+        line:SetPoint("BOTTOMRIGHT", 0, 3)
+        line:SetHeight(1)
+        line:SetColorTexture(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3], 0.35)
+        zoneHeaders[index] = h
+    end
+    return h
 end
 
 local function LayoutPills(list)
@@ -1371,10 +1408,12 @@ local function BuildCards(dungeon)
     end
     for _, quest in ipairs(dungeon.quests or {}) do
         if IsQuestVisible(quest) then
-            local chain = quest.id and ns.GetQuestChain and ns.GetQuestChain(quest.id)
+            -- Questlog: jede Quest eine eigene Karte, ohne Questreihe (übersichtlicher)
+            local chain = quest.id and not quest.isLog and ns.GetQuestChain and ns.GetQuestChain(quest.id)
             -- Kennt Questie keine Reihe (z. B. bei neuen Forever-Quests fehlen dort die Verknüpfungen), gelten
             -- gleichnamige Quests desselben Dungeons als eine Reihe
-            local key = chain and ("chain:" .. chain[1].questID) or ("name:" .. tostring(QuestName(quest)):lower())
+            local key = (quest.isLog and ("log:" .. tostring(quest.id))) or (chain and ("chain:" .. chain[1].questID))
+                or ("name:" .. tostring(QuestName(quest)):lower())
             local card = byKey[key]
             if not card then
                 card = { members = {}, chain = chain }
@@ -1552,6 +1591,7 @@ RefreshDetail = function()
         end
     end
     for _, entry in ipairs(questEntries) do entry:Hide() end
+    for _, h in ipairs(zoneHeaders) do h:Hide() end
     if not dungeon then
         detailTitle:SetText(ns.L(raidTabActive and "NO_RAID" or levelTabActive and "NO_DUNGEON_LEVEL" or "NO_DUNGEON"))
         detailExtra:SetText("")
@@ -1592,8 +1632,22 @@ RefreshDetail = function()
     local width = math.max(1, questScroll:GetWidth() - 2)
     questContent:SetWidth(width)
     local y, shown, done, total = 0, 0, 0, #(dungeon.quests or {})
+    local lastZone, headerCount = nil, 0
     for _, card in ipairs(BuildCards(dungeon)) do
         local quest = card.quest
+        -- "Alle Quests": vor jedem neuen Gebiet eine Überschrift (Gebiet in Gold, Anzahl, feine Linie)
+        if dungeon == QUESTLOG and quest.zone ~= lastZone then
+            lastZone = quest.zone
+            headerCount = headerCount + 1
+            local h = GetZoneHeader(headerCount)
+            local zone = logZones[quest.zone or "?"]
+            h.text:SetText((quest.zone or "?") .. (zone and ("  |cff8a8a8a" .. #zone.quests .. "|r") or ""))
+            h:ClearAllPoints()
+            h:SetPoint("TOPLEFT", questContent, "TOPLEFT", 0, -y - (headerCount > 1 and 6 or 0))
+            h:SetWidth(width)
+            h:Show()
+            y = y + ZONE_HEADER_HEIGHT + (headerCount > 1 and 6 or 0)
+        end
         do
             shown = shown + 1
             local entry = GetQuestEntry(shown)
@@ -2650,7 +2704,7 @@ local function EnsureWindow()
     if ok and window then return true end
     if window then window:Hide() end
     window = nil
-    listButtons, questEntries, pills = {}, {}, {}
+    listButtons, questEntries, pills, zoneHeaders = {}, {}, {}, {}
     print(ns.ChatPrefix() .. ": " .. ns.L("DUNGEON_ERROR", "Fenster", tostring(err)))
     return false
 end
@@ -2701,7 +2755,7 @@ function ns.ResetDungeonWindow()
     window:UnregisterAllEvents()
     window:Hide()
     window = nil
-    listButtons, questEntries, pills = {}, {}, {}
+    listButtons, questEntries, pills, zoneHeaders = {}, {}, {}, {}
     if wasShown then ns.ToggleDungeons() end
 end
 
@@ -2711,6 +2765,26 @@ end
 function ns.ToggleDungeons()
     if not EnsureWindow() then return end
     window:SetShown(not window:IsShown())
+end
+
+-- Dungeonfenster im Reiter "Questlog" öffnen (Knopf "Log" im Tracker); ist er schon offen, schließen
+function ns.ToggleQuestLogTab()
+    if not EnsureWindow() then return end
+    if window:IsShown() and logTabActive then
+        window:Hide()
+        return
+    end
+    logTabActive, levelTabActive, raidTabActive = true, false, false
+    selectedDungeon = QUESTLOG
+    if window.UpdateTabs then window.UpdateTabs() end
+    if searchBox and searchBox:GetText() ~= "" then searchBox:SetText("") end
+    questScroll:SetVerticalScroll(0)
+    if window:IsShown() then
+        RefreshList()
+        RefreshDetail()
+    else
+        window:Show()
+    end
 end
 
 -- Dungeonfenster öffnen und einen bestimmten Dungeon auswählen

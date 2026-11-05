@@ -1,7 +1,7 @@
 local addonName, ns = ...
 
 local tracker, title, scrollFrame, content, overlay, filterButton, headerBar
-local menuButton, dungeonButton, unlockHint
+local menuButton, dungeonButton, logButton, unlockHint
 local updatePending = false
 
 -- Zeichenziel ("Ansicht"): der Tracker oder der Questlog an der Weltkarte (QuestLog.lua). Beide benutzen dieselben
@@ -2196,6 +2196,7 @@ end
 function ns.UpdateTrackerTexts()
     if not tracker then return end
     dungeonButton:SetText(ns.L("BTN_DUNGEONS"))
+    if logButton then logButton:SetText(ns.L("BTN_LOG")) end
     unlockHint:SetText(ns.L("UNLOCK_HINT"))
     ns.UpdateTracker() -- setzt auch Titel, Filter-Knopf und alle Zeilen
 end
@@ -2244,11 +2245,17 @@ function ns.CreateTracker()
         function() ns.ToggleDungeons() end, function(tooltip) tooltip:AddLine(ns.L("TIP_DUNGEONS")) end)
     dungeonButton:SetPoint("RIGHT", -4, 0)
 
+    -- "Log": öffnet das Dungeonfenster im Reiter Questlog (eigene Quests als Karten)
+    logButton = Style.CreateButton(headerBar, ns.L("BTN_LOG"), 34, 18,
+        function() if ns.ToggleQuestLogTab then ns.ToggleQuestLogTab() end end,
+        function(tooltip) tooltip:AddLine(ns.L("TIP_LOG_TAB"), 1, 1, 1, true) end)
+    logButton:SetPoint("RIGHT", dungeonButton, "LEFT", -4, 0)
+
     filterButton = Style.CreateButton(headerBar, ns.L("BTN_FILTER"), 42, 18, function(self) OpenFilterMenu(self) end, function(tooltip)
         tooltip:AddLine(ns.L("FILTER_TITLE"))
         tooltip:AddLine(ns.L("TIP_FILTER_ACTIVE", GetActiveFilterText()), 1, 1, 1, true)
     end)
-    filterButton:SetPoint("RIGHT", dungeonButton, "LEFT", -4, 0)
+    filterButton:SetPoint("RIGHT", logButton, "LEFT", -4, 0)
 
     -- Menü: quadratischer Knopf mit Zahnrad (wie der Einstellungs-Knopf von ForeverMinimap)
     menuButton = Style.CreateButton(headerBar, "", 18, 18,

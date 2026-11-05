@@ -197,7 +197,8 @@ local STRINGS = {
         FACTION_HORDE = "Horde", FACTION_ALLIANCE = "Allianz", FACTION_BOTH = "Beide Fraktionen",
         STATUS_DONE = "Abgeschlossen", STATUS_ACTIVE = "Im Questlog",
         STATUS_READY = "Abgabebereit", QUESTLOG_ALL = "Alle Quests", QUESTLOG_COUNT = "%d im Questlog",
-        TAB_QUESTLOG = "Questlog",
+        TAB_QUESTLOG = "Questlog", BTN_LOG = "Log",
+        TIP_LOG_TAB = "Öffnet das Dungeonfenster im Reiter Questlog: deine Quests nach Gebieten als Karten mit Zielen und Belohnungen",
         TIP_QUESTLOG = "Zeigt die Quests aus deinem Questlog – links nach Gebieten, rechts als Karten mit Zielen, "
             .. "Fortschritt und Belohnungen. Tracker und Weltkarte bleiben unverändert.",
         READY_COUNT = "%d abgabebereit", QUESTLOG_DUNGEON = "Dungeon: %s",
@@ -454,7 +455,8 @@ local STRINGS = {
         FACTION_HORDE = "Horde", FACTION_ALLIANCE = "Alliance", FACTION_BOTH = "Both factions",
         STATUS_DONE = "Completed", STATUS_ACTIVE = "In quest log",
         STATUS_READY = "Ready to turn in", QUESTLOG_ALL = "All quests", QUESTLOG_COUNT = "%d in quest log",
-        TAB_QUESTLOG = "Quest log",
+        TAB_QUESTLOG = "Quest log", BTN_LOG = "Log",
+        TIP_LOG_TAB = "Opens the dungeon window on the Quest log tab: your quests by zone as cards with objectives and rewards",
         TIP_QUESTLOG = "Shows the quests in your quest log – by zone on the left, as cards with objectives, progress "
             .. "and rewards on the right. The tracker and the world map stay as they are.",
         READY_COUNT = "%d ready", QUESTLOG_DUNGEON = "Dungeon: %s",
