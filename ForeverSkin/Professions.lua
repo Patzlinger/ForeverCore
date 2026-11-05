@@ -169,6 +169,23 @@ local function SkinProfession(frame)
     if icon and icon.SetTexCoord then icon:SetTexCoord(0.07, 0.93, 0.07, 0.93) end
 end
 
+-- WhatsTraining (Fremd-Addon, wird nie geändert) legt über das Herstellungsfenster eine eigene Seite
+-- "WhatsTrainingCraftingPage" samt Titel, Porträt und einem Reiter. Hier nur Hilfen; Umgestaltung weiter unten (SkinWT).
+local function WTPage() return G("WhatsTrainingCraftingPage") end
+local function WTActive()
+    local p = WTPage()
+    return p and p:IsShown() or false
+end
+local function InsideWT(frame)
+    local p = WTPage()
+    local x = frame
+    while x do
+        if x == p then return true end
+        x = x.GetParent and x:GetParent() or nil
+    end
+    return false
+end
+
 -- Text-Knöpfe ("Erstellen", "Alle erstellen" …) flach, mit eigenem Kasten dahinter (Blizzard setzt seine roten
 -- Grafiken teils neu) – laufend unsichtbar gehalten
 local textButtons = {}
@@ -185,7 +202,7 @@ local function KeepButtonsFlat()
     for b, box in pairs(textButtons) do
         ns.HideTextures(b)
         for _, key in ipairs({ "Left", "Middle", "Right" }) do ns.Hide(b[key]) end
-        box:SetShown(b:IsVisible())
+        box:SetShown(b:IsVisible() and b:GetAlpha() > 0.01)
         local over = b:IsMouseOver() and b:IsEnabled()
         if box.over ~= over then
             box.over = over
@@ -233,6 +250,7 @@ local bottomControls = setmetatable({}, { __mode = "k" }) -- Bedienelemente der 
 -- und die Fußleiste unten (Blizzards Leiste hinter den Knöpfen ließ sich nicht sicher ausblenden). Die Knöpfe der
 -- unteren Reihe werden darüber gehoben, damit sie sichtbar und klickbar bleiben.
 local overlay
+local wtHidden = setmetatable({}, { __mode = "k" }) -- Bedienelemente, die wegen der WhatsTraining-Seite versteckt sind
 local function Overlays(f)
     if not overlay then
         overlay = {}
@@ -274,8 +292,22 @@ local function Overlays(f)
     local controls = {}
     for b in pairs(textButtons) do controls[b] = true end
     for c in pairs(bottomControls) do controls[c] = true end
+    -- Ist die Seite von WhatsTraining offen: die Knöpfe/Mengenfelder des Herstellens gehören nicht dazu – unsichtbar
+    -- und ohne Maus (sonst liegen sie über dem Ende der Liste und schneiden deren Text ab)
+    local wtOn = WTActive()
     for c in pairs(controls) do
-        if c:IsVisible() and fb and c:GetBottom() and (c:GetBottom() - fb) < FOOTER then
+        if not InsideWT(c) and not InCombatLockdown() then
+            if wtOn and not wtHidden[c] then
+                wtHidden[c] = true
+                c:SetAlpha(0)
+                pcall(c.EnableMouse, c, false)
+            elseif not wtOn and wtHidden[c] then
+                wtHidden[c] = nil
+                c:SetAlpha(1)
+                pcall(c.EnableMouse, c, true)
+            end
+        end
+        if not wtOn and c:IsVisible() and fb and c:GetBottom() and (c:GetBottom() - fb) < FOOTER then
             if c:GetFrameLevel() <= highest + 1 then c:SetFrameLevel(highest + 3) end
             local box = textButtons[c]
             if box and box:GetFrameLevel() ~= c:GetFrameLevel() - 1 then box:SetFrameLevel(c:GetFrameLevel() - 1) end
@@ -289,7 +321,7 @@ local function Overlays(f)
             leftmost = math.min(leftmost or c:GetLeft(), c:GetLeft())
         end
     end
-    overlay.foot:SetShown(leftmost ~= nil)
+    overlay.foot:SetShown(leftmost ~= nil and not wtOn)
     if leftmost and f:GetLeft() then
         local x = math.floor(leftmost - f:GetLeft() - 6)
         if overlay.footX ~= x then
@@ -451,6 +483,87 @@ local function Scan(frame, depth)
     end
 end
 
+-- WhatsTraining im Herstellungsfenster in den Forever-Stil bringen (nur Aussehen, nichts im Addon ändern):
+--  * Seite: braune Fläche und Blizzards Hintergrundgrafiken (auch die Deckflächen über den Fortschrittsbalken) →
+--    flache Fenster-Farbe
+--  * Titel und Porträt der Seite (kopieren Blizzards Kopfleiste samt Titeltext über unsere Titelleiste) → unsichtbar,
+--    es gilt unsere Titelleiste
+--  * Reiter ("WhatsTrainingCraftingTab" / "…ReturnTab"): flacher Kasten statt Blizzards Seitenreiter, goldener Rand
+--    wenn die Seite offen ist
+local wtDone = setmetatable({}, { __mode = "k" })
+local wtBoxes = setmetatable({}, { __mode = "k" })
+
+local function FlattenWTCanvas(frame, depth)
+    for _, r in ipairs({ frame:GetRegions() }) do
+        if r:IsObjectType("Texture") and not wtDone[r] then
+            local atlas = r.GetAtlas and r:GetAtlas()
+            if type(atlas) == "string" and atlas:find("^Profession%-Background") then
+                wtDone[r] = true
+                r:SetAlpha(0)
+            elseif not atlas and r:GetDrawLayer() == "BACKGROUND" and type(r:GetTexture()) ~= "string" then
+                wtDone[r] = true
+                r:SetColorTexture(C.background[1], C.background[2], C.background[3], 1)
+            end
+        end
+    end
+    if depth > 0 then
+        for _, child in ipairs({ frame:GetChildren() }) do
+            -- die Rezeptliste selbst bleibt unangetastet (hat "Refresh")
+            if not Forbidden(child) and not child.Refresh then FlattenWTCanvas(child, depth - 1) end
+        end
+    end
+end
+
+local function HoldInvisible(frame)
+    if not frame or wtDone[frame] then return end
+    wtDone[frame] = true
+    frame:SetAlpha(0)
+    hooksecurefunc(frame, "SetAlpha", function(self, a)
+        if a ~= 0 and not self.fsHolding then
+            self.fsHolding = true
+            self:SetAlpha(0)
+            self.fsHolding = false
+        end
+    end)
+end
+
+local function SkinWTTab(tab)
+    if not tab or Forbidden(tab) then return end
+    local box = wtBoxes[tab]
+    if not box then
+        for _, key in ipairs({ "Background", "SelectedTexture", "TabGlow", "HighlightTexture" }) do ns.Hide(tab[key]) end
+        if tab.Icon and tab.Icon.SetTexCoord then tab.Icon:SetTexCoord(0.07, 0.93, 0.07, 0.93) end
+        box = CreateFrame("Frame", nil, tab:GetParent())
+        box:SetAllPoints(tab)
+        ns.Flat(box, C.button)
+        wtBoxes[tab] = box
+    end
+    box:SetFrameLevel(math.max(0, tab:GetFrameLevel() - 1))
+    box:SetShown(tab:IsShown())
+    local ok, checked = pcall(tab.GetChecked, tab)
+    local on = (ok and checked) and true or false
+    if box.on ~= on then
+        box.on = on
+        ns.EdgeColor(box, on and C.accent or C.border, 1)
+    end
+end
+
+local function SkinWT(f)
+    local page = WTPage()
+    if not page or Forbidden(page) then return end
+    if not wtDone[page] then
+        wtDone[page] = true
+        -- Seite öffnen/schließen sofort nachziehen (sonst bis zu 0,5 s Flackern der unteren Knöpfe)
+        page:HookScript("OnShow", function() pcall(Overlays, f) end)
+        page:HookScript("OnHide", function() pcall(Overlays, f) end)
+    end
+    FlattenWTCanvas(page, 3)
+    HoldInvisible(G("WhatsTrainingCraftingTitle"))
+    HoldInvisible(G("WhatsTrainingCraftingPortrait"))
+    SkinWTTab(G("WhatsTrainingCraftingTab"))
+    SkinWTTab(G("WhatsTrainingCraftingReturnTab"))
+end
+
 local function SkinBook()
     local f = G("ProfessionsBookFrame") or G("ProfessionsFrame")
     if not f or ns.professionsSkinned or Forbidden(f) then return end
@@ -483,6 +596,7 @@ local function SkinBook()
         if waited >= 0.5 then
             waited = 0
             pcall(Scan, f, 1)
+            pcall(SkinWT, f)
             pcall(Overlays, f)
             pcall(ShrinkBottomButtons, f)
         end
