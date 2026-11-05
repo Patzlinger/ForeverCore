@@ -176,9 +176,16 @@ local function Rows()
 end
 
 -- alle Seiten durchsuchen: Flächen, Listen, Spaltenköpfe, Laufleisten, Auswahllisten, Suchfelder, Text-Knöpfe
+-- Teile anderer Addons (z. B. Auctionator, das eigene Seiten und Reiter ins Auktionshaus hängt) bleiben unberührt –
+-- fremde Addons gestalten wir nicht um. Erkannt am Namen; deren ganze Unterrahmen werden übersprungen.
+local function Foreign(obj)
+    local name = obj.GetName and obj:GetName()
+    return type(name) == "string" and name:find("Auctionator") ~= nil
+end
+
 local function Scan(frame, depth)
     for _, child in ipairs({ frame:GetChildren() }) do
-        if not Forbidden(child) and not done[child] then
+        if not Forbidden(child) and not done[child] and not Foreign(child) then
             local name = (child:GetName() or ""):lower()
             if type(child.NineSlice) == "table" and not child:IsObjectType("Button") then
                 ns.Hide(child.NineSlice)
