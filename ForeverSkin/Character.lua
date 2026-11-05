@@ -948,7 +948,7 @@ local function SkinCharacter()
         local title = (f.TitleContainer and f.TitleContainer.TitleText) or G("CharacterFrameTitleText")
         if title then title:SetTextColor(C.accent[1], C.accent[2], C.accent[3]) end
         Raise(f.TitleContainer or title)
-        local close = f.CloseButton or G("CharacterFrameCloseButton")
+        local close = ns.FindCloseButton(f)
         ns.SkinClose(close)
         Raise(close)
     end)

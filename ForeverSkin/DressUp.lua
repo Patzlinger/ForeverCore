@@ -257,7 +257,7 @@ local function SkinDressUp()
         -- (flache Fläche samt der Leiste darunter: siehe "footer")
         local title = (f.TitleContainer and f.TitleContainer.TitleText) or G("DressUpFrameTitleText")
         if title then title:SetTextColor(C.accent[1], C.accent[2], C.accent[3]) end
-        ns.SkinClose(f.CloseButton or G("DressUpFrameCloseButton"))
+        ns.SkinClose(ns.FindCloseButton(f))
         -- Innenfläche um das Modell: nur Blizzards Rahmen weg (das Hintergrundbild des Modells bleibt)
         local inset = f.Inset or G("DressUpFrameInset")
         if inset and not Forbidden(inset) and inset.NineSlice then ns.Hide(inset.NineSlice) end

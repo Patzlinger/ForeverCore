@@ -510,7 +510,7 @@ local function GrowUp(f)
         gold:ClearAllPoints()
         gold:SetPoint("LEFT", f, "TOPLEFT", 10, -12 + SHIFT)
     end
-    local close = f.CloseButton or G("TradeFrameCloseButton")
+    local close = ns.FindCloseButton(f)
     if close and not Forbidden(close) then
         local points = {}
         for i = 1, close:GetNumPoints() do

@@ -266,6 +266,43 @@ goldEvents:SetScript("OnEvent", function()
     end
 end)
 
+-- Schließen-Knopf eines Fensters: unter den üblichen Namen (CloseButton, ClosePanelButton bei den flachen Vorlagen
+-- wie dem Beute-Fenster, <Name>CloseButton), sonst ein Knopf ohne Text mit Blizzards roter Schließen-Grafik
+-- ("close"/"exit"/"redbutton" in Atlas oder Datei) unter den Unter-Rahmen
+local function IsRedClose(b)
+    if not (b and b.IsObjectType and b:IsObjectType("Button")) or (b.IsForbidden and b:IsForbidden()) then return false end
+    local text = b.GetText and b:GetText()
+    if type(text) == "string" and text ~= "" then return false end
+    for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture" }) do
+        local t = b[get] and b[get](b)
+        if t then
+            local atlas = t.GetAtlas and t:GetAtlas()
+            local file = t.GetTexture and t:GetTexture()
+            local s = ((type(atlas) == "string" and atlas or "") .. "|" .. (type(file) == "string" and file or "")):lower()
+            if s:find("close") or s:find("exit") or s:find("redbutton") then return true end
+        end
+    end
+    return false
+end
+function ns.FindCloseButton(frame)
+    if not frame then return nil end
+    local name = frame.GetName and frame:GetName()
+    for _, obj in ipairs({ frame.CloseButton or false, frame.ClosePanelButton or false,
+        (name and _G[name .. "CloseButton"]) or false }) do
+        -- (Knöpfe mit Text überspringen: im Optionen-Fenster heißt "Schließen" unten CloseButton, das X ClosePanelButton)
+        local text = obj and obj.GetText and obj:GetText()
+        if obj and not (type(text) == "string" and text ~= "") then return obj end
+    end
+    for _, child in ipairs({ frame:GetChildren() }) do
+        if IsRedClose(child) then return child end
+        if not (child.IsForbidden and child:IsForbidden()) and child.GetChildren then
+            for _, sub in ipairs({ child:GetChildren() }) do
+                if IsRedClose(sub) then return sub end
+            end
+        end
+    end
+end
+
 -- Fenster: dunkle Fläche, Titelleiste mit goldener Linie (wie alle Forever-Fenster); Blizzards Rahmen,
 -- Hintergrund, Porträt und Titel-Grafik unsichtbar, der Titeltext bleibt
 -- keep (optional): Texturen, die bleiben sollen. light = true: NICHT alle Grafiken des Fensters ausblenden, nur
@@ -313,10 +350,10 @@ function ns.SkinWindow(frame, keep, light)
             if not light then ns.HideTextures(child) end
         end
     end
-    local close = frame.CloseButton or (name and _G[name .. "CloseButton"])
+    local close = ns.FindCloseButton(frame)
     ns.SkinClose(close)
     -- Kreuz mittig in unserer Titelleiste (23 hoch) – Blizzards Knopf sitzt je nach Vorlage versetzt
-    if close and close.ClearAllPoints and not (close.IsForbidden and close:IsForbidden())
+    if close and close.ClearAllPoints and close:GetParent() == frame and not (close.IsForbidden and close:IsForbidden())
         and not (close.GetText and close:GetText() and close:GetText() ~= "") then
         close:ClearAllPoints()
         close:SetPoint("CENTER", frame, "TOPRIGHT", -12, -12)
