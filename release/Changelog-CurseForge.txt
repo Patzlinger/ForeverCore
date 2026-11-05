@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverSkin: the "Friends of …" window (right-click a Battle.net friend » view friends) now uses the Forever look.
+
 - ForeverSkin: the "Report player" window (customer support) now uses the Forever look.
 - ForeverSkin: the settings no longer have a switch per window – all restyled windows always use the Forever look (to get Blizzard's look back, turn ForeverSkin off in the addon list).
 

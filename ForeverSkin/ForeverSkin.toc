@@ -39,3 +39,4 @@ Inspect.lua
 AuctionHouse.lua
 Calendar.lua
 Report.lua
+FriendsFriends.lua
