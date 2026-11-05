@@ -909,8 +909,9 @@ local function PlaceOnOpen()
         return
     end
     local x, y = GetCursorPosition()
-    -- untere rechte Ecke am Mauszeiger (das Fenster öffnet sich nach links oben vom Zeiger weg)
-    At("BOTTOMRIGHT", nil, x, y)
+    -- der Mauszeiger steht auf dem untersten rechten Taschenplatz (Mitte), das Fenster öffnet sich nach links oben
+    local below = 2 * PAD + FOOTER + ((currencyRow and currencyRow:IsShown()) and CURRENCY_ROW or 0)
+    At("BOTTOMRIGHT", nil, x + (PAD + SLOT / 2) * ws, y + (below + SLOT / 2) * ws)
 end
 
 function ns.ResetPosition()
