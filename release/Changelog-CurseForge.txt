@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- ForeverSkin: much lighter while restyled windows stay open – they re-check Blizzard's layout often only while you work with them (2 s after opening or a click, and while the mouse is over the window), otherwise once per second (measured with the character window open: memory 17 MB » about 3 MB).
+- ForeverSkin: much lighter while restyled windows stay open – they re-check Blizzard's layout often only while you work with them (2 s after opening or a click, and while the mouse is over the window), otherwise once per second (before, an open character window raised ForeverSkin's memory from about 3 MB to 17 MB).
 
 - New: /forever performance (or /forever leistung) lists CPU time (recent / session / peak, if the client measures it) and memory of every loaded Forever addon in the chat.
 - The shared hub settings are now saved only by ForeverCore (they were stored 14 times before, and the copy of an addon that was off for a while could overwrite newer settings). Needs a full game restart.
