@@ -645,8 +645,9 @@ end
 -- Auch ForeverSpellbook greift so von selbst (sein Knopf liegt über dem Zauberbuch-Knopf).
 ---------------------------------------------------------------------------
 
-local MICRO_HEIGHT = 19 -- quadratisch: so breit wie hoch
-local MICRO_ICON = 13
+local MICRO_HEIGHT = 19 -- Knopfbreite (angedockt: 14 Knöpfe füllen die Kartenbreite)
+local MICRO_BTN_H = 23   -- Knopfhöhe: etwas höher als breit
+local MICRO_ICON = 14
 local MICRO_MAX = 16
 local MICRO_ICON_PATH = "Interface\\AddOns\\ForeverBars\\Media\\Micro\\"
 local MICRO_ICON_HOVER = { 1, 1, 1 } -- beim Darüberfahren weiß (sonst Gold)
@@ -699,7 +700,7 @@ local function GetOwnMicroButton(index, holder)
     local button = _G[name]
     if button then return button end
     button = CreateFrame("Frame", name, holder, "BackdropTemplate")
-    button:SetSize(MICRO_HEIGHT, MICRO_HEIGHT)
+    button:SetSize(MICRO_HEIGHT, MICRO_BTN_H)
     button:EnableMouse(false)
     ns.Style.SetFlat(button, COLOR.button)
     button.icon = button:CreateTexture(nil, "ARTWORK")
@@ -866,7 +867,7 @@ local function LayoutOwnMicro(def, cfg, holder)
         own:SetParent(holder)
         SetMicroIcon(own, blizzard)
         if (index - 1) % perRow == 0 and index > 1 then
-            x, y = 0, y - MICRO_HEIGHT - gap
+            x, y = 0, y - MICRO_BTN_H - gap
         end
         own:ClearAllPoints()
         own:SetPoint("TOPLEFT", holder, "TOPLEFT", x, y)
@@ -883,7 +884,7 @@ local function LayoutOwnMicro(def, cfg, holder)
     end
     -- (früherer Neu-laden-Knopf am Ende: entfernt)
     if _G.ForeverBarsMicroReload then _G.ForeverBarsMicroReload:Hide() end
-    holder:SetSize(math.max(1, width), math.max(MICRO_HEIGHT, -y + MICRO_HEIGHT))
+    holder:SetSize(math.max(1, width), math.max(MICRO_BTN_H, -y + MICRO_BTN_H))
 end
 
 -- Zu Blizzards Mikromenü zurück: eigene Knöpfe ausblenden. Blizzards Knöpfe kommen nach dem Neuladen zurück

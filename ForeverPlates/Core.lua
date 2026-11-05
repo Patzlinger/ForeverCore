@@ -49,7 +49,6 @@ ns.DEFAULTS = {
     threatColLosing = { 0.86, 0.48, 0.2 },   -- du hast Aggro, verlierst sie gleich (Stufe 2)
     threatColGaining = { 0.85, 0.72, 0.3 },  -- keine Aggro, ziehst sie gleich (Stufe 1)
     threatColNone = { 0.45, 0.68, 0.45 },    -- keine Aggro (Stufe 0)
-    threatGroupOnly = false,  --   nur in Gruppen (solo aus)
     stack = true,             -- Plaketten stapeln statt überlappen (Blizzard-Schalter)
     noShrink = true,          -- nicht mit der Entfernung verkleinern (sonst wird kleine Schrift unleserlich)
     los = true,               -- "keine Sicht" am Ziel, wenn ein Zauber daran scheitert
@@ -915,7 +914,7 @@ local function UpdateThreat(fp)
     local d = db
     local col, show = nil, false
     fp.threatBadge.label:SetText("Aggro")
-    if d.threat and fp.enemy and not fp.isPlayer and (not d.threatGroupOnly or IsInGroup()) then
+    if d.threat and fp.enemy and not fp.isPlayer and (IsInGroup() or UnitExists("pet")) then
         local status, pct = ThreatInfo(fp.unit)
         if IsSecret(status) then
             -- Stufe geheim: nur die Zahl, neutral weiß

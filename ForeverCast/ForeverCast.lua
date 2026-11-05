@@ -598,7 +598,7 @@ end
 -- Unsichtbarer Halter: traegt Zauberleiste und GCD-Balken, wird verschoben
 local anchor = CreateFrame("Frame", "ForeverCastAnchor", UIParent)
 anchor:SetSize(BAR_WIDTH, 28)
-anchor:SetPoint("CENTER", 32, -336)
+anchor:SetPoint("CENTER", 32, -296)
 anchor:SetMovable(true)
 anchor:SetClampedToScreen(true)
 
@@ -1459,7 +1459,7 @@ function RestorePosition()
     if pos then
         anchor:SetPoint(pos[1], UIParent, pos[2], pos[3], pos[4])
     else
-        anchor:SetPoint("CENTER", 32, -336)
+        anchor:SetPoint("CENTER", 32, -296)
     end
 end
 
@@ -2033,9 +2033,37 @@ H.UNIT_SPELLCAST_INTERRUPTED = function(_, castGUID, _, by)
     if state.mode == "channel" or IsCurrentCast(castGUID) then FinishCast("interrupted", by) end
 end
 
-H.UNIT_SPELLCAST_FAILED = function(_, castGUID)
+-- Fehlschlag ohne laufenden Zauber (z. B. Spontanzauber: "Nicht genug Mana", "Außer Reichweite"):
+-- Leiste kurz in der Fehlerfarbe mit Zaubername zeigen
+local function FlashFail(spellID)
+    if not spellID or IsSecret(spellID) then return end
+    if state.mode == "cast" or state.mode == "channel" or state.mode == "flight" or state.failed then return end
+    local info = C_Spell and C_Spell.GetSpellInfo and C_Spell.GetSpellInfo(spellID)
+    local name = info and info.name
+    if not name then return end
+    icon:SetTexture(info.iconID)
+    state.mode = "fade"
+    state.secret, state.castID, state.test = false, nil, false
+    state.failed = true
+    HideZones()
+    SetBarColor(COLOR_FAIL)
+    bar:SetValue(1)
+    nameText:SetText(name .. " – " .. T("Fehlgeschlagen", "Failed"))
+    timeText:SetText("")
+    expectText:SetText("")
+    pingText:SetText("")
+    spark:Hide()
+    HideTicks()
+    state.fadeStart = GetTime() + 0.5
+    castFrame:SetAlpha(1)
+    castFrame:Show()
+    Wake()
+end
+
+H.UNIT_SPELLCAST_FAILED = function(_, castGUID, spellID)
     if state.test then return end
-    if state.mode ~= "channel" and IsCurrentCast(castGUID) then FinishCast("failed") end
+    if state.mode ~= "channel" and IsCurrentCast(castGUID) then FinishCast("failed")
+    elseif state.mode ~= "cast" and state.mode ~= "channel" then FlashFail(spellID) end
 end
 
 H.UNIT_SPELLCAST_SUCCEEDED = function(_, _, spellID)

@@ -31,7 +31,7 @@ local function FrameDefaults(o)
         buffs = false, debuffs = false, onlyMine = true, auraSize = 20, auraNum = 8,
         dotBars = false, dotNum = 6, dotHeight = 16, -- DoT-Leisten (nur Ziel/Fokus)
         dotDirection = "drain",  -- "drain": Leiste leert sich (Restzeit) | "fill": fuellt sich
-        dotPoint = "BELOW",      -- "BELOW" | "ABOVE" | "LEFT" | "RIGHT" | "FREE" (frei verschiebbar)
+        dotPoint = "ABOVE",      -- "BELOW" | "ABOVE" | "LEFT" | "RIGHT" | "FREE" (frei verschiebbar)
         dotX = 0, dotY = 0, dotWidth = 0, -- Versatz; Breite 0 = so breit wie der Rahmen
         dotFreeX = 0, dotFreeY = -150,  -- Position, wenn "Frei verschiebbar" gewaehlt ist
         textLayout = "stacked",  -- "stacked": Name oben, LP darunter | "inline": eine Zeile
@@ -133,6 +133,12 @@ function ns.GetDB()
             db.frames.target.dotBars = true
             db.frames.focus.dotBars = true
             db.dotDefaultV2 = true
+        end
+        if not db.dotAboveV1 then
+            for _, k in ipairs({ "target", "focus" }) do
+                if db.frames[k] and db.frames[k].dotPoint == "BELOW" then db.frames[k].dotPoint = "ABOVE" end
+            end
+            db.dotAboveV1 = true
         end
     end
     return db

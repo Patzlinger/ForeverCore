@@ -148,7 +148,6 @@ do
     Check(T("nur als Tank in einer Gruppe", "only as tank in a group"), "threatColorTankOnly", true)
     Check(T("Als Tank: wie nah der Nächste ist (ab 60 %)", "As tank: how close the next one is (from 60 %)"), "threatLead", true)
     Check(T("Immer als Tank werten", "Always count me as tank"), "threatTank", true)
-    Check(T("Nur in Gruppen (solo aus)", "Only in groups (off when solo)"), "threatGroupOnly", true)
     Hint(T("Schaden/Heilung: grün = sicher, gelb = knapp, orange = Aggro wackelt, rot = du hast Aggro. "
         .. "Tank: umgekehrt (grün = sichere Aggro). Rolle aus der Gruppe oder per Haken.",
         "Damage/healing: green = safe, yellow = close, orange = slipping, red = you have aggro. "

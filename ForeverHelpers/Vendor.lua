@@ -622,7 +622,21 @@ function UpdateMerchantPanel()
     local mf = _G.MerchantFrame
     if mf and mf:IsShown() then
         mpanel:SetPoint("TOPLEFT", mf, "TOPRIGHT", 4, 0)
+        -- gleiche Ebene wie das Händlerfenster; Raise/Anklicken des Händlerfensters zieht uns mit
+        local function Follow()
+            if mpanel:IsShown() and mf:IsShown() then
+                mpanel:SetFrameStrata(mf:GetFrameStrata())
+                mpanel:SetFrameLevel(mf:GetFrameLevel())
+            end
+        end
+        if not mpanel.followHooked then
+            mpanel.followHooked = true
+            hooksecurefunc(mf, "Raise", Follow)
+            mf:HookScript("OnMouseDown", Follow)
+        end
+        Follow()
     else
+        mpanel:SetFrameStrata("HIGH")
         mpanel:SetPoint("LEFT", UIParent, "LEFT", 380, 80)
     end
     mpanel:Show()
