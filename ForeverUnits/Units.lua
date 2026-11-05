@@ -1523,6 +1523,7 @@ ns.On("UNIT_HEAL_PREDICTION", T("Heilvorhersage", "Heal prediction"), ForUnit(Up
 ns.On("UNIT_ABSORB_AMOUNT_CHANGED", T("Schilde", "Shields"), ForUnit(UpdatePrediction))
 ns.On("UNIT_HEAL_ABSORB_AMOUNT_CHANGED", T("Heilabsorption", "Heal absorbs"), ForUnit(UpdatePrediction))
 ns.On("UNIT_AURA", T("HoT/DoT-Vorhersage", "HoT/DoT prediction"), ForUnit(UpdatePrediction))
+if UI.OnOverTimeChange then UI.OnOverTimeChange(function() for _, b in pairs(ns.frames) do if b:IsVisible() then UpdatePrediction(b) end end end) end
 -- Flächen schrumpfen mit der Restdauer: sekündlich nachziehen, solange eine sichtbar ist
 C_Timer.NewTicker(1, function()
     for _, b in pairs(ns.frames) do if b:IsVisible() and b.v and b.v.overOn then pcall(UpdatePrediction, b) end end

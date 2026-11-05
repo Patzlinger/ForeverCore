@@ -1713,6 +1713,7 @@ end
 H.UNIT_HEALTH = function(unit) local fp = plates[unit] if fp and fp.enemy then UpdateHealth(fp) end end
 H.UNIT_MAXHEALTH = H.UNIT_HEALTH
 H.UNIT_AURA = function(unit) local fp = plates[unit] if fp and fp.enemy and db.dotPrediction then UpdateDot(fp) end end
+if UI.OnOverTimeChange then UI.OnOverTimeChange(function() for _, fp in pairs(plates) do if fp.enemy and fp.unit then UpdateDot(fp) end end end) end
 C_Timer.NewTicker(1, function() for _, fp in pairs(plates) do if fp.dotOn and fp.unit then UpdateDot(fp) end end end)
 H.UNIT_THREAT_LIST_UPDATE = function(unit) local fp = plates[unit] if fp then UpdateThreat(fp) end end
 H.UNIT_THREAT_SITUATION_UPDATE = function() for _, fp in pairs(plates) do UpdateThreat(fp) end end

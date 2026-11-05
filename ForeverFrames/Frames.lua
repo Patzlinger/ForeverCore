@@ -1279,6 +1279,7 @@ ns.On("UNIT_THREAT_SITUATION_UPDATE", "Bedrohung", ForUnit(UpdateThreat))
 ns.On("UNIT_AURA", T("Auren", "Auras"), ForUnit(function(b) ns.UpdateAuras(b) UpdatePrediction(b) end))
 -- HoT-Fläche schrumpft mit der Restdauer: sekündlich nachziehen, solange eine sichtbar ist
 C_Timer.NewTicker(1, function() ForEachShown(function(b) if b.ff and b.ff.hotOn then UpdatePrediction(b) end end) end)
+if UI.OnOverTimeChange then UI.OnOverTimeChange(function() ForEachShown(UpdatePrediction) end) end
 ns.On("PLAYER_TARGET_CHANGED", "Ziel", function() ForEachShown(UpdateTarget) end)
 ns.On("RAID_TARGET_UPDATE", "Zielmarkierung", function() ForEachShown(UpdateMark) end)
 ns.On("INCOMING_RESURRECT_CHANGED", T("Wiederbelebung", "Resurrection"), ForUnit(UpdateIncoming))

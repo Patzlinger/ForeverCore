@@ -4804,15 +4804,99 @@ local function CollectAuras(unit, filter)
     return out
 end
 
+-- Im Kampf sind Aura-Daten gesperrt. Ersatz: eigene Zauber merken (Zauber-ID, Ziel, Ablauf) und daraus rechnen.
+-- tracked[GUID][Art][Zauber-ID] = { amount, seconds, expires }; ausserhalb des Kampfes wird es aus den echten Auren erneuert.
+local tracked, pendingCast, overCbs = {}, {}, {}
+function UI.OnOverTimeChange(fn) overCbs[#overCbs + 1] = fn end
+local function NotifyOver() for _, fn in ipairs(overCbs) do pcall(fn) end end
+
+local function UnitGuid(unit)
+    local ok, g = pcall(UnitGUID, unit)
+    if ok and g and not Secret(g) then return g end
+end
+
+local function NameIs(tok, name)
+    if not UnitExists(tok) then return false end
+    local n1 = UnitName(tok)
+    if n1 and not Secret(n1) and n1 == name then return true end
+    local n2 = GetUnitName and GetUnitName(tok, true)
+    return n2 and not Secret(n2) and n2 == name or false
+end
+
+local function ResolveGuid(targetName, kind)
+    if type(targetName) ~= "string" or Secret(targetName) then return nil end
+    if targetName == "" then return kind == "heal" and UnitGuid("player") or nil end
+    local tokens = { "target", "focus", "mouseover", "player", "pet", "softenemy", "softfriend" }
+    for i = 1, 4 do tokens[#tokens + 1] = "party" .. i end
+    for i = 1, 40 do tokens[#tokens + 1] = "raid" .. i end
+    for _, tok in ipairs(tokens) do
+        if NameIs(tok, targetName) then
+            local g = UnitGuid(tok)
+            if g then return g end
+        end
+    end
+end
+
+local function Track(guid, kind, spellID, info, expires)
+    local t = tracked[guid]
+    if not t then t = {} tracked[guid] = t end
+    local k = t[kind]
+    if not k then k = {} t[kind] = k end
+    k[spellID] = { amount = info.amount, seconds = info.seconds, expires = expires }
+end
+
+local overEvents = CreateFrame("Frame")
+overEvents:RegisterUnitEvent("UNIT_SPELLCAST_SENT", "player")
+overEvents:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
+overEvents:SetScript("OnEvent", function(_, event, _, a, b, c)
+    if event == "UNIT_SPELLCAST_SENT" then -- Einheit, Zielname, Zauber-GUID, Zauber-ID
+        if b and not Secret(b) and c and not Secret(c) then pendingCast[b] = { target = a, spellID = c } end
+    else -- Einheit, Zauber-GUID, Zauber-ID
+        if not a or Secret(a) then return end
+        local p = pendingCast[a]
+        pendingCast[a] = nil
+        if not p then return end
+        local info = OverInfo(p.spellID)
+        if not info then return end
+        local guid = ResolveGuid(p.target, info.kind)
+        if not guid then return end
+        local old = tracked[guid] and tracked[guid][info.kind] and tracked[guid][info.kind][p.spellID]
+        local now = GetTime()
+        local carry = (old and old.expires > now) and math.min(old.expires - now, info.seconds * 0.3) or 0
+        Track(guid, info.kind, p.spellID, info, now + info.seconds + carry)
+        NotifyOver()
+    end
+end)
+
 function UI.OverTimeRemaining(unit, kind)
     local filter = kind == "heal" and "HELPFUL|PLAYER" or "HARMFUL|PLAYER"
-    local now, total = GetTime(), 0
+    local now, total, found = GetTime(), 0, false
+    local guid = UnitGuid(unit)
+    local fresh = {}
     for _, a in ipairs(CollectAuras(unit, filter)) do
         local id, expires = a.spellId, a.expirationTime
         if id and expires and not Secret(id, expires) and expires > now then
             local info = OverInfo(id)
             if info and info.kind == kind then
+                found = true
                 total = total + info.amount * math.min(1, (expires - now) / info.seconds)
+                fresh[id] = { amount = info.amount, seconds = info.seconds, expires = expires }
+            end
+        end
+    end
+    if guid then
+        if found then
+            tracked[guid] = tracked[guid] or {}
+            tracked[guid][kind] = fresh
+        elseif not (InCombatLockdown and InCombatLockdown()) then
+            if tracked[guid] then tracked[guid][kind] = nil end -- ausserhalb des Kampfes: keine Aura = nichts offen
+        else
+            local k = tracked[guid] and tracked[guid][kind]
+            if k then
+                for id, e in pairs(k) do
+                    if e.expires <= now then k[id] = nil
+                    else total = total + e.amount * math.min(1, (e.expires - now) / e.seconds) end
+                end
             end
         end
     end
@@ -4827,6 +4911,12 @@ SlashCmdList.FOREVEROVER = function(msg)
     if not UnitExists(unit) then P("Einheit '" .. unit .. "' gibt es nicht (Ziel wählen oder /fover player).") return end
     P("Einheit: " .. tostring(UnitName(unit)) .. " | GetUnitAuras: " .. tostring(C_UnitAuras and C_UnitAuras.GetUnitAuras ~= nil) .. ", Beschreibung: "
         .. tostring(C_Spell and C_Spell.GetSpellDescription ~= nil))
+    do
+        local g, n = UnitGuid(unit), 0
+        for _, kinds in pairs(tracked) do for _, k in pairs(kinds) do for _ in pairs(k) do n = n + 1 end end end
+        P(string.format("Kampfsperre: %s | GUID lesbar: %s | verfolgte Zauber gesamt: %d",
+            tostring(InCombatLockdown and InCombatLockdown()), tostring(g ~= nil), n))
+    end
     for _, filter in ipairs({ "HELPFUL|PLAYER", "HARMFUL|PLAYER", "HELPFUL", "HARMFUL" }) do
         local list = CollectAuras(unit, filter)
         P(filter .. ": " .. #list .. " Auren")
