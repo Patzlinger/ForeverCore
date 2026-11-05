@@ -2114,21 +2114,8 @@ H.UNIT_SPELLCAST_FAILED = function(_, castGUID, spellID)
     elseif state.mode ~= "cast" and state.mode ~= "channel" and not PressedTooEarly() then FlashFail(spellID) end
 end
 
--- Zauber verfehlt (Verfehlt, Ausgewichen, Pariert, Widerstanden …): "Name – Verfehlt" in der Fehlerfarbe
-local MISS_LABELS = function() return {
-    MISS = T("Verfehlt", "Missed"), DODGE = T("Ausgewichen", "Dodged"), PARRY = T("Pariert", "Parried"),
-    RESIST = T("Widerstanden", "Resisted"), IMMUNE = T("Immun", "Immune"), REFLECT = T("Reflektiert", "Reflected"),
-    EVADE = T("Entkommen", "Evaded"), DEFLECT = T("Abgelenkt", "Deflected"),
-} end
-
-H.COMBAT_LOG_EVENT_UNFILTERED = function()
-    if state.test or not CombatLogGetCurrentEventInfo then return end
-    local _, sub, _, sourceGUID, _, _, _, _, _, _, _, spellID, _, _, missType = CombatLogGetCurrentEventInfo()
-    if IsSecret(sub, sourceGUID, spellID, missType) or sub ~= "SPELL_MISSED" or not sourceGUID then return end
-    if sourceGUID ~= UnitGUID("player") then return end
-    local label = MISS_LABELS()[missType]
-    if label and spellID then FlashFail(spellID, label) end
-end
+-- (Keine Anzeige "Verfehlt/Ausgewichen/…" über das Kampflog: COMBAT_LOG_EVENT_UNFILTERED ist seit Midnight für Addons
+-- gesperrt – schon das Anmelden löst ADDON_ACTION_FORBIDDEN aus. 2026-11-05 wieder entfernt.)
 
 H.UNIT_SPELLCAST_SUCCEEDED = function(_, _, spellID)
     state.lastSuccess = GetTime()

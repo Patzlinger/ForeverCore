@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- ForeverCast: "Failed" is no longer shown for too-early key presses (e.g. mashing Sinister Strike); a spell that misses now shows "Missed/Dodged/Parried/Resisted …" on the cast bar.
+- ForeverCast: "Failed" is no longer shown for too-early key presses (e.g. mashing Sinister Strike).
 - ForeverQuests: the quest log tab in the dungeon window is now useful on its own – a "Ready to turn in" entry at the top, quests sorted ready-first and by level, XP and gold per quest and per zone, buttons to show a quest on the map and to pin it in the tracker, and right-click opens the tracker's quest menu (share, abandon …).
 
 - Compatibility with Leatrix Maps: when ForeverQuests is on, Leatrix Maps' "simple map frame" and "zone levels" are switched off automatically (they clashed with the quest log; coordinates, reveal map, icons etc. keep working). Switch it back in /forever » Other addons.
