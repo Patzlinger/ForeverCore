@@ -154,6 +154,21 @@ local function PlaceSlots(f)
     end
 end
 
+-- Seite PvP: Blizzard hängt den Rang ("Zivilist") 10 ÜBER die Unterkante der Saison-Zeile ("Saison 1 von …") –
+-- steht dort Text, lagen beide übereinander. Dann den Rang mit Abstand darunter (sonst Blizzards Lage)
+local function PlacePvP()
+    local pvp = G("InspectPVPFrame")
+    local info = pvp and pvp.MainInfoFrame
+    local season, rank = info and info.CurrentSeasonField, info and info.CurrentRankField
+    if not (season and rank) or not pvp:IsVisible() then return end
+    local text = season:GetText()
+    local y = (type(text) == "string" and text ~= "") and -4 or 10
+    local p, rel, rp, _, oy = rank:GetPoint(1)
+    if rank:GetNumPoints() == 1 and p == "TOP" and rel == season and rp == "BOTTOM" and oy == y then return end
+    rank:ClearAllPoints()
+    rank:SetPoint("TOP", season, "BOTTOM", 0, y)
+end
+
 local raised = setmetatable({}, { __mode = "k" })
 local function Raise(obj)
     if not obj or raised[obj] or not obj.GetNumPoints or obj:GetNumPoints() == 0 then return end
@@ -226,6 +241,7 @@ local function SkinInspect()
         waited = 0
         pcall(HideFrameArt, f)
         pcall(PlaceSlots, f)
+        pcall(PlacePvP)
         pcall(Scan, f, 1)
         pcall(Portrait, f) -- (anderer Spieler betrachtet, ohne dass das Fenster zuging)
     end)

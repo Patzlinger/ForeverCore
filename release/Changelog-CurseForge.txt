@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fixed: inspect window, PvP page – the rank ("Civilian") no longer overlaps the season line (a Blizzard layout issue).
+
 - Fixed: ForeverQuests' quest log on the world map – text of Blizzard's quest list underneath no longer shines through.
 
 
