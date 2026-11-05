@@ -61,11 +61,13 @@ local function Scan(frame, depth, close)
     end
 end
 
-local skinned
-local function SkinReport()
-    local f = G("ReportFrame")
-    if not f or skinned or Forbidden(f) then return end
-    skinned = true
+-- Je nach Spielstand heißt das Fenster "ReportFrame" (neue Meldung) oder "ReportCheatingDialog" (ältere Fassung) –
+-- beide, jedes einmal
+local NAMES = { "ReportFrame", "ReportCheatingDialog" }
+local skinned = {}
+local function SkinReport(f)
+    if not f or skinned[f] or Forbidden(f) then return end
+    skinned[f] = true
     ns.noGold[f] = true -- (kein Kontostand in der Titelleiste)
     ns.SkinWindow(f)
     -- Blizzards Rahmen samt Kopf-Schild (DialogBorderTemplate)
@@ -89,6 +91,8 @@ events:RegisterEvent("PLAYER_LOGIN")
 events:RegisterEvent("ADDON_LOADED")
 events:SetScript("OnEvent", function()
     if not ns.GetDB().report then return end
-    if G("ReportFrame") and not skinned then Step("skin", SkinReport) end
-    if skinned then events:UnregisterAllEvents() end
+    for _, name in ipairs(NAMES) do
+        local f = G(name)
+        if f and not skinned[f] then Step("skin", function() SkinReport(f) end) end
+    end
 end)
