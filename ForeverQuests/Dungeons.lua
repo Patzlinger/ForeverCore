@@ -1566,10 +1566,12 @@ RefreshDetail = function()
     local isLog = dungeon ~= nil and dungeon.isLog == true
     if isLog then
         RefreshLogQuests()
-        -- Gebiet ohne Quests mehr (alle abgegeben): "Alle Quests" zeigen
-        if #dungeon.quests == 0 and dungeon ~= QUESTLOG then
-            dungeon = QUESTLOG
-            selectedDungeon = QUESTLOG
+        -- Gebiet ohne Quests mehr (alle abgegeben): das erste verbliebene Gebiet zeigen
+        if #dungeon.quests == 0 then
+            dungeon = logZoneOrder[1]
+            selectedDungeon = dungeon
+            isLog = dungeon ~= nil
+            if window and window:IsShown() and ns.RefreshDungeonList then C_Timer.After(0, ns.RefreshDungeonList) end
         end
     end
     atlasButton:SetShown(dungeon ~= nil and dungeon.areaID ~= nil and IsAtlasLootAvailable())
@@ -1593,11 +1595,15 @@ RefreshDetail = function()
     for _, entry in ipairs(questEntries) do entry:Hide() end
     for _, h in ipairs(zoneHeaders) do h:Hide() end
     if not dungeon then
-        detailTitle:SetText(ns.L(raidTabActive and "NO_RAID" or levelTabActive and "NO_DUNGEON_LEVEL" or "NO_DUNGEON"))
+        detailTitle:SetText(ns.L(logTabActive and "TAB_QUESTLOG" or raidTabActive and "NO_RAID"
+            or levelTabActive and "NO_DUNGEON_LEVEL" or "NO_DUNGEON"))
         detailExtra:SetText("")
         LayoutPills({})
-        -- Gar keine Dungeondaten: Questie fehlt, ist veraltet oder lädt noch
-        if #(ns.ALL_DUNGEON_DATA or {}) == 0 then
+        -- Reiter Questlog ohne Quests: Hinweis; gar keine Dungeondaten: Questie fehlt, ist veraltet oder lädt noch
+        if logTabActive then
+            detailEmpty:SetText(ns.L("QUESTLOG_EMPTY"))
+            detailEmpty:Show()
+        elseif #(ns.ALL_DUNGEON_DATA or {}) == 0 then
             detailEmpty:SetText(ns.L("NO_DUNGEON_DATA"))
             detailEmpty:Show()
         else
@@ -2204,7 +2210,8 @@ RefreshList = function()
     -- Balken = Anteil der abgabebereiten); die Suche findet Gebiets- und Questnamen
     if logTabActive then
         RefreshLogQuests()
-        local entries = { QUESTLOG }
+        -- (nur die Gebiete – "Alle Quests" auf Wunsch entfernt)
+        local entries = {}
         for _, zone in ipairs(logZoneOrder) do
             local hit = filter == "" or zone.name:lower():find(filter, 1, true)
             if not hit then
@@ -2216,7 +2223,7 @@ RefreshList = function()
         end
         local found = false
         for _, e in ipairs(entries) do if e == selectedDungeon then found = true end end
-        if not found then selectedDungeon = QUESTLOG end
+        if not found then selectedDungeon = entries[1] end
         for i, e in ipairs(entries) do
             local button = GetListButton(i)
             button.dungeon = e
@@ -2693,6 +2700,7 @@ local function Guarded(fn, what)
     end
 end
 RefreshList = Guarded(RefreshList, "Liste")
+ns.RefreshDungeonList = function() if window and window:IsShown() then RefreshList() end end
 RefreshDetail = Guarded(RefreshDetail, "Quests")
 ShowAtlasLoot = Guarded(ShowAtlasLoot, "AtlasLoot")
 OpenAtlasLoot = Guarded(OpenAtlasLoot, "AtlasLoot")
@@ -2775,7 +2783,8 @@ function ns.ToggleQuestLogTab()
         return
     end
     logTabActive, levelTabActive, raidTabActive = true, false, false
-    selectedDungeon = QUESTLOG
+    RefreshLogQuests()
+    selectedDungeon = logZoneOrder[1] -- (erstes Gebiet des Questlogs)
     if window.UpdateTabs then window.UpdateTabs() end
     if searchBox and searchBox:GetText() ~= "" then searchBox:SetText("") end
     questScroll:SetVerticalScroll(0)
