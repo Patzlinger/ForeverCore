@@ -19,6 +19,7 @@ Core.lua
 Style.lua
 Masque.lua
 Bars.lua
+TotemEditMode.lua
 Status.lua
 Profiles.lua
 Minimap.lua

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverBars (shaman): the totem bar no longer jumps when combat starts – it is marked as moved in Blizzard's Edit Mode once (with a preset layout active, a copy called "Forever" is created), so Blizzard no longer re-arranges it.
+
 - ForeverQuests: the tracker's "Dungeons" button opens the dungeon window on the "My level" tab, "Log" opens the quest log tab (a second click closes it).
 
 - ForeverCast: "Failed" is no longer shown for too-early key presses (e.g. mashing Sinister Strike).
