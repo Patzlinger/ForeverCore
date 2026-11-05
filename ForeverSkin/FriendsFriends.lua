@@ -105,6 +105,8 @@ local function SkinFriendsFriends()
     if not f or skinned or Forbidden(f) then return end
     skinned = true
     ns.noGold[f] = true
+    -- (ältere Fassung: Steinrahmen als Backdrop am Fenster selbst)
+    if f.ClearBackdrop and f.GetBackdrop and f:GetBackdrop() then pcall(f.ClearBackdrop, f) end
     ns.SkinWindow(f)
     for _, key in ipairs({ "Border", "Header" }) do
         local part = f[key]
