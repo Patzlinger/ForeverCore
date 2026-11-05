@@ -852,9 +852,9 @@ local function CreateOptions()
         function() return ns.db.showCounts end,
         function(value) ns.db.showCounts = value; ns.UpdateAllButtons() end)
     CreateCheckbox(fontPage, L("OPT_CASTCOUNT"), 360, -112,
-        function() return ns.db.castCount end,
+        function() return ns.CastCountEnabled() end,
         function(value)
-            ns.db.castCount = value
+            ns.db.castCountUser = value and true or false
             ns.UpdateCastCounts()
             if value then ns.CastCountDiag() end -- Fehlersuche: zeigt, ob das Mana lesbar ist
         end)

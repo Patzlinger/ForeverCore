@@ -903,9 +903,16 @@ local function HideOwnMicro()
     if wasOwn then ns.Print(L("MICRO_RELOAD")) end
 end
 
--- Zauber pro Mana (ns.db.castCount, Standard aus): kleine Zahl unten links auf Zauber-Knöpfen – wie oft der Zauber mit
+-- Zauber pro Mana (ns.db.castCountUser: nil = automatisch an bei Mana-Klassen): kleine Zahl unten links auf Zauber-Knöpfen – wie oft der Zauber mit
 -- dem aktuellen Mana wirkbar wäre. Nur Zauber mit Manakosten (auch über Makros). Im Kampf kann das Mana gesperrt sein:
 -- dann bleibt die zuletzt berechnete Zahl stehen.
+local NO_MANA = { WARRIOR = true, ROGUE = true, DEATHKNIGHT = true, DEMONHUNTER = true }
+function ns.CastCountEnabled()
+    local v = ns.db and ns.db.castCountUser
+    if v ~= nil then return v and true or false end
+    return not NO_MANA[select(2, UnitClass("player"))]
+end
+
 local function ActionSpell(button)
     local slot = button.action
     if type(slot) ~= "number" and button.GetAttribute then slot = button:GetAttribute("action") end
@@ -1006,7 +1013,7 @@ function ns.CastCountDiag()
         end
     end
     print(string.format("|cffffd100ForeverBars Zauber/Mana|r Option an: %s | Mana lesbar: %s | gemerkt: %s | Kampf: %s | Knöpfe mit Zauber: %d, davon mit Manakosten: %d",
-        tostring(ns.db and ns.db.castCount), tostring(Readable(m)), tostring(mm.cur and math.floor(mm.cur)),
+        tostring(ns.CastCountEnabled()), tostring(Readable(m)), tostring(mm.cur and math.floor(mm.cur)),
         tostring(InCombatLockdown()), withSpell, withCost))
     -- weitere Wege zu einer lesbaren Zahl (Maximum, Prozent über Kurve, Kostenanteil)
     local function Probe(label, fn)
@@ -1037,7 +1044,7 @@ end
 SlashCmdList.FORBARSCAST = ns.CastCountDiag
 
 function ns.UpdateCastCounts()
-    local on = ns.db and ns.db.castCount
+    local on = ns.db and ns.CastCountEnabled()
     local mana = on and ManaNow() or nil
     for _, def in ipairs(ns.BAR_DEFS) do
         for _, button in ipairs(GetAllButtons(def)) do
@@ -3609,10 +3616,10 @@ function ns.SetupBars()
         end
         -- gesperrtes Mana (Kampf): geschätzt weiterführen, zweimal pro Sekunde
         C_Timer.NewTicker(0.5, function()
-            if ns.db and ns.db.castCount and ns.CastCountEstimating() then ns.UpdateCastCounts() end
+            if ns.db and ns.CastCountEnabled() and ns.CastCountEstimating() then ns.UpdateCastCounts() end
         end)
         f:SetScript("OnEvent", function(_, event, _, _, spellID)
-            if not ns.db or not ns.db.castCount then return end
+            if not ns.db or not ns.CastCountEnabled() then return end
             if event == "UNIT_SPELLCAST_SUCCEEDED" then ns.CastCountOnCast(spellID) end
             if pending then return end
             pending = true
