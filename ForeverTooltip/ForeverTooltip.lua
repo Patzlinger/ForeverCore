@@ -594,6 +594,131 @@ do
             if Hook() then self:UnregisterAllEvents() end
         end)
     end
+
+    -------------------------------------------------------------------------
+    -- Gegenstands-Tooltip: was die Werte des Gegenstands DIR bringen ("Ausdauer +10: +100 Gesundheit") und beim
+    -- Ansehen eines nicht angelegten Gegenstands der Unterschied zum angelegten am selben Platz. Gleiche Rechnung wie
+    -- oben (Spielfunktionen, gemessener Talent-/Buff-Bonus). Nur außerhalb des Kampfes, nur angehängt.
+    -------------------------------------------------------------------------
+    local ORDER = { STR, AGI, STA, INT, SPI }
+    local SLOTS = { INVTYPE_HEAD = { 1 }, INVTYPE_NECK = { 2 }, INVTYPE_SHOULDER = { 3 }, INVTYPE_BODY = { 4 },
+        INVTYPE_CHEST = { 5 }, INVTYPE_ROBE = { 5 }, INVTYPE_WAIST = { 6 }, INVTYPE_LEGS = { 7 }, INVTYPE_FEET = { 8 },
+        INVTYPE_WRIST = { 9 }, INVTYPE_HAND = { 10 }, INVTYPE_FINGER = { 11, 12 }, INVTYPE_TRINKET = { 13, 14 },
+        INVTYPE_CLOAK = { 15 }, INVTYPE_WEAPON = { 16, 17 }, INVTYPE_2HWEAPON = { 16 }, INVTYPE_WEAPONMAINHAND = { 16 },
+        INVTYPE_WEAPONOFFHAND = { 17 }, INVTYPE_SHIELD = { 17 }, INVTYPE_HOLDABLE = { 17 }, INVTYPE_RANGED = { 18 },
+        INVTYPE_RANGEDRIGHT = { 18 }, INVTYPE_THROWN = { 18 }, INVTYPE_RELIC = { 18 }, INVTYPE_TABARD = { 19 } }
+
+    local function Signed(v, suffix)
+        return (v >= 0 and "+" or "-") .. Fmt(math.abs(v)) .. (suffix or "")
+    end
+    -- Wirkung von "amount" Punkten eines Werts (auf einem Gegenstand) für den Charakter: { "+100 Gesundheit", … }
+    local function Effects(stat, amount)
+        local ok, _, eff = pcall(UnitStat, "player", stat)
+        if not ok or type(eff) ~= "number" or issecret(eff) then return {} end
+        local _, class = UnitClass("player")
+        local n = amount * (Ratio(stat) or 1)
+        local out = {}
+        local function Add(perPoint, label, suffix)
+            if perPoint and perPoint > 0 then
+                local v = perPoint * n
+                -- ganze Werte runden, Prozente auf zwei Stellen
+                if not suffix then v = (v >= 0 and math.floor(v + 0.5) or -math.floor(-v + 0.5)) end
+                if v ~= 0 then out[#out + 1] = Signed(v, suffix) .. " " .. label end
+            end
+        end
+        if stat == STR then
+            Add(Slope(GetAttackPowerForStat, STR, eff), T("Angriffskraft", "attack power"))
+            if BLOCKERS[class] and BLOCK_VALUE_PER_STRENGTH then Add(1 / BLOCK_VALUE_PER_STRENGTH, T("Blockwert", "block value")) end
+        elseif stat == AGI then
+            local ap = Slope(GetAttackPowerForStat, AGI, eff)
+            Add(ap, T("Angriffskraft", "attack power"))
+            local rap = Slope(GetRangedAttackPowerForStat, AGI, eff)
+            if rap and rap ~= ap then Add(rap, T("Distanzangriffskraft", "ranged attack power")) end
+            local crit = Slope(GetCritChanceFromStat, AGI, eff)
+            Add(crit and crit * 100, T("Krit.", "crit"), " %")
+            Add(ARMOR_PER_AGILITY, T("Rüstung", "armor"))
+        elseif stat == STA then
+            Add(CharDB().hpPerSta or Num(UnitHPPerStamina, "player"), T("Gesundheit", "health"))
+        elseif stat == INT then
+            if not NO_MANA[class] then Add(CharDB().manaPerInt or MANA_PER_INTELLECT, T("Mana", "mana")) end
+            local crit = Slope(GetSpellCritChanceFromStat, INT, eff)
+            Add(crit and crit * 100, T("Zauberkrit.", "spell crit"), " %")
+        elseif stat == SPI and eff > 0 then
+            local health = Num(GetHealthRegenFromSpirit)
+            if health then Add(health * 5 * 0.75 / eff, T("Gesundheit/5 Sek.", "health/5 sec.")) end
+            local mana = not NO_MANA[class] and Num(GetManaRegenFromSpirit)
+            if mana then Add(mana * 5 / eff, T("Mana/5 Sek.", "mana/5 sec.")) end
+        end
+        return out
+    end
+
+    local function StatName(stat) return _G["SPELL_STAT" .. stat .. "_NAME"] or "?" end
+    local function Sum(stats)
+        local s = 0
+        for _, v in pairs(stats) do s = s + v end
+        return s
+    end
+    -- angelegter Gegenstand am selben Platz (bei Ringen/Schmuck/Einhand: der mit den schwächeren Werten)
+    local function EquippedFor(equipLoc)
+        local slots = SLOTS[equipLoc]
+        if not slots then return nil end
+        local best, bestSum
+        for _, slot in ipairs(slots) do
+            local link = GetInventoryItemLink("player", slot)
+            local stats = ItemStats(link)
+            local sum = link and Sum(stats) or -1
+            if not bestSum or sum < bestSum then best, bestSum = { link = link, stats = stats }, sum end
+        end
+        return best
+    end
+
+    local function OnItemTip(tip)
+        if not GetDB().statPerPoint or InCombatLockdown() or not tip.GetItem then return end
+        local _, link = tip:GetItem()
+        if not link or issecret(link) then return end
+        local stats = ItemStats(link)
+        local lines = {}
+        for _, s in ipairs(ORDER) do
+            if (stats[s] or 0) ~= 0 then
+                local effects = Effects(s, stats[s])
+                if #effects > 0 then
+                    lines[#lines + 1] = StatName(s) .. " " .. Signed(stats[s]) .. ":  " .. table.concat(effects, "  ·  ")
+                end
+            end
+        end
+        -- Vergleich nur im Haupt-Tooltip (die Vergleichs-Tooltips zeigen ja den angelegten Gegenstand)
+        local compare = {}
+        if tip == GameTooltip or tip == _G.ItemRefTooltip then
+            local okInfo, _, _, _, equipLoc = pcall(C_Item.GetItemInfoInstant, link)
+            local equipped = okInfo and equipLoc and EquippedFor(equipLoc)
+            if equipped and equipped.link ~= link then
+                for _, s in ipairs(ORDER) do
+                    local delta = (stats[s] or 0) - (equipped.stats[s] or 0)
+                    if delta ~= 0 then
+                        local effects = Effects(s, delta)
+                        local color = delta > 0 and "|cff55dd55" or "|cffee5555"
+                        compare[#compare + 1] = color .. StatName(s) .. " " .. Signed(delta) .. "|r" ..
+                            (#effects > 0 and (":  " .. table.concat(effects, "  ·  ")) or "")
+                    end
+                end
+            end
+        end
+        if #lines == 0 and #compare == 0 then return end
+        if #lines > 0 then
+            tip:AddLine(" ")
+            tip:AddLine(T("Für dich", "For you"), C.accent[1], C.accent[2], C.accent[3])
+            for _, line in ipairs(lines) do tip:AddLine(line, 0.9, 0.9, 0.9, true) end
+        end
+        if #compare > 0 then
+            tip:AddLine(" ")
+            tip:AddLine(T("Gegenüber angelegt", "Compared to equipped"), C.accent[1], C.accent[2], C.accent[3])
+            for _, line in ipairs(compare) do tip:AddLine(line, 0.9, 0.9, 0.9, true) end
+        end
+        tip:Show()
+    end
+    if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall and Enum and Enum.TooltipDataType then
+        TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, function(tip) pcall(OnItemTip, tip) end)
+    end
 end
 
 ---------------------------------------------------------------------------

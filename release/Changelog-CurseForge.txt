@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverTooltip: item tooltips now show what the item's stats give you (e.g. "Stamina +10: +100 health", "Agility +12: +12 attack power · +0.6 % crit · +24 armor") and, for items you don't wear, the difference to your equipped item in that slot – with the same values as the character window (out of combat only).
+
 - ForeverQuests: quest rewards in the dungeon window no longer stay at "Item … (loading …)" – if the server doesn't answer, it asks again a few times and shows the name from Questie's item data meanwhile.
 
 - ForeverTooltip: the character window's attribute tooltips (Strength, Agility, Stamina, Intellect, Spirit) now also show what one point gives your character, e.g. "1 Strength = 2 attack power" or "20 Agility = 1 % critical strike chance" (values from the game, for your class and level; out of combat only; can be turned off in the settings). Bonuses from talents and buffs are measured on each gear change: how much of one point on an item really arrives, and how much health/mana one point of Stamina/Intellect really gives.
