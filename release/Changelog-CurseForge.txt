@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Compatibility with Leatrix Maps: when ForeverQuests is on, Leatrix Maps' "simple map frame" and "zone levels" are switched off automatically (they clashed with the quest log; coordinates, reveal map, icons etc. keep working). Switch it back in /forever » Other addons.
 - ForeverCast: eating and drinking now show simply what the consumable restores ("+4410 health", "+4200 mana") instead of "healing over time".
 - ForeverUnits: the five-second-rule marker is no longer reset by spells without mana cost (e.g. wand shots).
 - ForeverBars: the professions bar now also finds the rogue "Poisons" and the mage "Comprehend Scroll" by name (new /fbspell command to look up spell IDs).

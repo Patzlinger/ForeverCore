@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 76
+local VERSION = 77
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -3506,36 +3506,49 @@ local function LeatrixDefs() return {
       feature = T("Chat-Knöpfe, Eingabe oben, Pfeiltasten", "Chat buttons, editbox on top, arrow keys") },
     { forever = "ForeverBars",    topic = T("Aktionsleisten", "Action bars"), keys = { "HideKeybindText", "HideMacroText" },
       feature = T("Tasten-/Makrotext ausblenden", "Hide keybind/macro text") },
+    -- Leatrix Maps (eigenes Addon, eigene Datenbank LeaMapsDB; Standard der Schalter ist "On"): das "einfache Kartenfenster"
+    -- baut Titelleiste, Rand und Questlog der Weltkarte um und kollidiert mit dem Questlog von ForeverQuests (Fenster
+    -- liefen ineinander); die Gebietsstufen zeigt ForeverQuests ebenfalls. Koordinaten, Karte aufdecken, Symbole,
+    -- Skalierung usw. von Leatrix Maps laufen weiter.
+    { forever = "ForeverQuests",  topic = T("Weltkarte und Questlog", "World map and quest log"),
+      addon = "Leatrix_Maps", db = "LeaMapsDB", title = "Leatrix Maps", defaultOn = true,
+      keys = { "SimpleMapFrame", "ShowZoneLevels" },
+      feature = T("Kartenfenster-Umbau, Gebietsstufen", "Simple map frame, zone levels") },
 } end
 
-local function LeatrixKey(d) return d.forever .. ">" .. LEATRIX end
+local function LeatrixAddon(d) return d.addon or LEATRIX end
+local function LeatrixKey(d) return d.forever .. ">" .. LeatrixAddon(d) end
 
--- vor Leatrix' eigenem Laden: gewünschte Werte in LeaPlusDB setzen (gilt ab diesem Laden)
-local function ApplyLeatrix()
-    local lea = _G.LeaPlusDB
-    if type(lea) ~= "table" then return end
+-- vor Leatrix' eigenem Laden: gewünschte Werte in dessen Datenbank (LeaPlusDB / LeaMapsDB) setzen (gilt ab diesem
+-- Laden). Wir merken uns, was wir abgeschaltet haben (leatrixOff; für Leatrix Plus mit dem nackten Schlüssel wie bisher,
+-- für andere Leatrix-Addons mit Addon-Name davor), damit die Wahl "Leatrix" es wieder einschaltet.
+local function ApplyLeatrix(addonName)
     local db = GetDB()
     db.leatrixOff = db.leatrixOff or {}
     local choice = db.conflictChoice or {}
     local turnedOff = {}
     for _, d in ipairs(LeatrixDefs()) do
-        local useLeatrix = choice[LeatrixKey(d)] == "other"
-        if not useLeatrix and IsEnabled(d.forever) then
-            local any = false
-            for _, k in ipairs(d.keys) do
-                if lea[k] == "On" then
-                    lea[k] = "Off"
-                    db.leatrixOff[k] = true
-                    any = true
+        local lea = _G[d.db or "LeaPlusDB"]
+        if LeatrixAddon(d) == addonName and type(lea) == "table" then
+            local function Mark(k) return d.addon and (d.addon .. ":" .. k) or k end
+            local useLeatrix = choice[LeatrixKey(d)] == "other"
+            if not useLeatrix and IsEnabled(d.forever) then
+                local any = false
+                for _, k in ipairs(d.keys) do
+                    if lea[k] == "On" or (lea[k] == nil and d.defaultOn) then
+                        lea[k] = "Off"
+                        db.leatrixOff[Mark(k)] = true
+                        any = true
+                    end
                 end
-            end
-            if any then turnedOff[#turnedOff + 1] = d end
-        elseif useLeatrix then
-            -- zurück zu Leatrix: was wir abgeschaltet hatten, wieder an
-            for _, k in ipairs(d.keys) do
-                if db.leatrixOff[k] then
-                    lea[k] = "On"
-                    db.leatrixOff[k] = nil
+                if any then turnedOff[#turnedOff + 1] = d end
+            elseif useLeatrix then
+                -- zurück zu Leatrix: was wir abgeschaltet hatten, wieder an
+                for _, k in ipairs(d.keys) do
+                    if db.leatrixOff[Mark(k)] then
+                        lea[k] = "On"
+                        db.leatrixOff[Mark(k)] = nil
+                    end
                 end
             end
         end
@@ -3544,8 +3557,8 @@ local function ApplyLeatrix()
         -- kurz Bescheid geben (nach dem Laden, damit der Chat schon da ist)
         C_Timer.After(6, function()
             for _, d in ipairs(turnedOff) do
-                UI.Chat("Forever", string.format(T("Leatrix Plus: „%s“ ausgeschaltet – %s übernimmt das. Umstellen: /forever » Andere Addons.",
-                    "Leatrix Plus: \"%s\" turned off – %s handles that. Change it: /forever » Other addons."), d.feature, d.forever))
+                UI.Chat("Forever", string.format(T("%s: „%s“ ausgeschaltet – %s übernimmt das. Umstellen: /forever » Andere Addons.",
+                    "%s: \"%s\" turned off – %s handles that. Change it: /forever » Other addons."), d.title or "Leatrix Plus", d.feature, d.forever))
             end
         end)
     end
@@ -3553,11 +3566,8 @@ end
 do
     local lf = CreateFrame("Frame")
     lf:RegisterEvent("ADDON_LOADED")
-    lf:SetScript("OnEvent", function(self, _, name)
-        if name == LEATRIX then
-            pcall(ApplyLeatrix)
-            self:UnregisterAllEvents()
-        end
+    lf:SetScript("OnEvent", function(_, _, name)
+        if name == LEATRIX or name == "Leatrix_Maps" then pcall(ApplyLeatrix, name) end
     end)
 end
 
@@ -3578,9 +3588,9 @@ local function ConflictPairs()
         end
     end
     -- Leatrix Plus: einzelne Funktionen statt des ganzen Addons
-    if IsInstalled(LEATRIX) then
-        for _, d in ipairs(LeatrixDefs()) do
-            if IsInstalled(d.forever) then list[#list + 1] = { c = d, other = LEATRIX, leatrix = d } end
+    for _, d in ipairs(LeatrixDefs()) do
+        if IsInstalled(LeatrixAddon(d)) and IsInstalled(d.forever) then
+            list[#list + 1] = { c = d, other = LeatrixAddon(d), leatrix = d }
         end
     end
     return list
@@ -3646,7 +3656,7 @@ local function BuildConflictWindow()
         row.status = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
         row.status:SetPoint("LEFT", row.topic, "RIGHT", 10, 0)
         local otherTitle = AddonTitle(p.other)
-        if p.leatrix then otherTitle = "Leatrix Plus: " .. p.leatrix.feature end
+        if p.leatrix then otherTitle = (p.leatrix.title or "Leatrix Plus") .. ": " .. p.leatrix.feature end
         -- Wahl: Forever-Addon nutzen (anderes aus) oder das andere (Forever-Addon aus)
         row.useForever = UI.Button(row, p.c.forever, 200, function()
             SetEnabled(p.c.forever, true)
