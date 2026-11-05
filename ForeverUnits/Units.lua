@@ -919,20 +919,33 @@ local function Measured(cur)
     end
     if span >= 2 and gain > 0 then return gain / span end
 end
+local regenCache, lastPType = {}, nil
 local function RegenText(b, pType, pToken, cur)
-    if b.unit ~= "player" or GetDB().powerRegen == false or IsSecret(pType, pToken) then return end
+    if b.unit ~= "player" or GetDB().powerRegen == false then return end
+    -- Im Kampf sind Ressourcenart, Ressource und die Werte der Schnittstelle oft gesperrt: dann gilt die zuletzt
+    -- lesbare Art und der zuletzt lesbare Wert (Grundwert / Zauberwert); die Auswahl nach der Fünf-Sekunden-Regel
+    -- bleibt live.
+    if IsSecret(pType) or type(pType) ~= "number" then pType = lastPType else lastPType = pType end
     if pType ~= 0 and pType ~= 3 then return end
-    local ok, rate = pcall(function()
+    local c = regenCache[pType]
+    if not c then c = {} regenCache[pType] = c end
+    local function Good(x) return type(x) == "number" and not IsSecret(x) and x > 0 end
+    pcall(function()
         if pType == 0 then
             if not GetManaRegen then return end
             local base, casting = GetManaRegen()
-            return (GetTime() - lastCast < 5) and casting or base
+            if Good(base) then c.base = base end
+            if Good(casting) then c.casting = casting end
+        else
+            local r
+            if GetPowerRegenForPowerType then r = GetPowerRegenForPowerType(3)
+            elseif GetPowerRegen then r = (GetPowerRegen()) end
+            if Good(r) then c.base = r end
         end
-        if GetPowerRegenForPowerType then return GetPowerRegenForPowerType(3) end
-        if GetPowerRegen then return (GetPowerRegen()) end
     end)
-    local measured = Measured(cur)
-    if not ok or type(rate) ~= "number" or IsSecret(rate) or rate <= 0 then rate = measured end
+    local rate
+    if pType == 0 and GetTime() - lastCast < 5 then rate = c.casting or c.base else rate = c.base end
+    if not rate then rate = Measured(cur) end
     if not rate or rate <= 0 then return end
     -- gleiche Farbe wie die Zahl, mit Abstand davor
     if rate >= 10 then return string.format("   +%d/s", math.floor(rate + 0.5)) end
