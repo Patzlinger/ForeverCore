@@ -1048,25 +1048,35 @@ local function DruidMana(b)
     if IsSecret(pType) or type(pType) ~= "number" then pType = lastPType else lastPType = pType end
     local show = GetDB().druidMana ~= false and pType ~= nil and pType ~= 0 and FrameDB(b.key).powerHeight > 0
     if not show then
-        if v.mana then v.mana:Hide() end
+        if v.mana then v.mana:Hide() v.manaText:Hide() end
         return
     end
+    -- Im Rahmen: ein schmaler Streifen am unteren Rand des Ressourcenbalkens (mit dünner Trennlinie darüber), die
+    -- Manazahl links im Ressourcenbalken – Rahmengröße und Lebensbalken bleiben unverändert.
     local m = v.mana
     if not m then
-        m = NewBar(v.content)
+        m = NewBar(v.power)
         m:SetStatusBarTexture(WHITE)
-        m:SetFrameLevel(v.content:GetFrameLevel() + 1)
+        m:SetFrameLevel(v.power:GetFrameLevel() + 1)
         m.bg = m:CreateTexture(nil, "BACKGROUND")
         m.bg:SetAllPoints(m)
-        m.bg:SetColorTexture(0, 0, 0, 0.55)
-        m.text = NewText(m)
-        m.text:SetPoint("CENTER", m, "CENTER", 0, 0)
+        m.bg:SetColorTexture(0, 0, 0, 0.7)
+        m.line = m:CreateTexture(nil, "OVERLAY")
+        m.line:SetColorTexture(0, 0, 0, 0.8)
+        m.line:SetPoint("TOPLEFT", m, "TOPLEFT")
+        m.line:SetPoint("TOPRIGHT", m, "TOPRIGHT")
+        m.line:SetHeight(1)
         v.mana = m
+        v.manaText = NewText(v.top)
+        v.manaText:SetJustifyH("LEFT")
     end
+    local pf = FrameDB(b.key)
     m:ClearAllPoints()
-    m:SetPoint("TOPLEFT", v.content, "BOTTOMLEFT", 0, -3)
-    m:SetPoint("TOPRIGHT", v.content, "BOTTOMRIGHT", 0, -3)
-    m:SetHeight(math.max(8, FrameDB(b.key).powerHeight - 2))
+    m:SetPoint("BOTTOMLEFT", v.power, "BOTTOMLEFT", 0, 0)
+    m:SetPoint("BOTTOMRIGHT", v.power, "BOTTOMRIGHT", 0, 0)
+    m:SetHeight(pf.powerHeight >= 10 and 4 or 3)
+    v.manaText:ClearAllPoints()
+    v.manaText:SetPoint("LEFT", v.power, "LEFT", 8, 1)
     local c = PowerBarColor and PowerBarColor[0]
     SetBarFill(m, c and c.r or 0, c and c.g or 0.45, c and c.b or 1)
     local cur, max = UnitPower("player", 0), UnitPowerMax("player", 0)
@@ -1078,9 +1088,10 @@ local function DruidMana(b)
         m:SetValue(cur or 0)
     end
     local look = Look()
-    m.text:SetFont(look.font or STANDARD_TEXT_FONT, math.max(7, m:GetHeight() - 2), look.outline or "")
-    m.text:SetFormattedText("%s", ns.ShortNumber(cur))
+    v.manaText:SetFont(look.font or STANDARD_TEXT_FONT, math.max(7, math.min(pf.fontSize - 3, pf.powerHeight - 2)), look.outline or "")
+    v.manaText:SetFormattedText("%s", ns.ShortNumber(cur))
     m:Show()
+    v.manaText:Show()
 end
 
 local function UpdatePower(b)
