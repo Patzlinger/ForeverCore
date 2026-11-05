@@ -77,22 +77,40 @@ local function Scan(frame, depth)
     end
 end
 
--- Text samt Laufleiste in den Kasten (unter die Visitenkarte, über die Knopfleiste)
+-- Inhalt in den Kasten (unter die Visitenkarte, über die Knopfleiste): alle Inhalts-Flächen direkt am Fenster
+-- (Begrüßung, Kaufen-Seite, Laufbereich) – nicht Titel, Rahmen, Knöpfe; dazu die Laufleisten
+local SKIP_KEYS = { TitleContainer = true, PortraitContainer = true, NineSlice = true, Inset = true }
 local function Place(f)
-    local function Walk(frame, depth)
+    local skip = {}
+    for key in pairs(SKIP_KEYS) do if type(f[key]) == "table" then skip[f[key]] = true end end
+    for _, child in ipairs({ f:GetChildren() }) do
+        if not Forbidden(child) and not skip[child] and child:IsShown() and not child:IsObjectType("Button") then
+            ns.Fit(f, child, CARD + 8, FOOTER + 14)
+        end
+    end
+    local function Bars(frame, depth)
         for _, child in ipairs({ frame:GetChildren() }) do
             if not Forbidden(child) and child:IsShown() then
-                if child:IsObjectType("ScrollFrame") then
+                if child:IsObjectType("Slider") or type(child.Track) == "table" then
                     ns.Fit(f, child, CARD + 8, FOOTER + 14)
-                    local bar = child.ScrollBar or (child:GetName() and _G[child:GetName() .. "ScrollBar"])
-                    if bar then ns.Fit(f, bar, CARD + 8, FOOTER + 14, child) end
-                elseif depth < 2 then
-                    Walk(child, depth + 1)
+                elseif depth < 3 then
+                    Bars(child, depth + 1)
                 end
             end
         end
     end
-    Walk(f, 1)
+    Bars(f, 1)
+end
+
+-- Blizzards Titel (NPC-Name oben in der Leiste) weg – der Name steht in unserer Visitenkarte; in der Leiste nur
+-- unsere Beschriftung
+local function HideTitle(f)
+    local name = f:GetName()
+    if name then
+        for _, suffix in ipairs({ "NpcNameText", "TitleText", "NpcName" }) do ns.Hide(_G[name .. suffix]) end
+    end
+    if f.TitleContainer then ns.Hide(f.TitleContainer) end
+    if f.TitleText then ns.Hide(f.TitleText) end
 end
 
 local skinned
@@ -108,6 +126,7 @@ local function SkinRegistrar()
     ns.Scaled(f)
     local function Card()
         ns.NpcCard(f, "npc", ns.T("Gilde", "Guild"), function() return ns.T("Gildenregistrator", "Guild registrar") end)
+        HideTitle(f)
     end
     f:HookScript("OnShow", function(self)
         pcall(Card)
