@@ -36,17 +36,18 @@ local function SkinBooks()
     ns.noGold[f] = true
     ns.SkinWindow(f)
     for _, n in ipairs(MATERIAL) do ns.Hide(G(n)) end
+    -- (Blizzards Innenfläche macht ns.SkinWindow schon zu unserem flachen Kasten – kein zweiter Kasten dahinter)
     local inset = f.Inset or G("ItemTextFrameInset")
-    if inset and inset.NineSlice then ns.Hide(inset.NineSlice) end
-    if inset and inset.Bg then ns.Hide(inset.Bg) end
-    -- flacher Kasten hinter dem Text (um den Laufbereich, etwas Luft)
     local scroll = G("ItemTextScrollFrame") or f.ScrollFrame
-    if scroll then
+    if not inset and scroll then
+        -- ohne Innenfläche: ein eigener Kasten um den Laufbereich
         local box = CreateFrame("Frame", nil, f)
         box:SetPoint("TOPLEFT", scroll, "TOPLEFT", -6, 6)
-        box:SetPoint("BOTTOMRIGHT", scroll, "BOTTOMRIGHT", 6, -6)
+        box:SetPoint("BOTTOMRIGHT", scroll, "BOTTOMRIGHT", 26, -6)
         box:SetFrameLevel(math.max(0, scroll:GetFrameLevel() - 1))
         ns.Flat(box, C.panel)
+    end
+    if scroll then
         ns.HideTextures(scroll)
         local bar = scroll.ScrollBar or G("ItemTextScrollFrameScrollBar")
         if bar then ns.SkinScrollBar(bar) end
