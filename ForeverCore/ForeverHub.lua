@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 74
+local VERSION = 75
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -485,6 +485,7 @@ local function Renumber(strata)
 end
 
 function UI.BringToFront(f, again)
+    if f.fcNoRaiseInCombat and InCombatLockdown() then return end -- Fenster mit geschützten Kindern (ForeverBags)
     local strata = f:GetFrameStrata()
     local top = 0
     for w in pairs(SHARED.windows) do

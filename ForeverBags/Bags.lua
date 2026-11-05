@@ -1021,9 +1021,8 @@ local function PlaceOnOpen()
         return
     end
     local x, y = GetCursorPosition()
-    -- der Mauszeiger steht auf dem untersten rechten Taschenplatz (Mitte), das Fenster öffnet sich nach links oben
-    local below = 2 * PAD + FOOTER + ((currencyRow and currencyRow:IsShown()) and CURRENCY_ROW or 0)
-    At("BOTTOMRIGHT", nil, x + (PAD + SLOT / 2) * ws, y + (below + SLOT / 2) * ws)
+    -- der Mauszeiger steht im Fenster über dem Geld (unten rechts in der Fußzeile), das Fenster öffnet sich nach links oben
+    At("BOTTOMRIGHT", nil, x + 50 * ws, y + 18 * ws)
 end
 
 function ns.ResetPosition()
@@ -1525,15 +1524,35 @@ local function QueueRefresh()
     end)
 end
 
+-- Plätze anlegen UND positionieren, auch wenn das Fenster zu ist (nur außerhalb des Kampfes möglich). Sonst haben
+-- die Plätze nach einem Login im Kampf nie eine Position/Ebene, und das erste Öffnen im Kampf zeigt nur eine
+-- schwarze Fläche (im Kampf lässt sich an geschützten Plätzen nichts mehr setzen).
+local function PrepareForCombat()
+    if InCombatLockdown() or not window or view ~= nil then return end
+    ns.LayoutBags()
+    for _, list in pairs(buttons) do
+        for _, b in pairs(list) do ns.FollowParentLevel(b) end
+    end
+end
+
 local events = CreateFrame("Frame")
 events:SetScript("OnEvent", function(_, event, isInitialLogin)
     if event == "PLAYER_ENTERING_WORLD" then
         -- beim Einloggen meldet das Spiel viele Gegenstände als "neu": nicht alles leuchten lassen
         if isInitialLogin and C_NewItems and C_NewItems.ClearAll then C_NewItems.ClearAll() end
+        C_Timer.After(2, PrepareForCombat)
+        return
+    end
+    if event == "PLAYER_REGEN_DISABLED" then
+        PrepareForCombat() -- Kampfbeginn: die Sperre greift erst kurz danach
         return
     end
     if event == "PLAYER_REGEN_ENABLED" then
-        if createPending and window and window:IsShown() then ns.LayoutBags() end
+        if window and window:IsShown() then
+            if createPending then ns.LayoutBags() end
+        else
+            PrepareForCombat()
+        end
         return
     end
     if event == "GET_ITEM_INFO_RECEIVED" or event == "ITEM_DATA_LOAD_RESULT" then
@@ -1547,10 +1566,11 @@ end)
 function ns.SetupBags()
     if window then return end
     CreateWindow()
+    window.fcNoRaiseInCombat = true -- im Kampf nicht nach vorne holen: die geschützten Plätze können ihre Ebene dann nicht nachziehen
     HookBlizzard()
     EnsureSlots() -- alle Plätze gleich beim Login anlegen: dann muss im Kampf nichts Neues entstehen
     for _, event in ipairs({ "BAG_UPDATE_DELAYED", "ITEM_LOCK_CHANGED", "BAG_UPDATE_COOLDOWN", "PLAYER_MONEY",
-        "INVENTORY_SEARCH_UPDATE", "BAG_NEW_ITEMS_UPDATED", "PLAYER_REGEN_ENABLED", "BAG_CONTAINER_UPDATE",
+        "INVENTORY_SEARCH_UPDATE", "BAG_NEW_ITEMS_UPDATED", "PLAYER_REGEN_ENABLED", "PLAYER_REGEN_DISABLED", "BAG_CONTAINER_UPDATE",
         "PLAYER_EQUIPMENT_CHANGED", "PLAYER_ENTERING_WORLD", "CURRENCY_DISPLAY_UPDATE", "QUEST_ACCEPTED",
         "QUEST_REMOVED", "GET_ITEM_INFO_RECEIVED", "ITEM_DATA_LOAD_RESULT" }) do
         pcall(events.RegisterEvent, events, event)
