@@ -879,6 +879,8 @@ end
 
 local function CreateWindow()
     window = UI.Window("ForeverBagsFrame", L("WINDOW_TITLE"), 400, 300)
+    -- standardmäßig 10 % größer (eine mit dem Griff unten rechts selbst gesetzte Größe übernimmt der Hub beim Öffnen)
+    window:SetScale(1.10)
     window:SetFrameStrata("HIGH") -- über den Leisten, unter Menüs und Dialogen
     -- Ziehen an der Titelleiste (UI.Window bringt einfaches Ziehen der ganzen Fläche mit – das stört bei Taschen)
     window:SetScript("OnDragStart", nil)
