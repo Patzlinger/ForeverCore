@@ -751,6 +751,7 @@ do
     Check(-194, T("Gegenstandsstufe bei Ausrüstung", "Item level on gear"), "itemLevel")
     Check(-218, T("Ziel der Einheit („Ziel: …“)", "Target of the unit (\"Target: …\")"), "showTarget")
     Check(-242, T("Gegenstands- und Zauber-IDs", "Item and spell IDs"), "showIDs")
+    Check(-266, T("Werte umrechnen (Charakter, Gegenstände)", "Convert stats (character, items)"), "statPerPoint")
 
     UI.Header(options, 18, -308, T("Ort", "Position"), W)
     Check(-330, T("Am Mauszeiger statt am Ankerplatz", "At the mouse cursor instead of the anchor"), "atCursor")
