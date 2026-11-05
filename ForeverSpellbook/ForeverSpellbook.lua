@@ -195,11 +195,15 @@ local function OutdatedSlots()
     return out
 end
 
+-- Im Kampf ist PickupSpellBookItem für Addons gesperrt (ADDON_ACTION_BLOCKED): dort den Zauber über seine ID aufnehmen
 local function PickupEntry(e)
-    if e.slot and C_SpellBook and C_SpellBook.PickupSpellBookItem then
-        C_SpellBook.PickupSpellBookItem(e.slot, e.bank)
-    elseif e.id and C_Spell and C_Spell.PickupSpell then
+    local inCombat = InCombatLockdown()
+    if e.id and C_Spell and C_Spell.PickupSpell and (inCombat or not e.slot) then
         C_Spell.PickupSpell(e.id)
+    elseif e.slot and not inCombat and C_SpellBook and C_SpellBook.PickupSpellBookItem then
+        C_SpellBook.PickupSpellBookItem(e.slot, e.bank)
+    elseif e.id and inCombat and _G.PickupSpell then
+        _G.PickupSpell(e.id)
     end
 end
 

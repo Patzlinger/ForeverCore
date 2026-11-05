@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- ForeverSpellbook: dragging a spell onto an action bar now also works in combat (no more "action blocked" error).
 - ForeverUnits/ForeverPlates: new elite/rare icons – gold ring with a gold sparkle (elite, boss), silver ring with a silver star (rare), silver ring with a gold sparkle (rare elite); replaces the plain Blizzard star.
 - ForeverUnits: druids in cat/bear form see their mana inside the player frame: a thin strip along the bottom of the power bar plus the mana number on its left (switchable, on by default).
 - ForeverSkin: first draft of the new transmogrify window in the Forever look (frame, outfit list, gear slots, tabs, search and buttons; the appearance previews stay Blizzard's for now).
