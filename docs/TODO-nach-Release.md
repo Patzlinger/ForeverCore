@@ -10,7 +10,7 @@ Auswirkung im Spiel.
 - [ ] ⚠ **Restliche Fenster überarbeiten** (ForeverSkin, Darstellung) – noch offen:
   - Große Fenster: Gildenränge und Gilden-Unterfenster (Gildenlog, News-Filter,
     Gildeninfo-Text, Avatar-Auswahl), PvP-Punktetafel und -Ergebnis
-  - Kleine Fenster: Buch-/Brieftexte, Gildenurkunde/-einladung/-umbenennung, Rollenabfrage,
+  - Kleine Fenster: Gildenurkunde/-einladung/-umbenennung, Rollenabfrage,
     Gruppeneinladung, PvP-Bereitschaft, Farbauswahl, Quest-Details-Popup, Modellvorschau, Auswahlfenster,
     Beuteverlauf, Währung übertragen, Schnelltastenbelegung, Sprechkopf, Sockeln (falls vorhanden)
   - Abgleich im Spiel: `/fskin fenster` (listet alle großen Fenster, umgestaltet `+` oder nicht `-`)
