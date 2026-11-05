@@ -38,7 +38,9 @@ local dropdowns = setmetatable({}, { __mode = "k" })
 local function FindDropdowns(frame, depth)
     for _, child in ipairs({ frame:GetChildren() }) do
         if not Forbidden(child) then
+            -- (beim Betrachten anderer Spieler ein kleiner Pfeil-Knopf ohne Text: am Menü-Aufbau erkennen)
             local isDropdown = (child.IsObjectType and child:IsObjectType("DropdownButton"))
+                or (type(child.SetupMenu) == "function" and not child:IsObjectType("CheckButton"))
                 or (type(child.Arrow) == "table" and type(child.Text) == "table" and not child:IsObjectType("CheckButton"))
             if isDropdown and not dropdowns[child] then
                 dropdowns[child] = true
@@ -91,8 +93,24 @@ local function FindSearchBox(frame, depth)
     end
 end
 
+-- Talente eines anderen Spielers ansehen (Betrachten)? Dann fehlt Blizzards Reiterleiste, das Suchfeld sitzt links –
+-- der Knopf "Zauberbuch" (für das eigene Zauberbuch) wird dann ausgeblendet
+local function Inspecting(f)
+    for _, obj in ipairs({ f, f.TalentsFrame or false }) do
+        if obj and type(obj.IsInspecting) == "function" then
+            local ok, yes = pcall(obj.IsInspecting, obj)
+            if ok then return yes and true or false end
+        end
+    end
+    return false
+end
+local book
+local function UpdateSpellbookButton(f)
+    if book then book:SetShown(not Inspecting(f)) end
+end
+
 local function AddSpellbookButton(f)
-    local book = ns.UI.Button(f, ns.T("Zauberbuch", "Spellbook"), 100, function()
+    book = ns.UI.Button(f, ns.T("Zauberbuch", "Spellbook"), 100, function()
         local api = ns.UI.API and ns.UI.API.ForeverSpellbook
         if api and api.Toggle then
             pcall(api.Toggle)
@@ -113,6 +131,8 @@ local function AddSpellbookButton(f)
         book:SetPoint("TOPRIGHT", f, "TOPRIGHT", -260, -32)
         book:SetFrameLevel(f:GetFrameLevel() + 500)
     end
+    UpdateSpellbookButton(f)
+    f:HookScript("OnShow", function() pcall(UpdateSpellbookButton, f) end)
 end
 
 -- Reiter kleiner (Schrift bleibt gleich groß): Höhe 24, Breite nach Text; danach die Leiste neu anordnen lassen
@@ -214,6 +234,7 @@ local function SkinTalents()
         pcall(FindButtons, f, 1)
         if ns.SkinOpenMenu then pcall(ns.SkinOpenMenu) end -- aufgeklapptes Menü ("Passive ausblenden" …) flach
         pcall(LiftTabs, f)
+        pcall(UpdateSpellbookButton, f)
         for t in pairs(tabs) do pcall(ns.CenterText, t) end
     end)
 end
