@@ -300,8 +300,8 @@ gilt für **beide** (und deren Claude) genau dieser Ablauf:
 - `main` = nur veröffentlichte Stände (je Release ein Tag `v0.xxb`). Auf `main` wird nie direkt gearbeitet; `main`
   wird nur beim Release gepusht (siehe 16).
   - Ausnahme nur auf ausdrückliches Kommando des Nutzers: `development` komplett nach `main` übernehmen, ohne Tag,
-    Zip und Changelog-Umbenennung (`git push origin development:main`, nur als Fast-Forward). Zuletzt 2026-10-19
-    (ForeverPlates ins Gesamtpaket); der nächste Release-Tag kommt dann wie gewohnt obendrauf.
+    Zip und Changelog-Umbenennung (`git push origin development:main`, nur als Fast-Forward). Zuletzt 2026-11-05
+    (Stand nach dem Live-Start, auf Wunsch von flowfy); der nächste Release-Tag kommt dann wie gewohnt obendrauf.
 - Optional `feature/<name>` (von `development` abgezweigt) für große, mehrtägige Umbauten, die `development` sonst
   unspielbar machen würden; fertig → in `development` übernehmen (`git merge --no-ff`), Zweig löschen.
 - Das Repository ist der Live-Ordner (Junctions in AddOns): ein Zweigwechsel ändert sofort, was im Spiel geladen wird
