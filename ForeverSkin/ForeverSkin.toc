@@ -28,6 +28,7 @@ Professions.lua
 Talents.lua
 Communities.lua
 Wardrobe.lua
+Transmog.lua
 GroupFinder.lua
 ChatConfig.lua
 Channels.lua

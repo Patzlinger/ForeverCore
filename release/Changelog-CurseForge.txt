@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverSkin: first draft of the new transmogrify window in the Forever look (frame, outfit list, gear slots, tabs, search and buttons; the appearance previews stay Blizzard's for now).
+
 - ForeverBags: opens with the cursor over the money in the window; the bag window can no longer open as an empty black area in combat (slots are placed and prepared out of combat, the window is not raised in combat).
 - ForeverSkin: the guild registrar (buy a guild charter) now uses the Forever look like the NPC dialog.
 
