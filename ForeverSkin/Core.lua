@@ -83,14 +83,68 @@ function ns.KeyOf(parent, child)
     end
 end
 
+-- Darf ein Teil jetzt verschoben/in der Größe geändert werden? Geschützte Rahmen nicht im Kampf (sonst blockiert das
+-- Spiel die Aktion: "Aktion blockiert"). Alle Teile, die ForeverSkin heute verschiebt, sind ungeschützt (geprüft
+-- 2026-11-05) – die Sperre gilt vorsorglich für alles, was über die gemeinsamen Helfer läuft
+function ns.CanMove(obj)
+    if not obj or (obj.IsForbidden and obj:IsForbidden()) then return false end
+    return not (InCombatLockdown() and obj.IsProtected and obj:IsProtected())
+end
+
 -- Ankerpunkt nur neu setzen, wenn er nicht schon so ist (sonst würde das Fenster ständig neu berechnet)
 function ns.Anchor(obj, point, rel, relPoint, x, y)
-    if not obj or (obj.IsForbidden and obj:IsForbidden()) then return end
+    if not ns.CanMove(obj) then return end
     local p, r, rp, ox, oy = obj:GetPoint(1)
     if obj:GetNumPoints() == 1 and p == point and r == rel and rp == relPoint
         and math.abs((ox or 0) - x) < 0.5 and math.abs((oy or 0) - y) < 0.5 then return end
     obj:ClearAllPoints()
     obj:SetPoint(point, rel, relPoint, x, y)
+end
+
+-- Auf-/Zuklappen-Knopf (Plus/Minus): aufgeklappt (true), zugeklappt (false) oder unbekannt (nil) – aus Blizzards
+-- (unsichtbarer) Grafik: Atlas/Datei mit minus/open bzw. plus/closed oder die Datei-Nummern von UI-Minus/PlusButton
+local MINUS_IDS = { [130821] = true, [130822] = true } -- UI-MinusButton-Up/-Down
+local PLUS_IDS = { [130838] = true, [130836] = true }  -- UI-PlusButton-Up/-Down
+function ns.ToggleState(b)
+    local t = b.GetNormalTexture and b:GetNormalTexture()
+    if not t then return nil end
+    local atlas = t.GetAtlas and t:GetAtlas()
+    local tex = t:GetTexture()
+    local s = ((type(atlas) == "string" and atlas or "") .. "|" .. (type(tex) == "string" and tex or "")):lower()
+    if s:find("minus") or s:find("open") or MINUS_IDS[tex] then return true end
+    if s:find("plus") or s:find("closed") or PLUS_IDS[tex] then return false end
+    return nil
+end
+
+-- Grafik dauerhaft unsichtbar halten, die Blizzard immer wieder sichtbar macht:
+-- ns.KeepInvisible – durchsichtig (Platz und Ebene bleiben); fängt SetAlpha/Show/SetAtlas/SetTexture … ab
+-- ns.KeepHidden    – ganz versteckt (für Grafiken, die Blizzard per Animation wieder einblendet); fängt Show ab
+local invisible = setmetatable({}, { __mode = "k" })
+function ns.KeepInvisible(tex)
+    if type(tex) ~= "table" or not tex.SetAlpha then return end
+    if invisible[tex] == nil then
+        invisible[tex] = true
+        local function Again(t)
+            if invisible[t] == "busy" then return end
+            invisible[t] = "busy"
+            t:SetAlpha(0)
+            invisible[t] = true
+        end
+        for _, method in ipairs({ "SetAlpha", "Show", "SetShown", "SetAtlas", "SetTexture", "SetVertexColor" }) do
+            if type(tex[method]) == "function" then hooksecurefunc(tex, method, Again) end
+        end
+    end
+    tex:SetAlpha(0)
+end
+local hidden = setmetatable({}, { __mode = "k" })
+function ns.KeepHidden(tex)
+    if type(tex) ~= "table" or not tex.Hide then return end
+    tex:SetAlpha(0)
+    tex:Hide()
+    if not hidden[tex] then
+        hidden[tex] = true
+        hooksecurefunc(tex, "Show", function(t) t:Hide() end)
+    end
 end
 
 -- Suchleiste: Blizzards Rahmen weg, flaches Eingabefeld (Lupe, Hinweistext und X bleiben). inset wie bei ns.Flat
@@ -398,7 +452,7 @@ function ns.SkinWindow(frame, keep, light)
     local close = ns.FindCloseButton(frame)
     ns.SkinClose(close)
     -- Kreuz mittig in unserer Titelleiste (23 hoch) – Blizzards Knopf sitzt je nach Vorlage versetzt
-    if close and close.ClearAllPoints and close:GetParent() == frame and not (close.IsForbidden and close:IsForbidden())
+    if close and close.ClearAllPoints and close:GetParent() == frame and ns.CanMove(close)
         and not (close.GetText and close:GetText() and close:GetText() ~= "") then
         close:ClearAllPoints()
         close:SetPoint("CENTER", frame, "TOPRIGHT", -12, -12)
@@ -517,6 +571,7 @@ end
 -- exact = true: unten genau auf bottom (auch tiefer als Blizzard, z. B. damit unten kein leerer Bereich bleibt)
 function ns.Fit(frame, region, top, bottom, skip, exact)
     if not region or not region.GetNumPoints or not frame:GetTop() or not region:GetTop() then return end
+    if not ns.CanMove(region) then return end -- (geschützt und im Kampf: nicht anfassen)
     local o = Record(frame, region)
     local down = top and math.max(0, top - o.top) or 0
     local up = bottom and (exact and (bottom - o.bottom) or math.max(0, bottom - o.bottom)) or 0

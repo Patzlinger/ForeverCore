@@ -109,6 +109,16 @@ Werte in Punkten des Fensters (vor `ns.Scaled`).
 - **Gleiche Vorlage = gleiche Umgestaltung:** z. B. Symbol-Auswahl (IconSelectorPopupFrameTemplate) über
   `ns.SkinIconPopup` (Makros, Ausrüstungssets).
 
+## 6b. Gemeinsame Helfer (Core.lua) – nicht neu kopieren
+
+- `ns.SkinSearchBox(box, inset)` flache Suchleiste · `ns.Anchor(obj, …)` Anker nur setzen, wenn abweichend ·
+  `ns.KeyOf(parent, child)` Schlüssel finden · `ns.ToggleState(b)` Plus/Minus erkennen · `ns.KeepInvisible(tex)` /
+  `ns.KeepHidden(tex)` dauerhaft unsichtbar bzw. versteckt · `ns.FindCloseButton(f)` Schließen-Knopf finden ·
+  `ns.KeepOnScreen(f, oben, unten)` Überstand im Bildschirm halten
+- **Kampf:** `ns.CanMove(obj)` vor dem Verschieben/Größe ändern Blizzard-eigener Teile – geschützte Rahmen nie im Kampf
+  (`ns.Anchor` und `ns.Fit` prüfen das selbst). Geprüft 2026-11-05: alles, was ForeverSkin heute verschiebt, ist
+  ungeschützt; geschützte Teile (Raid-Gruppen, Einheiten-Knöpfe, Aktionsknöpfe) werden bewusst nicht angefasst
+
 ## 7. Prüfbefehle
 
 - `/fskin maus` – Fenster unter der Maus samt Eltern-Kette, „(geschützt)“ bei gesperrten Rahmen.

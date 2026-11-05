@@ -411,22 +411,7 @@ end
 local stripes = setmetatable({}, { __mode = "k" })
 -- Blizzards Zeilenstreifen ("UI-Character-Info-Line-Bounce2"): Blizzard setzt ihre Sichtbarkeit für den Zeilenwechsel
 -- ständig neu – darum gleich nach jeder solchen Änderung wieder unsichtbar (Haken mit Sperre gegen Schleifen)
-local kept = setmetatable({}, { __mode = "k" })
-local function KeepInvisible(tex)
-    if kept[tex] == nil then
-        kept[tex] = true
-        local function Again(t)
-            if kept[t] == "busy" then return end
-            kept[t] = "busy"
-            t:SetAlpha(0)
-            kept[t] = true
-        end
-        for _, method in ipairs({ "SetAlpha", "Show", "SetShown", "SetAtlas", "SetTexture", "SetVertexColor" }) do
-            if type(tex[method]) == "function" then hooksecurefunc(tex, method, Again) end
-        end
-    end
-    tex:SetAlpha(0)
-end
+local KeepInvisible = ns.KeepInvisible -- (gemeinsam in Core.lua)
 -- Inhalt der Liste: moderne Liste (ScrollTarget) oder ältere (ScrollFrame mit Inhalt)
 -- (im Forever-Client ist "CharacterStatsPaneScrollBox" ein einfacher Rahmen, laut /fskin werte: die Liste steckt
 -- darin – sonst ist der Rahmen selbst der Behälter)
@@ -620,18 +605,7 @@ end
 
 -- Auf-/Zuklappen in den Listen (rotes Plus/Minus vor "Schlachtfelder" …): feiner Pfeil wie überall – zugeklappt
 -- nach rechts, aufgeklappt nach unten. Den Zustand verrät Blizzards (unsichtbare) Knopfgrafik
-local MINUS_IDS = { [130821] = true, [130822] = true } -- UI-MinusButton-Up/-Down
-local PLUS_IDS = { [130838] = true, [130836] = true }  -- UI-PlusButton-Up/-Down
-local function ToggleState(b)
-    local t = b.GetNormalTexture and b:GetNormalTexture()
-    if not t then return nil end
-    local atlas = t.GetAtlas and t:GetAtlas()
-    local tex = t:GetTexture()
-    local s = ((type(atlas) == "string" and atlas or "") .. "|" .. (type(tex) == "string" and tex or "")):lower()
-    if s:find("minus") or s:find("open") or MINUS_IDS[tex] then return true end
-    if s:find("plus") or s:find("closed") or PLUS_IDS[tex] then return false end
-    return nil
-end
+local ToggleState = ns.ToggleState -- (gemeinsam in Core.lua)
 local function SkinToggles(entry)
     for _, child in ipairs({ entry:GetChildren() }) do
         if not Forbidden(child) and child:IsObjectType("Button") and (child:GetWidth() or 0) <= 24 then

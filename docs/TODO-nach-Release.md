@@ -38,13 +38,10 @@ Auswirkung im Spiel.
 - [ ] ⚠ **ForeverPlates:** Bedrohungs-/Aggro-Anzeige überarbeiten
 - [ ] ⚠ **Erster Start:** kurzer Einrichtungsassistent im Hub, der die wichtigsten Schalter einmal abfragt (neues
       Fenster beim ersten Login)
-- [ ] **Kampf-Sicherheit prüfen:** ForeverSkin hängt sich an viele Blizzard-Fenster – gezielt durchsehen, ob im Kampf
-      „Aktion blockiert“ entstehen kann (geschützte Knöpfe, Verschieben von Fenstern mit geschützten Teilen). Die
-      Prüfung selbst ändert nichts; ⚠ gefundene Fehler zu beheben schon
 
 ## Verschoben (erst testen können, wenn der Server läuft)
 
-- [ ] ⚠ **Doppelten Code zusammenlegen** (ForeverSkin), Rest: Grafiken dauerhaft unsichtbar halten und Plus/Minus
-      erkennen (je Fenster leicht verschieden gebaut) gemeinsam in `Core.lua`; `Character.lua` aufteilen. Erledigt
-      (2026-11-05): flache Suchleiste (`ns.SkinSearchBox`), Anker setzen (`ns.Anchor`), Schlüssel finden (`ns.KeyOf`).
-      Soll nichts ändern, betrifft aber viele Fenster – alle umgestalteten Fenster danach durchsehen
+- [ ] ⚠ **Optional: `Character.lua` aufteilen** (ForeverSkin, gut 1000 Zeilen) – reine Ordnung, ändert nichts im
+      Spiel; die Teile greifen eng ineinander, darum nur mit gründlichem Test im Spiel. Der übrige doppelte Code liegt
+      seit 2026-11-05 gemeinsam in `Core.lua` (`ns.SkinSearchBox`, `ns.Anchor`, `ns.KeyOf`, `ns.ToggleState`,
+      `ns.KeepInvisible`, `ns.KeepHidden`, `ns.CanMove`)

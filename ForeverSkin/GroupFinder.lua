@@ -21,16 +21,7 @@ local KeyOf = ns.KeyOf
 
 -- ganz verstecken (nicht nur durchsichtig – manche Grafiken setzt Blizzard per Animation wieder sichtbar, z. B. der
 -- Steinstreifen "groupfinder-Stat-StoneBG" oben auf "Durchsuchen") und versteckt halten
-local kept = setmetatable({}, { __mode = "k" })
-local function KeepHidden(tex)
-    if type(tex) ~= "table" or not tex.Hide then return end
-    tex:SetAlpha(0)
-    tex:Hide()
-    if not kept[tex] then
-        kept[tex] = true
-        hooksecurefunc(tex, "Show", function(t) t:Hide() end)
-    end
-end
+local KeepHidden = ns.KeepHidden -- (gemeinsam in Core.lua)
 
 -- Innenfläche: Bild ("groupfinder-background") und verzierter Rahmen ("common-insideframe") weg – flache Fläche mit
 -- feinem Rand; endet 6 über unserer Fußleiste (Blizzards Innenfläche reicht bis fast nach unten)
@@ -675,18 +666,7 @@ local function RaiseAboveFooter(f, frame)
 end
 -- Auf-/Zuklappen (rotes Plus/Minus vor "Kalimdor" …): feiner Pfeil wie in den übrigen Listen. Den Zustand verrät
 -- Blizzards (unsichtbare) Knopfgrafik: Minus = aufgeklappt, Plus = zugeklappt (Pfad, Atlas oder Datei-Nummer)
-local MINUS_IDS = { [130821] = true, [130822] = true } -- UI-MinusButton-Up/-Down
-local PLUS_IDS = { [130838] = true, [130836] = true }  -- UI-PlusButton-Up/-Down
-local function ToggleState(b)
-    local t = b.GetNormalTexture and b:GetNormalTexture()
-    if not t then return nil end
-    local atlas = t.GetAtlas and t:GetAtlas()
-    local tex = t:GetTexture()
-    local s = ((type(atlas) == "string" and atlas or "") .. "|" .. (type(tex) == "string" and tex or "")):lower()
-    if s:find("minus") or s:find("open") or MINUS_IDS[tex] then return true end
-    if s:find("plus") or s:find("closed") or PLUS_IDS[tex] then return false end
-    return nil
-end
+local ToggleState = ns.ToggleState -- (gemeinsam in Core.lua)
 
 local function SkinActivityView(f, view, depth)
     for _, child in ipairs({ view:GetChildren() }) do
