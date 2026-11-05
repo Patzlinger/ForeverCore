@@ -908,10 +908,14 @@ do
             local fn = (C_Spell and C_Spell.GetSpellPowerCost) or GetSpellPowerCost
             if fn then
                 local ok, costs = pcall(fn, spellID)
-                if ok and type(costs) == "table" then
+                if ok then
+                    -- Zauber ohne Kosten (Zauberstab "Schießen" u. a.) liefern nil statt einer leeren Liste:
+                    -- das ist kein Manazauber und setzt die Fünf-Sekunden-Regel nicht zurück
                     costsMana = false
-                    for _, c in ipairs(costs) do
-                        if c.type == 0 and (c.cost or 0) > 0 then costsMana = true end
+                    if type(costs) == "table" then
+                        for _, c in ipairs(costs) do
+                            if c.type == 0 and (c.cost or 0) > 0 then costsMana = true end
+                        end
                     end
                 end
             end

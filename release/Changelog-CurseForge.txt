@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- ForeverUnits: the five-second-rule marker is no longer reset by spells without mana cost (e.g. wand shots).
 - ForeverBars: the professions bar now also finds the rogue "Poisons" and the mage "Comprehend Scroll" by name (new /fbspell command to look up spell IDs).
 - ForeverSkin: item icons attached to mails no longer show a second, misplaced frame.
 - ForeverPlates: the execute-range color is no longer applied to enemies tagged by someone else (grey bar): they stay grey, also in execute range.
