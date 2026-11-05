@@ -13,23 +13,10 @@ local function Step(what, fn)
 end
 
 -- Schlüssel eines Unter-Rahmens in seinem Eltern-Rahmen – nur lesen
-local function KeyOf(parent, child)
-    for k, v in pairs(parent) do
-        if v == child and type(k) == "string" then return k end
-    end
-end
+local KeyOf = ns.KeyOf
 
--- Suchleiste: Blizzards Rahmen weg, flaches Eingabefeld (Lupe, Hinweistext und X bleiben)
-local function SkinSearch(box)
-    local keep = {}
-    for _, key in ipairs({ "searchIcon", "SearchIcon", "Instructions", "clearButton" }) do
-        local t = box[key]
-        if type(t) == "table" and t.IsObjectType and t:IsObjectType("Texture") then keep[t] = true end
-    end
-    ns.HideTextures(box, keep)
-    for _, key in ipairs({ "Left", "Middle", "Right", "Mid" }) do ns.Hide(box[key]) end
-    ns.Flat(box, ns.C.input, { -4, 2, 0, 2 })
-end
+-- Suchleiste: Blizzards Rahmen weg, flaches Eingabefeld (gemeinsam in Core.lua)
+local function SkinSearch(box) ns.SkinSearchBox(box, { -4, 2, 0, 2 }) end
 
 -- Reiter ("Gegenstände", "Sets"): gewählt = von Blizzard gesperrt (PanelTemplates)
 local function TabSelected(tab)

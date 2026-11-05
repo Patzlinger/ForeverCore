@@ -11,7 +11,7 @@
 ## Dependencies: ForeverCore
 ## OptionalDeps: ForeverQuests, ForeverBags
 ## Group: ForeverCore
-## SavedVariables: ForeverAltsDB, ForeverAltsData, ForeverHubDB
+## SavedVariables: ForeverAltsDB, ForeverAltsData
 
 Data.lua
 Recipes.lua

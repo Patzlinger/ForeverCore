@@ -17,9 +17,7 @@ local footerHeight -- Höhe unserer Fußleiste (sobald angelegt) – der Kasten 
 -- Seiten des Fensters: "Anmelden", "Durchsuchen", "Wer ist da" – alle gleich umgestaltet
 local PAGES = { "LFGListingFrame", "LFGBrowseFrame", "LFGWhoListFrame" }
 
-local function KeyOf(parent, child)
-    for k, v in pairs(parent) do if v == child and type(k) == "string" then return k end end
-end
+local KeyOf = ns.KeyOf
 
 -- ganz verstecken (nicht nur durchsichtig – manche Grafiken setzt Blizzard per Animation wieder sichtbar, z. B. der
 -- Steinstreifen "groupfinder-Stat-StoneBG" oben auf "Durchsuchen") und versteckt halten
@@ -330,16 +328,7 @@ end
 -- flaches Eingabefeld, Symbol-Knöpfe ("Aktualisieren", Lupe) nur als helles Symbol, Laufleisten gold; Blizzards braune
 -- Trennlinien ("…divider…", "…ScrollLine") weg
 local browseDone = setmetatable({}, { __mode = "k" })
-local function SkinSearch(box)
-    local keep = {}
-    for _, key in ipairs({ "searchIcon", "SearchIcon", "Instructions", "clearButton" }) do
-        local t = box[key]
-        if type(t) == "table" and t.IsObjectType and t:IsObjectType("Texture") then keep[t] = true end
-    end
-    ns.HideTextures(box, keep)
-    for _, key in ipairs({ "Left", "Middle", "Right", "Mid" }) do ns.Hide(box[key]) end
-    ns.Flat(box, ns.C.input, { -4, 2, 0, 2 })
-end
+local function SkinSearch(box) ns.SkinSearchBox(box, { -4, 2, 0, 2 }) end
 local function SkinRefresh(b)
     -- (Symbol: eigene Grafik "Icon" – sonst ist das Bild des Knopfs selbst das Symbol, z. B. die Lupe)
     local icon = b.Icon or b.icon or (b.GetNormalTexture and b:GetNormalTexture())

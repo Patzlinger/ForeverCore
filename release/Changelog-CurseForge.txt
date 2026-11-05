@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- New: /forever performance (or /forever leistung) lists CPU time (recent / session / peak, if the client measures it) and memory of every loaded Forever addon in the chat.
+- The shared hub settings are now saved only by ForeverCore (they were stored 14 times before, and the copy of an addon that was off for a while could overwrite newer settings). Needs a full game restart.
+- ForeverSkin: open menus find their submenus much faster (no short stutter any more); the character window, inspect and trade windows stay completely on screen including their extended title area.
+
 - ForeverQuests: dungeon window, Quest log tab – clearer: only the zones on the left (no "All quests" entry), rewards collapsed by default (click to open, remembered), no quest chain on quest log cards. New "Log" button in the tracker header opens the dungeon window right on the Quest log tab.
 
 - ForeverSkin: the close cross in all restyled windows is the same as in the Forever windows (it sometimes showed as a dash) and sits centered in the title bar; windows with Blizzard's newer flat frame (e.g. the loot window) no longer keep the red cross.

@@ -23,12 +23,7 @@ local done = setmetatable({}, { __mode = "k" })
 
 -- Ankerpunkt nur neu setzen, wenn er nicht schon so ist (sonst würde das Fenster ständig neu berechnet)
 local function Anchor(obj, point, rel, relPoint, x, y)
-    if not obj or not rel or Forbidden(obj) then return end
-    local p, r, rp, ox, oy = obj:GetPoint(1)
-    if obj:GetNumPoints() == 1 and p == point and r == rel and rp == relPoint
-        and math.abs((ox or 0) - x) < 0.5 and math.abs((oy or 0) - y) < 0.5 then return end
-    obj:ClearAllPoints()
-    obj:SetPoint(point, rel, relPoint, x, y)
+    if rel then ns.Anchor(obj, point, rel, relPoint, x, y) end
 end
 
 -- Fußleiste: dunklere Fläche mit feiner goldener Linie (wie ns.ContentBox, aber Blizzards Innenfläche bleibt sichtbar)
@@ -54,14 +49,7 @@ end
 local function SkinSearch(box)
     if not box or done[box] or Forbidden(box) then return end
     done[box] = true
-    local keep = {}
-    for _, key in ipairs({ "searchIcon", "SearchIcon", "Instructions", "clearButton" }) do
-        local t = box[key]
-        if type(t) == "table" and t.IsObjectType and t:IsObjectType("Texture") then keep[t] = true end
-    end
-    ns.HideTextures(box, keep)
-    for _, key in ipairs({ "Left", "Middle", "Right", "Mid", "Backdrop" }) do ns.Hide(box[key]) end
-    ns.Flat(box, C.input, { -4, 0, 0, 0 })
+    ns.SkinSearchBox(box, { -4, 0, 0, 0 })
 end
 
 local function Buttons(list)

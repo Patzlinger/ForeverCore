@@ -10,7 +10,7 @@
 ## X-License: MIT
 ## Dependencies: ForeverCore
 ## Group: ForeverCore
-## SavedVariables: ForeverFramesDB, ForeverHubDB
+## SavedVariables: ForeverFramesDB
 
 Core.lua
 Frames.lua

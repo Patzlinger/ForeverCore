@@ -11,7 +11,7 @@
 ## Dependencies: ForeverCore
 ## OptionalDeps: Masque
 ## Group: ForeverCore
-## SavedVariables: ForeverBagsDB, ForeverBagsData, ForeverHubDB
+## SavedVariables: ForeverBagsDB, ForeverBagsData
 
 Locales.lua
 Core.lua

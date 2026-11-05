@@ -10,7 +10,7 @@
 ## X-License: MIT
 ## Dependencies: ForeverCore
 ## Group: ForeverCore
-## SavedVariables: ForeverPlatesDB, ForeverHubDB
+## SavedVariables: ForeverPlatesDB
 
 Core.lua
 Options.lua

@@ -473,6 +473,7 @@ end
 -- ließe sich ohnehin nicht mitverschieben.
 local function GrowUp(f)
     local look = ns.Flat(f, C.background, { 0, -SHIFT, 0, -DOWN })
+    ns.KeepOnScreen(f, SHIFT, DOWN)
     if look and look.head then
         look.head:ClearAllPoints()
         look.head:SetPoint("TOPLEFT", look.fill, "TOPLEFT", 1, -1)

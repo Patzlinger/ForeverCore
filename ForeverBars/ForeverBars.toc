@@ -11,7 +11,7 @@
 ## Dependencies: ForeverCore
 ## OptionalDeps: Masque
 ## Group: ForeverCore
-## SavedVariables: ForeverBarsDB, ForeverHubDB
+## SavedVariables: ForeverBarsDB
 ## SavedVariablesPerCharacter: ForeverXPCharDB
 
 Locales.lua

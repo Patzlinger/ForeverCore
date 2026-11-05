@@ -11,7 +11,7 @@
 ## OptionalDeps: ForeverFrames
 ## Dependencies: ForeverCore
 ## Group: ForeverCore
-## SavedVariables: ForeverUnitsDB, ForeverHubDB
+## SavedVariables: ForeverUnitsDB
 
 Core.lua
 Units.lua

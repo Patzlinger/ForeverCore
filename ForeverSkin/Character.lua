@@ -921,6 +921,7 @@ local function SkinCharacter()
     Step("frame", function()
         HideFrameArt(f)
         ns.Flat(f, C.background, { 0, -TITLE_UP, 0, 0 })
+        ns.KeepOnScreen(f, TITLE_UP, 0)
         -- feiner Rand ums ganze Fenster auf eigenem Rahmen ÜBER den Hintergründen links/rechts (die verdeckten ihn),
         -- unter dem Porträt; ohne Füllung, ohne Maus
         local border = CreateFrame("Frame", nil, f)

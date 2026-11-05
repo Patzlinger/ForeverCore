@@ -21,14 +21,7 @@ local function Step(what, fn)
 end
 
 -- Ankerpunkt nur neu setzen, wenn er abweicht
-local function Anchor(obj, point, rel, relPoint, x, y)
-    if not obj or Forbidden(obj) then return end
-    local p, r, rp, ox, oy = obj:GetPoint(1)
-    if obj:GetNumPoints() == 1 and p == point and r == rel and rp == relPoint
-        and math.abs((ox or 0) - x) < 0.5 and math.abs((oy or 0) - y) < 0.5 then return end
-    obj:ClearAllPoints()
-    obj:SetPoint(point, rel, relPoint, x, y)
-end
+local Anchor = ns.Anchor -- (gemeinsam in Core.lua)
 
 -- Text-Knöpfe: flach; zusätzlich ein eigener Kasten dahinter (Blizzard setzt seine roten Grafiken teils neu)
 local buttons = {}

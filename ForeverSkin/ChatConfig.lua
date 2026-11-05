@@ -13,9 +13,7 @@ local function Step(what, fn)
     if not ok and ns.UI.ReportError then ns.UI.ReportError("ForeverSkin", "chatconfig/" .. what, err) end
 end
 
-local function KeyOf(parent, child)
-    for k, v in pairs(parent) do if v == child and type(k) == "string" then return k end end
-end
+local KeyOf = ns.KeyOf -- (gemeinsam in Core.lua)
 
 -- Farbfeld (Chatfarbe): bleibt wie es ist – erkannt am Namen oder an Blizzards Farbfeld-Grafik
 local function IsSwatch(frame, key)

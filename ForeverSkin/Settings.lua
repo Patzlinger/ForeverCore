@@ -295,14 +295,14 @@ function ns.SkinOpenMenu()
     local open = root and root.IsShown and root:IsShown()
     if open then
         knownMenus[root] = true
-        -- Untermenüs suchen (höchstens fünfmal je Sekunde, nur bei offenem Menü)
+        -- Untermenüs suchen (höchstens fünfmal je Sekunde, nur bei offenem Menü). Sie hängen am selben Eltern-Rahmen
+        -- wie das Hauptmenü – darum nur dessen Unter-Rahmen durchsehen statt aller Rahmen des Spiels (das ruckelte)
         local now = GetTime()
-        if now - lastSearch > 0.2 and EnumerateFrames then
+        local parent = root:GetParent()
+        if now - lastSearch > 0.2 and parent and parent.GetChildren then
             lastSearch = now
-            local frame = EnumerateFrames()
-            while frame do
-                if not knownMenus[frame] and IsMenuFrame(frame, root) and frame:IsShown() then knownMenus[frame] = true end
-                frame = EnumerateFrames(frame)
+            for _, frame in ipairs({ parent:GetChildren() }) do
+                if not knownMenus[frame] and frame:IsShown() and IsMenuFrame(frame, root) then knownMenus[frame] = true end
             end
         end
     end
@@ -342,16 +342,7 @@ local menuEvents = CreateFrame("Frame")
 menuEvents:RegisterEvent("PLAYER_LOGIN")
 menuEvents:SetScript("OnEvent", function() pcall(HookMenuManager) end)
 
-local function SkinSearchBox(box)
-    if not box then return end
-    local keep = {}
-    for _, key in ipairs({ "searchIcon", "SearchIcon", "Instructions", "clearButton" }) do
-        if type(box[key]) == "table" and box[key].IsObjectType and box[key]:IsObjectType("Texture") then keep[box[key]] = true end
-    end
-    ns.HideTextures(box, keep)
-    for _, key in ipairs({ "Left", "Middle", "Right", "Mid" }) do ns.Hide(box[key]) end
-    ns.Flat(box, C.input, { -4, 2, 0, 2 })
-end
+local function SkinSearchBox(box) ns.SkinSearchBox(box, { -4, 2, 0, 2 }) end
 
 local function SkinSettings()
     local f = _G.SettingsPanel

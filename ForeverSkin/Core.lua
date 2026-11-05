@@ -75,6 +75,51 @@ end
 
 function ns.Safe(where, fn) return UI.Safe("ForeverSkin", where, fn) end
 
+-- Gemeinsame kleine Helfer (früher in mehreren Dateien je eine Kopie)
+-- Schlüssel eines Unter-Rahmens bzw. einer Grafik in seinem Eltern-Rahmen – nur lesen
+function ns.KeyOf(parent, child)
+    for k, v in pairs(parent) do
+        if v == child and type(k) == "string" then return k end
+    end
+end
+
+-- Ankerpunkt nur neu setzen, wenn er nicht schon so ist (sonst würde das Fenster ständig neu berechnet)
+function ns.Anchor(obj, point, rel, relPoint, x, y)
+    if not obj or (obj.IsForbidden and obj:IsForbidden()) then return end
+    local p, r, rp, ox, oy = obj:GetPoint(1)
+    if obj:GetNumPoints() == 1 and p == point and r == rel and rp == relPoint
+        and math.abs((ox or 0) - x) < 0.5 and math.abs((oy or 0) - y) < 0.5 then return end
+    obj:ClearAllPoints()
+    obj:SetPoint(point, rel, relPoint, x, y)
+end
+
+-- Suchleiste: Blizzards Rahmen weg, flaches Eingabefeld (Lupe, Hinweistext und X bleiben). inset wie bei ns.Flat
+function ns.SkinSearchBox(box, inset)
+    if not box then return end
+    local keep = {}
+    for _, key in ipairs({ "searchIcon", "SearchIcon", "Instructions", "clearButton" }) do
+        local t = box[key]
+        if type(t) == "table" and t.IsObjectType and t:IsObjectType("Texture") then keep[t] = true end
+    end
+    ns.HideTextures(box, keep)
+    for _, key in ipairs({ "Left", "Middle", "Right", "Mid", "Backdrop" }) do ns.Hide(box[key]) end
+    ns.Flat(box, C.input, inset or { -4, 2, 0, 2 })
+end
+
+-- Reicht unsere Fläche über Blizzards Fenster hinaus (oben up, unten down Punkte – Charakterfenster, Betrachten,
+-- Handel), hielt das Spiel nur Blizzards Teil im Bildschirm, unser Überstand ragte über den Rand. Die Klemm-Fläche um
+-- den Überstand erweitern und am Bildschirm halten (keine geschützten Rahmen; nur außerhalb des Kampfes geändert)
+function ns.KeepOnScreen(frame, up, down)
+    if not frame or not frame.SetClampRectInsets or (frame.IsForbidden and frame:IsForbidden()) then return end
+    local function Apply()
+        if frame:IsProtected() and InCombatLockdown() then return end
+        frame:SetClampRectInsets(0, 0, up or 0, -(down or 0))
+        frame:SetClampedToScreen(true)
+    end
+    if InCombatLockdown() then UI.AfterCombat("ForeverSkin:clamp:" .. tostring(frame:GetName() or frame), Apply, "ForeverSkin")
+    else Apply() end
+end
+
 ---------------------------------------------------------------------------
 -- Bausteine
 ---------------------------------------------------------------------------

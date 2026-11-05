@@ -370,11 +370,7 @@ local function HideBottomBar(frame)
 end
 
 -- Schlüssel eines Unter-Rahmens in seinem Eltern-Rahmen ("UnlearnButton", "SpellButtonTop" …) – nur lesen
-local function KeyOf(parent, child)
-    for k, v in pairs(parent) do
-        if v == child and type(k) == "string" then return k end
-    end
-end
+local KeyOf = ns.KeyOf -- (gemeinsam in Core.lua)
 
 local function HasStatusBar(frame)
     for _, child in ipairs({ frame:GetChildren() }) do

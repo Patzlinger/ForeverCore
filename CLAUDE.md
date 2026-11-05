@@ -114,7 +114,7 @@ Neue Einzelheiten dort eintragen, hier nur Regeln.
   ## Version: 0.44b
   ## Dependencies: ForeverCore
   ## Group: ForeverCore
-  ## SavedVariables: ForeverNameDB, ForeverHubDB
+  ## SavedVariables: ForeverNameDB
 
   ... eigene Dateien ...
   ```
@@ -122,8 +122,9 @@ Neue Einzelheiten dort eintragen, hier nur Regeln.
     nur bei gleichem Namensanfang automatisch, deshalb ausdrücklich eintragen
   - `## Dependencies: ForeverCore`: ForeverCore lädt garantiert vorher, `ForeverHub.UI` steht ab der ersten Zeile bereit.
     **Keine eigene Kopie von `ForeverHub.lua`** mehr ins Addon legen
-  - `ForeverHubDB` steht vorerst weiter in den SavedVariables jedes Addons (Übergang: so übernehmen Spieler ihre
-    Hub-Einstellungen aus den alten Speicherständen; kann später auf ForeverCore allein reduziert werden)
+  - `ForeverHubDB` steht **nur in ForeverCore** (seit 2026-11-05; vorher als Übergang in jedem Addon – dadurch speicherte
+    das Spiel dieselben Hub-Einstellungen 14-mal, und die Kopie eines länger ausgeschalteten Addons konnte neuere
+    Einstellungen überschreiben). Neue Addons tragen sie nicht ein; der Lua-Code nutzt weiter dieselbe Tabelle
   - Der Titel trägt den dezenten Beta-Hinweis (nur in der Addon-Liste sichtbar)
   - `Media\ForeverCore.tga` (Logo) liegt in jedem Addon (Kopie z. B. aus ForeverBars)
   - Eigenes Addon-Logo: `Media\ForeverName.tga` (64 × 64, 32 Bit TGA) – steht in `## IconTexture` und im
@@ -232,7 +233,7 @@ umgebauten Einstellungsfenster lesen).
 - Belegt (keine Doppelungen!):
   | Befehl | Addon |
   |---|---|
-  | /forever, /fhub, /fmove; /forever profile, export, import, options, reset | ForeverHub |
+  | /forever, /fhub, /fmove; /forever profile, export, import, options, reset, leistung | ForeverHub |
   | /ff, /foreverframes | ForeverFrames |
   | /fu, /foreverunits | ForeverUnits |
   | /fcast, /forevercast | ForeverCast |

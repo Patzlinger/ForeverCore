@@ -211,14 +211,7 @@ local function UpdateCard(f)
 end
 
 -- Ankerpunkt nur neu setzen, wenn er nicht schon so ist (sonst würde das Fenster ständig neu berechnet)
-local function Anchor(obj, point, rel, relPoint, x, y)
-    if not obj or Forbidden(obj) then return end
-    local p, r, rp, ox, oy = obj:GetPoint(1)
-    if obj:GetNumPoints() == 1 and p == point and r == rel and rp == relPoint
-        and math.abs((ox or 0) - x) < 0.5 and math.abs((oy or 0) - y) < 0.5 then return end
-    obj:ClearAllPoints()
-    obj:SetPoint(point, rel, relPoint, x, y)
-end
+local Anchor = ns.Anchor
 
 local function Place(f)
     -- Größe wie das Gesprächsfenster (wie Händler und Lehrer) – Blizzards Postfenster ist kleiner, dann reichten

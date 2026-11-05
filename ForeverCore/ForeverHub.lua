@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 67
+local VERSION = 68
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -3645,8 +3645,49 @@ SlashCmdList["FOREVERHUB"] = function(msg)
         UI.ShowTransfer("export")
     elseif msg == "import" then
         UI.ShowTransfer("import")
+    elseif msg == "leistung" or msg == "performance" or msg == "perf" then
+        UI.ShowPerformance()
     else
         hub.ToggleWindow()
+    end
+end
+
+-- /forever leistung: Rechenzeit und Speicher je geladenem Forever-Addon im Chat (liest nur, ändert nichts).
+-- Rechenzeit über C_AddOnProfiler (falls der Client es anbietet): Schnitt der letzten Sekunden, Schnitt der Sitzung und
+-- Spitze in Millisekunden je Bild; Speicher über GetAddOnMemoryUsage
+function UI.ShowPerformance()
+    local P = C_AddOnProfiler
+    local M = Enum and Enum.AddOnProfilerMetric
+    local hasProfiler = P and P.GetAddOnMetric and M ~= nil
+    if UpdateAddOnMemoryUsage then pcall(UpdateAddOnMemoryUsage) end
+    local rows = {}
+    local num = (C_AddOns and C_AddOns.GetNumAddOns and C_AddOns.GetNumAddOns()) or 0
+    for i = 1, num do
+        local name = C_AddOns.GetAddOnInfo(i)
+        if type(name) == "string" and name:find("^Forever") and C_AddOns.IsAddOnLoaded(name) then
+            local row = { name = name }
+            if hasProfiler then
+                local function Metric(key)
+                    if not M[key] then return nil end
+                    local ok, v = pcall(P.GetAddOnMetric, name, M[key])
+                    return ok and type(v) == "number" and v or nil
+                end
+                row.recent, row.session, row.peak = Metric("RecentAverageTime"), Metric("SessionAverageTime"), Metric("PeakTime")
+            end
+            local ok, kb = pcall(GetAddOnMemoryUsage, name)
+            row.kb = ok and type(kb) == "number" and kb or nil
+            rows[#rows + 1] = row
+        end
+    end
+    table.sort(rows, function(a, b) return (a.recent or a.kb or 0) > (b.recent or b.kb or 0) end)
+    UI.Chat("Forever", T("Leistung der Forever-Addons", "Performance of the Forever addons")
+        .. (hasProfiler and T(" (ms je Bild: aktuell / Sitzung / Spitze, Speicher)", " (ms per frame: recent / session / peak, memory)")
+            or T(" (Rechenzeit misst dieser Client nicht – nur Speicher)", " (this client doesn't measure CPU time – memory only)")))
+    local function MS(v) return v and string.format("%.2f", v) or "–" end
+    for _, r in ipairs(rows) do
+        local mem = r.kb and (r.kb >= 1024 and string.format("%.1f MB", r.kb / 1024) or string.format("%d KB", r.kb)) or "–"
+        local cpu = hasProfiler and (MS(r.recent) .. " / " .. MS(r.session) .. " / " .. MS(r.peak) .. "  ·  ") or ""
+        print(string.format("   |cffffcc00%s|r  %s%s", r.name, cpu, mem))
     end
 end
 

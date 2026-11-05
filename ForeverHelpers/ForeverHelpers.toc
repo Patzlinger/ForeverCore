@@ -10,7 +10,7 @@
 ## X-License: MIT
 ## Dependencies: ForeverCore
 ## Group: ForeverCore
-## SavedVariables: ForeverHelpersDB, ForeverLootDB, ForeverBuffsDB, ForeverVendorDB, ForeverHubDB
+## SavedVariables: ForeverHelpersDB, ForeverLootDB, ForeverBuffsDB, ForeverVendorDB
 
 Core.lua
 Loot.lua

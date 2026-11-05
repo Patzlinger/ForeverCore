@@ -10,7 +10,7 @@
 ## X-Curse-Project-ID: 1743753
 ## Dependencies: ForeverCore
 ## Group: ForeverCore
-## SavedVariables: ForeverChatDB, ForeverHubDB
+## SavedVariables: ForeverChatDB
 
 Core.lua
 Messages.lua

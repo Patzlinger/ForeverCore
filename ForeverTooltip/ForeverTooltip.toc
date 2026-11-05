@@ -10,6 +10,6 @@
 ## X-License: MIT
 ## Dependencies: ForeverCore
 ## Group: ForeverCore
-## SavedVariables: ForeverTooltipDB, ForeverHubDB
+## SavedVariables: ForeverTooltipDB
 
 ForeverTooltip.lua
