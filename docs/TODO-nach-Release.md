@@ -30,9 +30,6 @@ Auswirkung im Spiel.
 - [ ] ⚠ **Essen/Trinken-Makro** (ForeverHelpers): Makro, das automatisch das beste Essen bzw. Getränk aus den Taschen
       nimmt
 - [ ] ⚠ **ForeverBags:** Taschen nach Kategorien filterbar machen
-- [ ] ⚠ **Aufschlüsselung der Werte** (Charakterfenster/Tooltip): je Klasse/Spezialisierung/Talenten zeigen, was ein
-      Punkt bringt (z. B. 1 Angriffskraft = …, 1 Stärke = …)
-- [ ] ⚠ **ForeverPlates:** Bedrohungs-/Aggro-Anzeige überarbeiten
 
 ## Verschoben (erst testen können, wenn der Server läuft)
 

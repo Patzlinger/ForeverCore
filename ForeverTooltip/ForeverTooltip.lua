@@ -20,6 +20,7 @@ local DEFAULTS = {
     itemLevel = true,     -- Gegenstandsstufe bei Ausrüstung
     showTarget = true,    -- "Ziel: …" bei Einheiten
     showIDs = false,      -- Gegenstands-/Zauber-ID
+    statPerPoint = true,  -- Charakterfenster: bei Stärke, Beweglichkeit … zeigen, was 1 Punkt bringt
     flatHealth = true,    -- Lebensbalken flach in Klassen-/Reaktionsfarbe (falls er angezeigt wird)
     showHealthBar = false, -- Lebensbalken unter dem Tooltip (Standard: aus, unnötig)
     atCursor = true,      -- am Mauszeiger statt am Ankerplatz (Standard)
@@ -394,12 +395,122 @@ local function ApplyAll()
 end
 
 ---------------------------------------------------------------------------
+-- Werte pro Punkt (Charakterfenster): unter Blizzards Tooltip von Stärke, Beweglichkeit, Ausdauer, Intelligenz und
+-- Willenskraft steht, was EIN Punkt bringt (z. B. "1 Stärke = 2 Angriffskraft", "20 Beweglichkeit = 1 % krit.").
+-- Die Werte kommen aus denselben Spielfunktionen, die Blizzards Tooltip nutzt (GetAttackPowerForStat usw.) – sie
+-- gelten also für Klasse und Stufe des Charakters. Nur außerhalb des Kampfes (keine Kampfberechnungen), nur angehängt.
+---------------------------------------------------------------------------
+do
+    local STR, AGI, STA, INT, SPI = LE_UNIT_STAT_STRENGTH or 1, LE_UNIT_STAT_AGILITY or 2, LE_UNIT_STAT_STAMINA or 3,
+        LE_UNIT_STAT_INTELLECT or 4, LE_UNIT_STAT_SPIRIT or 5
+    local statOf = setmetatable({}, { __mode = "k" })  -- [Blizzards Wert-Zeile] = Wert-Nummer
+    local hooked = setmetatable({}, { __mode = "k" })
+    local BLOCKERS = { WARRIOR = true, PALADIN = true, SHAMAN = true }
+    local NO_MANA = { WARRIOR = true, ROGUE = true }
+
+    local function Num(fn, ...)
+        if type(fn) ~= "function" then return nil end
+        local ok, v = pcall(fn, ...)
+        if ok and type(v) == "number" and not issecret(v) then return v end
+    end
+    -- Zuwachs je Punkt (über 100 Punkte gemessen, damit Rundungen des Spiels nicht stören)
+    local function Slope(fn, stat, base)
+        local a, b = Num(fn, stat, base + 100), Num(fn, stat, base)
+        if a and b then return (a - b) / 100 end
+    end
+    local function Fmt(v)
+        local s
+        if math.abs(v - math.floor(v + 0.5)) < 0.005 then
+            s = tostring(math.floor(v + 0.5))
+        else
+            s = (string.format("%.2f", v):gsub("0+$", ""))
+        end
+        return (s:gsub("%.", T(",", ".")))
+    end
+    -- "1 Stärke = 2 Angriffskraft" bzw. bei kleinen Werten umgekehrt "20 Stärke = 1 Blockwert"
+    local function PerPoint(lines, statName, perPoint, what, suffix)
+        if not perPoint or perPoint <= 0 then return end
+        suffix = suffix or ""
+        if perPoint >= 0.995 then
+            lines[#lines + 1] = "1 " .. statName .. " = " .. Fmt(perPoint) .. suffix .. " " .. what
+        else
+            lines[#lines + 1] = Fmt(1 / perPoint) .. " " .. statName .. " = 1" .. suffix .. " " .. what
+        end
+    end
+
+    local function AddLines(frame)
+        if not GetDB().statPerPoint or InCombatLockdown() then return end
+        local stat = statOf[frame]
+        if not stat or GameTooltip:GetOwner() ~= frame then return end
+        local ok, _, eff = pcall(UnitStat, "player", stat)
+        if not ok or type(eff) ~= "number" or issecret(eff) then return end
+        local _, class = UnitClass("player")
+        local name = _G["SPELL_STAT" .. stat .. "_NAME"] or "?"
+        local lines = {}
+        if stat == STR then
+            PerPoint(lines, name, Slope(GetAttackPowerForStat, STR, eff), T("Angriffskraft", "attack power"))
+            if BLOCKERS[class] and BLOCK_VALUE_PER_STRENGTH then
+                PerPoint(lines, name, 1 / BLOCK_VALUE_PER_STRENGTH, T("Blockwert", "block value"))
+            end
+        elseif stat == AGI then
+            local ap = Slope(GetAttackPowerForStat, AGI, eff)
+            PerPoint(lines, name, ap, T("Angriffskraft", "attack power"))
+            local rap = Slope(GetRangedAttackPowerForStat, AGI, eff)
+            if rap and rap > 0 and rap ~= ap then PerPoint(lines, name, rap, T("Distanzangriffskraft", "ranged attack power")) end
+            local crit = Slope(GetCritChanceFromStat, AGI, eff)
+            PerPoint(lines, name, crit and crit * 100, T("kritische Trefferchance", "critical strike chance"), " %")
+            if ARMOR_PER_AGILITY then PerPoint(lines, name, ARMOR_PER_AGILITY, T("Rüstung", "armor")) end
+        elseif stat == STA then
+            PerPoint(lines, name, Num(UnitHPPerStamina, "player"), T("Gesundheit", "health"))
+        elseif stat == INT then
+            if not NO_MANA[class] then PerPoint(lines, name, MANA_PER_INTELLECT, T("Mana", "mana")) end
+            local crit = Slope(GetSpellCritChanceFromStat, INT, eff)
+            PerPoint(lines, name, crit and crit * 100, T("kritische Zaubertrefferchance", "spell critical strike chance"), " %")
+        elseif stat == SPI and eff > 0 then
+            -- Regeneration aus Willenskraft: Gesamtwert des Spiels durch die Punkte (wie Blizzard: je 5 Sek.)
+            local health = Num(GetHealthRegenFromSpirit)
+            if health then PerPoint(lines, name, health * 5 * 0.75 / eff, T("Gesundheit je 5 Sek.", "health per 5 sec.")) end
+            local mana = not NO_MANA[class] and Num(GetManaRegenFromSpirit)
+            if mana then PerPoint(lines, name, mana * 5 / eff, T("Mana je 5 Sek.", "mana per 5 sec.")) end
+        end
+        if #lines == 0 then return end
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine(T("Pro Punkt", "Per point"), C.accent[1], C.accent[2], C.accent[3])
+        for _, line in ipairs(lines) do GameTooltip:AddLine(line, 0.9, 0.9, 0.9) end
+        GameTooltip:Show()
+    end
+
+    -- Blizzard füllt den Tooltip jeder Wert-Zeile über PaperDollFrame_SetStatTooltip2(Zeile, Name, Nummer, Wert, Einheit):
+    -- dabei merken wir uns die Zeile (eigene Tabelle) und hängen uns einmal an ihr OnEnter an
+    local function Hook()
+        if type(PaperDollFrame_SetStatTooltip2) ~= "function" then return false end
+        hooksecurefunc("PaperDollFrame_SetStatTooltip2", function(frame, _, statIndex, _, unit)
+            if not frame or type(statIndex) ~= "number" or (unit and unit ~= "player") then return end
+            statOf[frame] = statIndex
+            if not hooked[frame] and frame.HookScript then
+                hooked[frame] = true
+                frame:HookScript("OnEnter", function(self) pcall(AddLines, self) end)
+            end
+        end)
+        return true
+    end
+    if not Hook() then
+        local wait = CreateFrame("Frame")
+        wait:RegisterEvent("ADDON_LOADED")
+        wait:RegisterEvent("PLAYER_LOGIN")
+        wait:SetScript("OnEvent", function(self)
+            if Hook() then self:UnregisterAllEvents() end
+        end)
+    end
+end
+
+---------------------------------------------------------------------------
 -- Einstellungsfenster
 ---------------------------------------------------------------------------
 local ToggleOptions
 do
     local options = UI.SettingsPanel("ForeverTooltipOptions", T("ForeverTooltip – Einstellungen",
-        "ForeverTooltip – Settings"), 360, 530,
+        "ForeverTooltip – Settings"), 360, 554,
         { key = "ForeverTooltip", group = UI.SETTINGS_GROUPS.comfort, label = "Tooltip" })
     local W = 326
     local checks = {}
@@ -424,27 +535,27 @@ do
     Check(-218, T("Ziel der Einheit („Ziel: …“)", "Target of the unit (\"Target: …\")"), "showTarget")
     Check(-242, T("Gegenstands- und Zauber-IDs", "Item and spell IDs"), "showIDs")
 
-    UI.Header(options, 18, -284, T("Ort", "Position"), W)
-    Check(-306, T("Am Mauszeiger statt am Ankerplatz", "At the mouse cursor instead of the anchor"), "atCursor")
-    local scale = UI.Slider(options, 18, -338, T("Größe", "Size"), 70, 150, 5, Safe(T("Einstellungen", "Settings"), function(v)
+    UI.Header(options, 18, -308, T("Ort", "Position"), W)
+    Check(-330, T("Am Mauszeiger statt am Ankerplatz", "At the mouse cursor instead of the anchor"), "atCursor")
+    local scale = UI.Slider(options, 18, -362, T("Größe", "Size"), 70, 150, 5, Safe(T("Einstellungen", "Settings"), function(v)
         GetDB().scale = v / 100
         ApplyScale()
     end), { width = 200, unit = " %" })
-    local alpha = UI.Slider(options, 18, -378, T("Deckkraft des Hintergrunds", "Background opacity"), 20, 100, 5,
+    local alpha = UI.Slider(options, 18, -402, T("Deckkraft des Hintergrunds", "Background opacity"), 20, 100, 5,
         Safe(T("Einstellungen", "Settings"), function(v)
             GetDB().bgAlpha = v
             for tip in pairs(skinned) do ApplyLook(tip) end
         end), { width = 200, unit = " %" })
     local move = UI.Button(options, T("Verschieben", "Move"), 110, Safe("Move", function() SetLocked(false) end))
-    move:SetPoint("TOPLEFT", 16, -420)
+    move:SetPoint("TOPLEFT", 16, -444)
     local done = UI.Button(options, T("Fertig – sperren", "Done – lock"), 130, Safe("Lock", function() SetLocked(true) end))
     done:SetPoint("LEFT", move, "RIGHT", 6, 0)
     local reset = UI.Button(options, T("Position zurücksetzen", "Reset position"), 160, Safe("Reset", function()
         GetDB().pos = nil
         PlaceAnchor()
     end))
-    reset:SetPoint("TOPLEFT", 16, -446)
-    UI.Hint(options, 18, -476, W, T("Alle Forever-Rahmen auf einmal verschieben: /fmove. Prototyp – noch nicht im Release.",
+    reset:SetPoint("TOPLEFT", 16, -470)
+    UI.Hint(options, 18, -500, W, T("Alle Forever-Rahmen auf einmal verschieben: /fmove. Prototyp – noch nicht im Release.",
         "Move all Forever frames at once: /fmove. Prototype – not in the release yet."))
 
     options:SetScript("OnShow", function()
