@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverQuests: fixed the whole game lagging while the dungeon window is open – it no longer rebuilds on every quest or item data answer meant for other addons, no longer asks the server for hundreds of quests at once, and re-reads missing quest tooltips at most every few seconds.
+
 - ForeverSkin: much lighter while restyled windows stay open – they re-check Blizzard's layout often only while you work with them (2 s after opening or a click, and while the mouse is over the window), otherwise once per second (before, an open character window raised ForeverSkin's memory from about 3 MB to 17 MB).
 
 - New: /forever performance (or /forever leistung) lists CPU time (recent / session / peak, if the client measures it) and memory of every loaded Forever addon in the chat.

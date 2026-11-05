@@ -134,6 +134,9 @@ end
 -- Quests mit bekanntem Namen gibt es; die übrigen werden angefragt, die Antwort setzt ggf. "Not available in Beta"
 local betaCheckStarted = false
 local function CheckAllDungeonQuests()
+    -- Ohne den Vermerk "Not available in Beta" bringt die Prüfung nichts mehr – sie fragte Hunderte Quests an, und jede
+    -- Antwort baute das offene Fenster neu auf (Ruckeln). Daher abgeschaltet.
+    if not SHOW_NOT_IN_BETA then return end
     if betaCheckStarted or not C_QuestLog.RequestLoadQuestByID or #(ns.DUNGEON_DATA or {}) == 0 then return end
     betaCheckStarted = true
     local pending = {}
@@ -158,9 +161,14 @@ local function CheckAllDungeonQuests()
     Next()
 end
 
+local tooltipFailedAt = {} -- [questID] = Zeitpunkt, an dem der Tooltip zuletzt noch keinen Text hatte
 local function GetQuestTooltipText(questID)
     if not questID then return nil end
     if questTextCache[questID] then return questTextCache[questID] end
+    -- Tooltip ohne Text nicht bei jedem Neuaufbau erneut lesen (teuer), sondern höchstens alle paar Sekunden
+    local failed = tooltipFailedAt[questID]
+    if failed and GetTime() - failed < REQUEST_RETRY_SECONDS then return nil end
+    tooltipFailedAt[questID] = GetTime()
     if C_TooltipInfo and C_TooltipInfo.GetHyperlink then
         local data = C_TooltipInfo.GetHyperlink("quest:" .. questID)
         -- Zeile 1 ist der Questname: merken, falls das Spiel ihn sonst noch nicht liefert
@@ -185,6 +193,7 @@ local function GetQuestTooltipText(questID)
             local text = table.concat(parts, "  ")
             if text ~= "" and not (RETRIEVING_DATA and text:find(RETRIEVING_DATA, 1, true)) then
                 questTextCache[questID] = text
+                tooltipFailedAt[questID] = nil
                 return text
             end
         end
@@ -1869,7 +1878,7 @@ end
 RequestRefresh = function()
     if refreshPending then return end
     refreshPending = true
-    C_Timer.After(0.15, RefreshDetail)
+    C_Timer.After(0.4, RefreshDetail) -- (mehrere Ereignisse kurz hintereinander = ein Neuaufbau)
 end
 ns.RequestDungeonRefresh = RequestRefresh -- für erneute Questdaten-Anfragen (siehe RequestQuestData)
 
@@ -2673,7 +2682,13 @@ local function CreateWindow()
     for _, event in ipairs(events) do
         window:RegisterEvent(event)
     end
-    window:SetScript("OnEvent", function(_, event)
+    window:SetScript("OnEvent", function(_, event, id, success)
+        if not window:IsShown() then return end
+        -- Daten-Antworten kommen auch für Anfragen anderer Addons (Questie, Taschen, Tooltips) – nur bei eigenen
+        -- Anfragen neu aufbauen, sonst baute sich das Fenster ständig neu auf
+        if event == "QUEST_DATA_LOAD_RESULT" and (not success or not requestedQuests[id]) then return end
+        if event == "ITEM_DATA_LOAD_RESULT" and not requestedItems[id] then return end
+        if event == "QUEST_DATA_LOAD_RESULT" then tooltipFailedAt[id] = nil end
         RequestRefresh()
         -- Quest angenommen, abgegeben oder abgebrochen: Anzahl beim Eintrag "Questlog" aktuell halten
         if (event == "QUEST_ACCEPTED" or event == "QUEST_TURNED_IN" or event == "QUEST_REMOVED") and window:IsShown() then
