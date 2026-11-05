@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 70
+local VERSION = 71
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -3283,16 +3283,22 @@ end
 local function MaybeWelcome()
     if _G.ForeverHub ~= hub or InCombatLockdown() then return end -- im Kampf: beim naechsten Laden
     local db = GetDB()
+    -- seit v71: Einrichtungsassistent (Setup.lua) einmal je Charakter (ForeverHubDB.setupDone["Name-Realm"]); sofort
+    -- merken, damit er auch nach einfachem Schließen nicht wiederkommt. Die Frage nach anderen Addons kommt am Ende.
+    local charKey = (UnitName("player") or "?") .. "-" .. (GetRealmName() or "?")
+    db.setupDone = db.setupDone or {}
+    if UI.ShowSetup and not db.setupDone[charKey] then
+        db.setupDone[charKey] = true
+        local first = not db.welcomeDone
+        db.welcomeDone = true
+        UI.ShowSetup(function() pcall(MaybeAskConflicts, first) end)
+        return
+    end
     if db.welcomeDone then
         pcall(MaybeAskConflicts, false) -- neues Addon-Paar seit dem letzten Mal? einmal fragen
         return
     end
     db.welcomeDone = true -- sofort merken: erscheint auch dann nie wieder, wenn man es einfach schliesst
-    -- seit v70: Einrichtungsassistent (Setup.lua); die Frage nach anderen Addons kommt dort am Ende
-    if UI.ShowSetup then
-        UI.ShowSetup(function() pcall(MaybeAskConflicts, true) end)
-        return
-    end
     hub.ShowWelcome()
     pcall(MaybeAskConflicts, true) -- beim ersten Start: als einzige Frage gleich neben der Begrüßung
 end

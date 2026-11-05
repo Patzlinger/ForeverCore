@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- New: setup assistant on the very first start – language, player names, which addons to use and the basic switches in four short steps. Run it again any time with /forever setup (or /forever einrichtung).
+- New: setup assistant on the first start of every character – language, player names, which addons to use and the basic switches in four short steps. Run it again any time with /forever setup (or /forever einrichtung).
 - ForeverAlts: new character overview – the gear of every character, laid out like the character window (as of that character's last login). Click a row or the new chest button; hover for the item tooltip, Shift-click to link, Ctrl-click to try on.
 - ForeverBars: putting newly learned spell ranks on your bars automatically is now off by default (still available in the settings).
 
