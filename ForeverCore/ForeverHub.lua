@@ -4770,7 +4770,7 @@ local function OverInfo(spellID)
     return info
 end
 
-local function CollectAuras(unit, filter)
+local function Raw(unit, filter)
     local list = {}
     if C_UnitAuras and C_UnitAuras.GetUnitAuras then
         local ok, res = pcall(C_UnitAuras.GetUnitAuras, unit, filter)
@@ -4784,6 +4784,24 @@ local function CollectAuras(unit, filter)
         end
     end
     return list
+end
+
+local function Mine(a)
+    local src, mine = a.sourceUnit, a.isFromPlayerOrPlayerPet
+    if Secret(src, mine) then return false end
+    return mine == true or src == "player" or src == "pet" or src == "vehicle"
+end
+
+-- Eigene Auren: erst mit Filter "PLAYER"; liefert der nichts, alle Auren holen und selbst nach Quelle filtern
+local function CollectAuras(unit, filter)
+    local list = Raw(unit, filter)
+    if #list > 0 or not filter:find("|PLAYER", 1, true) then return list end
+    local base = filter:gsub("|PLAYER", "")
+    local out = {}
+    for _, a in ipairs(Raw(unit, base)) do
+        if Mine(a) then out[#out + 1] = a end
+    end
+    return out
 end
 
 function UI.OverTimeRemaining(unit, kind)
