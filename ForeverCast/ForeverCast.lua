@@ -2070,7 +2070,7 @@ end
 
 -- Fehlschlag ohne laufenden Zauber (z. B. Spontanzauber: "Nicht genug Mana", "Außer Reichweite"):
 -- Leiste kurz in der Fehlerfarbe mit Zaubername zeigen
-local function FlashFail(spellID)
+local function FlashFail(spellID, label)
     if not spellID or IsSecret(spellID) then return end
     if state.mode == "cast" or state.mode == "channel" or state.mode == "flight" or state.failed then return end
     local info = C_Spell and C_Spell.GetSpellInfo and C_Spell.GetSpellInfo(spellID)
@@ -2083,7 +2083,7 @@ local function FlashFail(spellID)
     HideZones()
     SetBarColor(COLOR_FAIL)
     bar:SetValue(1)
-    nameText:SetText(name .. " – " .. T("Fehlgeschlagen", "Failed"))
+    nameText:SetText(name .. " – " .. (label or T("Fehlgeschlagen", "Failed")))
     timeText:SetText("")
     expectText:SetText("")
     pingText:SetText("")
@@ -2095,13 +2095,43 @@ local function FlashFail(spellID)
     Wake()
 end
 
+-- Tastendruck-Fehler zählen nicht: Wer Sinister Strike & Co. wiederholt drückt, bekommt für jeden zu frühen Druck ein
+-- UNIT_SPELLCAST_FAILED ("Noch nicht bereit"/"Eine andere Aktion läuft") – obwohl der Zauber gerade erfolgreich war.
+-- Darum: kein "Fehlgeschlagen" kurz nach einem erfolgreichen Zauber und nicht während der globalen Abklingzeit.
+local function PressedTooEarly()
+    if GetTime() - (state.lastSuccess or 0) < 0.6 then return true end
+    local info = ReadCooldown(GCD_SPELL)
+    if info and not IsSecret(info.startTime, info.duration) and info.duration and info.duration > 0
+        and info.startTime + info.duration > GetTime() then
+        return true
+    end
+    return false
+end
+
 H.UNIT_SPELLCAST_FAILED = function(_, castGUID, spellID)
     if state.test then return end
     if state.mode ~= "channel" and IsCurrentCast(castGUID) then FinishCast("failed")
-    elseif state.mode ~= "cast" and state.mode ~= "channel" then FlashFail(spellID) end
+    elseif state.mode ~= "cast" and state.mode ~= "channel" and not PressedTooEarly() then FlashFail(spellID) end
+end
+
+-- Zauber verfehlt (Verfehlt, Ausgewichen, Pariert, Widerstanden …): "Name – Verfehlt" in der Fehlerfarbe
+local MISS_LABELS = function() return {
+    MISS = T("Verfehlt", "Missed"), DODGE = T("Ausgewichen", "Dodged"), PARRY = T("Pariert", "Parried"),
+    RESIST = T("Widerstanden", "Resisted"), IMMUNE = T("Immun", "Immune"), REFLECT = T("Reflektiert", "Reflected"),
+    EVADE = T("Entkommen", "Evaded"), DEFLECT = T("Abgelenkt", "Deflected"),
+} end
+
+H.COMBAT_LOG_EVENT_UNFILTERED = function()
+    if state.test or not CombatLogGetCurrentEventInfo then return end
+    local _, sub, _, sourceGUID, _, _, _, _, _, _, _, spellID, _, _, missType = CombatLogGetCurrentEventInfo()
+    if IsSecret(sub, sourceGUID, spellID, missType) or sub ~= "SPELL_MISSED" or not sourceGUID then return end
+    if sourceGUID ~= UnitGUID("player") then return end
+    local label = MISS_LABELS()[missType]
+    if label and spellID then FlashFail(spellID, label) end
 end
 
 H.UNIT_SPELLCAST_SUCCEEDED = function(_, _, spellID)
+    state.lastSuccess = GetTime()
     UpdateGCD(spellID)
     -- Ein Gegenstand fertig hergestellt: Zaehler weiter
     if craft and state.isTradeSkill and not state.test then
