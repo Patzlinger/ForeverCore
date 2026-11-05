@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- ForeverSkin: item icons attached to mails no longer show a second, misplaced frame.
 - ForeverPlates: the execute-range color is no longer applied to enemies tagged by someone else (grey bar): they stay grey, also in execute range.
 - ForeverBars: new option "Casts per mana (bottom left)" (Font tab, on by default for classes with mana): a small number in the bottom-left corner of each mana spell shows how often you can cast it with your current mana – also in combat.
 - ForeverSpellbook: dragging a spell onto an action bar now also works in combat (no more "action blocked" error).

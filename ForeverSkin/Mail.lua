@@ -38,6 +38,15 @@ local function BagSlot(button)
             if r:GetDrawLayer() == "BACKGROUND" or s:find("slot") then r:SetAlpha(0) end
         end
     end
+    -- Gibt es ein eigenes Symbol UND eine "normale" Grafik, lagen beide (zugeschnitten und eingerückt) übereinander:
+    -- ein zweiter, falscher Rahmen um das Symbol (Anhänge in Briefen). Dann nur das Symbol zeigen.
+    if normal and icon and normal ~= icon then ns.Hide(normal) normal = nil end
+    -- Seltenheitsrand genau auf die Platzgröße
+    local border = button.IconBorder
+    if border and border.ClearAllPoints and not Forbidden(border) then
+        border:ClearAllPoints()
+        border:SetAllPoints(button)
+    end
     for _, t in ipairs({ normal or false, icon or false }) do
         if t and t.SetTexCoord then
             t:ClearAllPoints()
