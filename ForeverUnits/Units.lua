@@ -979,21 +979,49 @@ do
         local age = GetTime() - lastCast
         local on = b:IsVisible() and GetDB().fiveSecRule ~= false and lastPType == 0 and age < 5 and v.power:IsShown()
         if not on then
-            if v.fsr then v.fsr:Hide() end
+            if v.fsr then
+                v.fsr:Hide()
+                for _, t in ipairs(v.fsrParts) do t:Hide() end
+            end
             return
         end
         if not v.fsr then
-            v.fsr = v.power:CreateTexture(nil, "OVERLAY", nil, 3)
-            v.fsr:SetTexture("Interface\\Buttons\\WHITE8X8")
-            v.fsr:SetBlendMode("ADD")
-            v.fsr:SetVertexColor(0.75, 0.9, 1, 0.8)
-            v.fsr:SetWidth(3)
+            -- dünner heller Kern, weicher Schein darum und ein auslaufender Schweif dahinter (alles additiv)
+            local WHITE8 = "Interface\\Buttons\\WHITE8X8"
+            local core = v.power:CreateTexture(nil, "OVERLAY", nil, 3)
+            core:SetTexture(WHITE8)
+            core:SetBlendMode("ADD")
+            core:SetVertexColor(0.85, 0.95, 1, 1)
+            core:SetWidth(2)
+            local glow = v.power:CreateTexture(nil, "OVERLAY", nil, 2)
+            glow:SetTexture(WHITE8)
+            glow:SetBlendMode("ADD")
+            glow:SetVertexColor(0.4, 0.7, 1, 0.28)
+            glow:SetWidth(8)
+            glow:SetPoint("TOP", core, "TOP", 0, 0)
+            glow:SetPoint("BOTTOM", core, "BOTTOM", 0, 0)
+            local trail = v.power:CreateTexture(nil, "OVERLAY", nil, 1)
+            trail:SetTexture(WHITE8)
+            trail:SetBlendMode("ADD")
+            trail:SetWidth(22)
+            trail:SetPoint("TOPRIGHT", core, "TOPLEFT", 0, 0)
+            trail:SetPoint("BOTTOMRIGHT", core, "BOTTOMLEFT", 0, 0)
+            if trail.SetGradient and CreateColor then
+                trail:SetGradient("HORIZONTAL", CreateColor(0.4, 0.7, 1, 0), CreateColor(0.4, 0.7, 1, 0.4))
+            else
+                trail:SetVertexColor(0.4, 0.7, 1, 0.15)
+            end
+            v.fsr = core
+            v.fsrParts = { glow, trail }
         end
         local w = v.power:GetWidth() or 0
+        local x = (age / 5) * math.max(0, w - 2)
         v.fsr:ClearAllPoints()
-        v.fsr:SetPoint("TOPLEFT", v.power, "TOPLEFT", (age / 5) * math.max(0, w - 3), 0)
-        v.fsr:SetPoint("BOTTOMLEFT", v.power, "BOTTOMLEFT", (age / 5) * math.max(0, w - 3), 0)
+        v.fsr:SetPoint("TOPLEFT", v.power, "TOPLEFT", x, 0)
+        v.fsr:SetPoint("BOTTOMLEFT", v.power, "BOTTOMLEFT", x, 0)
         v.fsr:Show()
+        for _, t in ipairs(v.fsrParts) do t:Show() end
+        v.fsrParts[2]:SetWidth(math.max(0.01, math.min(22, x))) -- Schweif ragt nicht links über den Balken
     end)
 end
 
