@@ -486,6 +486,13 @@ local function Setup(plate, frame)
     clip:SetAllPoints(o)
     clip:SetFrameLevel(o:GetFrameLevel() + 1)
     clip:SetClipsChildren(true)
+    local dotFill = CreateFrame("StatusBar", nil, clip) -- Grundfläche unter der Schraffur
+    dotFill:SetStatusBarTexture(WHITE)
+    dotFill:SetReverseFill(true)
+    dotFill:SetMinMaxValues(0, 1)
+    dotFill:SetValue(0)
+    dotFill:SetPoint("TOPRIGHT", o:GetStatusBarTexture(), "TOPRIGHT")
+    fp.dotFill = dotFill
     local dot = CreateFrame("StatusBar", nil, clip)
     dot:SetStatusBarTexture(UI.HATCH_TEXTURE)
     dot:GetStatusBarTexture():SetHorizTile(true)
@@ -494,7 +501,7 @@ local function Setup(plate, frame)
     dot:SetMinMaxValues(0, 1)
     dot:SetValue(0)
     dot:SetPoint("TOPRIGHT", o:GetStatusBarTexture(), "TOPRIGHT")
-    o:HookScript("OnSizeChanged", function(_, w, h) dot:SetSize(w, h) end)
+    o:HookScript("OnSizeChanged", function(_, w, h) dot:SetSize(w, h) dotFill:SetSize(w, h) end)
     fp.dot = dot
     fp.bg = o:CreateTexture(nil, "BACKGROUND")
     fp.bg:SetAllPoints()
@@ -839,11 +846,13 @@ local function UpdateDot(fp)
     if db.dotPrediction and fp.enemy and unit and UI.OverTimeRemaining then dmg = UI.OverTimeRemaining(unit, "damage") end
     fp.dot:SetMinMaxValues(0, UnitHealthMax(unit))
     fp.dot:SetValue(dmg)
+    fp.dotFill:SetMinMaxValues(0, UnitHealthMax(unit))
+    fp.dotFill:SetValue(dmg)
     fp.dotOn = dmg > 0
     if dmg > 0 then
         local cur = UnitHealth(unit)
-        if not IsSecret(cur) and cur and dmg >= cur then fp.dot:SetStatusBarColor(1, 0.1, 0.1, 1)
-        else fp.dot:SetStatusBarColor(0.95, 0.35, 0.2, 0.85) end
+        if not IsSecret(cur) and cur and dmg >= cur then fp.dot:SetStatusBarColor(1, 0.85, 0.85, 1) fp.dotFill:SetStatusBarColor(1, 0.05, 0.05, 0.8)
+        else fp.dot:SetStatusBarColor(1, 0.6, 0.35, 1) fp.dotFill:SetStatusBarColor(0.9, 0.2, 0.1, 0.5) end
     end
 end
 

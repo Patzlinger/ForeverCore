@@ -36,7 +36,7 @@ end
 local function LayoutOverlays(v)
     local w, h = v.health:GetSize()
     local fill = v.health:GetStatusBarTexture()
-    for _, bar in ipairs({ v.heal, v.hotFill, v.hot, v.dot, v.shield, v.absorb }) do
+    for _, bar in ipairs({ v.heal, v.hotFill, v.hot, v.dotFill, v.dot, v.shield, v.absorb }) do
         bar:ClearAllPoints()
         bar:SetSize(w, h)
     end
@@ -44,6 +44,7 @@ local function LayoutOverlays(v)
     v.hot:SetPoint("TOPLEFT", v.heal:GetStatusBarTexture(), "TOPRIGHT")
     v.hotFill:SetPoint("TOPLEFT", v.heal:GetStatusBarTexture(), "TOPRIGHT")
     v.dot:SetPoint("TOPRIGHT", fill, "TOPRIGHT")
+    v.dotFill:SetPoint("TOPRIGHT", fill, "TOPRIGHT")
     v.shield:SetPoint("TOPLEFT", v.hot:GetStatusBarTexture(), "TOPRIGHT")
     v.absorb:SetPoint("TOPRIGHT", fill, "TOPRIGHT")
 end
@@ -143,6 +144,7 @@ local function CreateUnitFrame(info)
     v.clip:SetClipsChildren(true)
     v.heal = NewOverlay(v.clip, false)
     v.hotFill = NewOverlay(v.clip, false) -- Grundfläche unter der Schraffur
+    v.dotFill = NewOverlay(v.clip, true) -- Grundfläche unter der DoT-Schraffur
     v.hot = NewOverlay(v.clip, false) -- eigene HoTs: schraffiert
     v.dot = NewOverlay(v.clip, true)  -- eigene DoTs auf dem Ziel: schraffiert, vom Lebensbalken-Ende nach links
     for _, bar in ipairs({ v.hot, v.dot }) do
@@ -827,7 +829,7 @@ local function UpdatePrediction(b)
     local v, look, unit = b.v, Look(), b.unit
     local c = GetCalc()
     if not c or not UnitGetDetailedHealPrediction then
-        v.heal:SetValue(0) v.hot:SetValue(0) v.hotFill:SetValue(0) v.dot:SetValue(0) v.shield:SetValue(0) v.absorb:SetValue(0)
+        v.heal:SetValue(0) v.hot:SetValue(0) v.hotFill:SetValue(0) v.dot:SetValue(0) v.dotFill:SetValue(0) v.shield:SetValue(0) v.absorb:SetValue(0)
         return
     end
     UnitGetDetailedHealPrediction(unit, "player", c)
@@ -839,6 +841,7 @@ local function UpdatePrediction(b)
     v.hot:SetMinMaxValues(0, max)
     v.hotFill:SetMinMaxValues(0, max)
     v.dot:SetMinMaxValues(0, max)
+    v.dotFill:SetMinMaxValues(0, max)
     local hot, dot = 0, 0
     if UI.OverTimeRemaining then
         local hostile = UnitCanAttack("player", unit)
@@ -853,11 +856,13 @@ local function UpdatePrediction(b)
     v.hot:SetValue(hot)
     v.hotFill:SetValue(hot)
     v.dot:SetValue(dot)
+    v.dotFill:SetValue(dot)
     v.overOn = hot > 0 or dot > 0
     if dot > 0 then
         local cur = UnitHealth(unit)
         local lethal = not IsSecret(cur) and cur and dot >= cur
-        if lethal then v.dot:SetStatusBarColor(1, 0.1, 0.1, 1) else v.dot:SetStatusBarColor(0.95, 0.35, 0.2, 0.85) end
+        if lethal then v.dot:SetStatusBarColor(1, 0.85, 0.85, 1) v.dotFill:SetStatusBarColor(1, 0.05, 0.05, 0.8)
+        else v.dot:SetStatusBarColor(1, 0.6, 0.35, 1) v.dotFill:SetStatusBarColor(0.9, 0.2, 0.1, 0.5) end
     end
     v.shield:SetMinMaxValues(0, max)
     if look.shields ~= false then v.shield:SetValue((c:GetDamageAbsorbs())) else v.shield:SetValue(0) end
