@@ -937,7 +937,9 @@ function ns.UpdateCastCounts()
     local mana
     if on then
         local m = UnitPower("player", 0)
-        if not (issecret and issecret(m)) then mana = m end
+        -- im Kampf gesperrt: issecret erkennt es nicht überall zuverlässig, darum rechnet unten zusätzlich ein pcall
+        local locked = (issecretvalue and issecretvalue(m)) or (issecret and issecret(m))
+        if not locked and type(m) == "number" then mana = m end
     end
     for _, def in ipairs(ns.BAR_DEFS) do
         for _, button in ipairs(GetAllButtons(def)) do
@@ -954,9 +956,11 @@ function ns.UpdateCastCounts()
                 if fs then
                     SetTextFont(fs, math.max(8, ns.db.fontSize - 1))
                     if mana then
-                        local n = math.floor(mana / cost)
-                        fs:SetText(n)
-                        if n > 0 then fs:SetTextColor(0.55, 0.78, 1) else fs:SetTextColor(1, 0.3, 0.3) end
+                        local okCalc, n = pcall(function() return math.floor(mana / cost) end)
+                        if okCalc and type(n) == "number" then
+                            fs:SetText(n)
+                            if n > 0 then fs:SetTextColor(0.55, 0.78, 1) else fs:SetTextColor(1, 0.3, 0.3) end
+                        end
                     end
                     fs:SetShown((fs:GetText() or "") ~= "")
                 end
