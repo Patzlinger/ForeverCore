@@ -188,6 +188,8 @@ do
     Check(p, L, -220, T("Ausruhen-Symbol (Gasthaus/Hauptstadt)", "Resting icon (inn/capital)"), G("restingShow"))
     Check(p, L, -244, T("NPCs in Reaktionsfarbe (rot/gelb)", "NPCs in reaction color (red/yellow)"), G("npcReactionColor"))
 
+    Check(p, L, -268, T("Druide: Mana in Tiergestalt", "Druid: mana in animal form"), G("druidMana"))
+
     UI.Header(p, L, -290, T("Auren", "Auras"))
     Check(p, L, -310, T("Restzeit als Scheibe", "Remaining time as swipe"), G("auraTimer"))
     Check(p, L, -334, T("Tooltip auf Auren (Klicks gehen durch)", "Tooltip on auras (clicks pass through)"), G("auraTooltip"))

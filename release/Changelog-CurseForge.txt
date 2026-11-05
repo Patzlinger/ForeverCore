@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- ForeverUnits: druids in cat/bear form get an extra mana bar below the player frame, so you can still see your mana outside the form (switchable, on by default).
 - ForeverSkin: first draft of the new transmogrify window in the Forever look (frame, outfit list, gear slots, tabs, search and buttons; the appearance previews stay Blizzard's for now).
 
 - ForeverBags: opens with the cursor over the money in the window; the bag window can no longer open as an empty black area in combat (slots are placed and prepared out of combat, the window is not raised in combat).

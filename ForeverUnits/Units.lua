@@ -1038,8 +1038,54 @@ SlashCmdList.FORFREGEN = function()
         .. " | Ressource: " .. S(UnitPower("player")))
 end
 
+-- Druide in Tiergestalt (Katze: Energie, Bär: Wut): das Mana läuft als eigener schmaler Balken unter dem Rahmen weiter
+-- (Spielerrahmen, abschaltbar: druidMana). In Mana-Gestalten (Moonkin, Baum, Normalform) ist er aus.
+local isDruid = select(2, UnitClass("player")) == "DRUID"
+local function DruidMana(b)
+    if not isDruid then return end
+    local v = b.v
+    local pType = UnitPowerType("player")
+    if IsSecret(pType) or type(pType) ~= "number" then pType = lastPType else lastPType = pType end
+    local show = GetDB().druidMana ~= false and pType ~= nil and pType ~= 0 and FrameDB(b.key).powerHeight > 0
+    if not show then
+        if v.mana then v.mana:Hide() end
+        return
+    end
+    local m = v.mana
+    if not m then
+        m = NewBar(v.content)
+        m:SetStatusBarTexture(WHITE)
+        m:SetFrameLevel(v.content:GetFrameLevel() + 1)
+        m.bg = m:CreateTexture(nil, "BACKGROUND")
+        m.bg:SetAllPoints(m)
+        m.bg:SetColorTexture(0, 0, 0, 0.55)
+        m.text = NewText(m)
+        m.text:SetPoint("CENTER", m, "CENTER", 0, 0)
+        v.mana = m
+    end
+    m:ClearAllPoints()
+    m:SetPoint("TOPLEFT", v.content, "BOTTOMLEFT", 0, -3)
+    m:SetPoint("TOPRIGHT", v.content, "BOTTOMRIGHT", 0, -3)
+    m:SetHeight(math.max(8, FrameDB(b.key).powerHeight - 2))
+    local c = PowerBarColor and PowerBarColor[0]
+    SetBarFill(m, c and c.r or 0, c and c.g or 0.45, c and c.b or 1)
+    local cur, max = UnitPower("player", 0), UnitPowerMax("player", 0)
+    if IsSecret(cur, max) then
+        m:SetMinMaxValues(0, max)
+        m:SetValue(cur)
+    else
+        m:SetMinMaxValues(0, (max and max > 0) and max or 1)
+        m:SetValue(cur or 0)
+    end
+    local look = Look()
+    m.text:SetFont(look.font or STANDARD_TEXT_FONT, math.max(7, m:GetHeight() - 2), look.outline or "")
+    m.text:SetFormattedText("%s", ns.ShortNumber(cur))
+    m:Show()
+end
+
 local function UpdatePower(b)
     local v, f, unit = b.v, FrameDB(b.key), b.unit
+    if unit == "player" then DruidMana(b) end
     if f.powerHeight <= 0 then return end
     local pType, pToken = UnitPowerType(unit)
     local c = PowerBarColor and not IsSecret(pType, pToken) and (PowerBarColor[pToken] or PowerBarColor[pType])
