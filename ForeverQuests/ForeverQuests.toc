@@ -11,7 +11,7 @@
 ## Dependencies: ForeverCore
 ## OptionalDeps: Questie
 ## Group: ForeverCore
-## SavedVariables: ForeverQuestsDB
+## SavedVariables: ForeverQuestsDB, ForeverQuestsSeen
 ## SavedVariablesPerCharacter: ForeverQuestsCharDB
 
 Locales.lua

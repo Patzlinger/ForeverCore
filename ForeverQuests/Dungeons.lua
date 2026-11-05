@@ -1075,8 +1075,64 @@ local function GetRewardInfo(itemID)
         -- falls keine Antwort kommt: später neu aufbauen, dabei wird erneut gefragt
         C_Timer.After(ITEM_RETRY + 0.5, function() if pendingItems[itemID] then RequestRefresh() end end)
     end
+    -- Server hat auf alle Anfragen nicht geantwortet: Gegenstand gibt es dort (so) offenbar nicht
+    local unknown = not name and (itemTries[itemID] or 0) >= ITEM_MAX_TRIES
+        and pendingItems[itemID] ~= nil and GetTime() - pendingItems[itemID] > ITEM_RETRY
     if not name then name = QuestieItemName(itemID) end
-    return name, link, quality, icon
+    return name, link, quality, icon, unknown
+end
+
+-- Echte Belohnungen vom Spiel: Questies Daten stammen aus dem ursprünglichen Classic, Forever hat manche Belohnungen
+-- geändert. Was das Spiel selbst liefert (Quest im Questlog, Questtext beim NPC – Annehmen und Abgeben), wird
+-- kontoweit gemerkt (ForeverQuestsSeen.rewards[Quest-ID] = { Gegenstands-IDs }; Daten, keine Einstellung) und ersetzt
+-- auf den Karten Questies Liste.
+do
+    local function Store()
+        if type(_G.ForeverQuestsSeen) ~= "table" then _G.ForeverQuestsSeen = {} end
+        local s = _G.ForeverQuestsSeen
+        if type(s.rewards) ~= "table" then s.rewards = {} end
+        return s.rewards
+    end
+    function ns.SeenQuestRewards(questID) return questID and Store()[questID] or nil end
+    local logRead = {} -- [Quest-ID] = in dieser Sitzung schon aus dem Questlog gelesen
+    function ns.ReadLogRewardsOnce(questID)
+        if not questID or logRead[questID] or not ns.QuestRewardItemIDs
+            or not C_QuestLog.GetLogIndexForQuestID(questID) then return end
+        logRead[questID] = true
+        ns.RememberQuestRewards(questID, ns.QuestRewardItemIDs(questID))
+    end
+    function ns.RememberQuestRewards(questID, ids)
+        if not questID or type(ids) ~= "table" or #ids == 0 then return end
+        local old = Store()[questID]
+        local same = old and #old == #ids
+        if same then for i, id in ipairs(ids) do if old[i] ~= id then same = false break end end end
+        if same then return end
+        Store()[questID] = ids
+        RequestRefresh()
+    end
+    -- Questtext beim NPC (Annehmen / Abgeben): feste Belohnungen und Auswahl
+    local function ItemIDOf(kind, i)
+        local ok, _, _, _, _, _, itemID = pcall(GetQuestItemInfo, kind, i)
+        if ok and type(itemID) == "number" and itemID > 0 then return itemID end
+        local okLink, link = pcall(GetQuestItemLink, kind, i)
+        local id = okLink and type(link) == "string" and tonumber(link:match("item:(%d+)"))
+        return id
+    end
+    local npc = CreateFrame("Frame")
+    npc:RegisterEvent("QUEST_DETAIL")
+    npc:RegisterEvent("QUEST_COMPLETE")
+    npc:SetScript("OnEvent", function()
+        C_Timer.After(0.2, function()
+            local questID = GetQuestID and GetQuestID()
+            if not questID or questID == 0 or not GetQuestItemInfo then return end
+            local ids = {}
+            for i = 1, (GetNumQuestRewards and GetNumQuestRewards() or 0) do ids[#ids + 1] = ItemIDOf("reward", i) end
+            for i = 1, (GetNumQuestChoices and GetNumQuestChoices() or 0) do ids[#ids + 1] = ItemIDOf("choice", i) end
+            -- (eine fehlende ID = Daten noch nicht da: dann lieber nichts merken als eine halbe Liste)
+            local count = (GetNumQuestRewards and GetNumQuestRewards() or 0) + (GetNumQuestChoices and GetNumQuestChoices() or 0)
+            if #ids > 0 and #ids == count then ns.RememberQuestRewards(questID, ids) end
+        end)
+    end)
 end
 
 local function CreateRewardButton(parent)
@@ -1108,6 +1164,15 @@ local function CreateRewardButton(parent)
     -- Spieleinstellung "immer vergleichen" sonst ständig), mit Shift Blizzards GameTooltip samt Vergleich
     local function ShowItem(self)
         local own = ns.Style.GetTooltip()
+        if self.unknown then
+            -- Server kennt den Gegenstand nicht: statt Blizzards dauerhaftem "Frage … ab" eine Erklärung
+            if GameTooltip:GetOwner() == self then GameTooltip:Hide() end
+            own:SetOwner(self, "ANCHOR_RIGHT")
+            own:AddLine(self.fallbackName or ("#" .. tostring(self.itemID)), 0.7, 0.7, 0.7)
+            own:AddLine(ns.L("ITEM_NOT_ON_SERVER"), 1, 1, 1, true)
+            own:Show()
+            return
+        end
         if IsShiftKeyDown() then
             own:Hide()
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
@@ -1149,7 +1214,7 @@ local function LayoutRewards(entry, quest, width, chain)
     local final = {}
     local last = chain and chain[#chain]
     if last and last.questID ~= quest.id and ns.QuestRewardItemIDs then
-        final = ns.QuestRewardItemIDs(last.questID)
+        final = ns.SeenQuestRewards(last.questID) or ns.QuestRewardItemIDs(last.questID)
     end
     if entry.finalLabel then entry.finalLabel:Hide() end
     if #own + #final == 0 then
@@ -1198,14 +1263,20 @@ local function LayoutRewards(entry, quest, width, chain)
             button = CreateRewardButton(entry.rewardArea)
             entry.rewardButtons[i] = button
         end
-        local name, link, quality, icon = GetRewardInfo(itemID)
+        local name, link, quality, icon, unknown = GetRewardInfo(itemID)
         button.itemID = itemID
         button.link = link
+        button.unknown, button.fallbackName = unknown, name
         button.icon:SetTexture(icon or 134400) -- 134400 = Fragezeichen-Symbol
+        button.icon:SetDesaturated(unknown and true or false)
         local r, g, b = GetQualityColor(quality)
         button.border:SetColorTexture(r, g, b, 1)
         button.name:SetText(name or ns.L("ITEM_LOADING", itemID))
-        button.name:SetTextColor(r, g, b)
+        if unknown then
+            button.name:SetTextColor(0.5, 0.5, 0.5) -- (auf dem Server nicht gefunden, siehe Tooltip)
+        else
+            button.name:SetTextColor(r, g, b)
+        end
 
         local position = offsetOf[i] or i -- Platz innerhalb der eigenen Gruppe
         local column = (position - 1) % 2
@@ -1691,8 +1762,14 @@ RefreshDetail = function()
             local style = STATUS[status]
             entry.stripe:SetColorTexture(style.stripe[1], style.stripe[2], style.stripe[3], 1)
             done = done + card.done
+            -- Quest im Questlog: echte Belohnungen vom Spiel lesen und merken (einmal je Sitzung und Quest)
+            ns.ReadLogRewardsOnce(quest.id)
+            -- gemerkte echte Belohnungen gehen vor Questies Daten
+            local seen = ns.SeenQuestRewards(quest.id)
+            if seen then
+                quest.rewards = seen
             -- Belohnungen aus dem Spiel (im Questlog vollständig, sonst soweit der Server sie nachlädt)
-            if (not quest.rewards or #quest.rewards == 0) and ns.QuestRewardItemIDs then
+            elseif (not quest.rewards or #quest.rewards == 0) and ns.QuestRewardItemIDs then
                 local ids = ns.QuestRewardItemIDs(quest.id)
                 if #ids > 0 then quest.rewards = ids end
             end

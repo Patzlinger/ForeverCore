@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverQuests: the dungeon window now remembers the real quest rewards from the game (quest log and the quest text at the NPC, account-wide) and shows them instead of Questie's Classic data – Forever changed some rewards. Items the server doesn't know are shown greyed out with an explanation instead of an endless "Retrieving item information".
+
 ## 0.51b – November 5, 2026
 
 - ForeverTooltip: item tooltips now show what the item's stats give you (e.g. "Stamina +10: +100 health", "Agility +12: +12 attack power · +0.6 % crit · +24 armor") and, for items you don't wear, the difference to your equipped item in that slot – with the same values as the character window (out of combat only).
