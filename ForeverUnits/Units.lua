@@ -903,23 +903,40 @@ do
     ev:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
     ev:SetScript("OnEvent", function() lastCast = GetTime() end)
 end
-local function RegenText(b, pType, pToken)
-    if b.unit ~= "player" or GetDB().powerRegen == false or IsSecret(pType, pToken) then return end
-    local rate
-    if pType == 0 then
-        if GetManaRegen then
-            local base, casting = GetManaRegen()
-            rate = (GetTime() - lastCast < 5) and casting or base
-        end
-    elseif pType == 3 then
-        if GetPowerRegenForPowerType then rate = GetPowerRegenForPowerType(3)
-        elseif GetPowerRegen then rate = (GetPowerRegen()) end
-    else
-        return
+-- Messwert als Ersatz, wenn die Schnittstelle im Kampf nichts Lesbares liefert: Zuwachs der letzten ~6 s
+local samples = {}
+local function Measured(cur)
+    if type(cur) ~= "number" or IsSecret(cur) then return end
+    local now = GetTime()
+    local last = samples[#samples]
+    if last and now - last[1] < 0.2 then return end
+    samples[#samples + 1] = { now, cur }
+    while #samples > 1 and now - samples[1][1] > 6 do table.remove(samples, 1) end
+    local gain, span = 0, now - samples[1][1]
+    for i = 2, #samples do
+        local d = samples[i][2] - samples[i - 1][2]
+        if d > 0 then gain = gain + d end
     end
-    if type(rate) ~= "number" or IsSecret(rate) or rate <= 0 then return end
-    if rate >= 10 then return string.format(" |cff9be37b+%d/s|r", math.floor(rate + 0.5)) end
-    return string.format(" |cff9be37b+%.1f/s|r", rate)
+    if span >= 2 and gain > 0 then return gain / span end
+end
+local function RegenText(b, pType, pToken, cur)
+    if b.unit ~= "player" or GetDB().powerRegen == false or IsSecret(pType, pToken) then return end
+    if pType ~= 0 and pType ~= 3 then return end
+    local ok, rate = pcall(function()
+        if pType == 0 then
+            if not GetManaRegen then return end
+            local base, casting = GetManaRegen()
+            return (GetTime() - lastCast < 5) and casting or base
+        end
+        if GetPowerRegenForPowerType then return GetPowerRegenForPowerType(3) end
+        if GetPowerRegen then return (GetPowerRegen()) end
+    end)
+    local measured = Measured(cur)
+    if not ok or type(rate) ~= "number" or IsSecret(rate) or rate <= 0 then rate = measured end
+    if not rate or rate <= 0 then return end
+    -- gleiche Farbe wie die Zahl, mit Abstand davor
+    if rate >= 10 then return string.format("   +%d/s", math.floor(rate + 0.5)) end
+    return string.format("   +%.1f/s", rate)
 end
 
 local function UpdatePower(b)
@@ -941,7 +958,7 @@ local function UpdatePower(b)
     end
     if f.powerText and f.powerHeight >= 7 then
         if IsSecret(cur, max) or (max and max > 0) then
-            v.pw:SetFormattedText("%s%s", ns.ShortNumber(cur), RegenText(b, pType, pToken) or "")
+            v.pw:SetFormattedText("%s%s", ns.ShortNumber(cur), RegenText(b, pType, pToken, cur) or "")
         else
             v.pw:SetText("")
         end
@@ -1367,7 +1384,7 @@ function ns.Layout(b)
     SetFont(v.level, look, size, "LEFT")
     SetFont(v.name, look, size, "LEFT")
     SetFont(v.hp, look, size, stacked and "LEFT" or "RIGHT")
-    SetFont(v.pw, look, math.max(7, size - 3), "RIGHT")
+    SetFont(v.pw, look, math.max(7, math.min(size - 3, f.powerHeight - 2)), "RIGHT") -- passt in die Balkenhöhe
     SetFont(v.status, look, size, "CENTER")
     local anchor, rowY = stacked and "TOPLEFT" or "LEFT", stacked and -2 or 0
     v.level:ClearAllPoints()
@@ -1392,7 +1409,7 @@ function ns.Layout(b)
         v.hp:SetPoint("RIGHT", v.health, "RIGHT", -4, 0)
     end
     v.pw:ClearAllPoints()
-    v.pw:SetPoint("RIGHT", v.power, "RIGHT", -3, 0)
+    v.pw:SetPoint("RIGHT", v.power, "RIGHT", -8, 0)
     v.pw:SetShown(f.powerText and f.powerHeight >= 7)
     v.status:ClearAllPoints()
     v.status:SetPoint("CENTER", v.health, "CENTER", 0, 0)

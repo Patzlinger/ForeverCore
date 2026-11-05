@@ -21,7 +21,7 @@ ns.UNITS = {
 local function FrameDefaults(o)
     local d = {
         enabled = true, width = 200, height = 40, x = 0, y = 0,
-        powerHeight = 8, fontSize = 12,
+        powerHeight = 12, fontSize = 12, -- 12 px: die Zahl (Schrift passt sich der Balkenhöhe an) bleibt lesbar
         portrait = "class",       -- "none" | "class" (Klassensymbol, NPCs: 2D-Porträt) | "portrait" (2D-Porträt)
         portraitSide = "LEFT",    -- "LEFT" | "RIGHT"
         nameShow = true, levelShow = false,
@@ -62,7 +62,8 @@ ns.DEFAULTS = {
     dotAboveV1 = false,            -- Merker: DoT-Leisten einmalig nach oben gesetzt (in den Standardwerten, damit er gespeichert wird)
     playerLevelV1 = false,         -- Merker: Stufe am Spielerrahmen einmalig eingeschaltet
     powerRegen = true,             -- Spielerrahmen: Regenerationsrate (Mana/Energie) neben der Zahl der Ressource
-    widthV1 = false,               -- Merker: Spieler-/Zielrahmen einmalig 10 % breiter (in den Standardwerten, damit er gespeichert wird)
+    powerHV1 = false,              -- Merker: Ressourcenbalken einmalig auf 12 px (in den Standardwerten, damit er gespeichert wird)
+    widthV1 = false,              -- Merker: Spieler-/Zielrahmen einmalig 10 % breiter (in den Standardwerten, damit er gespeichert wird)
     dotPrediction = true,          -- Ziel/Fokus: Schaden der eigenen DoTs als schraffierte Fläche am Lebensbalken
     combatMarker = true,           -- Schwerter-Symbol unten links, solange die Einheit im Kampf ist
     shields = true,
@@ -151,6 +152,12 @@ function ns.GetDB()
                 if db.frames[k] and db.frames[k].width == 212 then db.frames[k].width = 233 end
             end
             db.widthV1 = true
+        end
+        if not db.powerHV1 then -- Ressourcenbalken von Spieler/Ziel von 8 auf 12 px, nur wenn noch der alte Standard
+            for _, k in ipairs({ "player", "target" }) do
+                if db.frames[k] and db.frames[k].powerHeight == 8 then db.frames[k].powerHeight = 12 end
+            end
+            db.powerHV1 = true
         end
         if not db.dotAboveV1 then
             for _, k in ipairs({ "target", "focus" }) do
