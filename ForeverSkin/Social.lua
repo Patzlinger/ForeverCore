@@ -457,14 +457,18 @@ local function ScanSocial(frame, depth)
             if child.TopDivider then GoldDivider(child, child.TopDivider) end
             if child.BottomDivider then GoldDivider(child, child.BottomDivider) end
             if type(child.ScrollBox) == "table" and child.ScrollBox.ForEachFrame then socialFrames[child.ScrollBox] = "list" end
+            -- Auswahl-Knöpfe: der Forever-Client meldet sie nicht immer als "DropdownButton" – darum auch an ihrem
+            -- Aufbau erkennen (Menü-Funktion SetupMenu bzw. Pfeil + Text)
+            local isDropdown = child:IsObjectType("DropdownButton") or (child:IsObjectType("Button")
+                and (type(child.SetupMenu) == "function" or (type(child.Arrow) == "table" and type(child.Text) == "table")))
             if type(child.Track) == "table" and (child.Track.Thumb or child.Back) then
                 done[child] = true
                 ns.SkinScrollBar(child)
-            elseif child:IsObjectType("DropdownButton") and type(child.Icon) == "table" and not child.Text then
-                SkinSquare(child) -- (Battle.net-Menü: Symbol-Knopf)
-            elseif child:IsObjectType("DropdownButton") then
+            elseif isDropdown and type(child.Icon) == "table" and not child.Text then
+                SkinSquare(child) -- (Battle.net-Menü "≡": Symbol-Knopf)
+            elseif isDropdown then
                 done[child] = true
-                ns.SkinDropdown(child)
+                ns.SkinDropdown(child) -- (Online-Status, Filter)
             elseif child:IsObjectType("EditBox") and (type(child.searchIcon) == "table" or type(child.NineSlice) == "table") then
                 SkinSocialSearch(child)
             elseif child:IsObjectType("Button") and not child:IsObjectType("CheckButton") then
