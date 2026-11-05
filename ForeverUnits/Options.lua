@@ -224,6 +224,7 @@ do
         StaticPopup_Show("FOREVERUNITS_RESET")
     end)
     resetAll:SetPoint("TOPLEFT", R + 4, -202)
+    Check(p, R, -228, T("Kampf-Marker (Schwerter)", "Combat marker (swords)"), G("combatMarker"))
 
     UI.Header(p, R, -252, T("Kombopunkte (Ziel)", "Combo points (target)"))
     Check(p, R, -272, T("Kombopunkte anzeigen", "Show combo points"), G("comboShow"))

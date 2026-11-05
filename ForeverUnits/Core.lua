@@ -59,6 +59,7 @@ ns.DEFAULTS = {
     healPrediction = true,
     hotPrediction = true,          -- eigene HoTs: schraffierte Fläche hinter der Heilvorhersage
     dotPrediction = true,          -- Ziel/Fokus: Schaden der eigenen DoTs als schraffierte Fläche am Lebensbalken
+    combatMarker = true,           -- Schwerter-Symbol unten links, solange die Einheit im Kampf ist
     shields = true,
     healColor = { 0.3, 1, 0.45, 0.45 },
     shieldColor = { 0.85, 0.95, 1, 0.5 },
@@ -227,6 +228,7 @@ function ns.Look()
         lossColorMode = d.lossColorMode, lossColor = d.lossColor,
         healPrediction = d.healPrediction, hotPrediction = d.hotPrediction, dotPrediction = d.dotPrediction,
         shields = d.shields, healAbsorbs = true,
+        combatMarker = d.combatMarker,
         healColor = d.healColor, shieldColor = d.shieldColor, healAbsorbColor = d.healAbsorbColor,
     }
 end

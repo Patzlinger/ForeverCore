@@ -161,6 +161,12 @@ local function CreateUnitFrame(info)
     v.pw = NewText(v.top)
     v.status = NewText(v.top)
     v.pvp = v.top:CreateTexture(nil, "OVERLAY")
+    v.combat = v.top:CreateTexture(nil, "OVERLAY", nil, 6)
+    v.combat:SetTexture("Interface\\CharacterFrame\\UI-StateIcon")
+    v.combat:SetTexCoord(0.5, 1, 0, 0.49)
+    v.combat:SetSize(14, 14)
+    v.combat:SetPoint("CENTER", v.top, "BOTTOMLEFT", 4, 4)
+    v.combat:Hide()
     v.leader = v.top:CreateTexture(nil, "OVERLAY")
     v.leader:SetTexture("Interface\\GroupFrame\\UI-Group-LeaderIcon")
     v.mark = v.top:CreateTexture(nil, "OVERLAY")
@@ -856,6 +862,14 @@ local function UpdatePrediction(b)
     if look.healAbsorbs ~= false then v.absorb:SetValue((c:GetHealAbsorbs())) else v.absorb:SetValue(0) end
 end
 
+-- Kampf-Marker (gekreuzte Schwerter) unten links, solange die Einheit im Kampf ist
+local function UpdateCombat(b)
+    local v, unit = b.v, b.unit
+    if Look().combatMarker == false or not unit or not UnitExists(unit) then v.combat:Hide() return end
+    local c = UnitAffectingCombat(unit)
+    v.combat:SetShown(not IsSecret(c) and c and true or false)
+end
+
 local function UpdatePower(b)
     local v, f, unit = b.v, FrameDB(b.key), b.unit
     if f.powerHeight <= 0 then return end
@@ -996,6 +1010,7 @@ function ns.UpdateAll(b)
     UpdatePrediction(b)
     UpdatePortrait(b)
     UpdatePvP(b)
+    UpdateCombat(b)
     UpdateLeader(b)
     UpdateMark(b)
     UpdateResting(b)
@@ -1500,7 +1515,9 @@ ns.On("UNIT_LEVEL", T("Stufe", "Level"), ForUnit(UpdateName))
 ns.On("UNIT_CLASSIFICATION_CHANGED", T("Stufe", "Level"), ForUnit(UpdateName))
 ns.On("UNIT_FACTION", "PvP", ForUnit(function(b) UpdatePvP(b) UpdateColor(b) end))
 ns.On("PLAYER_FLAGS_CHANGED", "PvP", ForUnit(UpdatePvP))
-ns.On("UNIT_FLAGS", "Status", ForUnit(function(b) UpdatePvP(b) UpdateStatus(b) UpdateColor(b) end))
+ns.On("UNIT_FLAGS", "Status", ForUnit(function(b) UpdatePvP(b) UpdateCombat(b) UpdateStatus(b) UpdateColor(b) end))
+ns.On("PLAYER_REGEN_DISABLED", "Kampf", function() local b = ns.frames.player if b then UpdateCombat(b) end end)
+ns.On("PLAYER_REGEN_ENABLED", "Kampf", function() local b = ns.frames.player if b then UpdateCombat(b) end end)
 ns.On("UNIT_CONNECTION", "Status", ForUnit(function(b) UpdateStatus(b) UpdateColor(b) UpdateHealth(b) end))
 ns.On("UNIT_PORTRAIT_UPDATE", T("Porträt", "Portrait"), ForUnit(UpdatePortrait))
 ns.On("UNIT_MODEL_CHANGED", T("Porträt", "Portrait"), ForUnit(UpdatePortrait))

@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+
+- ForeverFrames / ForeverUnits: heal prediction now includes your own HoTs – a hatched area behind the normal heal prediction (estimated from the spell descriptions, shrinks with the remaining duration). Toggle in the options.
+- ForeverUnits / ForeverPlates: damage prediction of your own DoTs on target, focus and nameplates – a hatched area from the end of the health bar to the left; red when the DoTs should kill the target. Toggle in the options.
+- ForeverFrames / ForeverUnits: combat marker (crossed swords, bottom left) on raid and unit frames while the unit is in combat. Toggle in the options.
+- ForeverPlates / ForeverUnits: proper gold/silver elite marker instead of the "+" next to the level (needs a full game restart).
+- ForeverCast: failed casts (also instant spells: not enough mana, out of range …) are shown in the failed color with the spell name; the cast bar sits a little higher by default.
+- ForeverUnits: DoT bars sit above the target/focus frame by default (existing "below" settings are switched once).
+- ForeverPlates: the aggro badge shows only with a pet or in a group, never solo.
+- ForeverBars / ForeverMinimap: micro menu buttons under the minimap (and the mail tile next to them) are a little taller.
+- ForeverVendor: the merchant panel now follows the layer of the merchant window it is attached to.
 - Fixed: ForeverQuests' dungeon window marked every dungeon, raid and quest as "Not available in Beta" on the live server (the server now answers every quest data request as unsuccessful) – the beta note is gone.
 
 - ForeverSkin: the new social window (opened with O) in the Forever look – flat frame, Battle.Net bar and status dropdown, flat search and filter, gold dividers, group headings as flat bars with fine arrows, friend cards as grey rows with a subtle tint (Battle.net blue, WoW friend gold, offline none; mouse over = gold), flat action and menu buttons, gold scroll bars; the ignore list, broadcast and notice windows flat too. The side tabs stay as in the group finder.

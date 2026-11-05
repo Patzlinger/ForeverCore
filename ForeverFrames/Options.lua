@@ -463,6 +463,7 @@ do
     W.Check(p, R, -208, T("Aggro-Rand (auch Begleiter)", "Aggro border (pets too)"), "aggroBorder")
     W.Color(p, R + 220, -211, "", "aggroColor", true)
     W.Check(p, R, -232, T("Wenig Leben: Balken orange / rot", "Low health: bar orange / red"), "healthGradient")
+    W.Check(p, R, -256, T("Kampf-Marker (Schwerter)", "Combat marker (swords)"), "combatMarker")
 
     W.Header(p, R, -282, T("Begleiter-Beschriftung (senkrecht)", "Pet label (vertical)"))
     W.KeyChoice(p, R + 4, -304, T("Anzeigen", "Show"), "petLabel", {

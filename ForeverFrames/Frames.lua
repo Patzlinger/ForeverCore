@@ -280,6 +280,12 @@ function ns.CreateVisuals(b)
     v.mark:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcons")
     v.ready = v.top:CreateTexture(nil, "OVERLAY")
     v.incoming = v.top:CreateTexture(nil, "OVERLAY") -- Wiederbelebung / Beschwoerung unterwegs
+    v.combat = v.top:CreateTexture(nil, "OVERLAY", nil, 6)
+    v.combat:SetTexture("Interface\\CharacterFrame\\UI-StateIcon")
+    v.combat:SetTexCoord(0.5, 1, 0, 0.49)
+    v.combat:SetSize(11, 11)
+    v.combat:SetPoint("BOTTOMLEFT", v.top, "BOTTOMLEFT", 1, 1)
+    v.combat:Hide()
     for _, t in ipairs({ v.role, v.leader, v.mark, v.ready, v.incoming }) do t:Hide() end
 
     v.targetBorder = CreateFrame("Frame", nil, v.top, "BackdropTemplate")
@@ -793,6 +799,14 @@ do
     SUMMON_ATLAS[s.Declined or 3] = "Raid-Icon-SummonDeclined"
 end
 
+-- Kampf-Marker (gekreuzte Schwerter) in der Ecke unten links, solange die Einheit im Kampf ist
+local function UpdateCombat(b)
+    local v, unit = b.ff, b.ffUnit
+    if not GetDB().combatMarker or not unit then v.combat:Hide() return end
+    local c = UnitAffectingCombat(unit)
+    v.combat:SetShown(not IsSecret(c) and c and true or false)
+end
+
 local function UpdateIncoming(b)
     local v, unit = b.ff, b.ffUnit
     if not GetDB().incomingShow or v.ready:IsShown() then v.incoming:Hide() return end
@@ -867,6 +881,7 @@ function ns.UpdateAll(b)
     UpdateMark(b)
     UpdateReady(b)
     UpdateIncoming(b)
+    UpdateCombat(b)
     UpdateTarget(b)
     UpdateThreat(b)
     UpdateRange(b)
@@ -1237,7 +1252,7 @@ local function StatusAndColor(b)
     UpdatePower(b)
 end
 ns.On("UNIT_CONNECTION", "Status", ForUnit(StatusAndColor))
-ns.On("UNIT_FLAGS", "Status", ForUnit(StatusAndColor))
+ns.On("UNIT_FLAGS", "Status", ForUnit(function(b) StatusAndColor(b) UpdateCombat(b) end))
 ns.On("PLAYER_FLAGS_CHANGED", "Status", ForUnit(StatusAndColor))
 ns.On("UNIT_THREAT_SITUATION_UPDATE", "Bedrohung", ForUnit(UpdateThreat))
 -- im Kampf ist das nur noch ein kurzer Abgleich (Blizzard-Anzeige zeichnet selbst)
