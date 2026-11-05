@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 71
+local VERSION = 72
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -1585,7 +1585,10 @@ SHARED.gridOwners = SHARED.gridOwners or {}
 local movers = SHARED.movers
 local grid, gridOwners = nil, SHARED.gridOwners
 
-function UI.AddMover(frame) movers[#movers + 1] = frame end
+function UI.AddMover(frame, addon, opts)
+    movers[#movers + 1] = frame
+    if addon and UI.TagMover then UI.TagMover(frame, addon, opts) end
+end
 
 -- auf halbe Pixel runden (damit Kanten unterschiedlich breiter Rahmen genau buendig sind)
 function UI.Round(v) return math.floor(v * 2 + 0.5) / 2 end
@@ -1802,6 +1805,80 @@ function UI.AnyUnlocked()
     end
     return false
 end
+
+-- Entsperrte Fenster (v72): jedes mit UI.AddMover(frame, "Addonname") angemeldete Fenster bekommt, solange sein Addon
+-- entsperrt ist (bzw. bei Addons ohne eigenen Schalter: solange irgendetwas entsperrt ist), einen gelben Rahmen wie die
+-- entsperrten Aktionsleisten; Rechtsklick darauf öffnet die Einstellungen des Addons. opts.noRightClick = das Fenster
+-- hat schon einen eigenen Rechtsklick (nur der Rahmen kommt vom Hub).
+SHARED.tagged = SHARED.tagged or setmetatable({}, { __mode = "k" })
+local tagged = SHARED.tagged
+local outlines = setmetatable({}, { __mode = "k" })
+local MOVER_GOLD = { 1, 0.82, 0 }
+
+local function AddonUnlocked(addon)
+    local m = movables[addon]
+    if m then
+        local ok, locked = pcall(m.isLocked)
+        return ok and not locked
+    end
+    return UI.AnyUnlocked()
+end
+
+function UI.TagMover(frame, addon, opts)
+    if not frame or not addon then return end
+    local t = tagged[frame]
+    if t then t.addon = addon return end
+    t = { addon = addon }
+    tagged[frame] = t
+    if not (opts and opts.noRightClick) and frame.HookScript then
+        pcall(frame.HookScript, frame, "OnMouseUp", function(self, button)
+            if button ~= "RightButton" or InCombatLockdown() or not self:IsVisible() then return end
+            if AddonUnlocked(t.addon) then UI.OpenSettings(t.addon) end
+        end)
+    end
+end
+
+local function Outline(frame, addon)
+    local o = outlines[frame]
+    if o then return o end
+    o = CreateFrame("Frame", nil, UIParent)
+    o:SetFrameStrata("FULLSCREEN")
+    o:EnableMouse(false) -- Ziehen und Klicken gehen durch zum Fenster darunter
+    o:SetAllPoints(frame)
+    local fill = o:CreateTexture(nil, "BACKGROUND")
+    fill:SetAllPoints()
+    fill:SetColorTexture(MOVER_GOLD[1], MOVER_GOLD[2], MOVER_GOLD[3], 0.10)
+    local function Edge(p1, p2, w, h)
+        local t = o:CreateTexture(nil, "OVERLAY")
+        t:SetColorTexture(MOVER_GOLD[1], MOVER_GOLD[2], MOVER_GOLD[3], 1)
+        t:SetPoint(p1)
+        t:SetPoint(p2)
+        if w then t:SetWidth(w) else t:SetHeight(h) end
+    end
+    Edge("TOPLEFT", "TOPRIGHT", nil, 2)
+    Edge("BOTTOMLEFT", "BOTTOMRIGHT", nil, 2)
+    Edge("TOPLEFT", "BOTTOMLEFT", 2, nil)
+    Edge("TOPRIGHT", "BOTTOMRIGHT", 2, nil)
+    o.label = o:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    o.label:SetPoint("BOTTOMLEFT", o, "TOPLEFT", 1, 2)
+    o.label:SetTextColor(MOVER_GOLD[1], MOVER_GOLD[2], MOVER_GOLD[3])
+    o.label:SetText(addon)
+    outlines[frame] = o
+    return o
+end
+
+C_Timer.NewTicker(0.3, function()
+    if _G.ForeverHub ~= hub then return end
+    for frame, t in pairs(tagged) do
+        local show = frame:IsVisible() and AddonUnlocked(t.addon)
+        local o = outlines[frame]
+        if show then
+            Outline(frame, t.addon):Show()
+        elseif o then
+            o:Hide()
+        end
+    end
+end)
 
 -- Raster, solange der gemeinsame Verschiebe-Modus laeuft; endet von selbst, wenn alles gesperrt ist
 local moveTicker

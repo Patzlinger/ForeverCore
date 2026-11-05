@@ -978,7 +978,7 @@ local function CreateWindow()
     window:SetScript("OnDragStop", nil)
     window.header:SetScript("OnDragStart", StartDrag)
     window.header:SetScript("OnDragStop", StopDrag)
-    if UI.AddMover then UI.AddMover(window) end -- andere Forever-Rahmen rasten an den Taschen ein
+    if UI.AddMover then UI.AddMover(window, "ForeverBags") end -- andere Forever-Rahmen rasten an den Taschen ein
 
     -- Titelleiste: Zahnrad (Einstellungen) links neben dem Schließen-Kreuz
     local gear = HeaderButton("Interface\\Icons\\INV_Misc_Gear_01", L("TIP_GEAR"), function() ns.ToggleOptions() end)
@@ -1301,7 +1301,7 @@ function ns.CreateBagWindow(name, title, posKey, defaultPos)
         Restore()
     end)
     w.RestorePosition = Restore
-    if UI.AddMover then UI.AddMover(w) end
+    if UI.AddMover then UI.AddMover(w, "ForeverBags") end
     local gear = CreateFrame("Button", nil, w.header)
     gear:SetSize(16, 16)
     gear:SetPoint("RIGHT", w.CloseButton, "LEFT", -4, 0)

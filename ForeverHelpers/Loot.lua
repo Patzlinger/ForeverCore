@@ -410,7 +410,7 @@ local function RestorePosition()
     frame:SetScale(GetDB().scale)
 end
 
-UI.AddMover(frame) -- andere Forever-Rahmen rasten am Fenster ein
+UI.AddMover(frame, "ForeverLoot") -- andere Forever-Rahmen rasten am Fenster ein (gelber Rahmen + Rechtsklick = Einstellungen, wenn entsperrt)
 frame:SetScript("OnDragStart", function(self)
     if GetDB().locked then return end
     UI.BeginDrag(self) -- Einrasten an anderen Rahmen (Umschalt = aus, Schalter im Hub)

@@ -116,7 +116,7 @@ local function CreateUnitFrame(info)
             if ns.OnMoved then ns.OnMoved() end -- Zahlen in den Einstellungen nachziehen
         end
     end)
-    ns.AddMover(b)
+    ns.AddMover(b, "ForeverUnits")
     b:SetScript("OnEnter", OnEnter)
     b:SetScript("OnLeave", OnLeave)
 
@@ -187,7 +187,7 @@ local function CreateUnitFrame(info)
     -- Verschiebe-Hinweis (nur entsperrt)
     v.mover = v.top:CreateTexture(nil, "OVERLAY")
     v.mover:SetAllPoints(c)
-    v.mover:SetColorTexture(0.2, 0.5, 1, 0.25)
+    v.mover:SetColorTexture(1, 0.82, 0, 0.12)
     v.moverText = v.top:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     v.moverText:SetPoint("BOTTOM", c, "TOP", 0, 2)
     v.moverText:SetText(info.label)
@@ -514,7 +514,7 @@ local function DotAnchor(b)
             ns.UpdateDotAnchor(b)
         end
     end)
-    ns.AddMover(a)
+    ns.AddMover(a, "ForeverUnits")
     dotAnchors[b.key] = a
     return a
 end

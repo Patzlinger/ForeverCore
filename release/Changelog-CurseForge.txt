@@ -31,6 +31,7 @@
 
 - ForeverFrames / ForeverUnits: heal prediction now includes your own HoTs – a hatched area behind the normal heal prediction (estimated from the spell descriptions, shrinks with the remaining duration). Toggle in the options.
 - ForeverUnits / ForeverPlates: damage prediction of your own DoTs on target, focus and nameplates – a hatched area from the end of the health bar to the left; red when the DoTs should kill the target. Toggle in the options.
+- Move mode (/fmove): every unlocked window now has a gold frame like the unlocked action bars, and a right-click on it opens the settings of its addon (bags, cast bar, unit frames, loot, quest tracker, buffs, tooltip anchor, chat).
 - ForeverHelpers (Buffs): Thorns are tracked by default for druids (no longer behind the "optional buffs" switch, which now only covers Shadow Protection).
 - ForeverBags: the key ring is part of the bag window – a key button next to the bag toggle shows or hides it (hidden by default); only the keys you carry plus one free slot are shown.
 - ForeverSkin: What's Training in the professions window fits the Forever look (flat page, flat tab, our title bar; the Create buttons and footer no longer overlap its list).

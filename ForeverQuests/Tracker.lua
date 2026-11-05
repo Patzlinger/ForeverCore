@@ -2342,6 +2342,10 @@ function ns.CreateTracker()
         { Style.COLOR.accent[1], Style.COLOR.accent[2], Style.COLOR.accent[3], 1 })
     overlay:EnableMouse(true)
     overlay:RegisterForDrag("LeftButton")
+    overlay:SetScript("OnMouseUp", function(_, button) -- Rechtsklick: Einstellungen (wie bei den Leisten)
+        local hub = _G.ForeverHub and _G.ForeverHub.UI
+        if button == "RightButton" and hub and hub.OpenSettings and not InCombatLockdown() then hub.OpenSettings("ForeverQuests") end
+    end)
     overlay:SetScript("OnDragStart", function()
         local hub = _G.ForeverHub and _G.ForeverHub.UI
         if hub and hub.BeginDrag then hub.BeginDrag(tracker) end -- Einrasten an anderen Rahmen (Umschalt = aus)

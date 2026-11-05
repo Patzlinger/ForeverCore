@@ -410,12 +410,12 @@ anchor:SetMovable(true)
 anchor:SetClampedToScreen(true)
 anchor:SetFrameStrata("DIALOG")
 UI.Hud(anchor, 0.55)
-anchor:SetBackdropBorderColor(0.3, 0.6, 1, 1)
+anchor:SetBackdropBorderColor(1, 0.82, 0, 1)
 anchor:RegisterForDrag("LeftButton")
 anchor:Hide()
 local anchorText = anchor:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 anchorText:SetPoint("BOTTOM", anchor, "TOP", 0, 3)
-anchorText:SetText(T("ForeverBuffs – ziehen · Rechtsklick: sperren", "ForeverBuffs – drag · right-click: lock"))
+anchorText:SetText(T("ForeverBuffs – ziehen · Rechtsklick: Einstellungen", "ForeverBuffs – drag · right-click: settings"))
 
 local bar = CreateFrame("Frame", "ForeverBuffsBar", UIParent)
 bar:SetSize(200, 24)
@@ -442,7 +442,7 @@ anchor:SetScript("OnDragStop", function(self)
     GetDB().pos = { point, relPoint, x, y }
 end)
 anchor:SetScript("OnMouseUp", function(_, button)
-    if button == "RightButton" and ToggleLock then ToggleLock() end
+    if button == "RightButton" and not InCombatLockdown() then UI.OpenSettings("ForeverBuffs") end
 end)
 
 local buttons = {}

@@ -821,7 +821,7 @@ function UpdateIcon()
     icon:SetShown(d.showIcon and true or false) -- optional; ausgeschaltet auch beim Entsperren nicht zeigen
     icon.tex:SetDesaturated(not d.enabled)
     icon:SetAlpha((icon:IsMouseOver() or not d.locked) and 1 or 0.75)
-    icon:SetBackdropBorderColor(d.locked and 0 or 0.3, d.locked and 0 or 0.6, d.locked and 0 or 1, 1)
+    icon:SetBackdropBorderColor(d.locked and 0 or 1, d.locked and 0 or 0.82, 0, 1)
     icon.label:SetShown(not d.locked)
     icon.dot:SetShown(d.enabled and d.restock and AnyMissing())
     if panel:IsShown() then FillPanel() end

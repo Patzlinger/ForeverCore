@@ -104,7 +104,7 @@ local function Create(key)
         DB()[info.posKey] = { UI.Round(x + dx), UI.Round(y + dy) }
         ns.PlaceUnit(key)
     end)
-    UI.AddMover(box)
+    UI.AddMover(box, "ForeverCast")
 
     a.key, a.unit = key, info.unit
     bars[key] = a

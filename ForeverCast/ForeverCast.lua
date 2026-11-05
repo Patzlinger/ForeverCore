@@ -1425,7 +1425,7 @@ function UpdateGrid()
 end
 
 castFrame:RegisterForDrag("LeftButton")
-UI.AddMover(castFrame) -- andere Forever-Rahmen rasten an der Leiste ein
+UI.AddMover(castFrame, "ForeverCast") -- andere Forever-Rahmen rasten an der Leiste ein
 castFrame:SetScript("OnDragStart", function()
     local o = GetDB()
     if o.locked then return end
