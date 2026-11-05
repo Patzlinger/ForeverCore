@@ -903,6 +903,70 @@ local function HideOwnMicro()
     if wasOwn then ns.Print(L("MICRO_RELOAD")) end
 end
 
+-- Zauber pro Mana (ns.db.castCount, Standard aus): kleine Zahl unten links auf Zauber-Knöpfen – wie oft der Zauber mit
+-- dem aktuellen Mana wirkbar wäre. Nur Zauber mit Manakosten (auch über Makros). Im Kampf kann das Mana gesperrt sein:
+-- dann bleibt die zuletzt berechnete Zahl stehen.
+local function ActionSpell(button)
+    local slot = button.action
+    if type(slot) ~= "number" and button.GetAttribute then slot = button:GetAttribute("action") end
+    if type(slot) ~= "number" or not GetActionInfo then return end
+    local ok, kind, id = pcall(GetActionInfo, slot)
+    if not ok or not id or (issecret and issecret(id)) then return end
+    if kind == "macro" and GetMacroSpell then
+        local okm, spell = pcall(GetMacroSpell, id)
+        if not okm or not spell then return end
+        id = spell
+    elseif kind ~= "spell" then
+        return
+    end
+    return id
+end
+
+local function ManaCost(spellID)
+    if not (C_Spell and C_Spell.GetSpellPowerCost) then return end
+    local ok, list = pcall(C_Spell.GetSpellPowerCost, spellID)
+    if not ok or type(list) ~= "table" then return end
+    for _, c in ipairs(list) do
+        local cost = c.cost
+        if c.type == 0 and type(cost) == "number" and not (issecret and issecret(cost)) and cost > 0 then return cost end
+    end
+end
+
+function ns.UpdateCastCounts()
+    local on = ns.db and ns.db.castCount
+    local mana
+    if on then
+        local m = UnitPower("player", 0)
+        if not (issecret and issecret(m)) then mana = m end
+    end
+    for _, def in ipairs(ns.BAR_DEFS) do
+        for _, button in ipairs(GetAllButtons(def)) do
+            local fs = button.fbCastCount
+            local cost = on and button.fbBorder and ActionSpell(button)
+            cost = cost and ManaCost(cost)
+            if cost then
+                if not fs and not InCombatLockdown() then
+                    fs = button:CreateFontString(nil, "OVERLAY")
+                    fs:SetPoint("BOTTOMLEFT", button, "BOTTOMLEFT", 2, 1)
+                    fs:SetJustifyH("LEFT")
+                    button.fbCastCount = fs
+                end
+                if fs then
+                    SetTextFont(fs, math.max(8, ns.db.fontSize - 1))
+                    if mana then
+                        local n = math.floor(mana / cost)
+                        fs:SetText(n)
+                        if n > 0 then fs:SetTextColor(0.55, 0.78, 1) else fs:SetTextColor(1, 0.3, 0.3) end
+                    end
+                    fs:SetShown((fs:GetText() or "") ~= "")
+                end
+            elseif fs then
+                fs:Hide()
+            end
+        end
+    end
+end
+
 function ns.UpdateAllButtons()
     for _, def in ipairs(ns.BAR_DEFS) do
         for _, button in ipairs(GetAllButtons(def)) do
@@ -910,6 +974,7 @@ function ns.UpdateAllButtons()
         end
     end
     ns.StyleMicroMenu()
+    ns.UpdateCastCounts()
 end
 ns.UpdateAllButtonTexts = ns.UpdateAllButtons
 
@@ -3419,6 +3484,26 @@ function ns.SetupBars()
         when = function() return ns.fadeActive ~= false end })
 
     ns.WatchEditMode()
+
+    -- Zauber pro Mana: bei Mana-, Leisten-, Gestalt- und Zauberbuchänderungen nachziehen (gebündelt, nur wenn eingeschaltet)
+    do
+        local pending = false
+        local f = CreateFrame("Frame")
+        f:RegisterUnitEvent("UNIT_POWER_UPDATE", "player")
+        f:RegisterUnitEvent("UNIT_MAXPOWER", "player")
+        for _, e in ipairs({ "ACTIONBAR_SLOT_CHANGED", "ACTIONBAR_PAGE_CHANGED", "UPDATE_SHAPESHIFT_FORM", "SPELLS_CHANGED",
+            "PLAYER_LEVEL_UP", "PLAYER_ENTERING_WORLD" }) do
+            pcall(f.RegisterEvent, f, e)
+        end
+        f:SetScript("OnEvent", function()
+            if not ns.db or not ns.db.castCount or pending then return end
+            pending = true
+            C_Timer.After(0.1, function()
+                pending = false
+                ns.UpdateCastCounts()
+            end)
+        end)
+    end
 
     local events = CreateFrame("Frame")
     -- Nach dem Kampf ausstehende Änderungen übernehmen; nach Ladebildschirmen und Bearbeitungsmodus neu anordnen;

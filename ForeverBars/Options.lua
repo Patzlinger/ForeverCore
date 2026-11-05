@@ -851,6 +851,9 @@ local function CreateOptions()
     CreateCheckbox(fontPage, L("OPT_COUNTS"), 490, -42,
         function() return ns.db.showCounts end,
         function(value) ns.db.showCounts = value; ns.UpdateAllButtons() end)
+    CreateCheckbox(fontPage, L("OPT_CASTCOUNT"), 360, -112,
+        function() return ns.db.castCount end,
+        function(value) ns.db.castCount = value; ns.UpdateCastCounts() end)
     CreateSelector(fontPage, L("OPT_FONT"), 14, -76, 140, FontChoices(),
         function() return ns.db.font end,
         function(value) ns.db.font = value; ns.UpdateAllButtons() end)

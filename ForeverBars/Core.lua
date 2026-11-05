@@ -116,6 +116,7 @@ ns.defaults = {
     showHotkeys = true,
     showMacroNames = false,
     showCounts = true,
+    castCount = false,       -- kleine Zahl unten links: wie oft der Zauber mit dem aktuellen Mana wirkbar ist
     showGrid = true,
     snap = true,             -- beim Ziehen magnetisch an anderen Leisten / der Bildschirmmitte einrasten
     showBorder = true,       -- dünner Rand um die Knöpfe
