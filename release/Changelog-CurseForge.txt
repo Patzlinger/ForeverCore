@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- ForeverBags: guild bank shows "Withdrawable: unlimited" for the guild master instead of a giant number.
+- ForeverSkin: the guild invite dialog now uses the Forever look (the guild emblem stays).
+
 - ForeverSkin: guild log, guild news filters and the guild info text editor now use the Forever look.
 
 - ForeverSkin: guild control (ranks, permissions, bank tabs) now uses the Forever look.

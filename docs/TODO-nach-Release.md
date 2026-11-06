@@ -9,12 +9,11 @@ Auswirkung im Spiel.
 
 - [ ] ⚠ **Restliche Fenster überarbeiten** (ForeverSkin, Darstellung) – noch offen:
   - Große Fenster: PvP-Punktetafel und -Ergebnis
-  - Kleine Fenster: Gildeneinladung, Bereitschaftscheck (ReadyCheckFrame),
+  - Kleine Fenster: Bereitschaftscheck (ReadyCheckFrame),
     Set bearbeiten beim Transmogrifizieren (WardrobeCustomSetEditFrame), weitere
     PvP-Abfragen (PVPReadyPopup, PVPRoleCheckPopup, PVPFramePopup)
-  - Vermutlich ungenutzt (nur bei Bedarf): Talent-Ausstattungen importieren/bearbeiten (ClassTalentLoadout…Dialog)
-  - Im Spiel noch prüfen (Entwurf fertig): Gildenlog, News-Filter, Gildeninfo-Text; nur bei echtem Anlass:
-    Rollenabfrage, PvP-Bereitschaft, Beute-Meldung ("Ihr habt erhalten")
+  - Im Spiel noch prüfen (Entwurf fertig, nur bei echtem Anlass): Gildeneinladung, Rollenabfrage, PvP-Bereitschaft,
+    Beute-Meldung ("Ihr habt erhalten")
   - Abgleich im Spiel: `/fskin fenster` (listet alle großen Fenster, umgestaltet `+` oder nicht `-`)
 - [ ] ⚠ **Markierungen über Blizzards Schnell-Ping-Menü:** Weltmarkierungen mit dem Ping-Rad verbinden; Zielmarkierungen
       (Totenkopf, Kreuz …) per Mouseover über Gegner ebenfalls über das Ping-Rad setzen (Addon klären, z. B. ForeverHelpers)

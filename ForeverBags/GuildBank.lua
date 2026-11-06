@@ -135,7 +135,11 @@ local function UpdateMoney()
     local money = GetGuildBankMoney and GetGuildBankMoney() or 0
     moneyText:SetText(GetMoneyString(money, true))
     local withdraw = GetGuildBankWithdrawMoney and GetGuildBankWithdrawMoney()
-    if withdraw and withdraw >= 0 then
+    -- Gildenmeister (bzw. Rang ohne Grenze): das Spiel meldet dann eine riesige Zahl (2^64) – "unbegrenzt" statt
+    -- "1.8.446.744.073.71e+15 Gold"
+    if withdraw and withdraw >= 1e13 then
+        withdrawText:SetText(L("GUILD_WITHDRAW_LIMIT", L("GUILD_WITHDRAW_UNLIMITED")))
+    elseif withdraw and withdraw >= 0 then
         withdrawText:SetText(L("GUILD_WITHDRAW_LIMIT", GetMoneyString(withdraw, true)))
     else
         withdrawText:SetText("")
