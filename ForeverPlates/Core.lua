@@ -846,7 +846,19 @@ end
 local function UpdateDot(fp)
     local unit = fp.unit
     local dmg = 0
-    if db.dotPrediction and fp.enemy and unit and UI.OverTimeRemaining then dmg = UI.OverTimeRemaining(unit, "damage") end
+    if db.dotPrediction and fp.enemy and unit and UI.OverTimeRemaining then
+        -- Im Kampf sind Plaketten-Einheiten ("nameplateN") und ihre GUID gesperrt – die Rahmen (Ziel/Fokus) lesen über
+        -- "target"/"focus". Darum: ist das diese Plakette (über den Plaketten-Rahmen verglichen, das geht auch im Kampf),
+        -- mit "target"/"focus" abfragen wie die Einheitenrahmen.
+        local query = unit
+        if C_NamePlate and C_NamePlate.GetNamePlateForUnit then
+            for _, token in ipairs({ "target", "focus" }) do
+                local tp = C_NamePlate.GetNamePlateForUnit(token)
+                if tp and tp.UnitFrame and tp.UnitFrame.fpl == fp then query = token break end
+            end
+        end
+        dmg = UI.OverTimeRemaining(query, "damage")
+    end
     local bw, bh = fp.bar:GetSize()
     if bw and bw > 0 then fp.dot:SetSize(bw, bh) fp.dotFill:SetSize(bw, bh) end -- Größe sicherstellen (wie bei den Rahmen)
     fp.dot:SetMinMaxValues(0, UnitHealthMax(unit))
