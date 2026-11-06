@@ -45,3 +45,4 @@ Registrar.lua
 Books.lua
 ColorPicker.lua
 Dialogs.lua
+QuickKeybind.lua

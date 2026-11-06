@@ -12,7 +12,7 @@ Auswirkung im Spiel.
     Gildeninfo-Text, Avatar-Auswahl), PvP-Punktetafel und -Ergebnis
   - Kleine Fenster: Gildenurkunde/-einladung/-umbenennung, Rollenabfrage,
     Gruppeneinladung, PvP-Bereitschaft, Modellvorschau,
-    Währung übertragen, Schnelltastenbelegung, Sprechkopf
+    Schnelltastenbelegung
   - Abgleich im Spiel: `/fskin fenster` (listet alle großen Fenster, umgestaltet `+` oder nicht `-`)
 - [ ] ⚠ **Markierungen über Blizzards Schnell-Ping-Menü:** Weltmarkierungen mit dem Ping-Rad verbinden; Zielmarkierungen
       (Totenkopf, Kreuz …) per Mouseover über Gegner ebenfalls über das Ping-Rad setzen (Addon klären, z. B. ForeverHelpers)
