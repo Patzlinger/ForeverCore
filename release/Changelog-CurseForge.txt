@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- ForeverPlates: the DoT hatching no longer covers the health numbers on nameplates.
 - ForeverBags: no more chat message "New bag slots will be created after combat".
 - ForeverUnits: "Dead"/"Offline" no longer overlaps the name on two-line frames (it takes the place of the health text, bottom left).
 - HoT/DoT prediction hatching (unit frames, raid frames, nameplates): the stripes are now tiled at a fixed size (like Blizzard's shield display) instead of stretched over the bar, so they run in one direction everywhere.

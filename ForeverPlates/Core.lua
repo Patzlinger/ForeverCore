@@ -529,10 +529,15 @@ local function Setup(plate, frame)
     fp.exec:SetColorTexture(1, 1, 1, 1) -- Farbe aus den Einstellungen (ApplyLook)
     fp.exec:SetAlpha(0)
 
-    fp.hpValue = NewText(o)
+    -- Zahlen in der Leiste liegen in einem eigenen Rahmen über der DoT-Schraffur (Kind-Rahmen der Leiste zeichnen sonst
+    -- über deren Texten)
+    local numbers = CreateFrame("Frame", nil, o)
+    numbers:SetAllPoints(o)
+    numbers:SetFrameLevel(o:GetFrameLevel() + 8)
+    fp.hpValue = NewText(numbers)
     Font(fp.hpValue, 9)
     fp.hpValue:SetPoint("LEFT", o, "LEFT", 3, 0)
-    fp.hpPct = NewText(o)
+    fp.hpPct = NewText(numbers)
     Font(fp.hpPct, 9)
     fp.hpPct:SetPoint("RIGHT", o, "RIGHT", -3, 0)
 
