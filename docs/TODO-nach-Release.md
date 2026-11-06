@@ -14,7 +14,7 @@ Auswirkung im Spiel.
     Set bearbeiten beim Transmogrifizieren (WardrobeCustomSetEditFrame), weitere
     PvP-Abfragen (PVPReadyPopup, PVPRoleCheckPopup, PVPFramePopup)
   - Vermutlich ungenutzt (nur bei Bedarf): Talent-Ausstattungen importieren/bearbeiten (ClassTalentLoadout…Dialog)
-  - Im Spiel noch prüfen (Entwurf fertig, erscheinen nur bei echtem Anlass): Rollenabfrage, Gruppeneinladung,
+  - Im Spiel noch prüfen (Entwurf fertig, erscheinen nur bei echtem Anlass): Rollenabfrage,
     PvP-Bereitschaft
   - Abgleich im Spiel: `/fskin fenster` (listet alle großen Fenster, umgestaltet `+` oder nicht `-`)
 - [ ] ⚠ **Markierungen über Blizzards Schnell-Ping-Menü:** Weltmarkierungen mit dem Ping-Rad verbinden; Zielmarkierungen
