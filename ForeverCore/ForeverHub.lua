@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 78
+local VERSION = 79
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -5237,7 +5237,7 @@ end
 -- Menge je Zauber aus der Zauberbeschreibung ("... 1.234 ueber 12 Sek."), anteilig nach Restdauer.
 -- Schaetzung: nutzt die aktuellen Werte des Spielers, keine Tick-Genauigkeit.
 ---------------------------------------------------------------------------
-UI.HATCH_TEXTURE = "Interface\\AddOns\\ForeverCore\\Media\\Hatch" -- Schraffur fuer Vorhersage-Balken: eigene, nahtlose 45°-Streifen (Blizzards Shield-Overlay zeigte oben schräg, unten senkrecht)
+UI.HATCH_TEXTURE = "Interface\\RaidFrame\\Shield-Overlay" -- Schraffur fuer Vorhersage-Balken (gekachelt über UI.HatchBar, wie Blizzards Absorb-Anzeige)
 -- Schraffierter Balken: ein StatusBar kann seine Textur nicht kacheln (er setzt die Texturkoordinaten selbst, darum wurde
 -- die Streifen-Grafik auf die Balkengröße gestreckt). Darum: die eigentliche Füllung des Balkens unsichtbar (sie bestimmt
 -- weiter Länge und Lage, auch bei gesperrten Werten) und eine gekachelte Textur, die genau an der Füllung hängt; die

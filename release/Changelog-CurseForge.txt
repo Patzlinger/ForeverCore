@@ -4,7 +4,7 @@
 
 - ForeverBags: no more chat message "New bag slots will be created after combat".
 - ForeverUnits: "Dead"/"Offline" no longer overlaps the name on two-line frames (it takes the place of the health text, bottom left).
-- HoT/DoT prediction hatching (unit frames, raid frames, nameplates): own tiled 45° stripe texture, so the hatching runs in one direction and at a fixed density everywhere.
+- HoT/DoT prediction hatching (unit frames, raid frames, nameplates): the stripes are now tiled at a fixed size (like Blizzard's shield display) instead of stretched over the bar, so they run in one direction everywhere.
 ## 0.52b – November 6, 2026
 
 - ForeverSkin: book and letter texts (books, letters, plaques) now use the Forever look – flat box instead of parchment, light text, gold headings.
