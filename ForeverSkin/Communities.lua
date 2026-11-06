@@ -157,6 +157,20 @@ local function SkinDialog(d)
         local close = ns.FindCloseButton(d)
         if close then ns.SkinClose(close) end
     end
+    -- Häkchen (News-Filter) auch in Unterrahmen
+    local function Checks(frame, depth)
+        for _, c in ipairs({ frame:GetChildren() }) do
+            if not Forbidden(c) and not done[c] then
+                if c:IsObjectType("CheckButton") and (c:GetWidth() or 0) <= 32 then
+                    done[c] = true
+                    ns.SkinCheck(c)
+                elseif not c:IsObjectType("Button") and depth < 3 then
+                    Checks(c, depth + 1)
+                end
+            end
+        end
+    end
+    Checks(d, 1)
     for _, child in ipairs({ d:GetChildren() }) do
         if not Forbidden(child) and not done[child] then
             if IsDropdown(child) then
@@ -179,6 +193,22 @@ local function SkinDialog(d)
 end
 
 local DIALOG_KEYS = { "GuildMemberDetailFrame" }
+-- eigenständige kleine Gilden-Fenster (Gildenlog, News-Filter, Gildeninfo-Text bearbeiten): gleicher Stil, beim Öffnen
+local DIALOG_NAMES = { "CommunitiesGuildLogFrame", "CommunitiesGuildNewsFiltersFrame", "CommunitiesGuildTextEditFrame" }
+local dialogHooked = setmetatable({}, { __mode = "k" })
+local function HookDialogs()
+    for _, name in ipairs(DIALOG_NAMES) do
+        local d = G(name)
+        if d and not dialogHooked[d] and not Forbidden(d) then
+            dialogHooked[d] = true
+            d:HookScript("OnShow", function(self)
+                pcall(SkinDialog, self)
+                C_Timer.After(0, function() pcall(SkinDialog, self) end) -- (Inhalt kommt teils erst danach)
+            end)
+            if d:IsShown() then pcall(SkinDialog, d) end
+        end
+    end
+end
 
 -- Verkleinern/Vergrößern oben rechts: nur feine Pfeile (ohne Blizzards roten Knopf)
 local function SkinMaxMin(f)
@@ -212,6 +242,7 @@ local function SkinCommunities()
     Step("list", function() SkinList(f.CommunitiesList) end)
     Step("maxmin", function() SkinMaxMin(f); MaxMinShown(f) end)
     Step("scan", function() Scan(f, 1) end)
+    Step("dialogs", HookDialogs)
     ns.Watch(f)
     -- Blizzard baut Seiten beim Umschalten (Gilde, Chat, Mitglieder …) neu und blendet Rahmen beim Öffnen wieder
     -- ein: solange offen, ab und zu nachsehen

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverSkin: guild log, guild news filters and the guild info text editor now use the Forever look.
+
 - ForeverSkin: guild control (ranks, permissions, bank tabs) now uses the Forever look.
 
 - ForeverSkin: guild window – text buttons (e.g. "Invite member") are flat instead of red, and the member detail window (rank, notes, remove, group invite) uses the Forever look.
