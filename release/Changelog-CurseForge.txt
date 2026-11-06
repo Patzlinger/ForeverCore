@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverSkin: the guild charter (collect signatures) now uses the Forever look like the guild registrar.
+
 - ForeverSkin: the group loot roll window (need / greed / pass) now uses the Forever look, with a border in the item's quality color.
 
 - ForeverSkin: quick keybind mode (Esc » Key Bindings » Quick Keybind Mode) now uses the Forever look.

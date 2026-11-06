@@ -80,19 +80,20 @@ end
 -- Inhalt in den Kasten (unter die Visitenkarte, über die Knopfleiste): alle Inhalts-Flächen direkt am Fenster
 -- (Begrüßung, Kaufen-Seite, Laufbereich) – nicht Titel, Rahmen, Knöpfe; dazu die Laufleisten
 local SKIP_KEYS = { TitleContainer = true, PortraitContainer = true, NineSlice = true, Inset = true }
-local function Place(f)
+local function Place(f, top)
+    top = top or CARD
     local skip = {}
     for key in pairs(SKIP_KEYS) do if type(f[key]) == "table" then skip[f[key]] = true end end
     for _, child in ipairs({ f:GetChildren() }) do
         if not Forbidden(child) and not skip[child] and child:IsShown() and not child:IsObjectType("Button") then
-            ns.Fit(f, child, CARD + 8, FOOTER + 14)
+            ns.Fit(f, child, top + 8, FOOTER + 14)
         end
     end
     local function Bars(frame, depth)
         for _, child in ipairs({ frame:GetChildren() }) do
             if not Forbidden(child) and child:IsShown() then
                 if child:IsObjectType("Slider") or type(child.Track) == "table" then
-                    ns.Fit(f, child, CARD + 8, FOOTER + 14)
+                    ns.Fit(f, child, top + 8, FOOTER + 14)
                 elseif depth < 3 then
                     Bars(child, depth + 1)
                 end
@@ -149,14 +150,42 @@ local function SkinRegistrar()
     end
 end
 
+-- Gildenurkunde (PetitionFrame – Satzung benutzen, Unterschriften sammeln): gleich gebaut wie der Registrator, aber
+-- ohne NPC-Visitenkarte; Gildenname, Gildenmeister, Mitglieder als Überschriften gold, Namen hell, Knöpfe flach
+local PETITION_TOP = 31 -- Kasten direkt unter der Titelleiste
+local petitionSkinned
+local function SkinPetition()
+    local f = _G.PetitionFrame
+    if not f or petitionSkinned or Forbidden(f) then return end
+    petitionSkinned = true
+    ns.noGold[f] = true
+    ns.SkinWindow(f)
+    ns.ContentBox(f, FOOTER, PETITION_TOP)
+    pcall(Scan, f, 1)
+    ns.Watch(f)
+    ns.Scaled(f)
+    f:HookScript("OnShow", function(self)
+        pcall(Scan, self, 1)
+        C_Timer.After(0, function()
+            pcall(Scan, self, 1) -- (Blizzard füllt Namen und Unterschriften beim Öffnen)
+            pcall(Place, self, PETITION_TOP)
+        end)
+    end)
+end
+
 local events = CreateFrame("Frame")
 events:RegisterEvent("PLAYER_LOGIN")
 events:RegisterEvent("ADDON_LOADED")
+events:RegisterEvent("PETITION_SHOW")
 events:SetScript("OnEvent", function(self)
     if not ns.GetDB().registrar then return end
     if _G.GuildRegistrarFrame and not skinned then
         local ok, err = pcall(SkinRegistrar)
         if not ok and ns.UI.ReportError then ns.UI.ReportError("ForeverSkin", "registrar", err) end
     end
-    if skinned then self:UnregisterAllEvents() end
+    if _G.PetitionFrame and not petitionSkinned then
+        local ok, err = pcall(SkinPetition)
+        if not ok and ns.UI.ReportError then ns.UI.ReportError("ForeverSkin", "petition", err) end
+    end
+    if skinned and petitionSkinned then self:UnregisterAllEvents() end
 end)
