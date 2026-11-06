@@ -47,3 +47,4 @@ ColorPicker.lua
 Dialogs.lua
 QuickKeybind.lua
 LootRoll.lua
+Alerts.lua

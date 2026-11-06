@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverSkin: loot alerts ("You received …", upgrades, money) now use the Forever look with a border in the item's quality color.
+
 - ForeverSkin: the guild charter (collect signatures) now uses the Forever look like the guild registrar.
 
 - ForeverSkin: the group loot roll window (need / greed / pass) now uses the Forever look, with a border in the item's quality color.
