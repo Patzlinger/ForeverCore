@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 81
+local VERSION = 82
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -5285,6 +5285,17 @@ local function ParseOver(desc)
     if not pos then pos, finish, seconds = desc:find("[Vv]erlauf von%s+(%d+[%.,]?%d*)%s*[Ss]e") end
     if not pos then pos, finish, seconds = desc:find("innerhalb von%s+(%d+[%.,]?%d*)%s*[Ss]e") end
     if not pos then pos, finish, seconds = desc:find("Zeitraum von%s+(%d+[%.,]?%d*)%s*[Ss]e") end
+    -- "... sowie 12 Sek. lang 28 Punkt(e) Feuerschaden" (z. B. Flammenschock): Dauer vor "lang", Menge dahinter
+    -- (nur mit einer Menge dahinter im selben Satzteil – "betäubt 4 Sek. lang" ist kein DoT)
+    local lang = false
+    if not pos then
+        pos, finish, seconds = desc:find("(%d+[%.,]?%d*)%s*[Ss]ek%.?%s+lang")
+        if not pos then pos, finish, seconds = desc:find("(%d+[%.,]?%d*)%s*[Mm]in%.?%s+lang") end
+        if pos then
+            lang = true
+            if desc:sub(pos, finish):find("[Mm]in") then seconds = tostring((tonumber((seconds:gsub(",", "."))) or 0) * 60) end
+        end
+    end
     if not pos then pos, finish, seconds = desc:find("over%s+(%d+[%.,]?%d*)%s*[Ss]e") end
     if not pos then return nil end
     seconds = tonumber((seconds:gsub(",", ".")))
@@ -5295,7 +5306,13 @@ local function ParseOver(desc)
         if rest:match("^%s*sek") or rest:match("^%s*sec") or rest:match("^%s*min") then amount = nil end
     end
     local segment
-    if amount then
+    if lang then
+        -- "X Sek. lang <Menge> <Art>": Menge und Art nur direkt dahinter (bis zum Satzende)
+        if not amount then return nil end
+        local s = desc:sub(finish + 1, finish + at + 40)
+        local cut = s:find("%.%s") or s:find("%.$") -- (Satzende; Tausenderpunkte wie "1.234" bleiben)
+        segment = (cut and s:sub(1, cut) or s):lower()
+    elseif amount then
         segment = desc:sub(math.max(1, pos - 40), finish + at + 30):lower()
     else
         for n in desc:sub(1, pos - 1):gmatch("(%d[%d%.,]*)") do amount = n end
