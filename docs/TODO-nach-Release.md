@@ -10,7 +10,7 @@ Auswirkung im Spiel.
 - [ ] ⚠ **Restliche Fenster überarbeiten** (ForeverSkin, Darstellung) – noch offen:
   - Große Fenster: Gildenränge und Gilden-Unterfenster (Gildenlog, News-Filter,
     Gildeninfo-Text, Avatar-Auswahl), PvP-Punktetafel und -Ergebnis
-  - Kleine Fenster: Gildenurkunde/-einladung/-umbenennung, Bereitschaftscheck (ReadyCheckFrame),
+  - Kleine Fenster: Gildeneinladung/-umbenennung, Bereitschaftscheck (ReadyCheckFrame),
     Set bearbeiten beim Transmogrifizieren (WardrobeCustomSetEditFrame), weitere
     PvP-Abfragen (PVPReadyPopup, PVPRoleCheckPopup, PVPFramePopup)
   - Vermutlich ungenutzt (nur bei Bedarf): Talent-Ausstattungen importieren/bearbeiten (ClassTalentLoadout…Dialog)
