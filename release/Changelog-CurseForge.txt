@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverSkin: guild control (ranks, permissions, bank tabs) now uses the Forever look.
+
 - ForeverSkin: guild window – text buttons (e.g. "Invite member") are flat instead of red, and the member detail window (rank, notes, remove, group invite) uses the Forever look.
 
 - ForeverQuests: up to 40 quests can now be tracked – beyond Blizzard's own limit, ForeverQuests keeps the rest itself (per character).

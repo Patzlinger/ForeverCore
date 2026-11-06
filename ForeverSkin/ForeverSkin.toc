@@ -27,6 +27,7 @@ DressUp.lua
 Professions.lua
 Talents.lua
 Communities.lua
+GuildControl.lua
 Wardrobe.lua
 Transmog.lua
 GroupFinder.lua
