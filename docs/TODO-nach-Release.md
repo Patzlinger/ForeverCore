@@ -15,7 +15,7 @@ Auswirkung im Spiel.
     PvP-Abfragen (PVPReadyPopup, PVPRoleCheckPopup, PVPFramePopup)
   - Vermutlich ungenutzt (nur bei Bedarf): Talent-Ausstattungen importieren/bearbeiten (ClassTalentLoadout…Dialog)
   - Im Spiel noch prüfen (Entwurf fertig, erscheinen nur bei echtem Anlass): Rollenabfrage, Gruppeneinladung,
-    PvP-Bereitschaft, Würfelfenster bei Gruppenbeute
+    PvP-Bereitschaft
   - Abgleich im Spiel: `/fskin fenster` (listet alle großen Fenster, umgestaltet `+` oder nicht `-`)
 - [ ] ⚠ **Markierungen über Blizzards Schnell-Ping-Menü:** Weltmarkierungen mit dem Ping-Rad verbinden; Zielmarkierungen
       (Totenkopf, Kreuz …) per Mouseover über Gegner ebenfalls über das Ping-Rad setzen (Addon klären, z. B. ForeverHelpers)
