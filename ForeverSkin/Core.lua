@@ -43,6 +43,7 @@ ns.DEFAULTS = {
     colorpicker = true, -- Farbauswahl
     dialogs = true,  -- Rollenabfrage, Gruppeneinladung, PvP-Bereitschaft
     quickkeybind = true, -- Schnelltastenbelegung
+    lootroll = true, -- Würfelfenster bei Gruppenbeute
     size = 100,      -- Größe von Gespräch, Quest, Händler und Lehrer in Prozent (100 = Grundgröße SIZE_BASE)
 }
 
