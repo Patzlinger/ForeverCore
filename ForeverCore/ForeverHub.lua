@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 80
+local VERSION = 81
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -5488,6 +5488,33 @@ SLASH_FOREVEROVER1 = "/fover"
 SlashCmdList.FOREVEROVER = function(msg)
     local unit = (msg and msg:match("%S+")) or "target"
     local function P(t) UI.Chat("HoT/DoT", t) end
+    -- /fover zauber: alle eigenen Zauber mit Zeitangabe ("Sek.") – erkannt (Art, Menge, Dauer) oder nicht (Textanfang)
+    if unit == "zauber" or unit == "spells" then
+        if not (C_SpellBook and C_SpellBook.GetNumSpellBookSkillLines and C_SpellBook.GetSpellBookSkillLineInfo) then
+            P("Zauberbuch nicht lesbar.") return
+        end
+        local bank = Enum and Enum.SpellBookSpellBank and Enum.SpellBookSpellBank.Player
+        local shown = 0
+        for line = 1, C_SpellBook.GetNumSpellBookSkillLines() do
+            local li = C_SpellBook.GetSpellBookSkillLineInfo(line)
+            for slot = (li and li.itemIndexOffset or 0) + 1, (li and li.itemIndexOffset + li.numSpellBookItems or 0) do
+                local info = C_SpellBook.GetSpellBookItemInfo(slot, bank)
+                local id = info and info.spellID
+                if id and not info.isPassive then
+                    local desc = C_Spell.GetSpellDescription(id)
+                    if type(desc) == "string" and not Secret(desc) and (desc:find("Sek") or desc:find("sec")) then
+                        local parsed = ParseOver(desc)
+                        shown = shown + 1
+                        P(string.format("%s (%d): %s", tostring(info.name), id, parsed
+                            and string.format("|cff55dd55%s %d über %ss|r", parsed.kind, parsed.amount, parsed.seconds)
+                            or ("|cffff7070nicht erkannt|r – " .. desc:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):sub(1, 110))))
+                    end
+                end
+            end
+        end
+        if shown == 0 then P("Keine Zauber mit Zeitangabe gefunden.") end
+        return
+    end
     if not UnitExists(unit) then P("Einheit '" .. unit .. "' gibt es nicht (Ziel wählen oder /fover player).") return end
     P("Einheit: " .. tostring(UnitName(unit)) .. " | GetUnitAuras: " .. tostring(C_UnitAuras and C_UnitAuras.GetUnitAuras ~= nil) .. ", Beschreibung: "
         .. tostring(C_Spell and C_Spell.GetSpellDescription ~= nil))
