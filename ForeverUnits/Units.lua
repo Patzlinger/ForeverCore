@@ -1506,8 +1506,8 @@ function ns.Layout(b)
     local hc, sc, ac = look.healColor, look.shieldColor, look.healAbsorbColor
     if hc then v.heal:SetStatusBarColor(hc[1], hc[2], hc[3], hc[4] or 1) end
     if hc then
-        v.hot:SetStatusBarColor(math.min(1, hc[1] + 0.5), math.min(1, hc[2] + 0.5), math.min(1, hc[3] + 0.5), 1)
-        v.hotFill:SetStatusBarColor(math.min(1, hc[1] + 0.2), math.min(1, hc[2] + 0.2), math.min(1, hc[3] + 0.2), 0.4)
+        v.hot:SetStatusBarColor(math.min(1, hc[1] + 0.25), math.min(1, hc[2] + 0.25), math.min(1, hc[3] + 0.25), 0.9)
+        v.hotFill:SetStatusBarColor(math.min(1, hc[1] + 0.2), math.min(1, hc[2] + 0.2), math.min(1, hc[3] + 0.2), 0.25)
     end
     if sc then v.shield:SetStatusBarColor(sc[1], sc[2], sc[3], sc[4] or 1) end
     if ac then v.absorb:SetStatusBarColor(ac[1], ac[2], ac[3], ac[4] or 1) end

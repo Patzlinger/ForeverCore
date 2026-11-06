@@ -371,8 +371,8 @@ function ns.ApplyButtonLayout(b)
     v.powerBg:SetTexture(tex)
     v.heal:SetStatusBarColor(ns.Color("healColor"))
     do local r, g, bl = ns.Color("healColor")
-        v.hot:SetStatusBarColor(math.min(1, r + 0.5), math.min(1, g + 0.5), math.min(1, bl + 0.5), 1)
-        v.hotFill:SetStatusBarColor(math.min(1, r + 0.2), math.min(1, g + 0.2), math.min(1, bl + 0.2), 0.4) end
+        v.hot:SetStatusBarColor(math.min(1, r + 0.25), math.min(1, g + 0.25), math.min(1, bl + 0.25), 0.9)
+        v.hotFill:SetStatusBarColor(math.min(1, r + 0.2), math.min(1, g + 0.2), math.min(1, bl + 0.2), 0.25) end
     v.shield:SetStatusBarColor(ns.Color("shieldColor"))
     v.absorb:SetStatusBarColor(ns.Color("healAbsorbColor"))
 
