@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- ForeverBags: no more chat message "New bag slots will be created after combat".
 - ForeverUnits: "Dead"/"Offline" no longer overlaps the name on two-line frames (it takes the place of the health text, bottom left).
 - HoT/DoT prediction hatching (unit frames, raid frames, nameplates): own tiled 45° stripe texture, so the hatching runs in one direction and at a fixed density everywhere.
 ## 0.52b – November 6, 2026

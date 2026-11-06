@@ -581,10 +581,7 @@ end
 -- Fehlende Plätze anlegen (nur außerhalb des Kampfes: die Vorlage enthält geschützte Teile)
 local function EnsureSlots()
     if InCombatLockdown() then
-        if not createPending then
-            createPending = true
-            ns.Print(L("COMBAT_LATER"))
-        end
+        createPending = true -- (still vormerken, ohne Chatmeldung: der Platz wird nach dem Kampf angelegt)
         return false
     end
     createPending = false
