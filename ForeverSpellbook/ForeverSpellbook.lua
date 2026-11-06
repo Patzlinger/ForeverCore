@@ -196,14 +196,22 @@ local function OutdatedSlots()
 end
 
 -- Im Kampf ist PickupSpellBookItem für Addons gesperrt (ADDON_ACTION_BLOCKED): dort den Zauber über seine ID aufnehmen
+local lastCombatHint = 0
 local function PickupEntry(e)
-    local inCombat = InCombatLockdown()
-    if e.id and C_Spell and C_Spell.PickupSpell and (inCombat or not e.slot) then
-        C_Spell.PickupSpell(e.id)
-    elseif e.slot and not inCombat and C_SpellBook and C_SpellBook.PickupSpellBookItem then
+    -- Im Kampf sind PickupSpellBookItem UND PickupSpell/C_Spell.PickupSpell für Addons gesperrt
+    -- (ADDON_ACTION_BLOCKED, auch mit pcall): Zauber lassen sich nur außerhalb des Kampfes aufnehmen.
+    if InCombatLockdown() then
+        if GetTime() - lastCombatHint > 3 then
+            lastCombatHint = GetTime()
+            Chat(T("Im Kampf nicht möglich – Zauber nach dem Kampf auf die Leiste ziehen (oder Blizzards Zauberbuch nutzen).",
+                "Not possible in combat – drag spells to the bar after combat (or use Blizzard's spellbook)."))
+        end
+        return
+    end
+    if e.slot and C_SpellBook and C_SpellBook.PickupSpellBookItem then
         C_SpellBook.PickupSpellBookItem(e.slot, e.bank)
-    elseif e.id and inCombat and _G.PickupSpell then
-        _G.PickupSpell(e.id)
+    elseif e.id and C_Spell and C_Spell.PickupSpell then
+        C_Spell.PickupSpell(e.id)
     end
 end
 

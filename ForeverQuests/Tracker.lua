@@ -91,6 +91,11 @@ function ns.UpdateBlizzardTracker()
     end
     blizzardUpdatePending = false
 
+    -- Mit dem Hub (UI.HideBlizzard: Deckkraft 0) wird der Blizzard-Tracker nicht mehr versteckt/gezeigt: Hide()/Show()
+    -- an diesem Rahmen des Bearbeitungsmodus verseuchte Blizzards Code (Taint, "GetAuraDataByIndex … tainted by
+    -- ForeverQuests" im Bearbeitungsmodus). Nur ohne Hub bleibt der alte Weg.
+    local hubUI = _G.ForeverHub and _G.ForeverHub.UI
+    if hubUI and hubUI.HideBlizzard then return end
     for _, name in ipairs(BLIZZARD_TRACKERS) do
         local frame = _G[name]
         if frame then

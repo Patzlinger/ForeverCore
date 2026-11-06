@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- ForeverSpellbook: no more "action blocked" error when dragging a spell in combat (the game forbids picking up spells in combat; a short hint is shown instead). ForeverQuests: the Blizzard quest tracker is no longer hidden with Hide()/Show() when the hub is present (taint warning in Edit Mode).
 - ForeverPlates: the DoT hatching no longer covers the health numbers on nameplates.
 - ForeverBags: no more chat message "New bag slots will be created after combat".
 - ForeverUnits: "Dead"/"Offline" no longer overlaps the name on two-line frames (it takes the place of the health text, bottom left).
