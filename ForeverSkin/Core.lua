@@ -40,6 +40,7 @@ ns.DEFAULTS = {
     report = true,   -- Spieler melden (Kundensupport)
     registrar = true, -- Gildenregistrator (Satzung kaufen)
     books = true,    -- Buch-/Brieftexte (Bücher, Briefe, Tafeln)
+    colorpicker = true, -- Farbauswahl
     size = 100,      -- Größe von Gespräch, Quest, Händler und Lehrer in Prozent (100 = Grundgröße SIZE_BASE)
 }
 
