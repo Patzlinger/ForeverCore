@@ -254,9 +254,7 @@ function ns.CreateVisuals(b)
     v.heal = NewOverlayBar(v.clip, false)
     v.hotFill = NewOverlayBar(v.clip, false) -- Grundfläche unter der Schraffur
     v.hot = NewOverlayBar(v.clip, false) -- HoTs: schraffiert, hinter der normalen Heilvorhersage
-    v.hot:SetStatusBarTexture(UI.HATCH_TEXTURE)
-    v.hot:GetStatusBarTexture():SetHorizTile(true)
-    v.hot:GetStatusBarTexture():SetVertTile(true)
+    UI.HatchBar(v.hot)
     v.shield = NewOverlayBar(v.clip, false)
     v.absorb = NewOverlayBar(v.clip, true)
     v.health:SetScript("OnSizeChanged", function() LayoutOverlays(v) end)

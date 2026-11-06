@@ -148,9 +148,7 @@ local function CreateUnitFrame(info)
     v.hot = NewOverlay(v.clip, false) -- eigene HoTs: schraffiert
     v.dot = NewOverlay(v.clip, true)  -- eigene DoTs auf dem Ziel: schraffiert, vom Lebensbalken-Ende nach links
     for _, bar in ipairs({ v.hot, v.dot }) do
-        bar:SetStatusBarTexture(UI.HATCH_TEXTURE)
-        bar:GetStatusBarTexture():SetHorizTile(true)
-        bar:GetStatusBarTexture():SetVertTile(true)
+        UI.HatchBar(bar)
     end
     v.shield = NewOverlay(v.clip, false)
     v.absorb = NewOverlay(v.clip, true)
@@ -1553,7 +1551,7 @@ function ns.Layout(b)
     SetFont(v.name, look, size, "LEFT")
     SetFont(v.hp, look, size, stacked and "LEFT" or "RIGHT")
     SetFont(v.pw, look, math.max(7, math.min(size - 3, f.powerHeight - 2)), "RIGHT") -- passt in die Balkenhöhe
-    SetFont(v.status, look, size, "CENTER")
+    SetFont(v.status, look, size, stacked and "LEFT" or "CENTER")
     local anchor, rowY = stacked and "TOPLEFT" or "LEFT", stacked and -2 or 0
     v.level:ClearAllPoints()
     v.level:SetPoint(anchor, v.health, anchor, 4, rowY)
@@ -1580,7 +1578,8 @@ function ns.Layout(b)
     v.pw:SetPoint("RIGHT", v.power, "RIGHT", -8, 0)
     v.pw:SetShown(f.powerText and f.powerHeight >= 7)
     v.status:ClearAllPoints()
-    v.status:SetPoint("CENTER", v.health, "CENTER", 0, 0)
+    -- zweizeilig (Name oben): "Tot"/"Offline" an die Stelle der Lebenspunkte (unten links), nicht mittig über den Namen
+    if stacked then v.status:SetPoint("BOTTOMLEFT", v.health, "BOTTOMLEFT", 4, 2) else v.status:SetPoint("CENTER", v.health, "CENTER", 0, 0) end
 
     -- Symbole: PvP an der Aussenecke auf der Porträt-Seite, Anführer und Markierung oben
     local outerRight = f.portraitSide == "RIGHT"

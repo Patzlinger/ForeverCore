@@ -5238,6 +5238,24 @@ end
 -- Schaetzung: nutzt die aktuellen Werte des Spielers, keine Tick-Genauigkeit.
 ---------------------------------------------------------------------------
 UI.HATCH_TEXTURE = "Interface\\AddOns\\ForeverCore\\Media\\Hatch" -- Schraffur fuer Vorhersage-Balken: eigene, nahtlose 45°-Streifen (Blizzards Shield-Overlay zeigte oben schräg, unten senkrecht)
+-- Schraffierter Balken: ein StatusBar kann seine Textur nicht kacheln (er setzt die Texturkoordinaten selbst, darum wurde
+-- die Streifen-Grafik auf die Balkengröße gestreckt). Darum: die eigentliche Füllung des Balkens unsichtbar (sie bestimmt
+-- weiter Länge und Lage, auch bei gesperrten Werten) und eine gekachelte Textur, die genau an der Füllung hängt; die
+-- Farbe von SetStatusBarColor wird übernommen.
+function UI.HatchBar(bar)
+    bar:SetStatusBarTexture("Interface\\Buttons\\WHITE8x8")
+    local fill = bar:GetStatusBarTexture()
+    fill:SetAlpha(0)
+    local t = bar:CreateTexture(nil, "OVERLAY")
+    t:SetTexture(UI.HATCH_TEXTURE, "REPEAT", "REPEAT")
+    t:SetHorizTile(true)
+    t:SetVertTile(true)
+    t:SetPoint("TOPLEFT", fill, "TOPLEFT")
+    t:SetPoint("BOTTOMRIGHT", fill, "BOTTOMRIGHT")
+    bar.hatch = t
+    hooksecurefunc(bar, "SetStatusBarColor", function(_, r, g, b, a) t:SetVertexColor(r, g, b, a or 1) end)
+    return t
+end
 
 local function Secret(...)
     if not issecretvalue then return false end

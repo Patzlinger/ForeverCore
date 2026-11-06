@@ -2,7 +2,8 @@
 
 ## Unreleased
 
-- HoT/DoT prediction hatching (unit frames, raid frames, nameplates): own seamless 45° stripe texture, so the hatching runs in one direction everywhere (before: slanted in the upper half, vertical in the lower half).
+- ForeverUnits: "Dead"/"Offline" no longer overlaps the name on two-line frames (it takes the place of the health text, bottom left).
+- HoT/DoT prediction hatching (unit frames, raid frames, nameplates): own tiled 45° stripe texture, so the hatching runs in one direction and at a fixed density everywhere.
 ## 0.52b – November 6, 2026
 
 - ForeverSkin: book and letter texts (books, letters, plaques) now use the Forever look – flat box instead of parchment, light text, gold headings.
