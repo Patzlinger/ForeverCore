@@ -61,6 +61,57 @@ end
 
 -- in allen Unterrahmen: Blizzards Innenrahmen (NineSlice) unsichtbar, Laufleisten gold – Bilder bleiben
 local done = setmetatable({}, { __mode = "k" })
+local textButtons = setmetatable({}, { __mode = "k" }) -- Text-Knöpfe, deren roten Grafiken laufend unsichtbar bleiben
+
+-- Text-Knopf flach ("Mitglied einladen", "Entfernen", "Gruppeneinladung" …; Blizzard setzt das Rot teils neu)
+local function FlatButton(b)
+    if not textButtons[b] then
+        textButtons[b] = true
+        ns.SkinButton(b)
+    end
+    for _, key in ipairs({ "Left", "Middle", "Right", "Center" }) do ns.Hide(b[key]) end
+    ns.HideTextures(b)
+    for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetHighlightTexture", "GetDisabledTexture" }) do
+        if b[get] then ns.Hide(b[get](b)) end
+    end
+end
+
+local function IsDropdown(child)
+    return (child.IsObjectType and child:IsObjectType("DropdownButton")) or type(child.SetupMenu) == "function"
+        or (type(child.Arrow) == "table" and type(child.Text) == "table" and not child:IsObjectType("CheckButton"))
+end
+
+-- Ältere Auswahlliste (UIDropDownMenuTemplate: Left/Middle/Right-Grafik und Pfeil-Knopf .Button) – flach wie unsere
+local function SkinOldDropdown(dd)
+    if done[dd] or Forbidden(dd) then return end
+    done[dd] = true
+    for _, key in ipairs({ "Left", "Middle", "Right" }) do ns.Hide(dd[key]) end
+    local name = dd:GetName()
+    if name then for _, s in ipairs({ "Left", "Middle", "Right" }) do ns.Hide(G(name .. s)) end end
+    local button = dd.Button
+    for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetHighlightTexture", "GetDisabledTexture" }) do
+        if button[get] then ns.Hide(button[get](button)) end
+    end
+    local look = ns.Flat(dd, C.button)
+    if look then
+        look.fill:ClearAllPoints()
+        look.fill:SetPoint("TOPLEFT", dd, "TOPLEFT", 18, -2)
+        look.fill:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 2, -2)
+        local arrow = dd:CreateTexture(nil, "OVERLAY", nil, 7)
+        arrow:SetTexture("Interface\\ChatFrame\\ChatFrameExpandArrow")
+        arrow:SetSize(10, 10)
+        arrow:SetPoint("RIGHT", look.fill, "RIGHT", -8, 0)
+        arrow:SetRotation(-math.pi / 2)
+        arrow:SetVertexColor(0.8, 0.8, 0.82)
+        look.mine[arrow] = true
+    end
+    ns.Hover(dd)
+end
+local function IsOldDropdown(child)
+    return not child:IsObjectType("Button") and type(child.Button) == "table" and type(child.Text) == "table"
+        and (type(child.Left) == "table" or type(child.Middle) == "table")
+end
+
 local function Scan(frame, depth)
     for _, child in ipairs({ frame:GetChildren() }) do
         if not Forbidden(child) then
@@ -71,12 +122,63 @@ local function Scan(frame, depth)
                     done[child] = true
                     ns.SkinScrollBar(child)
                 end
-            elseif depth < 4 then
+            elseif child:IsObjectType("Button") and not child:IsObjectType("CheckButton") and type(child.Left) == "table"
+                and type(child.Right) == "table" and child.GetText and (child:GetText() or "") ~= "" then
+                FlatButton(child)
+            elseif depth < 4 and not child:IsObjectType("Button") then
                 Scan(child, depth + 1)
             end
         end
     end
 end
+
+-- Kleine Fenster am Gildenfenster (Mitglied-Details: Rang, Notizen, Entfernen/Gruppeneinladung): flach und dunkel
+-- mit goldener Linie oben, unser Schließen-Kreuz, Notizfelder als flache Kästen, Rang-Auswahl flach
+local function SkinDialog(d)
+    if type(d) ~= "table" or Forbidden(d) then return end
+    if not done[d] then
+        done[d] = true
+        ns.HideTextures(d)
+        for _, key in ipairs({ "Border", "NineSlice", "Bg", "Background" }) do
+            local part = d[key]
+            if type(part) == "table" then
+                ns.Hide(part)
+                if part.GetRegions then ns.HideTextures(part) end
+            end
+        end
+        if d.ClearBackdrop and d.GetBackdrop and d:GetBackdrop() then pcall(d.ClearBackdrop, d) end
+        ns.Flat(d, C.background)
+        local line = d:CreateTexture(nil, "BORDER", nil, -6)
+        line:SetTexture("Interface\\Buttons\\WHITE8x8")
+        line:SetVertexColor(C.accent[1], C.accent[2], C.accent[3], 0.8)
+        line:SetPoint("TOPLEFT", 1, -1)
+        line:SetPoint("TOPRIGHT", -1, -1)
+        ns.OnePixel(line, true)
+        local close = ns.FindCloseButton(d)
+        if close then ns.SkinClose(close) end
+    end
+    for _, child in ipairs({ d:GetChildren() }) do
+        if not Forbidden(child) and not done[child] then
+            if IsDropdown(child) then
+                done[child] = true
+                ns.SkinDropdown(child)
+            elseif IsOldDropdown(child) then
+                SkinOldDropdown(child) -- (Rang-Auswahl)
+            elseif not child:IsObjectType("Button") and (type(child.NineSlice) == "table"
+                or (child.GetBackdrop and child:GetBackdrop())) then
+                -- Notizfeld (Kasten mit Blizzard-Rahmen)
+                done[child] = true
+                if type(child.NineSlice) == "table" then ns.Hide(child.NineSlice) end
+                if child.ClearBackdrop then pcall(child.ClearBackdrop, child) end
+                ns.HideTextures(child)
+                ns.Flat(child, C.input)
+            end
+        end
+    end
+    Scan(d, 1)
+end
+
+local DIALOG_KEYS = { "GuildMemberDetailFrame" }
 
 -- Verkleinern/Vergrößern oben rechts: nur feine Pfeile (ohne Blizzards roten Knopf)
 local function SkinMaxMin(f)
@@ -125,6 +227,11 @@ local function SkinCommunities()
         pcall(EvenMargins, f)
         pcall(SkinList, f.CommunitiesList)
         pcall(Scan, f, 1)
+        for _, key in ipairs(DIALOG_KEYS) do
+            if type(f[key]) == "table" and f[key]:IsShown() then pcall(SkinDialog, f[key]) end
+        end
+        -- rote Knöpfe flach halten
+        for b in pairs(textButtons) do if b:IsVisible() then pcall(FlatButton, b) end end
         if ns.SkinOpenMenu then pcall(ns.SkinOpenMenu) end
     end)
 end
