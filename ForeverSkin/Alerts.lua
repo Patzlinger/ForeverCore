@@ -19,7 +19,7 @@ local function IconsOf(frame)
     local keep = {}
     for _, obj in ipairs({ frame, frame.lootItem or false }) do
         if obj then
-            for _, key in ipairs({ "Icon", "icon", "MoneyIcon" }) do
+            for _, key in ipairs({ "Icon", "icon", "MoneyIcon", "RollTypeIcon", "SpecIcon" }) do
                 if type(obj[key]) == "table" and obj[key].IsObjectType then keep[obj[key]] = true end
             end
         end
@@ -69,13 +69,25 @@ local function QualityEdge(frame, itemLink)
     if color then ns.EdgeColor(frame, { color.r, color.g, color.b }, 0.9) else ns.EdgeColor(frame, C.border, 1) end
 end
 
+-- Beute-Meldung? (Gegenstand mit Unterrahmen bzw. Betrag) – andere Meldungen (Erfolge, Ruf …) bleiben Blizzards
+local function IsLootAlert(frame)
+    return type(frame.lootItem) == "table" or type(frame.Amount) == "table" or type(frame.RollValue) == "table"
+        or type(frame.hyperlink) == "string"
+end
+
+-- Qualitätsfarbe: aus dem Link der Meldung (Blizzard merkt ihn sich am Fenster als hyperlink)
+local function LinkOf(frame)
+    local link = frame.hyperlink
+    if type(link) == "string" then return link end
+end
+
 local hooked = false
 local function Setup()
     if hooked then return end
-    local any = false
+    -- 1) die Einrichtungs-Funktionen der Beute-Meldungen (Name je nach Spielversion)
     for _, fn in ipairs(SETUPS) do
         if type(_G[fn]) == "function" then
-            any = true
+            hooked = true
             hooksecurefunc(fn, function(frame, itemLink)
                 local ok, err = pcall(function()
                     Skin(frame)
@@ -85,7 +97,19 @@ local function Setup()
             end)
         end
     end
-    hooked = any
+    -- 2) allgemein: jede neue Meldung läuft über AlertFrame:AddAlertFrame – Beute-Meldungen dort umgestalten
+    local alertFrame = _G.AlertFrame
+    if alertFrame and type(alertFrame.AddAlertFrame) == "function" then
+        hooked = true
+        hooksecurefunc(alertFrame, "AddAlertFrame", function(_, frame)
+            if type(frame) ~= "table" or Forbidden(frame) or not IsLootAlert(frame) then return end
+            local ok, err = pcall(function()
+                Skin(frame)
+                QualityEdge(frame, LinkOf(frame))
+            end)
+            if not ok and ns.UI.ReportError then ns.UI.ReportError("ForeverSkin", "alerts", err) end
+        end)
+    end
 end
 
 local events = CreateFrame("Frame")
