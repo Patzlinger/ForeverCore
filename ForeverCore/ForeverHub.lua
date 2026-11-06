@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 79
+local VERSION = 80
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -5281,6 +5281,10 @@ local function ToNumber(s) return tonumber((s:gsub("[%.,%s]", ""))) end
 local function ParseOver(desc)
     desc = desc:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
     local pos, finish, seconds = desc:find("über%s+(%d+[%.,]?%d*)%s*[Ss]e")
+    -- (deutsche Texte sagen oft auch "im Verlauf von 15 Sek." oder "innerhalb von 15 Sek.", z. B. Stiche des Jägers)
+    if not pos then pos, finish, seconds = desc:find("[Vv]erlauf von%s+(%d+[%.,]?%d*)%s*[Ss]e") end
+    if not pos then pos, finish, seconds = desc:find("innerhalb von%s+(%d+[%.,]?%d*)%s*[Ss]e") end
+    if not pos then pos, finish, seconds = desc:find("Zeitraum von%s+(%d+[%.,]?%d*)%s*[Ss]e") end
     if not pos then pos, finish, seconds = desc:find("over%s+(%d+[%.,]?%d*)%s*[Ss]e") end
     if not pos then return nil end
     seconds = tonumber((seconds:gsub(",", ".")))
