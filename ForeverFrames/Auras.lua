@@ -413,7 +413,7 @@ end
 local function LookSignature(size, showCooldown)
     local db = GetDB()
     return table.concat({ size, tostring(showCooldown), tostring(db.auraTimerSwipe),
-        tostring(db.auraTimerNumbers), db.auraTimerSize, tostring(db.auraTooltip) }, ":")
+        tostring(db.auraTimerNumbers), db.auraTimerSize, tostring(db.auraTooltip), (ns.IgnoredDebuffCount and ns.IgnoredDebuffCount() or 0) }, ":") -- (neu gelernte ignorierte Debuffs: Container neu bauen, sonst bleibt die alte Ausschlussliste)
 end
 
 local function GroupLayout(container, key, prefix, num, layoutIndex)
@@ -494,6 +494,7 @@ local function IgnoredDebuffs()
     for id in pairs(IGNORE_DEBUFF_IDS) do db._ignoredDebuffs[id] = true end
     return db._ignoredDebuffs
 end
+function ns.IgnoredDebuffCount() local n = 0 for _ in pairs(IgnoredDebuffs()) do n = n + 1 end return n end
 
 -- true = diesen Debuff überspringen; lernt nebenbei die ID (dann Blizzard-Anzeige neu aufbauen)
 local function SkipDebuff(aura)

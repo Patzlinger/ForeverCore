@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- ForeverFrames: "Boosted Rest" (camp tent/campfire) is now reliably hidden from the debuffs – once its ID is learned, the aura containers are rebuilt with the new exclusion list.
 - HoT prediction hatching is back to the softer color of the original version (only slightly lighter than the heal color, no near-white).
 - ForeverSpellbook: no more "action blocked" error when dragging a spell in combat (the game forbids picking up spells in combat; a short hint is shown instead). ForeverQuests: the Blizzard quest tracker is no longer hidden with Hide()/Show() when the hub is present (taint warning in Edit Mode).
 - ForeverPlates: the DoT hatching no longer covers the health numbers on nameplates.
