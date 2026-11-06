@@ -44,3 +44,4 @@ FriendsFriends.lua
 Registrar.lua
 Books.lua
 ColorPicker.lua
+Dialogs.lua
