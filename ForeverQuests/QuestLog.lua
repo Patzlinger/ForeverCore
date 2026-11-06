@@ -659,17 +659,13 @@ local function CreateScroll(parent)
     return scroll, child
 end
 
--- Alle Quests im Log verfolgen bzw. keine (Blizzard begrenzt die Zahl verfolgter Quests, darüber hinaus passiert nichts)
+-- Alle Quests im Log verfolgen bzw. keine (über Blizzards Grenze hinaus bis 40, siehe ns.SetQuestTracked im Tracker)
 local function WatchAll(watch)
     for i = 1, C_QuestLog.GetNumQuestLogEntries() do
         local info = C_QuestLog.GetInfo(i)
         if info and not info.isHeader and not info.isHidden and info.questID and info.questID > 0 then
-            local watched = C_QuestLog.GetQuestWatchType(info.questID) ~= nil
-            if watch and not watched and C_QuestLog.AddQuestWatch then
-                C_QuestLog.AddQuestWatch(info.questID)
-            elseif not watch and watched then
-                C_QuestLog.RemoveQuestWatch(info.questID)
-            end
+            local watched = ns.IsQuestTracked(info.questID)
+            if watch ~= watched then ns.SetQuestTracked(info.questID, watch, true) end
         end
     end
     ns.RequestUpdate()

@@ -404,6 +404,57 @@ local function ShareQuest(questID)
 end
 ns.PushQuest = ShareQuest
 
+-- Verfolgen über Blizzards Grenze hinaus (auf Wunsch bis MAX_TRACKED = 40): Blizzard nimmt nur eine feste Zahl
+-- verfolgter Quests an (C_QuestLog.AddQuestWatch – darüber passiert nichts). Was Blizzard nicht mehr annimmt, merkt
+-- sich ForeverQuests selbst (je Charakter in ForeverQuestsCharDB.extraTracked) und zeigt es im Tracker genauso an.
+-- Alle Stellen (Tracker, Questlog, Menüs) fragen über ns.IsQuestTracked bzw. setzen über ns.SetQuestTracked.
+local MAX_TRACKED = 40
+local function ExtraTracked()
+    if type(_G.ForeverQuestsCharDB) ~= "table" then _G.ForeverQuestsCharDB = {} end
+    local store = _G.ForeverQuestsCharDB
+    if type(store.extraTracked) ~= "table" then store.extraTracked = {} end
+    return store.extraTracked
+end
+function ns.IsQuestTracked(questID)
+    if not questID then return false end
+    if C_QuestLog.GetQuestWatchType(questID) ~= nil then return true end
+    return ExtraTracked()[questID] == true
+end
+-- Zahl der verfolgten Quests; nebenbei Einträge zu Quests entfernen, die nicht mehr im Log sind
+local function CountTracked()
+    local extra, n = ExtraTracked(), 0
+    for questID in pairs(extra) do
+        if not C_QuestLog.GetLogIndexForQuestID(questID) or C_QuestLog.GetQuestWatchType(questID) ~= nil then
+            extra[questID] = nil
+        end
+    end
+    for i = 1, C_QuestLog.GetNumQuestLogEntries() do
+        local info = C_QuestLog.GetInfo(i)
+        if info and not info.isHeader and info.questID and info.questID > 0 and ns.IsQuestTracked(info.questID) then
+            n = n + 1
+        end
+    end
+    return n
+end
+-- on = true: verfolgen (erst bei Blizzard, sonst selbst; höchstens MAX_TRACKED); false: nicht mehr verfolgen
+function ns.SetQuestTracked(questID, on, quiet)
+    if not questID then return false end
+    local extra = ExtraTracked()
+    if on then
+        if ns.IsQuestTracked(questID) then return true end
+        if CountTracked() >= MAX_TRACKED then
+            if not quiet then print(ns.ChatPrefix() .. ": " .. ns.L("TRACK_LIMIT", MAX_TRACKED)) end
+            return false
+        end
+        if C_QuestLog.AddQuestWatch then pcall(C_QuestLog.AddQuestWatch, questID) end
+        if C_QuestLog.GetQuestWatchType(questID) == nil then extra[questID] = true end
+    else
+        if C_QuestLog.GetQuestWatchType(questID) then C_QuestLog.RemoveQuestWatch(questID) end
+        extra[questID] = nil
+    end
+    return true
+end
+
 local function TogglePinned(questID)
     if ns.db.pinned[questID] then
         ns.db.pinned[questID] = nil
@@ -446,10 +497,13 @@ local function OpenQuestMenu(owner, questID, inLog)
             onClick = function() if ns.SuggestQuest then ns.SuggestQuest(questID) end end,
         },
     }
-    if C_QuestLog.GetQuestWatchType(questID) then
+    if ns.IsQuestTracked(questID) then
         table.insert(items, {
             text = ns.L("MENU_UNTRACK"),
-            onClick = function() C_QuestLog.RemoveQuestWatch(questID) end,
+            onClick = function()
+                ns.SetQuestTracked(questID, false)
+                ns.RequestUpdate()
+            end,
         })
     end
     -- Questie-Befehle (Fokus, Abgabe auf der Karte, Wegpunkt, Wowhead), nur wenn Questie läuft
@@ -695,8 +749,9 @@ local function OnLineClick(self, button)
         OpenQuestMenu(self, questID)
     elseif IsShiftKeyDown() then
         -- Shift + Linksklick: Quest nicht mehr verfolgen
-        if C_QuestLog.GetQuestWatchType(questID) then
-            C_QuestLog.RemoveQuestWatch(questID)
+        if ns.IsQuestTracked(questID) then
+            ns.SetQuestTracked(questID, false)
+            ns.RequestUpdate()
         end
     else
         -- Linksklick auf den Namen: Quest im Questlog öffnen (auf-/zuklappen nur noch über den Pfeil).
@@ -735,11 +790,7 @@ end
 local function OnWatchClick(self)
     local questID = self:GetParent().questID
     if not questID then return end
-    if C_QuestLog.GetQuestWatchType(questID) then
-        C_QuestLog.RemoveQuestWatch(questID)
-    elseif C_QuestLog.AddQuestWatch then
-        C_QuestLog.AddQuestWatch(questID)
-    end
+    ns.SetQuestTracked(questID, not ns.IsQuestTracked(questID))
     ns.RequestUpdate()
 end
 
@@ -1530,7 +1581,7 @@ local function CollectGroups(opts)
                 if db.pinned[info.questID] then
                     -- Angeheftete Quests werden immer angezeigt, auch wenn sie nicht verfolgt werden
                     table.insert(pinnedGroup.quests, info)
-                elseif not useTrackedOnly or C_QuestLog.GetQuestWatchType(info.questID) ~= nil then
+                elseif not useTrackedOnly or ns.IsQuestTracked(info.questID) then
                     local group = groups[#groups]
                     -- Ohne Gebietsanzeige landen alle Quests in einem einzigen Rahmen
                     if not group or (showZones and group.header ~= currentHeader) then
@@ -1877,7 +1928,7 @@ local function RenderQuestList(v, groups, contentWidth, alpha, emptyText)
                 reward = rewardQuality,
                 questItem = questItem,
                 -- Questlog: true = verfolgt (gold), false = leeres Kästchen; Tracker: nil = kein Kästchen
-                watch = v.watchToggle and (C_QuestLog.GetQuestWatchType(questID) ~= nil),
+                watch = v.watchToggle and ns.IsQuestTracked(questID),
             })
 
             if expanded then
