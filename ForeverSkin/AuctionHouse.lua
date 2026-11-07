@@ -187,6 +187,22 @@ local function Scan(frame, depth)
     for _, child in ipairs({ frame:GetChildren() }) do
         if not Forbidden(child) and not done[child] and not Foreign(child) then
             local name = (child:GetName() or ""):lower()
+            -- Rückfrage-Fenster ("Jetzt kaufen" / "Abbrechen"): ihr Rahmen ist selbst ein Zier-Rahmen ("Border" aus
+            -- Ecken-Grafiken) – unsichtbar, die Rückfrage flach und dunkel mit goldener Linie oben
+            if not child:IsObjectType("Button") and frame.Border == child
+                and (type(child.TopLeftCorner) == "table" or child.layoutType ~= nil) then
+                ns.HideTextures(child)
+                local look = ns.Flat(frame, C.background)
+                if look and not look.topLine then
+                    look.topLine = frame:CreateTexture(nil, "BORDER", nil, -6)
+                    look.topLine:SetTexture("Interface\\Buttons\\WHITE8x8")
+                    look.topLine:SetVertexColor(C.accent[1], C.accent[2], C.accent[3], 0.8)
+                    look.topLine:SetPoint("TOPLEFT", 1, -1)
+                    look.topLine:SetPoint("TOPRIGHT", -1, -1)
+                    ns.OnePixel(look.topLine, true)
+                    look.mine[look.topLine] = true
+                end
+            end
             if type(child.NineSlice) == "table" and not child:IsObjectType("Button") then
                 ns.Hide(child.NineSlice)
                 if type(child.Background) == "table" and child.Background.IsObjectType
