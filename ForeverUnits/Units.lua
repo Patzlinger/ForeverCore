@@ -875,7 +875,7 @@ end
 -- Kampf-Symbol direkt hinter den Namen setzen (je nach Ausrichtung des Namens)
 local function PlaceCombat(fs, icon, size)
     local ok, w = pcall(fs.GetStringWidth, fs)
-    if not ok or type(w) ~= "number" then w = 0 end
+    if not ok or type(w) ~= "number" or IsSecret(w) then w = 0 end
     local j = fs:GetJustifyH()
     icon:SetSize(size, size)
     icon:ClearAllPoints()

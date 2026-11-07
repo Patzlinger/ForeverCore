@@ -5449,7 +5449,7 @@ local function GuidOf(unit)
     end
     for _, tok in ipairs({ "target", "focus", "mouseover", "softenemy" }) do
         local ok, same = pcall(UnitIsUnit, unit, tok)
-        if ok and same and not Secret(same) then
+        if ok and not Secret(same) and same then
             local tg = UnitGuid(tok)
             if tg then return tg end
         end

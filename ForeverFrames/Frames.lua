@@ -1305,10 +1305,22 @@ function ns.ApplyMode(force)
     ns.RequestBounds()
 end
 
+-- GROUP_ROSTER_UPDATE kommt beim Gruppenbeitritt / Dungeon-Betreten in Schueben (oft viele Male pro Sekunde):
+-- nur einmal kurz danach abarbeiten statt bei jedem einzelnen Ereignis alle Rahmen neu aufzubauen
+local rosterQueued = false
+local DoRosterChanged
 local function RosterChanged()
+    if rosterQueued then return end
+    rosterQueued = true
+    C_Timer.After(0.1, Safe(T("Gruppe", "Group"), function()
+        rosterQueued = false
+        DoRosterChanged()
+    end))
+end
+function DoRosterChanged()
     ns.ApplyMode()
     -- gleiche Einheit ("raid3"), aber evtl. ein anderer Spieler: alles neu
-    C_Timer.After(0, Safe(T("Gruppe", "Group"), function() ForEachShown(ns.UpdateAll) end))
+    ForEachShown(ns.UpdateAll)
     -- Blizzards Raid-Stil-Partyrahmen entstehen evtl. erst beim Gruppenbeitritt
     if not InCombatLockdown() then ns.HideBlizzard() end
 end
