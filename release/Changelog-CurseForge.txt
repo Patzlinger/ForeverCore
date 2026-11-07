@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverQuests: new quests beyond Blizzard's limit of 25 are now tracked automatically too, and the quest log counter shows the Forever maximum of 40.
+
 - ForeverBags / ForeverAlts: the saved bank of your characters is shown again when you are not at the bank.
 
 - ForeverBars: tooltips have the same fine gold border all around as all other Forever tooltips.

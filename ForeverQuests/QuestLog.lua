@@ -544,6 +544,8 @@ local function UpdateCount()
     local _, numQuests = C_QuestLog.GetNumQuestLogEntries()
     numQuests = numQuests or 0
     local max = (C_QuestLog.GetMaxNumQuestsCanAccept and C_QuestLog.GetMaxNumQuestsCanAccept()) or _G.MAX_QUESTS or 25
+    -- der Forever-Server erlaubt 40 Quests im Log, das Spiel meldet aber noch Blizzards 25
+    max = math.max(max, 40)
     local full = numQuests >= max
     countText:SetText((full and "|cffff4040" or "|cffbbbbbb") .. numQuests .. "/" .. max .. "|r")
 end

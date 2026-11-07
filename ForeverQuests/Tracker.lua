@@ -2472,6 +2472,18 @@ function ns.CreateTracker()
             if blizzardUpdatePending then
                 ns.UpdateBlizzardTracker()
             end
+        elseif event == "QUEST_ACCEPTED" then
+            -- Neue Quest automatisch verfolgen (wie Blizzard bei "Quests automatisch verfolgen") – Blizzard selbst
+            -- hört bei seiner Grenze (25) auf, darüber übernimmt ForeverQuests bis MAX_TRACKED
+            local questID = select(2, ...) or select(1, ...)
+            if type(questID) == "number" and not (GetCVarBool and not GetCVarBool("autoQuestWatch")) then
+                C_Timer.After(0.5, function()
+                    if C_QuestLog.GetLogIndexForQuestID(questID) and not ns.IsQuestTracked(questID) then
+                        ns.SetQuestTracked(questID, true, true)
+                        ns.RequestUpdate()
+                    end
+                end)
+            end
         elseif event == "GET_ITEM_INFO_RECEIVED" then
             -- Nur reagieren, wenn wir auf Daten für Questbelohnungen warten
             if not waitingForItemData then return end
