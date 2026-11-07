@@ -25,8 +25,9 @@ local TEXT_COLOR = { 1, 1, 0.98 }
 -- Füllfarben wie im ursprünglichen ForeverXP: Erfahrung kräftig Violett, Erholung Blau, fertige Quests Gold
 -- (auf Wunsch zurück, 2026-10-18). Jede Füllung bekommt einen leichten Glanz (oben heller, unten dunkler).
 local XP_COLOR = { 0.60, 0.20, 0.90, 1.00 }      -- aktuelle Erfahrung: Violett
-local XP_RESTED_COLOR = XP_COLOR                 -- (bleibt Violett, auch wenn man erholt ist)
-local RESTED_COLOR = { 0.20, 0.50, 1.00, 0.60 }  -- erholter Bereich: Blau
+local XP_RESTED_COLOR = { 0.25, 0.45, 1.00, 1.00 } -- aktuelle Erfahrung, solange man erholt ist: Blau (Wunsch 2026-11-07)
+local RESTED_COLOR = { 0.45, 0.70, 1.00, 0.75 }  -- erholter Bereich: Hellblau
+local POOL_COLOR = { 0.55, 0.80, 1.00, 1.00 }    -- Vorrat-Streifen unten: wie viel Erholung insgesamt (max. 1,5 Level)
 local QUEST_COLOR = { 1.00, 0.80, 0.10, 0.80 }   -- fertige Quests: Gold
 
 -- Standardhöhen (px); die Breite ist standardmäßig die der Aktionsleiste 1
@@ -477,6 +478,16 @@ local function Build(key, holder)
         w.rested = Layer(w, RESTED_COLOR, 1) -- Erholung
         w.quest = Layer(w, QUEST_COLOR, 2)   -- fertige Quests
         w.fill = Layer(w, XP_COLOR, 3)       -- aktuelle XP
+        -- dünner Streifen am unteren Rand: gesamter Erholungsvorrat im Verhältnis zum Höchstwert (1,5 Level)
+        w.pool = CreateFrame("StatusBar", nil, w.root)
+        w.pool:SetPoint("BOTTOMLEFT", w.inner, "BOTTOMLEFT")
+        w.pool:SetPoint("BOTTOMRIGHT", w.inner, "BOTTOMRIGHT")
+        w.pool:SetHeight(3)
+        w.pool:SetStatusBarTexture(FLAT)
+        w.pool:SetStatusBarColor(POOL_COLOR[1], POOL_COLOR[2], POOL_COLOR[3], POOL_COLOR[4])
+        w.pool:SetFrameLevel(w.root:GetFrameLevel() + 4)
+        w.pool:SetMinMaxValues(0, 1)
+        w.pool:SetValue(0)
     else
         w.fill = Layer(w, { 0.30, 0.50, 0.30, 1 }, 3) -- Ruf (Farbe des Rangs, siehe RenderRep)
     end
@@ -682,6 +693,9 @@ local function RenderXP(w)
     local fillColor = rested > 0 and XP_RESTED_COLOR or XP_COLOR
     SetFill(w.fill, fillColor[1], fillColor[2], fillColor[3], fillColor[4])
     PlaceMark(w, w.restedMark, rested > 0 and (xp + rested) / maxXP or nil)
+    w.pool:SetMinMaxValues(0, maxXP * 1.5)
+    w.pool:SetValue(rested)
+    w.pool:SetShown(rested > 0)
     PlaceMark(w, w.questMark, questXP > 0 and (xp + questXP) / maxXP or nil)
 
     -- Hinweis, sobald die fertigen Quests fürs Level-Up reichen (einmal pro Level)
@@ -805,7 +819,9 @@ local function XPTooltip(tip)
         if xpStats.kills then Row(tip, T("Kills bis Level-Up:", "Kills until level-up:"), "≈ " .. Num(xpStats.kills)) end
         if xpStats.quests then Row(tip, T("Quests bis Level-Up:", "Quests until level-up:"), "≈ " .. Num(xpStats.quests)) end
     end
-    Row(tip, T("Erholt:", "Rested:"), Num(GetXPExhaustion() or 0) .. " XP", { 0.4, 0.6, 1 })
+    local mx = UnitXPMax("player")
+    local rp = (not IsSecret(mx) and mx and mx > 0) and string.format(T(" (%d %% von max.)", " (%d %% of max)"), math.floor((GetXPExhaustion() or 0) / (mx * 1.5) * 100 + 0.5)) or ""
+    Row(tip, T("Erholt:", "Rested:"), Num(GetXPExhaustion() or 0) .. " XP" .. rp, { 0.4, 0.6, 1 })
 
     -- Woher kamen die XP in dieser Sitzung?
     tip:AddLine(" ")
@@ -834,7 +850,7 @@ local function XPTooltip(tip)
     tip:AddLine(" ")
     tip:AddLine(T("XP/h = Durchschnitt der letzten 30 Minuten", "XP/h = average of the last 30 minutes"), 0.7, 0.7, 0.7)
     tip:AddLine(T("Kills/Quests = Schnitt der letzten 5", "Kills/quests = average of the last 5"), 0.7, 0.7, 0.7)
-    tip:AddLine(T("Gold = fertige Quests, Blau = Erholungsbonus", "Gold = completed quests, blue = rested bonus"), 0.7, 0.7, 0.7)
+    tip:AddLine(T("Gold = fertige Quests, Blau = Erholungsbonus, Streifen unten = Erholungsvorrat", "Gold = completed quests, blue = rested bonus, bottom strip = rested pool"), 0.7, 0.7, 0.7)
 end
 
 local function RepTooltip(tip)
