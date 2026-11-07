@@ -30,8 +30,4 @@
 	<Binding name="CLICK ForeverBarsRolePoll:LeftButton" category="ADDONS"/>
 	<Binding name="CLICK ForeverBarsCountdown:LeftButton" category="ADDONS"/>
 	<Binding name="CLICK ForeverBarsRoll:LeftButton" category="ADDONS"/>
-	<Binding name="CLICK ForeverBarsResetInstances:LeftButton" category="ADDONS"/>
-	<Binding name="CLICK ForeverBarsConvertRaid:LeftButton" category="ADDONS"/>
-	<Binding name="CLICK ForeverBarsInvite:LeftButton" category="ADDONS"/>
-	<Binding name="CLICK ForeverBarsPromote:LeftButton" category="ADDONS"/>
 </Bindings>

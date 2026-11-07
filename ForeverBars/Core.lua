@@ -587,10 +587,6 @@ _G["BINDING_NAME_CLICK ForeverBarsRolePoll:LeftButton"] = L("TIP_ROLEPOLL")
 _G["BINDING_NAME_CLICK ForeverBarsCountdown:LeftButton"] = L("TIP_COUNTDOWN")
 -- Gruppenleiste (2026-11-07 statt der Markierungen auf der Leiste; Markierungs-Tasten bleiben vorerst)
 _G["BINDING_NAME_CLICK ForeverBarsRoll:LeftButton"] = L("TIP_ROLL")
-_G["BINDING_NAME_CLICK ForeverBarsResetInstances:LeftButton"] = L("TIP_RESET")
-_G["BINDING_NAME_CLICK ForeverBarsConvertRaid:LeftButton"] = L("TIP_CONVERT")
-_G["BINDING_NAME_CLICK ForeverBarsInvite:LeftButton"] = L("TIP_INVITE")
-_G["BINDING_NAME_CLICK ForeverBarsPromote:LeftButton"] = L("TIP_PROMOTE")
 function ForeverBars_ToggleOptions() if ns.ToggleOptions then ns.ToggleOptions() end end
 function ForeverBars_ToggleUnlock() if ns.SetUnlocked then ns.SetUnlocked(not ns.unlocked) end end
 

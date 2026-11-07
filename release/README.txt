@@ -34,9 +34,9 @@ Die Addons (jedes funktioniert auch einzeln, zusammen mit ForeverCore):
                  Essen/Trinken, Munition und eine eigene Liste nach – mit Fenster am Händler
                  (Einkaufsliste + Kaufen-Knopf). Automatik erst einschalten, dann läuft alles. /fvendor
   ForeverBars    Aktionsleisten im Forever-Stil (ersetzt Blizzards Leisten): Begleiter-, Haltungs- und
-                 Totemleiste, Berufe-, Taschen- sowie Gruppenleiste (Bereitschaftscheck, Rollenabfrage,
-                 Countdown, Ziel einladen, Leitung übergeben, Schlachtzug, Würfeln, Instanzen
-                 zurücksetzen, Gruppe verlassen), Mikromenü unter der Minimap.
+                 Totemleiste, Berufe-, Taschen- sowie Gruppenleiste (Bereitschaftscheck, Countdown,
+                 Rollenabfrage, Würfeln, gemeinsame Quests der Gruppe, Gruppe verlassen), Mikromenü
+                 unter der Minimap.
                  Dazu Erfahrungs- und Ruf-Leiste (früher ForeverXP) mit XP/Stunde, Zeit bis
                  Level-Up, Erholung, XP aus fertigen Quests und Ruf/Stunde. /fb (XP: /fxp)
   ForeverQuests  Questtracker statt Blizzards: nach Gebieten, Filter, angeheftete Quests,

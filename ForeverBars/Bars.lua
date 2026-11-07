@@ -2761,24 +2761,84 @@ local MARK_ICON = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_"
 -- gibt es weiter unsichtbar, damit belegte Tasten für Markierungen weiter funktionieren.
 -- Alle Knöpfe sind geschützte Makro-Knöpfe mit Blizzards Chatbefehlen bzw. kleinen Befehlen; "target" = aktuelles Ziel.
 local FOOD_VIEWS = { group = true }
+-- 2x3 (Wunsch 2026-11-07): oben Bereitschaftscheck, Countdown, Rollenabfrage; unten Würfeln, Quests vergleichen
+-- (nur Tooltip), Gruppe verlassen
 local GROUP_ACTIONS = {
     { name = "ForeverBarsReadyCheck", macro = "/readycheck", icon = "Interface\\RaidFrame\\ReadyCheck-Ready", tip = "TIP_READYCHECK" },
+    { name = "ForeverBarsCountdown", macro = "/countdown 10", icon = "Interface\\Icons\\Spell_Holy_BorrowedTime", tip = "TIP_COUNTDOWN" },
     { name = "ForeverBarsRolePoll", macro = "/rolepoll", icon = "Interface\\LFGFrame\\UI-LFG-ICON-ROLES",
       coords = { 0, 0.2617, 0.2617, 0.5234 }, tip = "TIP_ROLEPOLL" },
-    { name = "ForeverBarsCountdown", macro = "/countdown 10", icon = "Interface\\Icons\\Spell_Holy_BorrowedTime", tip = "TIP_COUNTDOWN" },
-    { name = "ForeverBarsInvite", macro = "/invite", icon = "Interface\\Icons\\INV_Letter_15", tip = "TIP_INVITE",
-      hint = "TIP_INVITE_HINT", square = true },
-    { name = "ForeverBarsPromote", macro = "/run if UnitExists('target') and UnitInParty('target') then PromoteToLeader('target') end",
-      icon = "Interface\\GroupFrame\\UI-Group-LeaderIcon", tip = "TIP_PROMOTE", hint = "TIP_PROMOTE_HINT" },
-    { name = "ForeverBarsConvertRaid", icon = "Interface\\Icons\\Spell_Holy_PrayerOfSpirit", tip = "TIP_CONVERT",
-      hint = "TIP_CONVERT_HINT", square = true,
-      macro = "/run if IsInRaid() then C_PartyInfo.ConvertToParty() else C_PartyInfo.ConvertToRaid() end" },
     { name = "ForeverBarsRoll", macro = "/roll", icon = "Interface\\Buttons\\UI-GroupLoot-Dice-Up", tip = "TIP_ROLL" },
-    { name = "ForeverBarsResetInstances", macro = "/run ResetInstances()", icon = "Interface\\Icons\\INV_Misc_Key_03",
-      tip = "TIP_RESET", hint = "TIP_RESET_HINT", square = true },
+    { name = "ForeverBarsQuestCompare", compare = true, icon = "Interface\\GossipFrame\\ActiveQuestIcon" },
     { name = "ForeverBarsLeaveGroup", macro = "/run if IsShiftKeyDown() then C_PartyInfo.LeaveParty() end",
       icon = "Interface\\RaidFrame\\ReadyCheck-NotReady", tip = "TIP_LEAVE", hint = "TIP_LEAVE_HINT" },
 }
+
+-- Quests vergleichen: welche Quests aus deinem Questlog die anderen Gruppenmitglieder auch haben
+-- (Blizzards C_QuestLog.IsUnitOnQuest; höchstens 10 Mitglieder und 10 Quests, die meistgeteilten zuerst)
+local QuestCompare = { MAX = 10 }
+function QuestCompare.Members()
+    local list = {}
+    if not IsInGroup() then return list end
+    local raid = IsInRaid()
+    local total = raid and GetNumGroupMembers() or (GetNumSubgroupMembers() or 0)
+    for i = 1, total do
+        local unit = raid and ("raid" .. i) or ("party" .. i)
+        if UnitExists(unit) and not UnitIsUnit(unit, "player") then
+            list[#list + 1] = unit
+            if #list >= QuestCompare.MAX then break end
+        end
+    end
+    return list
+end
+function QuestCompare.Collect()
+    local members = QuestCompare.Members()
+    local shared = {}
+    if #members == 0 or not (C_QuestLog and C_QuestLog.GetNumQuestLogEntries and C_QuestLog.IsUnitOnQuest) then
+        return shared, #members
+    end
+    for i = 1, C_QuestLog.GetNumQuestLogEntries() do
+        local info = C_QuestLog.GetInfo(i)
+        if info and not info.isHeader and info.questID and info.questID > 0 then
+            local names = {}
+            for _, unit in ipairs(members) do
+                local ok, onQuest = pcall(C_QuestLog.IsUnitOnQuest, unit, info.questID)
+                if ok and onQuest then names[#names + 1] = UnitName(unit) or "?" end
+            end
+            if #names > 0 then
+                shared[#shared + 1] = { title = info.title or ("#" .. info.questID), level = info.level, names = names }
+            end
+        end
+    end
+    table.sort(shared, function(a, b)
+        if #a.names ~= #b.names then return #a.names > #b.names end
+        return (a.title or "") < (b.title or "")
+    end)
+    return shared, #members
+end
+function QuestCompare.Tooltip(button)
+    local tip = ns.Style.GetTooltip()
+    tip:SetOwner(button, "ANCHOR_TOP")
+    tip:AddLine(L("TIP_QUESTCOMPARE"), 1, 1, 1)
+    local ok, shared, count = pcall(QuestCompare.Collect)
+    if not ok then shared, count = {}, 0 end
+    if count == 0 then
+        tip:AddLine(L("QUESTCOMPARE_NOGROUP"), 0.7, 0.7, 0.7, true)
+    elseif #shared == 0 then
+        tip:AddLine(L("QUESTCOMPARE_NONE"), 0.7, 0.7, 0.7, true)
+    else
+        for i = 1, math.min(#shared, QuestCompare.MAX) do
+            local q = shared[i]
+            local title = q.level and q.level > 0 and string.format("[%d] %s", q.level, q.title) or q.title
+            tip:AddDoubleLine(title, string.format("%d/%d", #q.names + 1, count + 1), 1, 0.82, 0, 0.8, 0.8, 0.8)
+            tip:AddLine("   " .. table.concat(q.names, ", "), 0.7, 0.7, 0.7, true)
+        end
+        if #shared > QuestCompare.MAX then
+            tip:AddLine(string.format(L("QUESTCOMPARE_MORE"), #shared - QuestCompare.MAX), 0.6, 0.6, 0.6)
+        end
+    end
+    tip:Show()
+end
 
 local function PingChoices()
     local e = Enum and Enum.RestrictPingsTo
@@ -2944,9 +3004,15 @@ local function GetMarkButtons(holder)
         b.icon:SetTexture(e.icon)
         if e.coords then b.icon:SetTexCoord(unpack(e.coords))
         elseif e.square then b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92) end -- (Zauber-Symbole ohne ihren Rand)
-        b:SetAttribute("type", "macro")
-        b:SetAttribute("macrotext", e.macro)
-        Tip(b, e.tip, e.hint)
+        if e.compare then
+            -- nur Tooltip (kein Klick-Befehl); bleibt beim Überfahren aktuell
+            b:HookScript("OnEnter", function(self) QuestCompare.Tooltip(self) end)
+            b:HookScript("OnLeave", function() ns.Style.GetTooltip():Hide() end)
+        else
+            b:SetAttribute("type", "macro")
+            b:SetAttribute("macrotext", e.macro)
+            Tip(b, e.tip, e.hint)
+        end
         sets.group[i] = b
     end
     holder.fbMarks = sets
@@ -2967,7 +3033,7 @@ function ns.UpdateMarkHotkeys()
     end
 end
 
--- Gruppen-Werkzeuge anordnen (aus LayoutButtons, nur außerhalb des Kampfes): 3x3-Raster
+-- Gruppen-Werkzeuge anordnen (aus LayoutButtons, nur außerhalb des Kampfes): 3 Spalten, 2 Reihen
 -- Rückgabe: true = erledigt (die Verbrauchbar-Knöpfe hat LayoutButtons dann schon abgelegt)
 function ns.LayoutFoodMarks(cfg, holder, gap, corner, toLeft, toTop)
     local sets = GetMarkButtons(holder)
@@ -2982,7 +3048,7 @@ function ns.LayoutFoodMarks(cfg, holder, gap, corner, toLeft, toTop)
         button:Show()
     end
     if holder.fbMarkLine then holder.fbMarkLine:Hide() end -- (frühere Trennlinie vor der 4. Spalte)
-    holder:SetSize(3 * ACTION_SIZE + 2 * gap, 3 * ACTION_SIZE + 2 * gap)
+    holder:SetSize(3 * ACTION_SIZE + 2 * gap, 2 * ACTION_SIZE + gap)
     return true
 end
 
