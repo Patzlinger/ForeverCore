@@ -1,7 +1,8 @@
 -- ForeverSkin – Dialogs.lua: kleine Gruppen-/PvP-Dialoge im Stil der Rückfrage-Fenster (Popups.lua): flach und dunkel
 -- mit goldener Linie oben, Text-Knöpfe flach, Schließen-Kreuz wie bei uns. Betroffen: Rollenabfrage (RolePollPopup),
 -- Einladung über die Gruppensuche (LFGInvitePopup), PvP-Bereitschaft "Schlachtfeld betreten" (PVPReadyDialog),
--- Gildeneinladung (GuildInviteFrame – das Gildenwappen bleibt).
+-- Gildeneinladung (GuildInviteFrame – das Gildenwappen bleibt), Bereitschaftscheck (ReadyCheckListenerFrame – das Bild
+-- des Fragenden bleibt).
 -- Sie zeigen sich nur bei echter Abfrage/Einladung (ohne Gruppe nicht zu öffnen) – darum beim ersten Anzeigen.
 -- Wie bei den Rückfrage-Fenstern besonders zurückhaltend: die Knöpfe lösen teils geschützte Aktionen aus (Rolle
 -- setzen, Schlachtfeld betreten) – nur Grafiken unsichtbar und eigene Flächen darunter, nichts in Blizzards
@@ -12,11 +13,13 @@ local C = ns.C
 local WHITE = "Interface\\Buttons\\WHITE8x8"
 -- (PVPRoleCheckPopup = Rollenabfrage beim gemeinsamen Anmelden fürs Schlachtfeld, gleich gebaut wie RolePollPopup;
 -- PVPReadyPopup/PVPFramePopup = weitere kleine PvP-Hinweise)
+-- ReadyCheckListenerFrame = Bereitschaftscheck ("Seid ihr bereit?" mit Bild des Fragenden), sichtbar Teil von ReadyCheckFrame
 local NAMES = { "RolePollPopup", "LFGInvitePopup", "PVPReadyDialog", "GuildInviteFrame", "PVPRoleCheckPopup",
-    "PVPReadyPopup", "PVPFramePopup" }
+    "PVPReadyPopup", "PVPFramePopup", "ReadyCheckListenerFrame" }
 
--- Gildenwappen (Gildeneinladung) bleibt: Grafiken, deren Name bzw. Schlüssel nach Wappen klingt
-local KEEP_WORDS = { "tabard", "emblem", "crest", "banner" }
+-- Gildenwappen (Gildeneinladung) und das Bild des Fragenden (Bereitschaftscheck) bleiben: Grafiken, deren Name bzw.
+-- Schlüssel danach klingt
+local KEEP_WORDS = { "tabard", "emblem", "crest", "banner", "portrait" }
 local function KeepArt(frame)
     local keep = {}
     local function Check(r, key)

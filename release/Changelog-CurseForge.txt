@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverSkin: the ready check window uses the Forever look (the portrait stays).
+
 - ForeverSkin: the battleground role check and the other small PvP popups use the same Forever look as the other confirmation dialogs.
 
 - ForeverSkin: the death recap window now uses the Forever look.

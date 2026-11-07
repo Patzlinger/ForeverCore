@@ -8,8 +8,7 @@ Auswirkung im Spiel.
 ## Geplant
 
 - [ ] ⚠ **Restliche Fenster überarbeiten** (ForeverSkin, Darstellung) – noch offen:
-  - Kleine Fenster: Bereitschaftscheck (ReadyCheckFrame)
-  - Im Spiel noch prüfen (Entwurf fertig, nur bei echtem Anlass): Gildeneinladung, Rollenabfrage, Beute-Meldung
+  - Im Spiel noch prüfen (Entwurf fertig, nur bei echtem Anlass): Bereitschaftscheck, Gildeneinladung, Rollenabfrage, Beute-Meldung
     ("Ihr habt erhalten"), PvP-Punktetafel und -Ergebnis, Todesursache, Rollenabfrage fürs Schlachtfeld und weitere
     PvP-Hinweise (PVPRoleCheckPopup, PVPReadyPopup, PVPFramePopup)
   - Abgleich im Spiel: `/fskin fenster` (listet alle großen Fenster, umgestaltet `+` oder nicht `-`)
