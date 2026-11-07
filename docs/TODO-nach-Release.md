@@ -9,7 +9,7 @@ Auswirkung im Spiel.
 
 - [ ] ⚠ **Markierungen über Blizzards Schnell-Ping-Menü:** Weltmarkierungen mit dem Ping-Rad verbinden; Zielmarkierungen
       (Totenkopf, Kreuz …) per Mouseover über Gegner ebenfalls über das Ping-Rad setzen (Addon klären, z. B. ForeverHelpers).
-      Die frühere Markierungsleiste ist seit 2026-11-07 die Gruppen- & Reiseleiste; Markierungs-Tasten laufen bis dahin
+      Die frühere Markierungsleiste ist seit 2026-11-07 die Gruppenleiste; Markierungs-Tasten laufen bis dahin
       über unsichtbare Knöpfe weiter (ForeverBars, Bars.lua GetMarkButtons)
 - [ ] ⚠ **Timer für zeitbegrenzte Quests** (ForeverQuests, Tracker): Restzeit anzeigen, wenn auf der Quest ein Timer liegt
       oder der Questgegenstand nur begrenzt haltbar ist (Gegenstand mit Ablaufzeit); z. B. `C_QuestLog.GetTimeAllowed`/

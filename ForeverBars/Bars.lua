@@ -2756,92 +2756,29 @@ local MARKERS = {
     { raid = 4, world = 2 }, { raid = 3, world = 3 }, { raid = 2, world = 6 }, { raid = 1, world = 5 },
 }
 local MARK_ICON = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_"
--- Seit 2026-11-07 zeigt die Leiste statt der Markierungen (die kommen künftig übers Ping-Rad) zwei Ansichten:
--- "group" (Gruppen-Werkzeuge) und "travel" (Ruhestein, Reittier, Teleports der Klasse). Die Markierungs-Knöpfe gibt
--- es weiter unsichtbar, damit belegte Tasten für Markierungen weiter funktionieren.
-local FOOD_VIEWS = { group = true, travel = true }
+-- Seit 2026-11-07 zeigt die Leiste statt der Markierungen (die kommen künftig übers Ping-Rad) Gruppen-Werkzeuge
+-- (Ansicht "group"; die kurz eingebaute Reise-Ansicht hat der Nutzer wieder entfernen lassen). Die Markierungs-Knöpfe
+-- gibt es weiter unsichtbar, damit belegte Tasten für Markierungen weiter funktionieren.
+-- Alle Knöpfe sind geschützte Makro-Knöpfe mit Blizzards Chatbefehlen bzw. kleinen Befehlen; "target" = aktuelles Ziel.
+local FOOD_VIEWS = { group = true }
 local GROUP_ACTIONS = {
     { name = "ForeverBarsReadyCheck", macro = "/readycheck", icon = "Interface\\RaidFrame\\ReadyCheck-Ready", tip = "TIP_READYCHECK" },
     { name = "ForeverBarsRolePoll", macro = "/rolepoll", icon = "Interface\\LFGFrame\\UI-LFG-ICON-ROLES",
       coords = { 0, 0.2617, 0.2617, 0.5234 }, tip = "TIP_ROLEPOLL" },
     { name = "ForeverBarsCountdown", macro = "/countdown 10", icon = "Interface\\Icons\\Spell_Holy_BorrowedTime", tip = "TIP_COUNTDOWN" },
+    { name = "ForeverBarsInvite", macro = "/invite", icon = "Interface\\Icons\\INV_Letter_15", tip = "TIP_INVITE",
+      hint = "TIP_INVITE_HINT", square = true },
+    { name = "ForeverBarsPromote", macro = "/run if UnitExists('target') and UnitInParty('target') then PromoteToLeader('target') end",
+      icon = "Interface\\GroupFrame\\UI-Group-LeaderIcon", tip = "TIP_PROMOTE", hint = "TIP_PROMOTE_HINT" },
+    { name = "ForeverBarsConvertRaid", icon = "Interface\\Icons\\Spell_Holy_PrayerOfSpirit", tip = "TIP_CONVERT",
+      hint = "TIP_CONVERT_HINT", square = true,
+      macro = "/run if IsInRaid() then C_PartyInfo.ConvertToParty() else C_PartyInfo.ConvertToRaid() end" },
     { name = "ForeverBarsRoll", macro = "/roll", icon = "Interface\\Buttons\\UI-GroupLoot-Dice-Up", tip = "TIP_ROLL" },
     { name = "ForeverBarsResetInstances", macro = "/run ResetInstances()", icon = "Interface\\Icons\\INV_Misc_Key_03",
-      tip = "TIP_RESET", hint = "TIP_RESET_HINT" },
-    { name = "ForeverBarsConvertRaid", icon = "Interface\\Icons\\Spell_Holy_PrayerOfSpirit", tip = "TIP_CONVERT",
-      hint = "TIP_CONVERT_HINT",
-      macro = "/run if IsInRaid() then C_PartyInfo.ConvertToParty() else C_PartyInfo.ConvertToRaid() end" },
-    { name = "ForeverBarsMarkTargetClear", mark = "raidtarget", icon = "Interface\\Buttons\\UI-GroupLoot-Pass-Up",
-      tip = "BINDING_MARK_TARGET_CLEAR" },
-    { name = "ForeverBarsMarkWorldClear", mark = "worldmarker", icon = "Interface\\Buttons\\UI-GroupLoot-Pass-Up",
-      tip = "BINDING_MARK_WORLD_CLEAR", ground = true },
+      tip = "TIP_RESET", hint = "TIP_RESET_HINT", square = true },
     { name = "ForeverBarsLeaveGroup", macro = "/run if IsShiftKeyDown() then C_PartyInfo.LeaveParty() end",
       icon = "Interface\\RaidFrame\\ReadyCheck-NotReady", tip = "TIP_LEAVE", hint = "TIP_LEAVE_HINT" },
 }
--- Reisen: Ruhestein, Reittier, dann Teleports/Portale (nur gelernte erscheinen; höchstens 9 Plätze).
--- 556 Astraler Rückruf (Schamane), 18960 Teleportieren: Mondlichtung (Druide), 698 Ritual der Beschwörung
--- (Hexenmeister), Magier: Teleport Sturmwind/Eisenschmiede/Darnassus/Orgrimmar/Unterstadt/Donnerfels, dann die Portale
-local HEARTHSTONE = 6948
-local TRAVEL = {
-    { name = "ForeverBarsHearth", item = HEARTHSTONE }, { name = "ForeverBarsMount", mount = true },
-    { spell = 556 }, { spell = 18960 }, { spell = 698 },
-    { spell = 3561 }, { spell = 3562 }, { spell = 3565 }, { spell = 3567 }, { spell = 3563 }, { spell = 3566 },
-    { spell = 10059 }, { spell = 11416 }, { spell = 11419 }, { spell = 11417 }, { spell = 11418 }, { spell = 11420 },
-}
-local Travel = {} -- Hilfen der Reise-Ansicht (eine Tabelle statt vieler einzelner Namen)
-function Travel.Known(id)
-    if IsPlayerSpell and IsPlayerSpell(id) then return true end
-    if C_SpellBook and C_SpellBook.IsSpellKnown then
-        local ok, known = pcall(C_SpellBook.IsSpellKnown, id)
-        if ok and known then return true end
-    end
-    return false
-end
-function Travel.HasMount()
-    if not (C_MountJournal and C_MountJournal.SummonByID and C_MountJournal.GetMountIDs) then return false end
-    if Travel.mountCache ~= nil then return Travel.mountCache end
-    local found = false
-    for _, id in ipairs(C_MountJournal.GetMountIDs() or {}) do
-        local collected = select(11, C_MountJournal.GetMountInfoByID(id))
-        if collected then found = true break end
-    end
-    Travel.mountCache = found
-    return found
-end
-function Travel.Available(e)
-    if e.item then
-        local count = (C_Item and C_Item.GetItemCount and C_Item.GetItemCount(e.item)) or (GetItemCount and GetItemCount(e.item)) or 0
-        return count > 0
-    end
-    if e.mount then return Travel.HasMount() end
-    return Travel.Known(e.spell)
-end
-function Travel.Icon(e)
-    if e.item then return (C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(e.item)) or "Interface\\Icons\\INV_Misc_Rune_01" end
-    if e.mount then return "Interface\\Icons\\Ability_Mount_RidingHorse" end
-    return (C_Spell and C_Spell.GetSpellTexture and C_Spell.GetSpellTexture(e.spell)) or "Interface\\Icons\\INV_Misc_QuestionMark"
-end
-function Travel.Signature()
-    local parts = {}
-    for i, e in ipairs(TRAVEL) do parts[i] = Travel.Available(e) and "1" or "0" end
-    return table.concat(parts)
-end
--- Abklingzeit (Ruhestein, Teleports) nur außerhalb des Kampfes – im Kampf sind solche Werte gesperrt
-function Travel.Cooldowns(holder)
-    if InCombatLockdown() or not (holder and holder.fbMarks) then return end
-    for _, b in ipairs(holder.fbMarks.travel) do
-        if b:IsShown() and b.cd then
-            local e, start, duration = b.fbEntry, nil, nil
-            if e.item and C_Container and C_Container.GetItemCooldown then
-                start, duration = C_Container.GetItemCooldown(e.item)
-            elseif e.spell and C_Spell and C_Spell.GetSpellCooldown then
-                local info = C_Spell.GetSpellCooldown(e.spell)
-                if info then start, duration = info.startTime, info.duration end
-            end
-            if start and duration and duration > 1.5 then b.cd:SetCooldown(start, duration) else b.cd:Clear() end
-        end
-    end
-end
 
 local function PingChoices()
     local e = Enum and Enum.RestrictPingsTo
@@ -2854,7 +2791,7 @@ local function PingChoices()
     }
 end
 
--- Ansicht der (früheren Verbrauchbar-, dann Markierungs-)Leiste: "group" (Standard) oder "travel"
+-- Ansicht der (früheren Verbrauchbar-, dann Markierungs-)Leiste: nur noch "group"
 function ns.FoodView(cfg)
     local view = cfg and cfg.foodView
     return FOOD_VIEWS[view] and view or "group"
@@ -2962,7 +2899,7 @@ end
 -- Die beiden Sätze Markierungs-Knöpfe einer Leiste (einmalig, außerhalb des Kampfes angelegt)
 local function GetMarkButtons(holder)
     if holder.fbMarks then return holder.fbMarks end
-    local sets = { hidden = {}, group = {}, travel = {} }
+    local sets = { hidden = {}, group = {} }
     -- Markierungen: unsichtbar (nur noch für belegte Tasten), bis das Ping-Rad sie übernimmt
     for _, m in ipairs(MARKERS) do
         local unitButton = MarkButton(holder, ACTION_SIZE, "ForeverBarsMarkTarget" .. m.raid)
@@ -2980,6 +2917,16 @@ local function GetMarkButtons(holder)
         groundButton.fbGround = true
         sets.hidden[#sets.hidden + 1] = groundButton
     end
+    -- Markierung vom Ziel bzw. alle Bodenmarkierungen entfernen: ebenfalls nur noch für belegte Tasten
+    local clearUnit = MarkButton(holder, ACTION_SIZE, "ForeverBarsMarkTargetClear")
+    clearUnit:SetAttribute("type", "raidtarget")
+    clearUnit:SetAttribute("unit", "target")
+    clearUnit:SetAttribute("action", "clear")
+    sets.hidden[#sets.hidden + 1] = clearUnit
+    local clearGround = MarkButton(holder, ACTION_SIZE, "ForeverBarsMarkWorldClear")
+    clearGround:SetAttribute("type", "worldmarker")
+    clearGround:SetAttribute("action", "clear")
+    sets.hidden[#sets.hidden + 1] = clearGround
     local function Tip(b, tipKey, hintKey)
         b:HookScript("OnEnter", function(self)
             local tip = ns.Style.GetTooltip()
@@ -2995,47 +2942,12 @@ local function GetMarkButtons(holder)
     for i, e in ipairs(GROUP_ACTIONS) do
         local b = MarkButton(holder, ACTION_SIZE, e.name)
         b.icon:SetTexture(e.icon)
-        if e.coords then b.icon:SetTexCoord(unpack(e.coords)) end
-        if e.mark then
-            b:SetAttribute("type", e.mark)
-            if e.mark == "raidtarget" then b:SetAttribute("unit", "target") end
-            b:SetAttribute("action", "clear")
-        else
-            b:SetAttribute("type", "macro")
-            b:SetAttribute("macrotext", e.macro)
-        end
-        b.fbGround = e.ground
+        if e.coords then b.icon:SetTexCoord(unpack(e.coords))
+        elseif e.square then b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92) end -- (Zauber-Symbole ohne ihren Rand)
+        b:SetAttribute("type", "macro")
+        b:SetAttribute("macrotext", e.macro)
         Tip(b, e.tip, e.hint)
         sets.group[i] = b
-    end
-    -- Reise: Ruhestein (Gegenstand), Reittier (zufälliges Lieblings-Reittier), Zauber; mit Abklingzeit
-    for i, e in ipairs(TRAVEL) do
-        local b = MarkButton(holder, ACTION_SIZE, e.name or ("ForeverBarsTravel" .. e.spell))
-        b.fbEntry = e
-        b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-        if e.item then
-            b:SetAttribute("type", "item")
-            b:SetAttribute("item", "item:" .. e.item)
-        elseif e.mount then
-            b:SetAttribute("type", "macro")
-            b:SetAttribute("macrotext", "/run C_MountJournal.SummonByID(0)")
-        else
-            b:SetAttribute("type", "spell")
-            b:SetAttribute("spell", e.spell)
-        end
-        b.cd = CreateFrame("Cooldown", nil, b, "CooldownFrameTemplate")
-        b.cd:SetAllPoints(b.icon)
-        if e.mount then
-            Tip(b, "TIP_MOUNT")
-        else
-            b:HookScript("OnEnter", function(self)
-                GameTooltip:SetOwner(self, "ANCHOR_TOP")
-                if e.item then GameTooltip:SetItemByID(e.item) else GameTooltip:SetSpellByID(e.spell) end
-                GameTooltip:Show()
-            end)
-            b:HookScript("OnLeave", function() GameTooltip:Hide() end)
-        end
-        sets.travel[i] = b
     end
     holder.fbMarks = sets
     ns.UpdateOwnHotkeys()
@@ -3055,78 +2967,28 @@ function ns.UpdateMarkHotkeys()
     end
 end
 
--- Verbrauchbar in Markierungs-Ansicht anordnen (aus LayoutButtons, nur außerhalb des Kampfes).
+-- Gruppen-Werkzeuge anordnen (aus LayoutButtons, nur außerhalb des Kampfes): 3x3-Raster
 -- Rückgabe: true = erledigt (die Verbrauchbar-Knöpfe hat LayoutButtons dann schon abgelegt)
 function ns.LayoutFoodMarks(cfg, holder, gap, corner, toLeft, toTop)
-    local view = ns.FoodView(cfg)
     local sets = GetMarkButtons(holder)
-    local function Place(button, column, row, ground)
-        button:ClearAllPoints()
-        button:SetPoint(corner, holder, corner, column * (ACTION_SIZE + gap) * (toLeft and -1 or 1),
-            row * (ACTION_SIZE + gap) * (toTop and 1 or -1))
-        -- Bodenmarkierungen mit goldenem Rand: so sieht man, dass nicht die (gleich aussehenden) Zielmarkierungen dran sind
-        if ground then
-            button:SetBackdropBorderColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3], 0.9)
-        else
-            button:SetBackdropBorderColor(unpack(GetSkin().border))
-        end
-        button:Show()
-    end
     for _, set in pairs(sets) do
         for _, button in ipairs(set) do button:Hide() end
     end
-    if view == "group" then
-        for i, button in ipairs(sets.group) do
-            Place(button, (i - 1) % 3, math.floor((i - 1) / 3), button.fbGround)
-        end
-    else
-        -- nur, was der Charakter hat bzw. kann (höchstens 9)
-        Travel.mountCache = nil
-        local n = 0
-        for _, button in ipairs(sets.travel) do
-            if n < 9 and Travel.Available(button.fbEntry) then
-                n = n + 1
-                button.icon:SetTexture(Travel.Icon(button.fbEntry))
-                Place(button, (n - 1) % 3, math.floor((n - 1) / 3))
-            end
-        end
-        holder.fbTravelSig = Travel.Signature()
-        pcall(Travel.Cooldowns, holder)
+    for i, button in ipairs(sets.group) do
+        button:ClearAllPoints()
+        button:SetPoint(corner, holder, corner, ((i - 1) % 3) * (ACTION_SIZE + gap) * (toLeft and -1 or 1),
+            math.floor((i - 1) / 3) * (ACTION_SIZE + gap) * (toTop and 1 or -1))
+        button:SetBackdropBorderColor(unpack(GetSkin().border))
+        button:Show()
     end
     if holder.fbMarkLine then holder.fbMarkLine:Hide() end -- (frühere Trennlinie vor der 4. Spalte)
     holder:SetSize(3 * ACTION_SIZE + 2 * gap, 3 * ACTION_SIZE + 2 * gap)
     return true
 end
 
--- Überschrift der Leiste je Ansicht (nil = normaler Titel)
-function ns.FoodViewTitle(cfg)
-    return ns.FoodView(cfg) == "travel" and L("VIEW_TRAVEL") or L("VIEW_GROUP")
-end
-
--- Reise-Ansicht aktuell halten: neue Zauber/Gegenstände/Reittiere (Anordnung neu, nur wenn sich etwas ändert) und
--- Abklingzeiten (nur außerhalb des Kampfes)
-do
-    local watcher = CreateFrame("Frame")
-    for _, e in ipairs({ "SPELLS_CHANGED", "BAG_UPDATE_DELAYED", "NEW_MOUNT_ADDED", "PLAYER_REGEN_ENABLED",
-        "SPELL_UPDATE_COOLDOWN", "BAG_UPDATE_COOLDOWN" }) do
-        pcall(watcher.RegisterEvent, watcher, e)
-    end
-    watcher:SetScript("OnEvent", function(_, event)
-        local holder = _G.ForeverBars_food
-        local cfg = ns.db and ns.db.bars and ns.db.bars.food
-        if not (holder and holder.fbMarks and cfg and cfg.enabled) or ns.FoodView(cfg) ~= "travel" then return end
-        if event == "SPELL_UPDATE_COOLDOWN" or event == "BAG_UPDATE_COOLDOWN" then
-            pcall(Travel.Cooldowns, holder)
-            return
-        end
-        if event == "NEW_MOUNT_ADDED" then Travel.mountCache = nil end
-        local ok, sig = pcall(Travel.Signature)
-        if ok and sig ~= holder.fbTravelSig then
-            ns.RequestLayout()
-        else
-            pcall(Travel.Cooldowns, holder)
-        end
-    end)
+-- Überschrift der Leiste (nil = normaler Titel)
+function ns.FoodViewTitle()
+    return L("VIEW_GROUP")
 end
 
 -- Pfeil neben "Pings": nur "Pings beschränken auf" (wie früher im Zahnrad-Menü)
@@ -3157,7 +3019,7 @@ local function PingMenu(owner)
     ns.Style.ShowMenu(owner, items)
 end
 
--- (Seit 2026-11-07 "Gruppe / Reise" statt "Marks / Pings" – sonst wie folgt.)
+-- (Seit 2026-11-07 nur noch "Gruppe" statt "Marks / Pings", dahinter der Pfeil – sonst wie folgt.)
 -- Kopfzeile der Markierungs-Leiste: "Marks / Pings" – Klick auf ein Wort wechselt die Ansicht (Marks =
 -- Zielmarkierungen, Pings = Bodenmarkierungen; die aktive ist gold), der kleine Pfeil öffnet "Pings beschränken auf".
 -- Ohne Kopfzeile stehen die Wörter direkt über der Leiste.
@@ -3205,14 +3067,9 @@ local function UpdateMarkTabs(cfg, holder)
         end
         tabs.marks = Word(L("VIEW_GROUP"), "group", "TITLE_GROUP")
         tabs.marks:SetPoint("LEFT")
-        tabs.sep = tabs:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-        tabs.sep:SetText("/")
-        tabs.sep:SetPoint("LEFT", tabs.marks, "RIGHT", 3, 0)
-        tabs.pings = Word(L("VIEW_TRAVEL"), "travel", "TITLE_TRAVEL")
-        tabs.pings:SetPoint("LEFT", tabs.sep, "RIGHT", 3, 0)
         tabs.arrow = CreateFrame("Button", nil, tabs)
         tabs.arrow:SetSize(12, 12)
-        tabs.arrow:SetPoint("LEFT", tabs.pings, "RIGHT", 2, 0)
+        tabs.arrow:SetPoint("LEFT", tabs.marks, "RIGHT", 2, 0)
         tabs.arrow.icon = tabs.arrow:CreateTexture(nil, "ARTWORK")
         tabs.arrow.icon:SetAllPoints()
         tabs.arrow.icon:SetTexture("Interface\\ChatFrame\\ChatFrameExpandArrow")
@@ -3232,7 +3089,7 @@ local function UpdateMarkTabs(cfg, holder)
         end)
         function tabs.Color()
             local view = ns.FoodView(ns.db.bars.food)
-            for _, b in ipairs({ { tabs.marks, "group" }, { tabs.pings, "travel" } }) do
+            for _, b in ipairs({ { tabs.marks, "group" } }) do
                 local on = view == b[2]
                 b[1].text:SetTextColor(on and COLOR.accent[1] or 0.55, on and COLOR.accent[2] or 0.55, on and COLOR.accent[3] or 0.55)
                 b[1].bg:SetShown(on)
@@ -3348,15 +3205,10 @@ function ns.UpdateCollapseArrow(def, cfg, holder)
         arrow.label = arrow:CreateTexture(nil, "OVERLAY")
         arrow.label:SetSize(16, 16)
     end
-    -- Symbol: Berufe = Amboss; Gruppen- & Reiseleiste = Bereitschafts-Haken (Gruppe) bzw. Ruhestein (Reise)
+    -- Symbol: Berufe = Amboss; Gruppenleiste = Bereitschafts-Haken
     if def.key == "food" then
-        if ns.FoodView(cfg) == "travel" then
-            arrow.label:SetTexture(Travel.Icon({ item = HEARTHSTONE }))
-            arrow.label:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-        else
-            arrow.label:SetTexture("Interface\\RaidFrame\\ReadyCheck-Ready")
-            arrow.label:SetTexCoord(0, 1, 0, 1)
-        end
+        arrow.label:SetTexture("Interface\\RaidFrame\\ReadyCheck-Ready")
+        arrow.label:SetTexCoord(0, 1, 0, 1)
     else
         arrow.label:SetTexture(COLLAPSE_SYMBOLS[def.key] or COLLAPSE_SYMBOLS.prof)
         arrow.label:SetTexCoord(0.08, 0.92, 0.08, 0.92)

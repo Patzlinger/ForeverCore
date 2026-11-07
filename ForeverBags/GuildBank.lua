@@ -129,6 +129,41 @@ local function UpdateTabs()
             t:Hide()
         end
     end
+    -- "+" hinter den Fächern: neues Fach kaufen (nur Gildenmeister, solange das Spiel ein weiteres anbietet –
+    -- GetGuildBankTabCost liefert dann den Preis). Bestätigung über Blizzards Rückfrage mit Preis.
+    local cost = GetGuildBankTabCost and GetGuildBankTabCost()
+    local maxTabs = _G.MAX_BUY_GUILDBANK_TABS or _G.MAX_GUILDBANK_TABS or 8
+    local canBuy = IsGuildLeader and IsGuildLeader() and cost and cost > 0 and count < maxTabs and BuyGuildBankTab
+    if canBuy and not frame.fbBuyTab then
+        local b = CreateFrame("Button", nil, frame)
+        b:SetSize(26, 26)
+        b.text = b:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+        b.text:SetPoint("CENTER", 0, 1)
+        b.text:SetText("+")
+        ns.AddForeverLook(b, nil)
+        b:SetScript("OnClick", function()
+            if StaticPopupDialogs and StaticPopupDialogs.CONFIRM_BUY_GUILDBANK_TAB then
+                StaticPopup_Show("CONFIRM_BUY_GUILDBANK_TAB")
+            else
+                BuyGuildBankTab()
+            end
+        end)
+        b:HookScript("OnEnter", function(self)
+            local price = GetGuildBankTabCost and GetGuildBankTabCost()
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:AddLine(L("GUILD_BUY_TAB"), 1, 1, 1)
+            if price and price > 0 then GameTooltip:AddLine(L("GUILD_BUY_TAB_COST", GetMoneyString(price, true)), 1, 0.82, 0) end
+            GameTooltip:AddLine(L("GUILD_BUY_TAB_HINT"), 0.7, 0.7, 0.7, true)
+            GameTooltip:Show()
+        end)
+        b:HookScript("OnLeave", GameTooltip_Hide)
+        frame.fbBuyTab = b
+    end
+    if frame.fbBuyTab then
+        frame.fbBuyTab:ClearAllPoints()
+        frame.fbBuyTab:SetPoint("TOPLEFT", PAD + count * 30, -HEADER - 2)
+        frame.fbBuyTab:SetShown(canBuy and true or false)
+    end
 end
 
 local function UpdateMoney()
@@ -222,7 +257,7 @@ local queued = false
 local events = CreateFrame("Frame")
 for _, event in ipairs({ "GUILDBANKFRAME_OPENED", "GUILDBANKFRAME_CLOSED", "GUILDBANKBAGSLOTS_CHANGED",
     "GUILDBANK_UPDATE_TABS", "GUILDBANK_UPDATE_MONEY", "GUILDBANK_UPDATE_WITHDRAWMONEY", "GUILDBANK_ITEM_LOCK_CHANGED",
-    "INVENTORY_SEARCH_UPDATE" }) do
+    "INVENTORY_SEARCH_UPDATE", "GUILD_ROSTER_UPDATE" }) do
     pcall(events.RegisterEvent, events, event)
 end
 -- Neuere Clients melden das Öffnen über die Interaktions-Ereignisse

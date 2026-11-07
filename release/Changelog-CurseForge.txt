@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- ForeverBars: the group & travel bar is now just the group bar (no travel view, no marker-clear buttons). New: invite target and pass leadership to target.
+- ForeverBags: guild masters can buy new guild bank tabs ("+" next to the tabs, with Blizzard's price confirmation).
+
 - ForeverBars: the marker bar is now the group & travel bar. "Group": ready check, role check, countdown, roll, reset instances, convert to raid, clear markers, leave group (shift-click). "Travel": hearthstone, random favorite mount and your class teleports/portals with cooldowns. Key bindings for markers keep working.
 
 - ForeverSkin: the auction house buy confirmation uses the Forever look.
