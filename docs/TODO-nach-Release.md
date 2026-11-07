@@ -11,8 +11,8 @@ Auswirkung im Spiel.
       (Totenkopf, Kreuz …) per Mouseover über Gegner ebenfalls über das Ping-Rad setzen (Addon klären, z. B. ForeverHelpers).
       Die frühere Markierungsleiste ist seit 2026-11-07 die Gruppenleiste; Markierungs-Tasten laufen bis dahin
       über unsichtbare Knöpfe weiter (ForeverBars, Bars.lua GetMarkButtons)
-- [ ] ⚠ **Timer für zeitbegrenzte Quests** (ForeverQuests, Tracker): Restzeit anzeigen, wenn auf der Quest ein Timer liegt
-      oder der Questgegenstand nur begrenzt haltbar ist (Gegenstand mit Ablaufzeit); z. B. `C_QuestLog.GetTimeAllowed`/
-      Gegenstands-Tooltip auslesen, im Tracker hinter dem Questnamen, bei wenig Zeit farbig
+- [ ] ⚠ **Ablaufzeit von Questgegenständen** (ForeverQuests, Tracker): Restzeit auch anzeigen, wenn der Questgegenstand
+      nur begrenzt haltbar ist (Gegenstand-Tooltip auslesen). Quests mit eigener Frist zeigen ihre Restzeit seit
+      2026-11-07 (Tracker.lua GetQuestTimerEnd) – im Spiel noch bestätigen
 - [ ] ⚠ **Essen/Trinken-Makro** (ForeverHelpers): Makro, das automatisch das beste Essen bzw. Getränk aus den Taschen
       nimmt

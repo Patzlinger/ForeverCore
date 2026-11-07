@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverQuests: timed quests show their remaining time below the quest name in the tracker and quest log (orange under 5 minutes, red under 1 minute), also in the quest tooltip.
+
 - ForeverQuests: new quests beyond Blizzard's limit of 25 are now tracked automatically too, and the quest log counter shows the Forever maximum of 40.
 
 - ForeverBags / ForeverAlts: the saved bank of your characters is shown again when you are not at the bank.

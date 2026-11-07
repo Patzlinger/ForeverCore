@@ -699,6 +699,13 @@ local function ShowQuestTooltip(owner, questID, noHint)
 
     C_QuestLog.SetSelectedQuest(previous or 0)
 
+    -- Restzeit bei zeitbegrenzten Quests
+    local timerEnd = not C_QuestLog.IsComplete(questID) and ns.GetQuestTimerEnd and ns.GetQuestTimerEnd(questID)
+    if timerEnd then
+        tooltip:AddLine(" ")
+        tooltip:AddLine((ns.TimerText(timerEnd)))
+    end
+
     AddRewardLines(tooltip, questID)
     ns.AddAltLines(tooltip, questID)
     -- Klick-Hinweise nur, wo man klicken kann (nicht z. B. in der Questreihe der Detailansicht)
@@ -1201,9 +1208,59 @@ end
 --   reward    = Seltenheit der besten Belohnung, wenn eine Truhe angezeigt werden soll, sonst nil
 --   questItem = { link = Gegenstandslink, icon = Symbol } für den Questgegenstand, sonst nil
 --   watch     = nil: kein Häkchen, true/false: Häkchen "verfolgen" an/aus (Questlog)
+-- Zeitbegrenzte Quests: Ende der Frist (GetTime-Zeitpunkt) oder nil. Neuere Schnittstelle zuerst, sonst die alte
+-- Timer-Liste (GetQuestTimers). Das Spiel meldet nur einen Stand, daher wird daraus der Endzeitpunkt errechnet.
+local function GetQuestTimerEnd(questID)
+    if C_QuestLog.GetTimeAllowed then
+        local ok, total, elapsed = pcall(C_QuestLog.GetTimeAllowed, questID)
+        if ok and type(total) == "number" and type(elapsed) == "number" and total > 0 then
+            return GetTime() + math.max(0, total - elapsed)
+        end
+    end
+    if GetQuestTimers and GetQuestIndexForTimer then
+        local logIndex = C_QuestLog.GetLogIndexForQuestID(questID)
+        if logIndex then
+            local timers = { GetQuestTimers() }
+            for i, left in ipairs(timers) do
+                if type(left) == "number" and GetQuestIndexForTimer(i) == logIndex then
+                    return GetTime() + math.max(0, left)
+                end
+            end
+        end
+    end
+end
+ns.GetQuestTimerEnd = GetQuestTimerEnd
+
+-- Restzeit als Text: "1:02:03" bzw. "4:05"; ab unter 5 Minuten orange, unter 1 Minute rot
+local function TimerText(timerEnd)
+    local left = math.max(0, math.floor(timerEnd - GetTime()))
+    local h, m, s = math.floor(left / 3600), math.floor(left / 60) % 60, left % 60
+    local clock = h > 0 and string.format("%d:%02d:%02d", h, m, s) or string.format("%d:%02d", m, s)
+    local color = left < 60 and "ff4040" or (left < 300 and "ff9933" or "ffd100")
+    return "|cff" .. color .. string.format(ns.L("TIMER_LEFT"), clock) .. "|r", left
+end
+ns.TimerText = TimerText
+
+-- Zeilen mit laufender Restzeit; ein Sekundentakt schreibt nur deren Text neu (kein ganzer Neuaufbau)
+local timerLines = {}
+local function TickTimers()
+    local expired = false
+    for line in pairs(timerLines) do
+        if line.timerEnd and line:IsShown() then
+            local text, left = TimerText(line.timerEnd)
+            line.text:SetText(text)
+            if left <= 0 then expired = true end
+        end
+    end
+    if expired and ns.RequestUpdate then ns.RequestUpdate() end
+end
+
 local function AddLine(index, y, x, width, text, fontObject, r, g, b, opts)
     opts = opts or {}
     local line = GetLine(index)
+    line.timerEnd = opts.timerEnd
+    timerLines[line] = opts.timerEnd and true or nil
+    if opts.timerEnd then text = TimerText(opts.timerEnd) end
     width = math.max(1, width)
     -- Mit Truhe und/oder Questgegenstand bleibt rechts etwas Platz frei
     local iconCount = (opts.reward and 1 or 0) + (opts.questItem and 1 or 0)
@@ -1931,6 +1988,13 @@ local function RenderQuestList(v, groups, contentWidth, alpha, emptyText)
                 watch = v.watchToggle and ns.IsQuestTracked(questID),
             })
 
+            -- Zeitbegrenzte Quest: Restzeit immer direkt unter dem Namen (auch eingeklappt)
+            local timerEnd = not isComplete and GetQuestTimerEnd(questID)
+            if timerEnd then
+                index = index + 1
+                y = AddLine(index, y, objectiveX, objectiveWidth, "", fonts.objective, 1, 1, 1, { timerEnd = timerEnd })
+            end
+
             if expanded then
                 for _, detail in ipairs(details) do
                     index = index + 1
@@ -2456,6 +2520,8 @@ function ns.CreateTracker()
     for _, event in ipairs(events) do
         tracker:RegisterEvent(event)
     end
+    -- Start/Ende einer Quest-Frist (gibt es nicht in jedem Spielstand, daher geschützt)
+    pcall(tracker.RegisterEvent, tracker, "QUEST_TIMERS_CHANGED")
     tracker:SetScript("OnEvent", function(self, event, ...)
         if event == "PLAYER_REGEN_DISABLED" then
             -- Kampfbeginn
@@ -2509,6 +2575,8 @@ function ns.CreateTracker()
     else
         C_Timer.NewTicker(10, CheckAutoCollapse)
     end
+    -- Restzeit zeitbegrenzter Quests sekündlich nachführen (tut nichts, solange keine läuft)
+    C_Timer.NewTicker(1, TickTimers)
 
     ns.ApplyLayout()
 end
