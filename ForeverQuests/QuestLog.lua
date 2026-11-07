@@ -283,6 +283,7 @@ local function SetupMapMoving(map, top)
     ApplyMapPlacement()
 end
 
+local ownClose -- unser Schließen-Kreuz an der Karte ist angelegt
 local function SkinWorldMap()
     local map = _G.WorldMapFrame
     if not map or map.fqSkinned then return end
@@ -381,8 +382,8 @@ local function SkinWorldMap()
     -- Fenster, verschieb- und skalierbar)
     local close = border and border.CloseButton or map.CloseButton
     local hubUI = _G.ForeverHub and _G.ForeverHub.UI
-    if close and hubUI and hubUI.CloseButton and not close.fqOwnClose then
-        close.fqOwnClose = true
+    if close and hubUI and hubUI.CloseButton and not ownClose then
+        ownClose = true -- (eigener Merker statt eines Feldes an Blizzards Knopf)
         close:SetAlpha(0)
         local own = hubUI.CloseButton(close:GetParent(), function()
             if close.Click then close:Click() end
