@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverBars: tooltips have the same fine gold border all around as all other Forever tooltips.
+
 - ForeverBars: group bar – the last button opens the ForeverQuests Dungeon/Quest Log window (instead of leave group); the title "Group" is a plain label without highlight or dropdown arrow.
 
 - ForeverBars: the group bar is now 2 rows: ready check, countdown, role check; roll, shared quests (tooltip lists which of your quests the group members also have, up to 10), leave group.

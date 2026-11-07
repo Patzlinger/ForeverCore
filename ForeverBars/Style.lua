@@ -42,7 +42,7 @@ local function SetAccentBorder(frame, on)
     end
 end
 
--- Eigener Tooltip im Stil der Addon-Fenster: dunkler Hintergrund, dünner grauer Rand, goldene Linie oben.
+-- Eigener Tooltip im Stil der Addon-Fenster: dunkler Hintergrund, feiner goldener Rand rundum.
 -- Funktioniert wie der normale Spiel-Tooltip (AddLine, SetItemByID, …); der Spiel-Tooltip bleibt unverändert.
 local tooltipFrame
 function Style.GetTooltip()
@@ -54,17 +54,33 @@ function Style.GetTooltip()
     local background = tip:CreateTexture(nil, "BACKGROUND", nil, -8)
     background:SetAllPoints()
     background:SetColorTexture(COLOR.background[1], COLOR.background[2], COLOR.background[3], 0.97)
-    local function Edge(point1, point2, horizontal, color)
+    local edges = {}
+    local function Edge(point1, point2, horizontal)
         local edge = tip:CreateTexture(nil, "BACKGROUND", nil, -7)
-        edge:SetColorTexture(unpack(color))
+        edge:SetColorTexture(1, 1, 1, 1)
         edge:SetPoint(point1)
         edge:SetPoint(point2)
         if horizontal then edge:SetHeight(1) else edge:SetWidth(1) end
+        edges[#edges + 1] = edge
     end
-    Edge("TOPLEFT", "TOPRIGHT", true, { COLOR.accent[1], COLOR.accent[2], COLOR.accent[3], 0.7 })
-    Edge("BOTTOMLEFT", "BOTTOMRIGHT", true, COLOR.border)
-    Edge("TOPLEFT", "BOTTOMLEFT", false, COLOR.border)
-    Edge("TOPRIGHT", "BOTTOMRIGHT", false, COLOR.border)
+    Edge("TOPLEFT", "TOPRIGHT", true)
+    Edge("BOTTOMLEFT", "BOTTOMRIGHT", true)
+    Edge("TOPLEFT", "BOTTOMLEFT", false)
+    Edge("TOPRIGHT", "BOTTOMRIGHT", false)
+    -- Rahmen rundum gold wie alle anderen Forever-Tooltips (2026-11-07; vorher nur Goldlinie oben). ForeverTooltip-
+    -- Option "Rahmen rundum gold" aus = grau mit Goldlinie oben, wie dort
+    local function ColorEdges()
+        local grey = _G.ForeverTooltipDB and _G.ForeverTooltipDB.goldEdge == false
+        for i, edge in ipairs(edges) do
+            if grey and i > 1 then
+                edge:SetVertexColor(COLOR.border[1], COLOR.border[2], COLOR.border[3], COLOR.border[4] or 1)
+            else
+                edge:SetVertexColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3], 0.7)
+            end
+        end
+    end
+    ColorEdges()
+    tip:HookScript("OnShow", ColorEdges)
 
     -- Den normalen verzierten Rand des Spiel-Tooltips ausblenden (auch, wenn das Spiel ihn wieder einschaltet)
     local function HideDefaultBorder(self)
