@@ -3162,7 +3162,7 @@ local function UpdateMarkTabs(cfg, holder)
             local view = ns.FoodView(ns.db.bars.food)
             -- nur noch eine Ansicht: "Gruppe" als schlichte Überschrift, ohne goldene Markierung (Wunsch 2026-11-07)
             local _ = view
-            tabs.marks.text:SetTextColor(0.85, 0.85, 0.85)
+            tabs.marks.text:SetTextColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3]) -- gelb wie die Überschriften
             tabs.marks.bg:Hide()
             tabs.marks.line:Hide()
         end
