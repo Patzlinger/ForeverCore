@@ -11,8 +11,7 @@ Auswirkung im Spiel.
   - Im Spiel noch prüfen (Entwurf fertig, nur bei echtem Anlass): Bereitschaftscheck, Gildeneinladung, Rollenabfrage, Beute-Meldung
     ("Ihr habt erhalten"), PvP-Punktetafel und -Ergebnis, Todesursache, Rollenabfrage fürs Schlachtfeld und weitere
     PvP-Hinweise (PVPRoleCheckPopup, PVPReadyPopup, PVPFramePopup), Battle.net-Einladung, GM-Ticket-Hinweis
-  - Entwurf, gleich prüfbar: Stapel teilen (Shift-Klick auf Stapel), Gold-Betrag (Klick auf Gold beim Handel),
-    Klickbelegung samt Info-Fenster
+  - Entwurf, gleich prüfbar: Stapel teilen (Shift-Klick auf Stapel), Gold-Betrag (Klick auf Gold beim Handel)
   - Abgleich im Spiel: `/fskin fenster` (listet alle großen Fenster, umgestaltet `+` oder nicht `-`)
 - [ ] ⚠ **Markierungen über Blizzards Schnell-Ping-Menü:** Weltmarkierungen mit dem Ping-Rad verbinden; Zielmarkierungen
       (Totenkopf, Kreuz …) per Mouseover über Gegner ebenfalls über das Ping-Rad setzen (Addon klären, z. B. ForeverHelpers)
