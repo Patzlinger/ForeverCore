@@ -292,10 +292,22 @@ local function UpdateDurability()
     local lowest = Durability()
     local show = DB().durability and lowest < DURA_LIMIT
     bar.dura:SetShown(show)
+    bar.duraText:SetShown(show)
+    if show then bar.duraText:SetText(lowest .. "%") end
     if show then
         -- unter 10 % (oder kaputt): rot, sonst orange
-        if lowest < 10 then bar.dura.icon:SetVertexColor(1, 0.35, 0.3) else bar.dura.icon:SetVertexColor(1, 0.75, 0.35) end
+        local r, g, b = 1, 0.75, 0.35
+        if lowest < 10 then r, g, b = 1, 0.35, 0.3 end
+        bar.dura.icon:SetVertexColor(r, g, b)
+        bar.duraText:SetTextColor(r, g, b)
     end
+    -- Blizzards Ruestungsfigur (rechts unter der Karte, von Questtracker/Karte verdeckt) ersetzt unsere Anzeige
+    local df = _G.DurabilityFrame
+    if df and not df.fmmHooked then
+        df.fmmHooked = true
+        df:HookScript("OnShow", function(self) if DB().durability then self:Hide() end end)
+    end
+    if df and DB().durability and df:IsShown() then df:Hide() end
 end
 
 ---------------------------------------------------------------------------
@@ -303,6 +315,7 @@ end
 -- Warteschlange ist), solange ForeverBars es nicht in seiner eigenen Leiste fuehrt
 ---------------------------------------------------------------------------
 local EYE = 28 -- Groesse des Auges in der Karte
+local MAIL_FREE_EYE = 24 -- Hoehe der kleinen Post-Kachel in der Ecke (wie MAIL_FREE unten)
 local function BarsOwnsQueue()
     if not (C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("ForeverBars")) then return false end
     local bdb = _G.ForeverBarsDB
@@ -316,22 +329,50 @@ end
 
 local function PlaceQueue()
     local q = _G.QueueStatusButton
-    if not (q and QueueDocked()) then return end
-    q.fmmPlacing = true
-    if q.SetIgnoreParentAlpha then q:SetIgnoreParentAlpha(true) end -- Elternrahmen (z. B. Mikromenue) evtl. unsichtbar
-    local pScale = (q:GetParent() and q:GetParent():GetEffectiveScale()) or 1
-    q:SetScale(EYE * Minimap:GetEffectiveScale() / (math.max(1, q:GetWidth()) * pScale))
-    local k = Minimap:GetEffectiveScale() / q:GetEffectiveScale()
-    q:ClearAllPoints()
-    if IsRound() then
-        -- runde Karte: auf dem Kreisrand unten rechts (45 Grad), das Auge liegt ganz in der Karte
-        local off = (Minimap:GetWidth() / 2 - EYE / 2 - 2) * 0.7071
-        q:SetPoint("CENTER", Minimap, "CENTER", off * k, -off * k)
-    else
-        q:SetPoint("BOTTOMRIGHT", Minimap, "BOTTOMRIGHT", -3 * k, 3 * k)
+    if not q then return end
+    if not QueueDocked() then
+        -- abgeschaltet oder ForeverBars uebernimmt: wieder an Blizzards Elternrahmen zurueck
+        if q.fmmOrigParent and q:GetParent() == Minimap then
+            q.fmmPlacing = true
+            q:SetParent(q.fmmOrigParent)
+            q.fmmPlacing = false
+        end
+        return
     end
-    q:SetFrameStrata(Minimap:GetFrameStrata())
-    q:SetFrameLevel(Minimap:GetFrameLevel() + 10)
+    q.fmmPlacing = true
+    -- Auge an die Karte haengen: sein Blizzard-Elternrahmen (Mikromenue) ist bei uns oft ausgeblendet – dann verschwand
+    -- das Auge mitsamt der Suche. Eigener Elternrahmen = auch klickbar in der richtigen Ebene ueber der Karte.
+    if q:GetParent() ~= Minimap then
+        q.fmmOrigParent = q.fmmOrigParent or q:GetParent()
+        q:SetParent(Minimap)
+    end
+    q:SetScale(EYE / math.max(1, q:GetWidth()))
+    q:ClearAllPoints()
+    -- unten links; liegt dort die kleine Post-Kachel (rund oder ohne Knopfleiste, Leiste links), ein Stueck hoeher
+    local d = DB()
+    local mailHere = (IsRound() or d.strip == "OFF") and d.strip ~= "RIGHT"
+    local s = q:GetScale()
+    if IsRound() then
+        -- runde Karte: auf dem Kreisrand unten links (45 Grad bzw. weiter oben neben der Post)
+        local a = math.rad(mailHere and 200 or 225)
+        local r = Minimap:GetWidth() / 2 - EYE / 2 - 2
+        q:SetPoint("CENTER", Minimap, "CENTER", math.cos(a) * r / s, math.sin(a) * r / s)
+    else
+        q:SetPoint("BOTTOMLEFT", Minimap, "BOTTOMLEFT", 3 / s, (mailHere and (MAIL_FREE_EYE + 6) or 3) / s)
+    end
+    q:SetFrameStrata("MEDIUM") -- ueber Karte, Knopfleiste und Koordinaten, damit Klicks sicher ankommen
+    q:SetFrameLevel(Minimap:GetFrameLevel() + 20)
+    -- gelber Hinweis ("Hier findet ihr den Gruppenbrowser …") ragte vom Auge aus dem Bild und liess sich nicht
+    -- wegklicken: direkt schliessen (einmalig einhaken)
+    if not q.fmmHelpHooked and _G.HelpTip and HelpTip.Show then
+        q.fmmHelpHooked = true
+        hooksecurefunc(HelpTip, "Show", function(_, parent, info, rel)
+            if (parent == q or rel == q) and QueueDocked() and info and info.text then
+                C_Timer.After(0, function() pcall(HelpTip.Hide, HelpTip, parent, info.text) end)
+            end
+        end)
+        pcall(HelpTip.HideAll, HelpTip, q)
+    end
     q.fmmPlacing = false
 end
 
@@ -420,6 +461,10 @@ local function BuildBar()
     bar.dura.icon:SetTexture("Interface\\Icons\\Trade_BlackSmithing")
     bar.dura.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
     bar.dura:Hide()
+    -- Prozentwert links neben dem Amboss (niedrigstes Teil)
+    bar.duraText = bar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    bar.duraText:SetPoint("RIGHT", bar.dura, "LEFT", -2, 0)
+    bar.duraText:Hide()
     bar.dura:SetScript("OnClick", function()
         if ToggleCharacter and not InCombatLockdown() then ToggleCharacter("PaperDollFrame") end
     end)
@@ -488,6 +533,7 @@ local function LayoutBar()
         bar.dura:ClearAllPoints()
         bar.dura:SetPoint("RIGHT", bar, "RIGHT", x, 0)
         x = x - MARK - 3
+        x = x - bar.duraText:GetStringWidth() - 4
     end
     return x
 end
@@ -701,7 +747,7 @@ local function BuildStrip()
     -- Pfeil "weitere Knoepfe" (nur, wenn nicht alle hineinpassen)
     moreButton = SmallFlat(strip, ITEM)
     moreButton.fmmTool = true
-    moreButton:SetFrameLevel(strip:GetFrameLevel() + 3)
+    moreButton:SetFrameLevel(strip:GetFrameLevel() + 10) -- ueber geparkten (unsichtbaren) Fremdknoepfen
     moreButton.icon:ClearAllPoints()
     moreButton.icon:SetSize(12, 12)
     moreButton.icon:SetPoint("CENTER")
@@ -805,6 +851,7 @@ local function PlaceForeign(b)
         b:ClearAllPoints()
         b:SetPoint(b.fmmPoint, b.fmmRel, b.fmmRelPoint, b.fmmX / s, b.fmmY / s)
     end
+    b:SetFrameStrata(strip:GetFrameStrata()) -- LibDBIcon-Knoepfe stehen sonst auf MEDIUM und verdecken den Pfeil
     b:SetFrameLevel(strip:GetFrameLevel() + 2)
     b.fmmPlacing = false
 end
@@ -1336,6 +1383,7 @@ function ns.SetupMap()
     local q = _G.QueueStatusButton
     if q then
         hooksecurefunc(q, "SetPoint", function(self) if not self.fmmPlacing and QueueDocked() then PlaceQueue() end end)
+        hooksecurefunc(q, "SetParent", function(self) if not self.fmmPlacing and QueueDocked() then PlaceQueue() end end)
         q:HookScript("OnShow", function() ns.UpdateTools() end)
         q:HookScript("OnHide", function() ns.UpdateTools() end)
     end
