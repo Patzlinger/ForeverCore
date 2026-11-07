@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverBars: keybind text on action buttons is 25 % smaller and modifiers are shorter ("S-M4" = Shift + mouse button 4, "SC-" = Shift + Ctrl), so combinations fit instead of showing "s-...".
+
 ## 0.53b – November 7, 2026
 
 - Group / dungeon: fixed errors when entering dungeons (ForeverCore over-time tracking, ForeverUnits combat icon) and reduced the short lag when forming a group (ForeverFrames now rebuilds the group frames once instead of on every roster event).

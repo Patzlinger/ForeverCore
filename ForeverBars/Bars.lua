@@ -329,9 +329,12 @@ local HOTKEY_POSITIONS = {
 
 -- Lange Tastennamen kürzen, damit sie auf den Knopf passen (Blizzard kürzt nur teilweise, z. B. "Mausrad hoch")
 local KEY_SHORT = {
-    { "SHIFT%-", "S" }, { "Shift%-", "S" }, { "Umschalt%-", "S" }, { "UMSCHALT%-", "S" },
-    { "STRG%-", "C" }, { "Strg%-", "C" }, { "CTRL%-", "C" }, { "Ctrl%-", "C" },
-    { "ALT%-", "A" }, { "Alt%-", "A" }, { "META%-", "M" },
+    -- Zusatztasten als ein Grossbuchstabe mit Strich: "S-M4" = Shift + Maustaste 4, mehrere zusammen "SC-M4"
+    -- (Blizzard liefert teils schon "s-", "c-", "a-" in Kleinbuchstaben)
+    { "SHIFT%-", "S-" }, { "Shift%-", "S-" }, { "Umschalt%-", "S-" }, { "UMSCHALT%-", "S-" }, { "^s%-", "S-" },
+    { "STRG%-", "C-" }, { "Strg%-", "C-" }, { "CTRL%-", "C-" }, { "Ctrl%-", "C-" },
+    { "ALT%-", "A-" }, { "Alt%-", "A-" }, { "META%-", "M-" },
+    { "%-s%-", "-S-" }, { "^c%-", "C-" }, { "%-c%-", "-C-" }, { "^a%-", "A-" }, { "%-a%-", "-A-" },
     { "Mausrad hoch", "MU" }, { "Mausrad runter", "MD" }, { "Mausrad unten", "MD" },
     { "Mouse Wheel Up", "MU" }, { "Mouse Wheel Down", "MD" },
     { "Mittlere Maustaste", "M3" }, { "Middle Mouse", "M3" },
@@ -344,6 +347,8 @@ local KEY_SHORT = {
 function ns.ShortKey(text)
     if type(text) ~= "string" or text == "" then return text end
     for _, pair in ipairs(KEY_SHORT) do text = text:gsub(pair[1], pair[2]) end
+    -- "S-C-M4" -> "SC-M4"
+    text = text:gsub("^([SCAM])%-([SCAM])%-([SCAM])%-", "%1%2%3-"):gsub("^([SCAM])%-([SCAM])%-", "%1%2-")
     return text
 end
 
@@ -397,7 +402,9 @@ local function UpdateButtonLook(button)
     local count = button.Count or (name and _G[name .. "Count"])
     if hotkey then
         hotkey:SetAlpha(db.showHotkeys and 1 or 0)
-        SetTextFont(hotkey, db.fontSize)
+        -- Tastenbelegung 25 % kleiner als die übrige Knopfschrift (Wunsch 2026-11-07)
+        local hkSize = math.max(7, math.floor(db.fontSize * 0.75 + 0.5))
+        SetTextFont(hotkey, hkSize)
         local position = HOTKEY_POSITIONS[db.hotkeyPosition] or HOTKEY_POSITIONS.TOPRIGHT
         hotkey:ClearAllPoints()
         hotkey:SetPoint(position[1], button, position[1], position[2], position[3])
@@ -406,7 +413,7 @@ local function UpdateButtonLook(button)
         -- gar nicht gezeigt. Darum so breit wie der Knopf und so hoch wie die Schrift.
         local width = button:GetWidth()
         if not width or width < 10 then width = ACTION_SIZE end
-        hotkey:SetSize(width - 4, db.fontSize + 4)
+        hotkey:SetSize(width - 4, hkSize + 4)
         hotkey:SetWordWrap(false)
         local text = hotkey:GetText()
         if text == RANGE_INDICATOR then
