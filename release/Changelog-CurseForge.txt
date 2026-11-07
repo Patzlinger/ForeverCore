@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverSkin: the death recap window now uses the Forever look.
+
 - ForeverSkin: the battleground scoreboard and the results window now use the Forever look (team colors of the rows stay).
 
 - ForeverQuests: the world map uses the Forever close button instead of Blizzard's red X.

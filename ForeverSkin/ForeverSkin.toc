@@ -50,3 +50,4 @@ QuickKeybind.lua
 LootRoll.lua
 Alerts.lua
 PvPMatch.lua
+DeathRecap.lua
