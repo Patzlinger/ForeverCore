@@ -1,5 +1,7 @@
 # Forever Core – Changelog
 
+## Unreleased
+
 ## 0.53b – November 7, 2026
 
 - Group / dungeon: fixed errors when entering dungeons (ForeverCore over-time tracking, ForeverUnits combat icon) and reduced the short lag when forming a group (ForeverFrames now rebuilds the group frames once instead of on every roster event).
