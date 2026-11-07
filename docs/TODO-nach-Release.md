@@ -19,5 +19,3 @@ Auswirkung im Spiel.
       Gegenstands-Tooltip auslesen, im Tracker hinter dem Questnamen, bei wenig Zeit farbig
 - [ ] ⚠ **Essen/Trinken-Makro** (ForeverHelpers): Makro, das automatisch das beste Essen bzw. Getränk aus den Taschen
       nimmt
-- [ ] ⚠ **Integration für Leatrix Plus bauen** (Umfang noch klären): bisher fragt der Hub nur bei doppelten Funktionen,
-      welches Addon laufen soll („Andere Addons …“)

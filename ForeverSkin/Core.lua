@@ -289,6 +289,41 @@ function ns.DumpWindows()
         print(string.format("  %s %s%s", e.skinned and "|cff33ff99+|r" or "|cffff7070-|r", e.name,
             e.shown and T(" (offen)", " (open)") or ""))
     end
+    -- Zusätzlich für Claude in ForeverSkinDB._windows (nach /reload lesbar): auch kleinere Fenster, und welche Blizzard-
+    -- Fensterpakete der Forever-Client überhaupt kennt (Forever ist kein 1:1-Retail – manches fehlt, manches ist eigen).
+    -- Pakete, die "da, nicht geladen" sind, lädt Blizzard erst beim ersten Öffnen – die Fenster darin fehlen oben noch.
+    local out = {}
+    for _, child in ipairs({ UIParent:GetChildren() }) do
+        local name = not (child.IsForbidden and child:IsForbidden()) and child:GetName()
+        if name and not name:find("^Forever") and (child:GetWidth() or 0) >= 80 and (child:GetHeight() or 0) >= 50 then
+            out[#out + 1] = string.format("%s %s %dx%d%s", looks[child] ~= nil and "+" or "-", name, child:GetWidth(),
+                child:GetHeight(), child:IsShown() and " offen" or "")
+        end
+    end
+    table.sort(out)
+    local PACKS = { "AchievementUI", "AlliedRacesUI", "ArchaeologyUI", "ArtifactUI", "AuctionHouseUI", "AzeriteUI",
+        "BarbershopUI", "BattlefieldMap", "BlackMarketUI", "Calendar", "ChallengesUI", "Channels", "CharacterCustomize",
+        "ChromieTimeUI", "ClassTalentUI", "ClickBindingUI", "Collections", "Communities", "DeathRecap", "EncounterJournal",
+        "EngravingUI", "ExpansionLandingPage", "FlightMap", "GarrisonUI", "GenericTraitUI", "GlyphUI", "GMChatUI",
+        "GuildBankUI", "GuildControlUI", "InspectUI", "IslandsQueueUI", "ItemAlterationUI", "ItemInteractionUI",
+        "ItemSocketingUI", "ItemUpgradeUI", "LookingForGuildUI", "MacroUI", "MajorFactions", "ObliterumUI", "OrderHallUI",
+        "PerksProgram", "PetJournal", "PlayerChoice", "Professions", "ProfessionsBook", "ProfessionsCustomerOrders",
+        "PVPMatch", "PVPUI", "QuestChoice", "RaidUI", "ReforgingUI", "ScrappingMachineUI", "Soulbinds", "TalentUI",
+        "TimeManager", "TokenUI", "TradeSkillUI", "TrainerUI", "Transmog", "VoidStorageUI", "WarboardUI", "WeeklyRewards" }
+    local getInfo = C_AddOns and C_AddOns.GetAddOnInfo or GetAddOnInfo
+    local isLoaded = C_AddOns and C_AddOns.IsAddOnLoaded or IsAddOnLoaded
+    for _, short in ipairs(PACKS) do
+        local pack = "Blizzard_" .. short
+        local ok, found, _, _, _, reason = pcall(getInfo, pack)
+        local state = "fehlt"
+        if ok and found and reason ~= "MISSING" then
+            state = (isLoaded and isLoaded(pack)) and "geladen" or "da, nicht geladen"
+        end
+        out[#out + 1] = "Paket " .. pack .. ": " .. state
+    end
+    ns.GetDB()._windows = out
+    print("|cffffcc00ForeverSkin|r: " .. T("Ausführliche Liste gespeichert – jetzt /reload, dann kann Claude sie lesen.",
+        "Detailed list saved – now /reload so Claude can read it."))
 end
 
 -- /fskin aufbau <Fenstername>: kompletter Aufbau eines Fensters (Unter-Rahmen und Grafiken samt Schlüssel, Art,
