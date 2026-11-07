@@ -9,9 +9,7 @@ Auswirkung im Spiel.
 
 - [ ] ⚠ **Restliche Fenster überarbeiten** (ForeverSkin, Darstellung) – noch offen:
   - Große Fenster: PvP-Punktetafel und -Ergebnis
-  - Kleine Fenster: Bereitschaftscheck (ReadyCheckFrame),
-    Set bearbeiten beim Transmogrifizieren (WardrobeCustomSetEditFrame), weitere
-    PvP-Abfragen (PVPReadyPopup, PVPRoleCheckPopup, PVPFramePopup)
+  - Kleine Fenster: Bereitschaftscheck (ReadyCheckFrame), weitere PvP-Abfragen (PVPReadyPopup, PVPRoleCheckPopup, PVPFramePopup)
   - Im Spiel noch prüfen (Entwurf fertig, nur bei echtem Anlass): Gildeneinladung, Rollenabfrage, PvP-Bereitschaft,
     Beute-Meldung ("Ihr habt erhalten")
   - Abgleich im Spiel: `/fskin fenster` (listet alle großen Fenster, umgestaltet `+` oder nicht `-`)
