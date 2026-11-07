@@ -10,7 +10,10 @@ local _, ns = ...
 local C = ns.C
 
 local WHITE = "Interface\\Buttons\\WHITE8x8"
-local NAMES = { "RolePollPopup", "LFGInvitePopup", "PVPReadyDialog", "GuildInviteFrame" }
+-- (PVPRoleCheckPopup = Rollenabfrage beim gemeinsamen Anmelden fürs Schlachtfeld, gleich gebaut wie RolePollPopup;
+-- PVPReadyPopup/PVPFramePopup = weitere kleine PvP-Hinweise)
+local NAMES = { "RolePollPopup", "LFGInvitePopup", "PVPReadyDialog", "GuildInviteFrame", "PVPRoleCheckPopup",
+    "PVPReadyPopup", "PVPFramePopup" }
 
 -- Gildenwappen (Gildeneinladung) bleibt: Grafiken, deren Name bzw. Schlüssel nach Wappen klingt
 local KEEP_WORDS = { "tabard", "emblem", "crest", "banner" }

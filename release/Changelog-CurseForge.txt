@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverSkin: the battleground role check and the other small PvP popups use the same Forever look as the other confirmation dialogs.
+
 - ForeverSkin: the death recap window now uses the Forever look.
 
 - ForeverSkin: the battleground scoreboard and the results window now use the Forever look (team colors of the rows stay).

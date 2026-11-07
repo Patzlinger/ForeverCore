@@ -8,9 +8,10 @@ Auswirkung im Spiel.
 ## Geplant
 
 - [ ] ⚠ **Restliche Fenster überarbeiten** (ForeverSkin, Darstellung) – noch offen:
-  - Kleine Fenster: Bereitschaftscheck (ReadyCheckFrame), weitere PvP-Abfragen (PVPReadyPopup, PVPRoleCheckPopup, PVPFramePopup)
+  - Kleine Fenster: Bereitschaftscheck (ReadyCheckFrame)
   - Im Spiel noch prüfen (Entwurf fertig, nur bei echtem Anlass): Gildeneinladung, Rollenabfrage, Beute-Meldung
-    ("Ihr habt erhalten"), PvP-Punktetafel und -Ergebnis, Todesursache
+    ("Ihr habt erhalten"), PvP-Punktetafel und -Ergebnis, Todesursache, Rollenabfrage fürs Schlachtfeld und weitere
+    PvP-Hinweise (PVPRoleCheckPopup, PVPReadyPopup, PVPFramePopup)
   - Abgleich im Spiel: `/fskin fenster` (listet alle großen Fenster, umgestaltet `+` oder nicht `-`)
 - [ ] ⚠ **Markierungen über Blizzards Schnell-Ping-Menü:** Weltmarkierungen mit dem Ping-Rad verbinden; Zielmarkierungen
       (Totenkopf, Kreuz …) per Mouseover über Gegner ebenfalls über das Ping-Rad setzen (Addon klären, z. B. ForeverHelpers)
