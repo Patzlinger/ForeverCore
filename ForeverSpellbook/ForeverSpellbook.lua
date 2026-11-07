@@ -636,6 +636,12 @@ local function Entry(i)
             end
             return
         end
+        -- Klickbelegung offen: Klick legt den Zauber dort als neue Belegung an (wie in Blizzards Zauberbuch)
+        local cb = _G.ClickBindingFrame
+        if cb and cb:IsShown() and e.id and not e.trainer and not e.future and not e.passive and cb.AddNewAction
+            and Enum and Enum.ClickBindingType and not InCombatLockdown() then
+            if pcall(cb.AddNewAction, cb, Enum.ClickBindingType.Spell, e.id) then return end
+        end
         Pick(self)
     end)
     entries[i] = b
@@ -1186,6 +1192,56 @@ events:SetScript("OnEvent", function(_, event)
         Soon(Refresh)
     end
 end)
+
+---------------------------------------------------------------------------
+-- Klickbelegung: Blizzard öffnet dazu sein eigenes Zauberbuch (auch über den runden Zauberbuch-Knopf im Fenster) –
+-- stattdessen unser Zauberbuch zeigen; schließt sich die Klickbelegung, auch unser Buch, wenn sie es geöffnet hat
+---------------------------------------------------------------------------
+do
+    local BLIZZ_BOOKS = { "PlayerSpellsFrame", "SpellBookFrame" }
+    local openedForBinding = false
+    local hookedFrames = setmetatable({}, { __mode = "k" })
+    local function BindingOpen()
+        local cb = _G.ClickBindingFrame
+        return cb and cb:IsShown()
+    end
+    local function SwapBook()
+        if InCombatLockdown() or not BindingOpen() then return end
+        for _, name in ipairs(BLIZZ_BOOKS) do
+            local book = _G[name]
+            if book and book:IsShown() then pcall(HideUIPanel, book) end
+        end
+        if not frame:IsShown() then
+            frame:Show()
+            openedForBinding = true
+        end
+    end
+    local function Hook()
+        local cb = _G.ClickBindingFrame
+        if cb and not hookedFrames[cb] then
+            hookedFrames[cb] = true
+            cb:HookScript("OnShow", function() C_Timer.After(0, SwapBook) end)
+            cb:HookScript("OnHide", function()
+                if openedForBinding and not InCombatLockdown() then frame:Hide() end
+                openedForBinding = false
+            end)
+            if cb:IsShown() then C_Timer.After(0, SwapBook) end
+        end
+        for _, name in ipairs(BLIZZ_BOOKS) do
+            local book = _G[name]
+            if book and not hookedFrames[book] then
+                hookedFrames[book] = true
+                book:HookScript("OnShow", function() if BindingOpen() then C_Timer.After(0, SwapBook) end end)
+            end
+        end
+    end
+    -- von Hand geschlossen: beim Schließen der Klickbelegung nicht mehr anfassen
+    frame:HookScript("OnHide", function() openedForBinding = false end)
+    local loader = CreateFrame("Frame")
+    loader:RegisterEvent("PLAYER_LOGIN")
+    loader:RegisterEvent("ADDON_LOADED")
+    loader:SetScript("OnEvent", function() pcall(Hook) end)
+end
 
 -- Schnittstelle für andere Forever-Addons (UI.API, Hub v49): z. B. ForeverSkin bietet im Lehrerfenster an, nach dem
 -- Lernen die Leisten auf den neuen Rang zu bringen
