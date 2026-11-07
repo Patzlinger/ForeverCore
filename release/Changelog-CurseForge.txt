@@ -1,6 +1,12 @@
 # Forever Core – Changelog
 
-## Unreleased
+## 0.53b – November 7, 2026
+
+- Group / dungeon: fixed errors when entering dungeons (ForeverCore over-time tracking, ForeverUnits combat icon) and reduced the short lag when forming a group (ForeverFrames now rebuilds the group frames once instead of on every roster event).
+- ForeverMinimap: the group finder eye now sits in the bottom-left corner of the minimap and no longer disappears while searching; the yellow tutorial hint that could not be closed is dismissed automatically.
+- ForeverMinimap: durability now shows the lowest percentage next to the anvil in the minimap bar; Blizzard's armor figure (hidden behind tracker/minimap) is replaced by it.
+- ForeverMinimap: the "more buttons" arrow is no longer covered by other addons' minimap buttons.
+- ForeverBars: rested XP has its own color again (blue fill, light blue rested area) plus a thin strip at the bottom showing the total rested pool (up to 1.5 levels).
 
 - ForeverBags: guild bank shows "Withdrawable: unlimited" for the guild master instead of a giant number.
 - ForeverSkin: the guild invite dialog now uses the Forever look (the guild emblem stays).
