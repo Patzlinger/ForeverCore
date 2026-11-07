@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverBars: the marker bar is now the group & travel bar. "Group": ready check, role check, countdown, roll, reset instances, convert to raid, clear markers, leave group (shift-click). "Travel": hearthstone, random favorite mount and your class teleports/portals with cooldowns. Key bindings for markers keep working.
+
 - ForeverSkin: the auction house buy confirmation uses the Forever look.
 
 - ForeverSkin: submenus that hang on another menu (e.g. adding tags in the friends list) now use the Forever look too.

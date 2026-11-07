@@ -29,4 +29,9 @@
 	<Binding name="CLICK ForeverBarsReadyCheck:LeftButton" category="ADDONS"/>
 	<Binding name="CLICK ForeverBarsRolePoll:LeftButton" category="ADDONS"/>
 	<Binding name="CLICK ForeverBarsCountdown:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK ForeverBarsRoll:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK ForeverBarsResetInstances:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK ForeverBarsConvertRaid:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK ForeverBarsHearth:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK ForeverBarsMount:LeftButton" category="ADDONS"/>
 </Bindings>
