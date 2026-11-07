@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverBags / ForeverAlts: the saved bank of your characters is shown again when you are not at the bank.
+
 - ForeverBars: tooltips have the same fine gold border all around as all other Forever tooltips.
 
 - ForeverBars: group bar – the last button opens the ForeverQuests Dungeon/Quest Log window (instead of leave group); the title "Group" is a plain label without highlight or dropdown arrow.

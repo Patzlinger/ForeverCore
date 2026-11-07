@@ -457,7 +457,13 @@ end
 local function ShowOffline(entry, placer)
     local containers = view.kind == "bank" and entry.bank or entry.bags
     local index, used, total = 0, 0, 0
-    local ids = view.kind == "bank" and ns.BankIDs() or ns.BagIDs()
+    -- gespeicherte Behälter in ihrer Reihenfolge – NICHT die Live-Liste (ns.BankIDs): fern der Bank liefert das Spiel
+    -- keine gekauften Bankfächer, dann blieb die gespeicherte Bank anderer Charaktere leer
+    local ids = {}
+    for bag in pairs(containers or {}) do
+        if type(bag) == "number" then ids[#ids + 1] = bag end
+    end
+    table.sort(ids)
     local sorted = ns.SortByCategoryOn()
     local entries = {}
     for _, bag in ipairs(ids) do
