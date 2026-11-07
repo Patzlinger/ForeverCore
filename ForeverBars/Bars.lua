@@ -2762,7 +2762,7 @@ local MARK_ICON = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_"
 -- Alle Knöpfe sind geschützte Makro-Knöpfe mit Blizzards Chatbefehlen bzw. kleinen Befehlen; "target" = aktuelles Ziel.
 local FOOD_VIEWS = { group = true }
 -- 2x3 (Wunsch 2026-11-07): oben Bereitschaftscheck, Countdown, Rollenabfrage; unten Würfeln, Quests vergleichen
--- (nur Tooltip), Gruppe verlassen
+-- (nur Tooltip), ForeverQuests-Fenster
 local GROUP_ACTIONS = {
     { name = "ForeverBarsReadyCheck", macro = "/readycheck", icon = "Interface\\RaidFrame\\ReadyCheck-Ready", tip = "TIP_READYCHECK" },
     { name = "ForeverBarsCountdown", macro = "/countdown 10", icon = "Interface\\Icons\\Spell_Holy_BorrowedTime", tip = "TIP_COUNTDOWN" },
@@ -2770,8 +2770,9 @@ local GROUP_ACTIONS = {
       coords = { 0, 0.2617, 0.2617, 0.5234 }, tip = "TIP_ROLEPOLL" },
     { name = "ForeverBarsRoll", macro = "/roll", icon = "Interface\\Buttons\\UI-GroupLoot-Dice-Up", tip = "TIP_ROLL" },
     { name = "ForeverBarsQuestCompare", compare = true, icon = "Interface\\GossipFrame\\ActiveQuestIcon" },
-    { name = "ForeverBarsLeaveGroup", macro = "/run if IsShiftKeyDown() then C_PartyInfo.LeaveParty() end",
-      icon = "Interface\\RaidFrame\\ReadyCheck-NotReady", tip = "TIP_LEAVE", hint = "TIP_LEAVE_HINT" },
+    -- ForeverQuests: Dungeon-/Questlog-Fenster öffnen (statt "Gruppe verlassen", Wunsch 2026-11-07)
+    { name = "ForeverBarsQuestWindow", icon = "Interface\\AddOns\\ForeverQuests\\Media\\ForeverQuests", tip = "TIP_QUESTWINDOW",
+      onClick = function() if _G.ForeverQuests_ToggleDungeons then _G.ForeverQuests_ToggleDungeons() end end },
 }
 
 -- Quests vergleichen: welche Quests aus deinem Questlog die anderen Gruppenmitglieder auch haben
@@ -3008,6 +3009,10 @@ local function GetMarkButtons(holder)
             -- nur Tooltip (kein Klick-Befehl); bleibt beim Überfahren aktuell
             b:HookScript("OnEnter", function(self) QuestCompare.Tooltip(self) end)
             b:HookScript("OnLeave", function() ns.Style.GetTooltip():Hide() end)
+        elseif e.onClick then
+            -- eigenes Forever-Fenster: kein geschützter Befehl nötig
+            b:HookScript("OnClick", function(_, _, down) if down ~= true then e.onClick() end end)
+            Tip(b, e.tip, e.hint)
         else
             b:SetAttribute("type", "macro")
             b:SetAttribute("macrotext", e.macro)
@@ -3155,16 +3160,16 @@ local function UpdateMarkTabs(cfg, holder)
         end)
         function tabs.Color()
             local view = ns.FoodView(ns.db.bars.food)
-            for _, b in ipairs({ { tabs.marks, "group" } }) do
-                local on = view == b[2]
-                b[1].text:SetTextColor(on and COLOR.accent[1] or 0.55, on and COLOR.accent[2] or 0.55, on and COLOR.accent[3] or 0.55)
-                b[1].bg:SetShown(on)
-                b[1].line:SetShown(on)
-            end
+            -- nur noch eine Ansicht: "Gruppe" als schlichte Überschrift, ohne goldene Markierung (Wunsch 2026-11-07)
+            local _ = view
+            tabs.marks.text:SetTextColor(0.85, 0.85, 0.85)
+            tabs.marks.bg:Hide()
+            tabs.marks.line:Hide()
         end
         holder.fbMarkTabs = tabs
     end
-    tabs.arrow:SetShown(PingChoices() ~= nil)
+    tabs.arrow:Hide() -- ("Pings beschränken"-Pfeil entfernt, Wunsch 2026-11-07)
+    tabs.marks:EnableMouse(false)
     tabs:ClearAllPoints()
     if cfg.frame and frame and frame.header and frame.header:IsShown() then
         tabs:SetPoint("LEFT", frame.header, "LEFT", 6, 0)
