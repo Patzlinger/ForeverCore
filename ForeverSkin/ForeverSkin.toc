@@ -49,3 +49,4 @@ Dialogs.lua
 QuickKeybind.lua
 LootRoll.lua
 Alerts.lua
+PvPMatch.lua

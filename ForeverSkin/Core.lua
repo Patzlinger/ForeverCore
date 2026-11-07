@@ -45,6 +45,7 @@ ns.DEFAULTS = {
     quickkeybind = true, -- Schnelltastenbelegung
     lootroll = true, -- Würfelfenster bei Gruppenbeute
     alerts = true,   -- Beute-Meldungen ("Ihr habt erhalten")
+    pvpmatch = true, -- Punktetafel und Ergebnis im Schlachtfeld
     size = 100,      -- Größe von Gespräch, Quest, Händler und Lehrer in Prozent (100 = Grundgröße SIZE_BASE)
 }
 
