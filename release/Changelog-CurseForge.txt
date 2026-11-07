@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverSkin: submenus that hang on another menu (e.g. adding tags in the friends list) now use the Forever look too.
+
 - ForeverSpellbook: opening click casting shows the Forever spellbook instead of Blizzard's; clicking a spell there adds it as a new click binding.
 
 - ForeverSkin: Forever look for the click casting window (with its info window), the split stack and coin amount dialogs, the Battle.net invite and the GM ticket notice.

@@ -276,17 +276,19 @@ local function SkinMenuFrame(menu)
         if type(menu[key]) == "table" and menu[key].SetAlpha then menu[key]:SetAlpha(0) end
     end
     local back = BackFor(menu)
-    back:SetFrameStrata(menu:GetFrameStrata())
-    back:SetFrameLevel(math.max(0, menu:GetFrameLevel() - 1))
+    back:SetFrameStrata(menu:GetFrameStrata())    back:SetFrameLevel(math.max(0, menu:GetFrameLevel() - 1))
     back:Show()
 end
 -- Untermenü: wie das Hauptmenü gebaut – kein Knopf (Auswahllisten-Knöpfe tragen ebenfalls eine Menü-Beschreibung!),
 -- gleicher Eltern-Rahmen und gleiche Bildschirmebene wie das offene Hauptmenü
+-- (Seit 2026-11-07 auch Untermenüs, die am Hauptmenü bzw. an einem anderen Menü selbst hängen oder auf einer anderen
+-- Bildschirmebene liegen – z. B. "Schlagwörter hinzufügen" im Rechtsklick-Menü der Freundesliste blieb sonst alt)
 local function IsMenuFrame(frame, root)
     if type(frame) ~= "table" or (frame.IsForbidden and frame:IsForbidden()) then return false end
     if not (frame.GetObjectType and frame:GetObjectType() == "Frame") then return false end
     if not (type(frame.menuDescription) == "table" or type(frame.GetMenuDescription) == "function") then return false end
-    return frame:GetParent() == root:GetParent() and frame:GetFrameStrata() == root:GetFrameStrata()
+    local parent = frame:GetParent()
+    return parent == root:GetParent() or knownMenus[parent] == true
 end
 local lastSearch = 0
 function ns.SkinOpenMenu()
@@ -303,6 +305,19 @@ function ns.SkinOpenMenu()
             lastSearch = now
             for _, frame in ipairs({ parent:GetChildren() }) do
                 if not knownMenus[frame] and frame:IsShown() and IsMenuFrame(frame, root) then knownMenus[frame] = true end
+            end
+            -- Untermenüs, die an einem offenen Menü selbst hängen (auch mehrere Stufen tief)
+            local list = {}
+            for menu in pairs(knownMenus) do if menu:IsShown() then list[#list + 1] = menu end end
+            local i = 1
+            while list[i] and i < 20 do
+                for _, frame in ipairs({ list[i]:GetChildren() }) do
+                    if not knownMenus[frame] and frame:IsShown() and IsMenuFrame(frame, root) then
+                        knownMenus[frame] = true
+                        list[#list + 1] = frame
+                    end
+                end
+                i = i + 1
             end
         end
     end
