@@ -59,19 +59,62 @@ local function Scan(f, frame, depth)
     end
 end
 
--- Reiter direkt am Fenster (unten links, GAP Abstand), Text mittig – wie beim Auktionshaus
+-- Reiter direkt am Fenster (unten links, GAP Abstand), Text mittig – wie beim Auktionshaus. Blizzard macht den
+-- gewählten Reiter höher: alle Reiter oben bündig (TOPLEFT an der Unterkante bzw. am Reiter davor) und unsere Fläche
+-- auf die Höhe des niedrigsten gesetzt, damit keiner höher sitzt oder über den Nachbarn ragt
+local tabHeight = setmetatable({}, { __mode = "k" })
 local function PlaceTabs(f)
     local list = tabsOf[f]
     if not list then return end
     table.sort(list, function(a, b) return (a:GetLeft() or 0) < (b:GetLeft() or 0) end)
+    local minH
+    for _, tab in ipairs(list) do
+        if tab:IsShown() then minH = math.min(minH or 999, tab:GetHeight() or 999) end
+    end
     local prev
     for _, tab in ipairs(list) do
         if tab:IsShown() and ns.CanMove(tab) then
             ns.HideTextures(tab)
-            if prev then ns.Anchor(tab, "LEFT", prev, "RIGHT", GAP, 0) else ns.Anchor(tab, "TOPLEFT", f, "BOTTOMLEFT", 6, 1) end
+            if prev then ns.Anchor(tab, "TOPLEFT", prev, "TOPRIGHT", GAP, 0) else ns.Anchor(tab, "TOPLEFT", f, "BOTTOMLEFT", 6, 1) end
+            -- unsere Fläche: oben bündig, so hoch wie der niedrigste Reiter
+            local cut = math.max(0, math.floor((tab:GetHeight() or 0) - (minH or 0) + 0.5))
+            if tabHeight[tab] ~= cut then
+                tabHeight[tab] = cut
+                ns.Flat(tab, C.button, { 0, 0, 0, cut })
+                local sel = TabSelected(tab)
+                ns.EdgeColor(tab, sel and C.accent or C.border, sel and 0.9 or 1)
+            end
             pcall(ns.CenterText, tab)
             prev = tab
         end
+    end
+end
+
+-- Blizzards dunkler Hintergrund und Rahmen im Inhalt (Verlauf, Kanten, Kopfzeilen-Balken): unsichtbar – außer in der
+-- Spielerliste (ScrollBox: die farbigen Zeilen bleiben) und in Knöpfen (Spaltenköpfe mit Symbolen und Sortierpfeil)
+local function HideContentArt(frame, depth)
+    for _, child in ipairs({ frame:GetChildren() }) do
+        if not Forbidden(child) and not child:IsObjectType("Button") and type(child.ScrollTarget) ~= "table"
+            and type(child.Track) ~= "table" then
+            ns.HideTextures(child)
+            if type(child.NineSlice) == "table" then ns.Hide(child.NineSlice) end
+            if depth < 4 then HideContentArt(child, depth + 1) end
+        end
+    end
+end
+
+-- flacher Kasten hinter dem Inhalt (die größte Innenfläche)
+local function ContentPanel(f)
+    local best, area
+    for _, child in ipairs({ f:GetChildren() }) do
+        if not Forbidden(child) and not child:IsObjectType("Button") and child:IsShown() then
+            local a = (child:GetWidth() or 0) * (child:GetHeight() or 0)
+            if not area or a > area then best, area = child, a end
+        end
+    end
+    if best and not done[best] then
+        done[best] = true
+        ns.Flat(best, C.panel)
     end
 end
 
@@ -88,6 +131,8 @@ local function SkinMatch(f)
             else ns.HideTextures(part) if type(part.NineSlice) == "table" then ns.Hide(part.NineSlice) end end
         end
     end
+    pcall(HideContentArt, f, 1)
+    pcall(ContentPanel, f)
     pcall(Scan, f, f, 1)
     pcall(PlaceTabs, f)
     ns.Watch(f)
@@ -99,6 +144,7 @@ local function SkinMatch(f)
         if waited < ns.Tick(0.5) then return end
         waited = 0
         if type(f.NineSlice) == "table" then ns.Hide(f.NineSlice) end
+        pcall(HideContentArt, f, 1)
         pcall(Scan, f, f, 1)
         pcall(PlaceTabs, f)
         for b in pairs(textButtons) do if b:IsVisible() then pcall(FlatButton, b) end end
