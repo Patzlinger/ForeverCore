@@ -47,6 +47,7 @@ ns.DEFAULTS = {
     alerts = true,   -- Beute-Meldungen ("Ihr habt erhalten")
     pvpmatch = true, -- Punktetafel und Ergebnis im Schlachtfeld
     deathrecap = true, -- Todesursache
+    clickbinding = true, -- Klickbelegung
     size = 100,      -- Größe von Gespräch, Quest, Händler und Lehrer in Prozent (100 = Grundgröße SIZE_BASE)
 }
 

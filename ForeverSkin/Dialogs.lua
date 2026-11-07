@@ -2,7 +2,7 @@
 -- mit goldener Linie oben, Text-Knöpfe flach, Schließen-Kreuz wie bei uns. Betroffen: Rollenabfrage (RolePollPopup),
 -- Einladung über die Gruppensuche (LFGInvitePopup), PvP-Bereitschaft "Schlachtfeld betreten" (PVPReadyDialog),
 -- Gildeneinladung (GuildInviteFrame – das Gildenwappen bleibt), Bereitschaftscheck (ReadyCheckListenerFrame – das Bild
--- des Fragenden bleibt).
+-- des Fragenden bleibt), Stapel teilen, Gold-Betrag eingeben, Battle.net-Einladung, GM-Ticket-Hinweis.
 -- Sie zeigen sich nur bei echter Abfrage/Einladung (ohne Gruppe nicht zu öffnen) – darum beim ersten Anzeigen.
 -- Wie bei den Rückfrage-Fenstern besonders zurückhaltend: die Knöpfe lösen teils geschützte Aktionen aus (Rolle
 -- setzen, Schlachtfeld betreten) – nur Grafiken unsichtbar und eigene Flächen darunter, nichts in Blizzards
@@ -15,7 +15,13 @@ local WHITE = "Interface\\Buttons\\WHITE8x8"
 -- PVPReadyPopup/PVPFramePopup = weitere kleine PvP-Hinweise)
 -- ReadyCheckListenerFrame = Bereitschaftscheck ("Seid ihr bereit?" mit Bild des Fragenden), sichtbar Teil von ReadyCheckFrame
 local NAMES = { "RolePollPopup", "LFGInvitePopup", "PVPReadyDialog", "GuildInviteFrame", "PVPRoleCheckPopup",
-    "PVPReadyPopup", "PVPFramePopup", "ReadyCheckListenerFrame" }
+    "PVPReadyPopup", "PVPFramePopup", "ReadyCheckListenerFrame",
+    -- Stapel teilen (Shift-Klick auf einen Stapel), Gold-Betrag eingeben, Battle.net-Gruppeneinladung, GM-Ticket-Hinweis
+    "StackSplitFrame", "CoinPickupFrame", "BattleNetInviteFrame", "TicketStatusFrame" }
+
+-- Fenster mit Pfeilen links/rechts und Zahl dazwischen (Stapel teilen, Gold-Betrag): dort bleiben kleine Grafiken
+-- (Münz-Symbole), die Pfeile werden fein, die Zahl bekommt eine flache Eingabefläche
+local NUMBER_FRAMES = { StackSplitFrame = true, CoinPickupFrame = true }
 
 -- Gildenwappen (Gildeneinladung) und das Bild des Fragenden (Bereitschaftscheck) bleiben: Grafiken, deren Name bzw.
 -- Schlüssel danach klingt
@@ -62,7 +68,27 @@ local function Skin(frame)
     pcall(Buttons, frame, 1) -- (bei jedem Anzeigen: Blizzard legt Knöpfe teils erst später an)
     if done[frame] then return end
     done[frame] = true
-    ns.HideTextures(frame, KeepArt(frame))
+    local keep = KeepArt(frame)
+    local number = NUMBER_FRAMES[frame:GetName() or ""]
+    if number then
+        for _, r in ipairs({ frame:GetRegions() }) do
+            if r:IsObjectType("Texture") and (r:GetWidth() or 99) <= 24 and (r:GetHeight() or 99) <= 24 then keep[r] = true end
+        end
+        local left, right = frame.LeftButton or _G[frame:GetName() .. "LeftButton"],
+            frame.RightButton or _G[frame:GetName() .. "RightButton"]
+        if left then ns.SkinArrowOnly(left, "left") end
+        if right then ns.SkinArrowOnly(right, "right") end
+        if left and right then
+            -- (als Grafik im Fenster selbst, nicht als eigener Rahmen – sonst läge sie über der Zahl)
+            local box = frame:CreateTexture(nil, "BACKGROUND", nil, -6)
+            box:SetTexture(WHITE)
+            box:SetVertexColor(C.input[1], C.input[2], C.input[3], C.input[4] or 1)
+            box:SetPoint("TOPLEFT", left, "TOPRIGHT", 2, 0)
+            box:SetPoint("BOTTOMRIGHT", right, "BOTTOMLEFT", -2, 0)
+            keep[box] = true
+        end
+    end
+    ns.HideTextures(frame, keep)
     for _, key in ipairs({ "Border", "NineSlice", "BG", "Bg", "Background" }) do
         if type(frame[key]) == "table" then ns.Hide(frame[key]) end
     end

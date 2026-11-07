@@ -51,3 +51,4 @@ LootRoll.lua
 Alerts.lua
 PvPMatch.lua
 DeathRecap.lua
+ClickBinding.lua
