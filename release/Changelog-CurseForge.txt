@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverQuests: the world map uses the Forever close button instead of Blizzard's red X.
+
 - ForeverBars: keybind text on action buttons is 25 % smaller and modifiers are shorter ("S-M4" = Shift + mouse button 4, "SC-" = Shift + Ctrl), so combinations fit instead of showing "s-...".
 
 ## 0.53b – November 7, 2026

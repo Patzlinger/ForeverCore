@@ -376,9 +376,23 @@ local function SkinWorldMap()
         end
     end
 
-    -- Schließen-Knopf kleiner; Vollbild-Knopf ganz weg (Karte bleibt im Fenster, verschieb- und skalierbar)
+    -- Schließen: unser Kreuz (wie an allen Forever-Fenstern) statt Blizzards rotem X. Blizzards Knopf bleibt
+    -- (unsichtbar) – unser Knopf liegt darüber und löst dessen Klick aus. Vollbild-Knopf ganz weg (Karte bleibt im
+    -- Fenster, verschieb- und skalierbar)
     local close = border and border.CloseButton or map.CloseButton
-    if close and close.SetScale then close:SetScale(0.75) end
+    local hubUI = _G.ForeverHub and _G.ForeverHub.UI
+    if close and hubUI and hubUI.CloseButton and not close.fqOwnClose then
+        close.fqOwnClose = true
+        close:SetAlpha(0)
+        local own = hubUI.CloseButton(close:GetParent(), function()
+            if close.Click then close:Click() end
+        end)
+        own:SetPoint("CENTER", close, "CENTER", -2, -1)
+        own:SetFrameLevel(close:GetFrameLevel() + 5)
+        own.fqOwn = true
+    elseif close and close.SetScale then
+        close:SetScale(0.75)
+    end
     local maximize = (border and border.MaximizeMinimizeFrame) or map.MaximizeMinimizeFrame
     if maximize then
         maximize:Hide()
