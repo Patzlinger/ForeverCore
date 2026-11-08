@@ -141,6 +141,11 @@ function ns.UpdateFonts()
         end
     end
     local flags = db.fontOutline and "OUTLINE" or ""
+    -- SetFont auf einem Schrift-Objekt setzt ALLE Texte, die es nutzen, neu zusammen: nur bei echter Änderung
+    -- aufrufen (nicht bei jeder Aktualisierung – das war der Ruckler bei Questziel-Meldungen)
+    local signature = path .. "|" .. db.fontSize .. "|" .. flags
+    if fonts.signature == signature then return end
+    fonts.signature = signature
     local sizes = {
         header = db.fontSize + 1,
         quest = db.fontSize,
@@ -178,7 +183,12 @@ local function GetClassFileForHeader(header)
 end
 
 local factionNames = {}
+local factionNamesAt = -100
 local function BuildFactionNames()
+    -- Rufliste ändert sich selten: höchstens alle 30 Sekunden neu einlesen (statt bei jeder Aktualisierung)
+    local now = GetTime()
+    if now - factionNamesAt < 30 and next(factionNames) then return end
+    factionNamesAt = now
     wipe(factionNames)
     if C_Reputation and C_Reputation.GetNumFactions and C_Reputation.GetFactionDataByIndex then
         for i = 1, C_Reputation.GetNumFactions() do
@@ -2105,10 +2115,10 @@ ns.QuestList = {
 }
 
 -- Mehrere Ereignisse kurz hintereinander werden zu einer Aktualisierung zusammengefasst
-function ns.RequestUpdate()
+function ns.RequestUpdate(delay)
     if updatePending or not tracker then return end
     updatePending = true
-    C_Timer.After(0.1, ns.UpdateTracker)
+    C_Timer.After(delay or 0.1, ns.UpdateTracker)
 end
 
 ---------------------------------------------------------------------------
@@ -2514,12 +2524,14 @@ function ns.CreateTracker()
     -- Ereignisse, bei denen sich die Questliste oder die Sichtbarkeit ändern kann
     local events = {
         "QUEST_LOG_UPDATE", "QUEST_WATCH_LIST_CHANGED", "QUEST_ACCEPTED", "QUEST_REMOVED",
-        "QUEST_TURNED_IN", "UNIT_QUEST_LOG_CHANGED", "PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA",
+        "QUEST_TURNED_IN", "PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA",
         "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "GET_ITEM_INFO_RECEIVED",
     }
     for _, event in ipairs(events) do
         tracker:RegisterEvent(event)
     end
+    -- Nur die eigenen Queständerungen: in der Gruppe meldet das Spiel dieses Ereignis auch für jedes Mitglied
+    tracker:RegisterUnitEvent("UNIT_QUEST_LOG_CHANGED", "player")
     -- Start/Ende einer Quest-Frist (gibt es nicht in jedem Spielstand, daher geschützt)
     pcall(tracker.RegisterEvent, tracker, "QUEST_TIMERS_CHANGED")
     tracker:SetScript("OnEvent", function(self, event, ...)
@@ -2565,7 +2577,8 @@ function ns.CreateTracker()
                 rewardQualityCache[questID] = nil
             end
         end
-        ns.RequestUpdate()
+        -- Salven von Questziel-Meldungen (QUEST_LOG_UPDATE kommt mehrfach kurz hintereinander) zu einem Aufbau
+        ns.RequestUpdate(event == "QUEST_LOG_UPDATE" and 0.3 or nil)
     end)
 
     -- (gemeinsamer Takt aus ForeverCore)
