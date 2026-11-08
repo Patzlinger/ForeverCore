@@ -485,15 +485,36 @@ local function UpdateButtonLook(button)
     -- Grüner "Ausgerüstet"-Rand, Zuschnitt des Symbols
     local icon = button.icon or button.Icon or (name and _G[name .. "Icon"])
     if button.Border then
-        button.Border:SetAlpha(db.showEquipped and 1 or 0)
-        -- Blizzards grüner Rand hat feste Größe (62 px für 45-px-Knöpfe) und stand über unsere kleineren Knöpfe
-        -- hinaus: Größe im selben Verhältnis zum Knopf, mittig auf dem Symbol
-        local w = button:GetWidth()
-        if w and w >= 10 and button.Border.SetSize then
-            local size = w * 62 / BLIZZARD_BUTTON
-            button.Border:ClearAllPoints()
-            button.Border:SetPoint("CENTER", icon or button, "CENTER", 0, 0)
-            button.Border:SetSize(size, size)
+        -- Blizzards grüner Rand ist ein weiches Leuchtbild fester Größe und strahlte über unsere Knöpfe hinaus:
+        -- unsichtbar machen und stattdessen einen scharfen grünen Rand genau auf dem Symbol zeigen, solange Blizzard
+        -- "ausgerüstet" meldet (Border sichtbar)
+        button.Border:SetAlpha(0)
+        if not button.fbEquip and not InCombatLockdown() then
+            local edges = {}
+            for i = 1, 4 do
+                local t = button:CreateTexture(nil, "OVERLAY", nil, 3)
+                t:SetColorTexture(0.25, 0.95, 0.3, 0.95)
+                edges[i] = t
+            end
+            button.fbEquip = edges
+            local function Sync()
+                local on = ns.db and ns.db.showEquipped and button.Border:IsShown()
+                for _, t in ipairs(edges) do t:SetShown(on and true or false) end
+            end
+            button.fbEquipSync = Sync
+            hooksecurefunc(button.Border, "Show", Sync)
+            hooksecurefunc(button.Border, "Hide", Sync)
+            hooksecurefunc(button.Border, "SetShown", Sync)
+        end
+        local edges = button.fbEquip
+        if edges then
+            local target = icon or button
+            local th = 2
+            edges[1]:ClearAllPoints() edges[1]:SetPoint("TOPLEFT", target, "TOPLEFT") edges[1]:SetPoint("TOPRIGHT", target, "TOPRIGHT") edges[1]:SetHeight(th)
+            edges[2]:ClearAllPoints() edges[2]:SetPoint("BOTTOMLEFT", target, "BOTTOMLEFT") edges[2]:SetPoint("BOTTOMRIGHT", target, "BOTTOMRIGHT") edges[2]:SetHeight(th)
+            edges[3]:ClearAllPoints() edges[3]:SetPoint("TOPLEFT", target, "TOPLEFT") edges[3]:SetPoint("BOTTOMLEFT", target, "BOTTOMLEFT") edges[3]:SetWidth(th)
+            edges[4]:ClearAllPoints() edges[4]:SetPoint("TOPRIGHT", target, "TOPRIGHT") edges[4]:SetPoint("BOTTOMRIGHT", target, "BOTTOMRIGHT") edges[4]:SetWidth(th)
+            button.fbEquipSync()
         end
     end
     if icon then

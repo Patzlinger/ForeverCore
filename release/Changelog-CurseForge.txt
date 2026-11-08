@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- ForeverBars: the green "equipped" frame on action buttons now matches the button size.
+- ForeverBars: the green "equipped" frame on action buttons is now a sharp frame exactly around the icon.
 
 - Controller: the B button now closes Forever windows (e.g. the bags), like Escape.
 
