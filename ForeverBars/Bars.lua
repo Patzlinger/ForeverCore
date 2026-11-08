@@ -502,9 +502,20 @@ local function UpdateButtonLook(button)
                 for _, t in ipairs(edges) do t:SetShown(on and true or false) end
             end
             button.fbEquipSync = Sync
-            hooksecurefunc(button.Border, "Show", Sync)
+            -- Blizzard setzt Deckkraft/Farbe des Rands beim Aktualisieren des Knopfes neu (grün, 35 %): dauerhaft
+            -- unsichtbar halten, nicht nur einmal
+            local holding = false
+            local function Hold()
+                if holding then return end
+                holding = true
+                button.Border:SetAlpha(0)
+                holding = false
+            end
+            hooksecurefunc(button.Border, "SetAlpha", Hold)
+            hooksecurefunc(button.Border, "SetVertexColor", Hold)
+            hooksecurefunc(button.Border, "Show", function() Hold() Sync() end)
             hooksecurefunc(button.Border, "Hide", Sync)
-            hooksecurefunc(button.Border, "SetShown", Sync)
+            hooksecurefunc(button.Border, "SetShown", function() Hold() Sync() end)
         end
         local edges = button.fbEquip
         if edges then
