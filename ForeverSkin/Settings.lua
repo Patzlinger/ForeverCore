@@ -477,7 +477,7 @@ local function SkinSettings()
     -- ist, in JEDEM Bild die sichtbaren Zeilen prüfen (sonst blitzten Blizzards Grafiken kurz auf; schon umgestaltete
     -- Zeilen kosten fast nichts). Dazu eine gerade offene Auswahlliste flach und dunkel.
     local watch = CreateFrame("Frame", nil, f)
-    watch:SetScript("OnHide", function() if menuBack then menuBack:Hide() end end)
+    watch:SetScript("OnHide", function() for _, back in pairs(menuBacks) do back:Hide() end end)
     watch:SetScript("OnUpdate", function()
         for _, tab in ipairs({ f.GameTab, f.AddOnsTab }) do if tab then pcall(ns.CenterText, tab) end end
         pcall(SkinCategoryList, list)

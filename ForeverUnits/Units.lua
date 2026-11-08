@@ -1225,10 +1225,7 @@ local function ShowPlaceholder(b)
     v.portrait:SetTexture(134400) -- Fragezeichen
     v.portrait:SetTexCoord(0.08, 0.92, 0.08, 0.92)
     v.heal:SetValue(0) v.shield:SetValue(0) v.absorb:SetValue(0)
-    -- Elite/Rar/Boss: Blizzards Symbol (wie an Blizzards Namensplaketten) an der oberen rechten Ecke
-    v.classIcon = v.top:CreateTexture(nil, "OVERLAY", nil, 2)
-    v.classIcon:SetSize(20, 20)
-    v.classIcon:SetPoint("CENTER", c, "TOPRIGHT", -3, -3)
+    -- (classIcon wird schon beim Bau des Rahmens angelegt – hier nur verstecken, nicht jedes Mal neu erzeugen)
     for _, t in ipairs({ v.pvp, v.leader, v.mark, v.classIcon }) do t:Hide() end
 end
 
