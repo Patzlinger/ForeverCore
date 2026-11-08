@@ -1,8 +1,10 @@
 # Forever Core – Changelog
 
-## Unreleased
+## 0.541b – 2026-11-08
 
 - ForeverBars: the green "equipped" frame on action buttons is now a sharp frame exactly around the icon.
+
+- ForeverPlates: threat colors are more reliable when the game reports that you hold aggro; new /fplates threat command prints diagnostics.
 
 - Controller: the B button now closes Forever windows (e.g. the bags), like Escape.
 
