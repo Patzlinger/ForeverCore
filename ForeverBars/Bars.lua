@@ -483,8 +483,19 @@ local function UpdateButtonLook(button)
     end
     if button.fbBackground then button.fbBackground:SetColorTexture(unpack(skin.background)) end
     -- Grüner "Ausgerüstet"-Rand, Zuschnitt des Symbols
-    if button.Border then button.Border:SetAlpha(db.showEquipped and 1 or 0) end
     local icon = button.icon or button.Icon or (name and _G[name .. "Icon"])
+    if button.Border then
+        button.Border:SetAlpha(db.showEquipped and 1 or 0)
+        -- Blizzards grüner Rand hat feste Größe (62 px für 45-px-Knöpfe) und stand über unsere kleineren Knöpfe
+        -- hinaus: Größe im selben Verhältnis zum Knopf, mittig auf dem Symbol
+        local w = button:GetWidth()
+        if w and w >= 10 and button.Border.SetSize then
+            local size = w * 62 / BLIZZARD_BUTTON
+            button.Border:ClearAllPoints()
+            button.Border:SetPoint("CENTER", icon or button, "CENTER", 0, 0)
+            button.Border:SetSize(size, size)
+        end
+    end
     if icon then
         local crop = math.max(0, math.min(30, db.iconZoom or 4)) / 100
         icon:SetTexCoord(crop, 1 - crop, crop, 1 - crop)
