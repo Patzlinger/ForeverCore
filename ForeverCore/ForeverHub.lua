@@ -4024,6 +4024,15 @@ do
                 if not first or (btn:GetTop() or 0) > (first:GetTop() or 0) then first = btn end
             end
             local style = Skinned() and last ~= nil
+            -- Spielmenü liegt über allen offenen Forever-Fenstern (diese zählen ihre Ebenen bis 8000 hoch, Blizzards
+            -- Menü bliebe sonst mittendrin: Knöpfe über, Fläche unter dem Fenster)
+            do
+                local strata, top = menu:GetFrameStrata(), 0
+                for w in pairs(SHARED.windows) do
+                    if w:IsShown() and w:GetFrameStrata() == strata then top = math.max(top, HighestLevel(w, 5)) end
+                end
+                if menu:GetFrameLevel() <= top + 2 then menu:SetFrameLevel(math.min(top + 10, 9000)) end
+            end
             if style then
                 if not skin then BuildSkin() end
                 -- Blizzards Rahmen, Kopf und Hintergrund unsichtbar (die Knöpfe selbst bleiben bedienbar)
