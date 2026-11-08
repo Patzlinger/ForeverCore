@@ -253,8 +253,21 @@ local knownMenus = setmetatable({}, { __mode = "k" }) -- gefundene Menü-Rahmen 
 local function BackFor(menu)
     local back = menuBacks[menu]
     if not back then
-        back = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
-        ns.UI.SetFlat(back, C.background)
+        -- Ohne BackdropTemplate: dessen Größenrechnung (Backdrop.lua) scheitert an der gesperrten Menügröße
+        -- (Rechtsklick-Menü auf Gruppenmitglieder) – darum Hintergrund und Rand aus einfachen Flächen
+        back = CreateFrame("Frame", nil, UIParent)
+        local bg = back:CreateTexture(nil, "BACKGROUND")
+        bg:SetAllPoints()
+        bg:SetColorTexture(C.background[1], C.background[2], C.background[3], C.background[4] or 1)
+        local bd = C.border
+        for _, e in ipairs({ { "TOPLEFT", "TOPRIGHT", nil, 1 }, { "BOTTOMLEFT", "BOTTOMRIGHT", nil, 1 },
+            { "TOPLEFT", "BOTTOMLEFT", 1, nil }, { "TOPRIGHT", "BOTTOMRIGHT", 1, nil } }) do
+            local t = back:CreateTexture(nil, "BORDER")
+            t:SetColorTexture(bd[1], bd[2], bd[3], bd[4] or 1)
+            t:SetPoint(e[1])
+            t:SetPoint(e[2])
+            if e[3] then t:SetWidth(e[3]) else t:SetHeight(e[4]) end
+        end
         local line = back:CreateTexture(nil, "ARTWORK")
         line:SetTexture(WHITE)
         line:SetVertexColor(C.accent[1], C.accent[2], C.accent[3], 0.8)
