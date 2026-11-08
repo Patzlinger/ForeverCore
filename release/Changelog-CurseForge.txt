@@ -1,6 +1,22 @@
 # Forever Core – Changelog
 
-## Unreleased
+## 0.54b – 2026-11-08
+
+- ForeverQuests: Shift-click a quest in the tracker or the quest log to link it in chat (like items). Stopping to track a quest is now done in the right-click menu.
+
+- ForeverQuests: less stutter when quest objectives update (fonts are only re-applied when changed, reputation list cached, only your own quest log changes trigger a redraw, bursts of updates are merged).
+
+- ForeverBars: the "casts left" counter on the action bars no longer shows 0 with full mana in combat; it now uses the game's own mana percentage.
+
+- ForeverCore: the game menu (Escape) always sits on top of open Forever windows.
+
+- ForeverSkin: right-click menus (e.g. on group members) no longer cause errors in combat; menu backgrounds are hidden correctly when the options window closes.
+
+- ForeverPlates: "only purgeable" is greyed out while "Show buffs" is off.
+
+- ForeverUnits: unlocking the frames no longer creates a new elite icon each time.
+
+- Performance: unit frames (ForeverFrames, ForeverUnits) and ForeverPlates only listen to events of their own units; HoT/DoT scans are cached for a quarter of a second; settings defaults are no longer re-checked on every access (Frames, Skin, Chat, Tooltip, Cast).
 
 - ForeverQuests: timed quests show their remaining time below the quest name in the tracker and quest log (orange under 5 minutes, red under 1 minute), also in the quest tooltip.
 
