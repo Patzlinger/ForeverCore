@@ -175,8 +175,17 @@ do
     Check(T("Kontrolleffekte (CC) groß an der Seite", "Crowd control (CC) large at the side"), "cc")
     Check(T("links statt rechts", "left instead of right"), "ccLeft", true)
     Slider(T("Größe", "Size"), "ccSize", 16, 40, 1, " px", true)
-    Check(T("Stärkungen anzeigen", "Show buffs"), "buffs")
-    Check(T("nur entfernbare (Purge)", "only purgeable"), "buffsPurgeable", true)
+    -- "nur entfernbare" wirkt nur, solange Stärkungen angezeigt werden: sonst ausgegraut
+    local purgeCb
+    local function DimPurge()
+        if not purgeCb then return end
+        local on = ns.GetDB().buffs and true or false
+        purgeCb:SetEnabled(on)
+        purgeCb:SetAlpha(on and 1 or 0.4)
+    end
+    Check(T("Stärkungen anzeigen", "Show buffs"), "buffs", nil, DimPurge)
+    purgeCb = Check(T("nur entfernbare (Purge)", "only purgeable"), "buffsPurgeable", true)
+    controls[#controls + 1] = { refresh = DimPurge }
     Slider(T("Größe", "Size"), "buffSize", 10, 28, 1, " px", true)
     Gap()
     -- Bedrohungsfarben: eigene Farbe je Stufe (gilt, wenn "Leiste in Bedrohungsfarbe" an ist)
