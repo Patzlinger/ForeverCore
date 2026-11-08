@@ -1828,7 +1828,12 @@ function ns.Start()
     started = true
     GetDB()
     FindKick()
-    for event in pairs(H) do pcall(ev.RegisterEvent, ev, event) end
+    -- Diese Ereignisse wertet nur der Spieler aus ("unit ~= player" -> zurück): nicht für jede Einheit wecken lassen
+    local playerOnly = { UNIT_SPELLCAST_SUCCEEDED = true, UNIT_POWER_FREQUENT = true, UNIT_QUEST_LOG_CHANGED = true }
+    for event in pairs(H) do
+        if playerOnly[event] then pcall(ev.RegisterUnitEvent, ev, event, "player")
+        else pcall(ev.RegisterEvent, ev, event) end
+    end
     ns.ApplyFriendly()
     ns.ApplyWorldText()
     ns.ApplyQuestie()
