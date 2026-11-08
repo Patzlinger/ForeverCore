@@ -915,8 +915,13 @@ end
 
 local function ThreatInfo(unit)
     if not UnitDetailedThreatSituation then return end
-    local ok, _, status, pct = pcall(UnitDetailedThreatSituation, "player", unit)
-    if ok then return status, pct end
+    local ok, tanking, status, pct = pcall(UnitDetailedThreatSituation, "player", unit)
+    if not ok then return end
+    -- "tanking" (erster Rückgabewert) = ich habe die Aggro: dann nie Stufe 0/1 (falls die Stufe zu niedrig geliefert wird)
+    if not IsSecret(tanking) and tanking == true and not IsSecret(status) and (status == nil or status < 2) then
+        status = 3
+    end
+    return status, pct
 end
 
 local function PlaceThreatText(fp)
@@ -1026,6 +1031,25 @@ local function UpdateThreat(fp)
     fp.threatBadge:SetShown(show)
     fp.threatCol = col
     ApplyBarColor(fp)
+end
+
+-- Fehlersuche: /fplates threat – warum ist die Leiste (nicht) in Bedrohungsfarbe? (Ziel wählen, im Kampf aufrufen)
+function ns.ThreatDiag()
+    local function P(t) UI.Chat("ForeverPlates", t) end
+    local function S(v) if IsSecret(v) then return "geheim" end return tostring(v) end
+    local d = db
+    P(string.format("Rolle: %s | Gruppe: %s | als Tank gewertet: %s | Begleiter: %s", S(UnitGroupRolesAssigned("player")),
+        tostring(IsInGroup()), tostring(IsTank()), tostring(UnitExists("pet"))))
+    P(string.format("Optionen: Bedrohung %s | Leiste färben %s | nur als Tank %s | eigene Farben %s | immer Tank %s",
+        tostring(d.threat), tostring(d.threatColorBar), tostring(d.threatColorTankOnly), tostring(d.threatCustom), tostring(d.threatTank)))
+    if not UnitExists("target") then P("Kein Ziel – Gegner anwählen.") return end
+    local ok, tanking, status, pct, raw = pcall(UnitDetailedThreatSituation, "player", "target")
+    P(string.format("Ziel: aufrufbar %s | tanking %s | Stufe %s | Prozent %s | roh %s", tostring(ok), S(tanking), S(status), S(pct), S(raw)))
+    for unit, fp in pairs(plates) do
+        if fp.isTarget then
+            P(string.format("Plakette %s: Gegner %s | Leistenfarbe aus Bedrohung: %s", unit, tostring(fp.enemy), fp.threatCol and "ja" or "nein"))
+        end
+    end
 end
 
 ---------------------------------------------------------------------------

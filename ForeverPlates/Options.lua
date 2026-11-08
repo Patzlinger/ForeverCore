@@ -314,6 +314,8 @@ SlashCmdList["FOREVERPLATES"] = Safe("Befehl", function(msg)
         ns.ApplyAll()
         UI.Chat("ForeverPlates", d.skin and T("Forever-Rahmen an.", "Forever frame on.")
             or T("Forever-Rahmen aus.", "Forever frame off."))
+    elseif msg == "threat" or msg == "bedrohung" then
+        if ns.ThreatDiag then ns.ThreatDiag() end
     else
         ToggleOptions()
     end
