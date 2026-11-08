@@ -422,16 +422,47 @@ local handlers = {}
 local eventFrame = CreateFrame("Frame")
 ns.eventFrame = eventFrame
 
+local Dispatch
+
+-- Einheiten-Ereignisse (UNIT_HEALTH, UNIT_AURA …) nur für unsere Rahmen-Einheiten abonnieren: je Einheit ein eigener
+-- kleiner Rahmen mit RegisterUnitEvent. Vorher weckte jede Lebens-/Aura-Änderung jeder Namensplakette (Schlachtfeld!)
+-- das Addon, nur damit es sie gleich wieder verwarf.
+local unitTokens, unitFrames
+local function UnitFor(token)
+    unitFrames = unitFrames or {}
+    local f = unitFrames[token]
+    if not f then
+        f = CreateFrame("Frame")
+        f:SetScript("OnEvent", function(_, ...) Dispatch(...) end)
+        unitFrames[token] = f
+    end
+    return f
+end
+local function RegisterUnitEvents(event)
+    if not unitTokens then
+        unitTokens = { "player", "pet" }
+        for i = 1, 4 do unitTokens[#unitTokens + 1] = "party" .. i; unitTokens[#unitTokens + 1] = "partypet" .. i end
+        for i = 1, 40 do unitTokens[#unitTokens + 1] = "raid" .. i; unitTokens[#unitTokens + 1] = "raidpet" .. i end
+    end
+    for _, token in ipairs(unitTokens) do
+        local f = UnitFor(token)
+        if not pcall(f.RegisterUnitEvent, f, event, token) then return false end
+    end
+    return true
+end
+
 function ns.On(event, where, fn)
     if not handlers[event] then
         handlers[event] = {}
         -- Abgesichert: gibt es ein Event auf diesem Client nicht, wird es uebersprungen
-        pcall(eventFrame.RegisterEvent, eventFrame, event)
+        if not (event:find("^UNIT_") and RegisterUnitEvents(event)) then
+            pcall(eventFrame.RegisterEvent, eventFrame, event)
+        end
     end
     tinsert(handlers[event], { where = where, fn = fn })
 end
 
-eventFrame:SetScript("OnEvent", function(_, event, ...)
+function Dispatch(event, ...)
     local list = handlers[event]
     if not list then return end
     for i = 1, #list do
@@ -439,7 +470,8 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
         local ok, err = pcall(h.fn, ...)
         if not ok then ns.ReportError(h.where or event, err) end
     end
-end)
+end
+eventFrame:SetScript("OnEvent", function(_, ...) Dispatch(...) end)
 
 
 ns.savedVarsLoaded = nil

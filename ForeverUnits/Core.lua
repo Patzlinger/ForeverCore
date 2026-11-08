@@ -311,22 +311,44 @@ end
 local handlers = {}
 local eventFrame = CreateFrame("Frame")
 
+local Dispatch
+
+-- Einheiten-Ereignisse (UNIT_HEALTH, UNIT_AURA …) nur für unsere Rahmen-Einheiten abonnieren: je Einheit ein eigener
+-- kleiner Rahmen mit RegisterUnitEvent. Vorher weckte jede Änderung jeder Namensplakette das Addon, nur damit es sie
+-- gleich wieder verwarf.
+local unitFrames = {}
+local function RegisterUnitEvents(event)
+    for _, u in ipairs(ns.UNITS) do
+        local f = unitFrames[u.unit]
+        if not f then
+            f = CreateFrame("Frame")
+            f:SetScript("OnEvent", function(_, ...) Dispatch(...) end)
+            unitFrames[u.unit] = f
+        end
+        if not pcall(f.RegisterUnitEvent, f, event, u.unit) then return false end
+    end
+    return true
+end
+
 function ns.On(event, where, fn)
     if not handlers[event] then
         handlers[event] = {}
-        pcall(eventFrame.RegisterEvent, eventFrame, event)
+        if not (event:find("^UNIT_") and RegisterUnitEvents(event)) then
+            pcall(eventFrame.RegisterEvent, eventFrame, event)
+        end
     end
     tinsert(handlers[event], { where = where, fn = fn })
 end
 
-eventFrame:SetScript("OnEvent", function(_, event, ...)
+function Dispatch(event, ...)
     local list = handlers[event]
     if not list then return end
     for i = 1, #list do
         local ok, err = pcall(list[i].fn, ...)
         if not ok then ns.ReportError(list[i].where or event, err) end
     end
-end)
+end
+eventFrame:SetScript("OnEvent", function(_, ...) Dispatch(...) end)
 
 ---------------------------------------------------------------------------
 -- Gemeinsame Einstellungs-Verwaltung (ForeverCore): Profile je Charakter, Zuruecksetzen, Export/Import
