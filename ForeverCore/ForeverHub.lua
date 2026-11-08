@@ -5385,6 +5385,9 @@ end
 -- Im Kampf sind Aura-Daten gesperrt. Ersatz: eigene Zauber merken (Zauber-ID, Ziel, Ablauf) und daraus rechnen.
 -- tracked[GUID][Art][Zauber-ID] = { amount, seconds, expires }; ausserhalb des Kampfes wird es aus den echten Auren erneuert.
 local tracked, pendingCast, overCbs = {}, {}, {}
+-- Kurzer Zwischenspeicher für UI.OverTimeRemaining: wird bei jedem Lebens-Ereignis jeder Einheit gefragt und scannte
+-- jedes Mal alle Auren (bei Einheiten ohne eigene HoT sogar zweimal). [Einheit .. Art] = { Zeit, Summe }
+local overCache, OVER_CACHE_SECONDS = {}, 0.25
 function UI.OnOverTimeChange(fn) overCbs[#overCbs + 1] = fn end
 local function NotifyOver() for _, fn in ipairs(overCbs) do pcall(fn) end end
 
@@ -5416,6 +5419,7 @@ local function ResolveGuid(targetName, kind)
 end
 
 local function Track(guid, kind, spellID, info, expires)
+    wipe(overCache) -- neuer eigener HoT/DoT: sofort neu rechnen
     local t = tracked[guid]
     if not t then t = {} tracked[guid] = t end
     local k = t[kind]
@@ -5470,10 +5474,29 @@ do
     local f = CreateFrame("Frame")
     f:RegisterEvent("NAME_PLATE_UNIT_ADDED")
     f:RegisterEvent("NAME_PLATE_UNIT_REMOVED")
-    f:SetScript("OnEvent", function(_, _, unit) if unit then plateGuids[unit] = nil end end)
+    -- Einheit hinter einem Namen kann wechseln: Zwischenspeicher leeren
+    f:RegisterEvent("PLAYER_TARGET_CHANGED")
+    f:RegisterEvent("PLAYER_FOCUS_CHANGED")
+    f:RegisterEvent("GROUP_ROSTER_UPDATE")
+    f:SetScript("OnEvent", function(_, event, unit)
+        wipe(overCache)
+        if event:find("^NAME_PLATE") and unit then plateGuids[unit] = nil end
+    end)
 end
 
+local ComputeOverTime
 function UI.OverTimeRemaining(unit, kind)
+    if type(unit) ~= "string" or Secret(unit) then return ComputeOverTime(unit, kind) end
+    local key = unit .. "|" .. (kind or "")
+    local now = GetTime()
+    local c = overCache[key]
+    if c and now - c[1] < OVER_CACHE_SECONDS then return c[2] end
+    local total = ComputeOverTime(unit, kind)
+    overCache[key] = { now, total }
+    return total
+end
+
+function ComputeOverTime(unit, kind)
     local filter = kind == "heal" and "HELPFUL|PLAYER" or "HARMFUL|PLAYER"
     local now, total, found = GetTime(), 0, false
     local guid = GuidOf(unit)
