@@ -1049,15 +1049,22 @@ function ns.UpdateCastCounts()
                 end
                 if fs then
                     SetTextFont(fs, math.max(8, ns.db.fontSize - 1))
-                    if mana then
+                    local done = false
+                    if not mm.live and mm.max and UnitPowerPercent then
+                        -- gesperrtes Mana: Anzahl über die Kurve vom Spiel berechnen lassen (genau, kein Abdriften wie
+                        -- die Schätzung, die im Kampf nach unten lief und trotz vollem Mana 0 zeigte)
+                        if HubUI.SetStepCount(fs, "player", 0, cost, mm.max) then
+                            fs:SetTextColor(0.55, 0.78, 1)
+                            done = true
+                        end
+                    end
+                    if not done and mana then
+                        -- lesbares Mana (oder, wenn die Kurve fehlt, die Schätzung)
                         local okCalc, n = pcall(function() return math.floor(mana / cost) end)
                         if okCalc and type(n) == "number" then
                             fs:SetText(n)
                             if n > 0 then fs:SetTextColor(0.55, 0.78, 1) else fs:SetTextColor(1, 0.3, 0.3) end
                         end
-                    elseif mm.max and UnitPowerPercent then
-                        -- gesperrtes Mana: Anzahl über die Kurve vom Spiel berechnen lassen
-                        if HubUI.SetStepCount(fs, "player", 0, cost, mm.max) then fs:SetTextColor(0.55, 0.78, 1) end
                     end
                     -- (der Text kann gesperrt sein: Vergleich im pcall, im Zweifel zeigen)
                     local okText, hasText = pcall(function() return (fs:GetText() or "") ~= "" end)
