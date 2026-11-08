@@ -572,6 +572,21 @@ function UI.RegisterWindow(f)
     f:HookScript("OnShow", Front)
     f:HookScript("OnMouseDown", Front)
     if f.header and f.header.HookScript then f.header:HookScript("OnMouseDown", Front) end
+    -- Controller: B-Taste (PAD2) schließt das Fenster wie Escape. Die Gamepad-Taste wird nur gelesen, solange das
+    -- Fenster offen ist; alle anderen Tasten gehen unverändert weiter ans Spiel.
+    if f.EnableGamePadButton and f.SetPropagateKeyboardInput then
+        pcall(function()
+            f:EnableGamePadButton(true)
+            f:HookScript("OnGamePadButtonDown", function(self, button)
+                if button == "PAD2" and not (InCombatLockdown() and self:IsProtected()) then
+                    self:SetPropagateKeyboardInput(false)
+                    self:Hide()
+                else
+                    self:SetPropagateKeyboardInput(true)
+                end
+            end)
+        end)
+    end
 end
 
 ---------------------------------------------------------------------------

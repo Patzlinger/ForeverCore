@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Controller: the B button now closes Forever windows (e.g. the bags), like Escape.
+
 ## 0.54b – 2026-11-08
 
 - ForeverQuests: Shift-click a quest in the tracker or the quest log to link it in chat (like items). Stopping to track a quest is now done in the right-click menu.
