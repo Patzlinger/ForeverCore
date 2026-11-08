@@ -58,10 +58,16 @@ local function FillDefaults(target, defaults)
     end
 end
 
+local filledDB, defaultsProbe
 function ns.GetDB()
+    defaultsProbe = defaultsProbe or next(ns.DEFAULTS)
     if type(_G.ForeverChatDB) ~= "table" then _G.ForeverChatDB = {} end
-    FillDefaults(_G.ForeverChatDB, ns.DEFAULTS)
-    return _G.ForeverChatDB
+    local db = _G.ForeverChatDB
+    if filledDB ~= db or db[defaultsProbe] == nil then -- Standardwerte nur einmal je Tabelle (siehe ForeverFrames)
+        FillDefaults(db, ns.DEFAULTS)
+        filledDB = db
+    end
+    return db
 end
 
 function ns.Chat(text) UI.Chat(ADDON_NAME, text) end

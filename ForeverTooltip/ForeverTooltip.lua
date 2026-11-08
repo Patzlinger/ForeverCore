@@ -32,11 +32,15 @@ local DEFAULTS = {
 }
 
 local db
+local filledDB, defaultsProbe = nil, next(DEFAULTS)
 local function GetDB()
     if type(_G.ForeverTooltipDB) ~= "table" then _G.ForeverTooltipDB = db or {} end
     db = _G.ForeverTooltipDB
-    for k, v in pairs(DEFAULTS) do
-        if db[k] == nil then db[k] = v end
+    if filledDB ~= db or db[defaultsProbe] == nil then -- Standardwerte nur einmal je Tabelle (siehe ForeverFrames)
+        for k, v in pairs(DEFAULTS) do
+            if db[k] == nil then db[k] = v end
+        end
+        filledDB = db
     end
     -- einmalig: neuer Standard "am Mauszeiger" (vorher Ankerplatz)
     if not db.atCursorV2 then

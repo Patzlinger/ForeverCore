@@ -201,14 +201,20 @@ local raidView = setmetatable({}, {
 })
 
 local db
+local filledDB, defaultsProbe = nil, next(ns.DEFAULTS)
 -- Die eigentliche Tabelle (Gruppe + gemeinsame Werte), unabhaengig von der Lage
 function ns.GetBaseDB()
     if type(_G.ForeverFramesDB) ~= "table" then
         _G.ForeverFramesDB = db or { __fresh = true }
     end
     db = _G.ForeverFramesDB
-    for k, v in pairs(ns.DEFAULTS) do
-        if db[k] == nil then db[k] = CopyValue(v) end
+    -- Standardwerte nur einmal je Tabelle eintragen (wird bei jedem Ereignis aufgerufen); ersetzt das Spiel die
+    -- Tabelle oder ist sie geleert, fehlt das Merkzeichen und es wird neu aufgefüllt
+    if filledDB ~= db or db[defaultsProbe] == nil then
+        for k, v in pairs(ns.DEFAULTS) do
+            if db[k] == nil then db[k] = CopyValue(v) end
+        end
+        filledDB = db
     end
     return db
 end

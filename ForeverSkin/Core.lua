@@ -70,9 +70,15 @@ function ns.RescaleAll()
     for frame in pairs(scaled) do ApplyScale(frame) end
 end
 
+local skinFilled, skinProbe
 function ns.GetDB()
     if type(_G.ForeverSkinDB) ~= "table" then _G.ForeverSkinDB = {} end
     local db = _G.ForeverSkinDB
+    -- wird sehr oft aufgerufen (u. a. 20-mal pro Sekunde): Umrechnung und Standardwerte nur einmal je Tabelle
+    -- (ersetzt das Spiel die Tabelle oder ist sie geleert, fehlt das Merkzeichen und es läuft neu)
+    skinProbe = skinProbe or next(ns.DEFAULTS)
+    if skinFilled == db and db[skinProbe] ~= nil then return db end
+    skinFilled = db
     -- frühere Einstellung "scale" (absolute Prozent) einmalig umrechnen: 110 % von früher = 100 % jetzt
     if db.size == nil and tonumber(db.scale) then
         db.size = math.floor(tonumber(db.scale) / 1.1 / 5 + 0.5) * 5

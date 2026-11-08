@@ -80,13 +80,17 @@ local DEFAULTS = {
 -- "__fresh" markiert eine selbst angelegte (also NICHT geladene) Tabelle – der Selbsttest
 -- erkennt daran, ob die SavedVariables beim Login wirklich geladen wurden.
 local db
+local filledDB, defaultsProbe = nil, next(DEFAULTS)
 local function GetDB()
     if type(_G.ForeverCastDB) ~= "table" then
         _G.ForeverCastDB = db or { __fresh = true }
     end
     db = _G.ForeverCastDB
-    for k, v in pairs(DEFAULTS) do
-        if db[k] == nil then db[k] = v end
+    if filledDB ~= db or db[defaultsProbe] == nil then -- Standardwerte nur einmal je Tabelle (siehe ForeverFrames)
+        for k, v in pairs(DEFAULTS) do
+            if db[k] == nil then db[k] = v end
+        end
+        filledDB = db
     end
     db.flights = db.flights or {} -- gemerkte Flugzeiten: ["Start → Ziel"] = Sekunden
     -- einmalig: Combopunkte an der Leiste standardmäßig aus (zeigen ForeverUnits/ForeverPlates)
