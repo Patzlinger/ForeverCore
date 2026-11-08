@@ -765,10 +765,12 @@ local function OnLineClick(self, button)
     if button == "RightButton" then
         OpenQuestMenu(self, questID)
     elseif IsShiftKeyDown() then
-        -- Shift + Linksklick: Quest nicht mehr verfolgen
-        if ns.IsQuestTracked(questID) then
-            ns.SetQuestTracked(questID, false)
-            ns.RequestUpdate()
+        -- Shift + Linksklick: Quest im Chat verlinken (wie bei Gegenständen); Verfolgung beenden geht im Rechtsklick-Menü
+        local link = GetQuestLink and GetQuestLink(questID)
+        if not link then return end
+        if not ChatEdit_InsertLink(link) then
+            -- kein Chatfenster offen: öffnen und den Link einfügen
+            if ChatFrame_OpenChat then ChatFrame_OpenChat(link) end
         end
     else
         -- Linksklick auf den Namen: Quest im Questlog öffnen (auf-/zuklappen nur noch über den Pfeil).
