@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 83
+local VERSION = 84
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -2388,7 +2388,7 @@ local function BuildHubWindow()
     local tilesEnd = listTop + rowsN * (TILE_H + TILE_GAP)
     local generalY = tilesEnd + 56                        -- Überschrift "Allgemein"
     local toolsY = generalY + 132                         -- Überschrift "Werkzeuge" (mind. ~24 px Luft zum Kasten davor)
-    local H = toolsY + 96
+    local H = toolsY + 112                                -- (+16: Build-Zeile ganz unten)
     local f = UI.SettingsPanel("ForeverHubWindow", UI.NAME, W, H,
         { key = "ForeverCore", group = UI.SETTINGS_GROUPS.core, label = T("Übersicht", "Overview") })
     hubWindow = f
@@ -2665,7 +2665,27 @@ local function BuildHubWindow()
         "/forever opens this page · /fmove moves all frames · /forever reset brings the buttons back"))
     hint:SetWordWrap(true)
 
+    -- ganz unten, klein: Suite-Version, fortlaufende Build-Nummer (Anzahl Commits), Commit und Datum/Uhrzeit des
+    -- letzten Commits – aus ForeverCore\Build.lua (erzeugt von tools/write-build-info.ps1; fehlt sie, nur die Version)
+    local buildLine = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    buildLine:SetPoint("TOPLEFT", 20, -(toolsY + 90))
+    buildLine:SetJustifyH("LEFT")
+    local function UpdateBuildLine()
+        local parts = {}
+        local version = C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(CORE, "Version")
+        if version then parts[#parts + 1] = "Version " .. version end
+        local b = hub.build
+        if type(b) == "table" and (b.number or 0) > 0 then
+            parts[#parts + 1] = "Build " .. b.number .. (b.commit ~= "" and (" (" .. b.commit .. ")") or "")
+            if b.date and b.date ~= "" then parts[#parts + 1] = T("Stand ", "Updated ") .. b.date end
+            if b.branch and b.branch ~= "" and b.branch ~= "main" then parts[#parts + 1] = b.branch end
+        end
+        parts[#parts + 1] = "Hub v" .. VERSION
+        buildLine:SetText(table.concat(parts, "  ·  "))
+    end
+
     f:SetScript("OnShow", function()
+        UpdateBuildLine()
         SafeSetup() -- falls seit dem Login Addons/Knoepfe dazugekommen sind
         if f.welcome then
             f.TitleText:SetText(T("Willkommen bei Forever Core UI", "Welcome to Forever Core UI"))

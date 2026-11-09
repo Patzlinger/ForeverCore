@@ -14,3 +14,6 @@ desktop.ini
 
 # automatischer Abgleich: erzeugt von tools/auto-sync-install.ps1 (enthält den lokalen Pfad)
 tools/auto-sync-hidden.vbs
+
+# Build-Nummer fürs Spiel: erzeugt von tools/write-build-info.ps1 (ändert sich mit jedem Commit)
+ForeverCore/Build.lua

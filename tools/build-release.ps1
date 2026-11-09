@@ -26,6 +26,9 @@ if (@($distinct).Count -ne 1) { throw "Unterschiedliche Versionen in den .toc-Da
 if (!$Version) { $Version = $distinct }
 elseif ($Version -ne $distinct) { throw "Angegebene Version $Version passt nicht zu den .toc ($distinct)" }
 
+# Build-Nummer und Datum des Stands in ForeverCore\Build.lua (wird mit ins Zip gepackt)
+& (Join-Path $PSScriptRoot 'write-build-info.ps1')
+
 if (!$ReleaseDir) { $ReleaseDir = Join-Path (Split-Path $root -Parent) "_Forever-Release-$Version" }
 # immer als vollständiger Pfad: mit einem relativen Pfad (z. B. ..\_Forever-Release-0.3b) stimmten die Pfade im Zip
 # nicht (Ordner wie "ForeverBars/beta_\Interface\...") und .NET legt Zips relativ zu einem anderen Ordner an

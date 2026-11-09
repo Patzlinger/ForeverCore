@@ -49,5 +49,7 @@ if ($counts.Count -lt 2) {
 }
 $dirty = @(git -C $root status --porcelain 2>$null).Count
 if ($dirty -gt 0) { $out += "$dirty nicht committete Dateien" }
+# Build-Nummer fürs Spiel (ForeverCore\Build.lua, Übersicht im Einstellungsfenster)
+try { & (Join-Path $PSScriptRoot 'write-build-info.ps1') } catch {}
 "Forever-Repo [$branch]: " + ($out -join " · ")
 exit 0

@@ -11,5 +11,6 @@
 ## SavedVariables: ForeverHubDB
 
 ForeverHub.lua
+Build.lua
 Movers.lua
 Setup.lua

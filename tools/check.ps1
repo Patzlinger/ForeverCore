@@ -19,6 +19,9 @@ $errors = New-Object System.Collections.Generic.List[string]
 $warnings = New-Object System.Collections.Generic.List[string]
 $notes = New-Object System.Collections.Generic.List[string]
 
+# ForeverCore\Build.lua (Build-Nummer, nicht eingecheckt) muss da sein – die .toc nennt sie
+& (Join-Path $PSScriptRoot 'write-build-info.ps1')
+
 $allAddons = Get-ChildItem $root -Directory | Where-Object { Test-Path (Join-Path $_.FullName ($_.Name + '.toc')) } |
     ForEach-Object { $_.Name }
 

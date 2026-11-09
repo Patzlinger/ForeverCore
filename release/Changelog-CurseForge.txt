@@ -8,6 +8,8 @@
 
 - Controller: after closing a Forever window with B, the next window (e.g. the bags) no longer swallows the first gamepad button press; no more blocked-action errors from gamepad input in combat (in combat, B no longer closes Forever windows – use Escape or close them after combat).
 
+- ForeverCore: the overview page in the settings window shows the version, build number and build date at the bottom (helps when reporting bugs).
+
 - ForeverSkin / ForeverLoot: the red close X no longer comes back (e.g. in the loot window); the ForeverLoot roll window uses the Forever close cross too (window and the remove button of each item).
 
 ## 0.541b – 2026-11-08

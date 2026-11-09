@@ -52,4 +52,7 @@ Patzlinger und flowfy arbeiten zeitgleich, jeder mit seinem eigenen Claude, übe
 
 ## Skripte in `tools/`
 `session-sync.ps1`, `auto-sync.ps1`, `auto-sync-install.ps1` (Abgleich, siehe oben), `link-addons.ps1` (Addon-Ordner als
-Junctions ins Spiel; `-AddOnsDir`), `check.ps1` (Prüflauf, siehe CLAUDE.md, Testen), `build-release.ps1` (Release.md).
+Junctions ins Spiel; `-AddOnsDir`), `check.ps1` (Prüflauf, siehe CLAUDE.md, Testen), `build-release.ps1` (Release.md), `write-build-info.ps1`
+(schreibt `ForeverCore/Build.lua`: Build-Nummer = Anzahl Commits, Commit, Datum/Uhrzeit, Zweig – unten auf der
+Übersichtsseite im Einstellungsfenster. **Nicht eingecheckt** (`.gitignore`), sonst Konflikt bei jedem Abgleich;
+erzeugt automatisch von session-sync/Auto-Sync, check, link-addons und build-release).
