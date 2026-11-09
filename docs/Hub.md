@@ -1,7 +1,43 @@
 # ForeverHub im Detail (Funktionen, Einstellungs-Verwaltung)
 
-Ausgelagert aus CLAUDE.md (Abschnitte 6 und 9). Lesen, wenn am Hub gearbeitet wird oder ein Addon neue
-Hub-Funktionen, Einstellungen, Profile, Minimap-Knopf oder /fmove einbindet.
+Ausgelagert aus CLAUDE.md (alte Abschnitte 5, 6 und 9). Lesen, wenn am Hub gearbeitet wird, ein neues Addon angelegt
+wird oder ein Addon neue Hub-Funktionen, Einstellungen, Profile, Minimap-Knopf oder /fmove einbindet.
+
+## 5. Aufbau eines Addons (.toc, Dateien)
+- Jedes Addon in eigenem Ordner im Repository-Wurzelverzeichnis, **.toc-Name = Ordnername**, Name `Forever<Name>`.
+- GUI in Lua bauen (`CreateFrame`, Retail-Templates), **kein XML** – einzige Ausnahme: `Bindings.xml` für Tastenkürzel
+  (die verlangt WoW so).
+- Pflicht in der .toc (Vorlage):
+  ```
+  ## Interface: 16001
+  ## Title: ForeverName |cff8a8a8a(Beta)|r
+  ## Notes: English description
+  ## Notes-deDE: Deutsche Beschreibung
+  ## IconTexture: Interface\AddOns\ForeverName\Media\ForeverCore
+  ## Category: Forever Core UI
+  ## Author: <Name>
+  ## Version: <Suite-Version, identisch in allen .toc>
+  ## Dependencies: ForeverCore
+  ## Group: ForeverCore
+  ## SavedVariables: ForeverNameDB
+
+  ... eigene Dateien ...
+  ```
+  - `## Group: ForeverCore`: in Blizzards Addon-Liste eingerückt unter „Forever Core UI“ (wie AtlasLoot); Blizzard setzt
+    das nur bei gleichem Namensanfang automatisch, deshalb ausdrücklich eintragen.
+  - `## Dependencies: ForeverCore`: ForeverCore lädt garantiert vorher, `ForeverHub.UI` steht ab der ersten Zeile
+    bereit. **Keine eigene Kopie von `ForeverHub.lua`** ins Addon legen.
+  - `ForeverHubDB` steht **nur in ForeverCore** (seit 2026-11-05; vorher als Übergang in jedem Addon – dadurch speicherte
+    das Spiel dieselben Hub-Einstellungen 14-mal, und die Kopie eines länger ausgeschalteten Addons konnte neuere
+    Einstellungen überschreiben). Neue Addons tragen sie nicht ein; der Lua-Code nutzt weiter dieselbe Tabelle.
+  - Der Titel trägt den dezenten Beta-Hinweis (nur in der Addon-Liste sichtbar).
+  - `Media\ForeverCore.tga` (Logo) liegt in jedem Addon (Kopie z. B. aus ForeverBars).
+  - Eigenes Addon-Logo: `Media\ForeverName.tga` (64 × 64, 32 Bit TGA) – steht in `## IconTexture` und im Minimap-Knopf;
+    die Kacheln der Übersicht nehmen das Logo aus der .toc.
+  - Release-Addons zusätzlich: `## X-License: MIT`, `## X-Curse-Project-ID: 1743753`, `LICENSE.txt`.
+- Datei-Aufteilung frei; bewährt: `Core.lua` (Defaults, Start, Chatbefehl), `Locales.lua`, `Options.lua`, Funktionsdateien.
+- Neues Addon zusätzlich: in `ForeverCore/ForeverHub.lua` in die Liste `KNOWN` eintragen (Name + Minimap-Knopf) und
+  einmal `tools/link-addons.ps1` ausführen; Chatbefehl in Commands.md eintragen; Release-Aufnahme siehe Release.md.
 
 ## 6. ForeverHub (gemeinsame Bibliothek)
 - Der Hub liegt **nur einmal**: `ForeverCore/ForeverHub.lua` im Hauptaddon ForeverCore (seit 0.41b; vorher Kopie in
@@ -27,7 +63,7 @@ Hub-Funktionen, Einstellungen, Profile, Minimap-Knopf oder /fmove einbindet.
      "Alle verschieben", Minimap-Knopf ein/aus, **Sprache für alle Forever-Addons**; `/forever reset` holt Knöpfe zurück.
      **Addons ein-/ausschalten** (ab v26): Häkchen je Addon, "Alle an/aus", "nur dieser Charakter"
      (`ForeverHubDB.perCharacter`, sonst alle Charaktere) über `C_AddOns.EnableAddOn/DisableAddOn` + `SaveAddOns`;
-     wirkt erst nach "Neu laden" (kein Nachladen zur Laufzeit – Rahmen müssen beim Laden entstehen, siehe Abschnitt 14).
+     wirkt erst nach "Neu laden" (kein Nachladen zur Laufzeit – Rahmen müssen beim Laden entstehen, siehe Wechselwirkungen.md).
      **Begrüßung**: beim allerersten Start öffnet sich das Fenster einmal (`ForeverHubDB.welcomeDone`, accountweit;
      wird sofort beim Anzeigen gesetzt, damit es nie wieder aufpoppt). ForeverCore selbst steht nicht in `KNOWN`
      (ohne ForeverCore lädt kein Forever-Addon); Hub, Optionsmenü und Addon-Menü-Eintrag bleiben, auch wenn alle anderen aus sind

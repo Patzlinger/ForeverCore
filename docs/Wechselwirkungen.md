@@ -1,6 +1,6 @@
 # Bekannte Wechselwirkungen (Addons untereinander, mit Blizzard und fremden Addons)
 
-Ausgelagert aus CLAUDE.md (Abschnitt 14). Lesen, bevor ein Addon etwas anfasst, das ein anderes Addon oder
+Ausgelagert aus CLAUDE.md (alter Abschnitt 14). Taint-Regeln und Ausnahmen: Technical-Pitfalls.md. Lesen, bevor ein Addon etwas anfasst, das ein anderes Addon oder
 Blizzard auch benutzt (Leisten, Minimap, Taschen, Chat, Tracker, Bearbeitungsmodus, Questie, Details, Leatrix, Masque).
 
 - **Blizzard-Vorlagen mit fester Ebene** (z. B. `ContainerFrameItemButtonTemplate`: `frameLevel="10"`): der Hub

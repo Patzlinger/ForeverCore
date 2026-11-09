@@ -1,6 +1,7 @@
 # Menü-Aufbau im Detail (Maße aus dem ForeverQuests-Menü)
 
-Ausgelagert aus CLAUDE.md (Abschnitt 7.1). Lesen, wenn ein Einstellungsfenster oder Menü gebaut oder umgebaut wird.
+Ausgelagert aus CLAUDE.md (alter Abschnitt 7.1; Code-Kommentare „CLAUDE.md 7.1“ meinen diese Datei). **Lesen vor jedem
+neuen oder umgebauten Einstellungsfenster/Menü.** Allgemeine Designregeln und Farben: Design.md.
 
 **Umsetzung im Hub (ab v23):** `UI.MenuWindow(name, titel, untertitel, w, h)`, `UI.MenuPanel(parent, titel)`,
 `UI.MenuCheck(parent, x, y, text, get, set, tooltip)`, `UI.MenuSlider(parent, x, y, text, min, max, step, get, set)`,
