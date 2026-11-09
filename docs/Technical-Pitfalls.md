@@ -59,6 +59,14 @@ geändert wird.** Die Kurzregeln stehen in CLAUDE.md; hier die Einzelheiten und 
   beim Öffnen des Bearbeitungsmodus, behoben in ForeverBars 0.13.0). Allgemein: **nie eigene Funktionen oder Werte in
   Tabellen legen, die Blizzard-Code liest.**
 
+- **Weltkarte** (2026-11-09, ADDON_ACTION_BLOCKED nach Klick auf Questmarker): nie Blizzards Kartenmaße
+  (`minimizedWidth/-Height`) setzen, nie `OnFrameSizeChanged`, `Minimize`/`Maximize`, `UpdateUIPanelPositions`,
+  `SetHighlightedQuestID` oder `RefreshAllDataProviders` aus Addon-Code aufrufen, Kartenpins nie `:Hide()`
+  (Deckkraft + `EnableMouse(false)`). Eigene Schließen-Kreuze nur als Bild; Blizzards echter Knopf liegt unsichtbar
+  oben und bekommt den Klick (kein weitergeleitetes `:Click()`). Erlaubt: verschieben (`SetPoint`), `SetScale`.
+- **Gamepad:** `SetPropagateKeyboardInput` nie im Kampf aufrufen (für Addons gesperrt); nach dem Abfangen einer Taste
+  die Weitergabe beim Schließen wieder auf `true` setzen (Hub v83, `UI.RegisterWindow`).
+
 ### Dokumentierte Ausnahmen (bewusst so, nicht „reparieren“ ohne Absprache)
 - **ForeverBars** setzt Blizzards Aktionsknöpfe und Leisten per `SetParent` in eigene Halter – für ein Leisten-Addon
   nötig (Bartender4 macht es genauso); nur außerhalb des Kampfes, Sichtbarkeit über State-Driver.

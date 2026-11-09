@@ -35,6 +35,10 @@ Blizzard auch benutzt (Leisten, Minimap, Taschen, Chat, Tracker, Bearbeitungsmod
   `LeaPlusDB[key] = "Off"` – unmittelbar bevor Leatrix liest. Selbst abgeschaltete Schlüssel merkt
   `ForeverHubDB.leatrixOff` (Wahl "Leatrix" stellt sie zurück). Händler (Verkaufen/Reparieren) bewusst nicht: doppelt
   schadet nicht. Leatrix Maps: nur Weltkarte, keine Überschneidung.
+- **Leatrix Maps ↔ ForeverQuests (Weltkarte)**: Der Hub schaltet nur `SimpleMapFrame`/`ShowZoneLevels` ab. Ist in
+  Leatrix Maps „Unlock map“ (`LeaMapsDB.UnlockMap`) bzw. „Scale the map“ (`ScaleWorldMap`) an, überlässt ForeverQuests
+  Verschieben bzw. Skalieren der Karte Leatrix (Titelleiste durchlässig, Griff ausgeblendet; `QuestLog.lua`
+  `LeatrixMapsDoes`). Ohne Leatrix Maps macht ForeverQuests beides selbst. Nur lesen aus `LeaMapsDB`.
 - **Masque** (optional, ## OptionalDeps: Masque): ForeverBars (Masque.lua, Gruppe "Forever Core › ForeverBars")
   und ForeverBags (Gruppe "› ForeverBags"). Gestaltet Masque, lassen wir Rand/Fläche/Symbol/Leuchten weg
   (`ns.MasqueActive()`), Texte bleiben bei uns; Gruppe in Masque aus = eigener Stil.

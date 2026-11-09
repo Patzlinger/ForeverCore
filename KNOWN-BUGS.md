@@ -12,6 +12,31 @@ Ablauf:
 
 ## Offen
 
+### ForeverQuests: „blocked from an action only available to the Blizzard UI“ nach Questmarker-Klick (Fix wartet auf Bestätigung)
+- **Was passiert:** Quest im Tracker anklicken → Weltkarte → dunkelroten „?“-Marker anklicken (gelb, Super-Tracking) →
+  Karte schließen → ADDON_ACTION_BLOCKED, Spieler muss ForeverQuests abschalten. Gemeldet 2026-11-09 auf CurseForge
+  (noXceptionz).
+- **Vermutete Ursache:** Karte durch ForeverQuests-Code „berührt“ (Taint): freie Kartengröße schrieb Blizzards
+  `minimizedWidth/-Height` und rief `OnFrameSizeChanged`; eigenes Kreuz löste `close:Click()` aus; `maximize:Hide()`,
+  `Minimize()`, `SetHighlightedQuestID`, `pin:Hide()` (mit Questie) aus Addon-Code.
+- **Stand:** alles davon entfernt bzw. taint-frei umgebaut (`5b47c72`, 2026-11-10). Prüfen: Ablauf oben mit
+  `/console taintLog 1`, je ohne/mit Leatrix Maps und Questie, Schließen per Kreuz, M und Escape.
+
+### Entzaubern per Gamepad-Aktionsknopf: Mausklick auf Taschenplatz tut nichts (offen, ungeklärt)
+- **Was passiert:** Entzaubern vom Berufsfenster auf die Gamepad-Leiste gezogen; Knopf drücken → Tasche geht auf →
+  Links-/Rechtsklick auf Gegenstand bewirkt nichts. Aus dem Berufsfenster heraus geht es. Gemeldet 2026-11-09 (noXceptionz).
+- **Stand:** Blizzards Klick-Code (`ContainerFrameItemButton_OnClick`, Zweig forever) ruft bei `SpellCanTargetItem()`
+  `UseContainerItem` – nichts von uns fängt den Klick ab. Behoben (Hub v83, `6ab0ba8`): nach Schließen mit B schluckte
+  das nächste Forever-Fenster den ersten Gamepad-Druck; im Kampf `SetPropagateKeyboardInput` (gesperrt). Weitere
+  Vermutung: Gamepad-Zielmodus des Clients (`GamePadCursorForTargeting`) ignoriert echte Mausklicks – nicht von uns.
+- **Nächster Schritt:** Spieler fragen: BugSack-Text? Geht es mit A/virtuellem Cursor statt Maus? Mit „Blizzards
+  Taschenfenster ersetzen“ aus? Selbst testen, sobald ein Controller dranhängt.
+- **Bewusst nicht geändert:** ForeverBags `NoItemContext` (`Bags.lua`, `Bank.lua`) legt eine eigene
+  `GetItemContextMatchResult` an Blizzards Taschenknopf (Verstoß gegen die Taint-Regel). Blizzard ruft sie nur in
+  `UpdateItemContextMatching` (Abdunklung), nicht beim Klick – daher wohl nicht die Ursache. Umbau (Hook auf
+  `UpdateItemContextOverlay`, `ItemContextOverlay` per Deckkraft) erst mit Test im Spiel: ohne die Funktion waren
+  Bankplätze früher dunkel und nicht klickbar.
+
 ### ForeverQuests: Taint „GetAuraDataByIndex … tainted by ForeverQuests“ im Bearbeitungsmodus (unbestätigt)
 - **Was passiert:** BugSack, 3× am 2026-11-07 19:38 – also nach dem Fix `f3e1c27` (2026-11-06, Tracker wird nicht mehr
   versteckt/gezeigt, sondern über Deckkraft ausgeblendet). Möglich: Spiel lief noch mit altem Stand (kein Neustart).
