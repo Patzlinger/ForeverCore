@@ -70,9 +70,14 @@ end
 ---------------------------------------------------------------------------
 
 -- Knopf der Navigationsleiste ("Welt", "Kalimdor", "Orgrimmar"): flach statt Blizzard-Pfeilform
+-- Merker für schon gestaltete Blizzard-Teile: eigene schwache Tabelle statt Feldern in Blizzards Rahmen
+-- (Technical-Pitfalls.md: nie eigene Werte in Tabellen legen, die Blizzard-Code liest)
+local skinned = setmetatable({}, { __mode = "k" })
+local ownParts = setmetatable({}, { __mode = "k" }) -- unsere eigenen Teile an der Karte (nicht mit abblenden)
+
 local function SkinNavButton(button)
-    if not button or button.fqSkinned then return end
-    button.fqSkinned = true
+    if not button or skinned[button] then return end
+    skinned[button] = true
     for _, getter in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetHighlightTexture", "GetDisabledTexture" }) do
         if button[getter] then Fade(button[getter](button)) end
     end
@@ -125,41 +130,30 @@ local function IsMaximized(map)
     return map.IsMaximized and map:IsMaximized() or false
 end
 
--- Breite des Questlogs rechts neben der Karte (0, wenn er zugeklappt ist)
-local function SidePanelWidth(map)
-    local log = map.QuestLog or _G.QuestMapFrame
-    if log and log:IsShown() then return map.questLogWidth or log:GetWidth() or 0 end
-    return 0
-end
+-- Breite und Höhe der Karte bestimmt nur Blizzard. Eine frei ziehbare Größe (bis 2026-11-09) schrieb Blizzards
+-- minimizedWidth/-Height und ließ den Karten-Neuaufbau (OnFrameSizeChanged) aus unserem Code laufen: danach galt die
+-- Karte als "vom Addon berührt", und Klicks auf Questmarker (Super-Tracking) wurden beim Schließen der Karte
+-- blockiert (ADDON_ACTION_BLOCKED). Deshalb nur noch Verschieben und gleichmäßiges Skalieren.
 
--- Fenstergröße der Karte frei setzen: Blizzard merkt sich die Kartengröße im Fenstermodus in minimizedWidth/-Height
--- (ohne Questlog) und setzt sie beim Öffnen/Auf-/Zuklappen des Questlogs daraus neu – darum dort mit ändern.
--- width = Breite der Karte ohne Questlog, height = Höhe
-local lastCanvasUpdate = 0
-local function SetMapSize(map, width, height, force)
-    if not map.fqOrigSize then map.fqOrigSize = { map.minimizedWidth, map.minimizedHeight } end
-    map.minimizedWidth, map.minimizedHeight = width, height
-    map:SetSize(width + SidePanelWidth(map), height)
-    -- Karte im Fenster neu einpassen (beim Ziehen höchstens 20-mal je Sekunde)
-    local now = GetTime()
-    if map.OnFrameSizeChanged and (force or now - lastCanvasUpdate > 0.05) then
-        lastCanvasUpdate = now
-        pcall(map.OnFrameSizeChanged, map)
-    end
+-- Leatrix Maps (optional): verschiebt ("UnlockMap") bzw. skaliert ("ScaleWorldMap") die Karte auf Wunsch selbst.
+-- Ist dort eine dieser Funktionen an, überlassen wir sie Leatrix, sonst ziehen beide Addons an der Karte. Nur
+-- lesen aus LeaMapsDB (wie der Hub, ForeverHub.lua "Leatrix Maps"); ohne Leatrix Maps macht ForeverQuests alles.
+local function LeatrixMapsDoes(key)
+    local db = _G.LeaMapsDB
+    return C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("Leatrix_Maps")
+        and type(db) == "table" and db[key] == "On" or false
 end
 
 local function ApplyMapPlacement()
     local map = _G.WorldMapFrame
     if not map or not ns.db then return end
     local maximized = IsMaximized(map)
-    if grip then grip:SetShown(not maximized) end
+    if grip then grip:SetShown(not maximized and not LeatrixMapsDoes("ScaleWorldMap")) end
     if maximized then return end
     local scale = ns.db.mapScale or 1
-    if math.abs(map:GetScale() - scale) > 0.001 then map:SetScale(scale) end
-    local size = ns.db.mapSize
-    if size and size.w and size.h then SetMapSize(map, size.w, size.h, true) end
+    if not LeatrixMapsDoes("ScaleWorldMap") and math.abs(map:GetScale() - scale) > 0.001 then map:SetScale(scale) end
     local pos = ns.db.mapPos
-    if pos then
+    if pos and not LeatrixMapsDoes("UnlockMap") then
         map:ClearAllPoints()
         map:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", pos.x / scale, pos.y / scale)
     end
@@ -172,34 +166,37 @@ local function SaveMapPlacement()
     local scale = map:GetScale()
     ns.db.mapPos = { x = left * scale, y = top * scale }
     ns.db.mapScale = scale
-    if map.fqOrigSize then ns.db.mapSize = { w = map.minimizedWidth, h = map.minimizedHeight } end
 end
 
+-- Zurücksetzen: Skalierung sofort; den Standardplatz setzt Blizzard beim nächsten Öffnen selbst (UpdateUIPanelPositions
+-- aus unserem Code aufzurufen würde Blizzards Fensterverwaltung "berühren")
 local function ResetMapPlacement()
     local map = _G.WorldMapFrame
-    ns.db.mapPos, ns.db.mapScale, ns.db.mapSize = nil, nil, nil
+    ns.db.mapPos, ns.db.mapScale = nil, nil
     if IsMaximized(map) then return end
     map:SetScale(1)
-    if map.fqOrigSize and map.fqOrigSize[1] then SetMapSize(map, map.fqOrigSize[1], map.fqOrigSize[2], true) end
-    -- Blizzard setzt die Karte an ihren Standardplatz
-    if type(_G.UpdateUIPanelPositions) == "function" then pcall(_G.UpdateUIPanelPositions, map) end
 end
 
 local function SetupMapMoving(map, top)
+    if ns.db then ns.db.mapSize = nil end -- frei gezogene Größe gibt es nicht mehr (alter gespeicherter Wert)
     map:SetMovable(true)
     map:SetClampedToScreen(true)
-    top:EnableMouse(true)
+    -- verschiebt Leatrix Maps die Karte, bleibt unsere Titelleiste durchlässig (sonst finge sie dessen Ziehen ab)
+    top:EnableMouse(not LeatrixMapsDoes("UnlockMap"))
     top:RegisterForDrag("LeftButton")
     top:SetScript("OnDragStart", function()
-        if IsMaximized(map) then return end
+        if IsMaximized(map) or LeatrixMapsDoes("UnlockMap") then return end
         map:StartMoving()
     end)
     top:SetScript("OnDragStop", function()
+        if LeatrixMapsDoes("UnlockMap") then return end
         map:StopMovingOrSizing()
         if not IsMaximized(map) then SaveMapPlacement() end
     end)
     top:SetScript("OnMouseUp", function(_, button)
-        if button == "RightButton" then ResetMapPlacement() end
+        if button == "RightButton" and not (LeatrixMapsDoes("UnlockMap") or LeatrixMapsDoes("ScaleWorldMap")) then
+            ResetMapPlacement()
+        end
     end)
     top:SetScript("OnEnter", function(self)
         local tip = Style.GetTooltip()
@@ -209,9 +206,7 @@ local function SetupMapMoving(map, top)
     end)
     top:SetScript("OnLeave", function() Style.GetTooltip():Hide() end)
 
-    -- Griff unten rechts (Ecke oben links bleibt stehen):
-    --   ziehen       = Breite und Höhe frei ändern
-    --   Shift+ziehen = alles im gleichen Verhältnis größer/kleiner (Skalierung)
+    -- Griff unten rechts (Ecke oben links bleibt stehen): ziehen = alles im gleichen Verhältnis größer/kleiner
     grip = CreateFrame("Button", "ForeverQuestsMapGrip", map)
     grip:SetSize(16, 16)
     grip:SetPoint("BOTTOMRIGHT", map, "BOTTOMRIGHT", -2, 2)
@@ -224,25 +219,13 @@ local function SetupMapMoving(map, top)
         local cursorX, cursorY = GetCursorPosition()
         local scale = map:GetScale()
         self.start = { x = cursorX / uiScale, y = cursorY / uiScale, scale = scale, left = map:GetLeft() * scale,
-            top = map:GetTop() * scale, width = map:GetWidth() * scale,
-            mapWidth = map.minimizedWidth or (map:GetWidth() - SidePanelWidth(map)), mapHeight = map:GetHeight() }
-        local scaling = IsShiftKeyDown()
+            top = map:GetTop() * scale, width = map:GetWidth() * scale }
         self:SetScript("OnUpdate", function()
             local s = self.start
-            local x, y = GetCursorPosition()
-            x, y = x / uiScale, y / uiScale
-            if scaling then
-                local newScale = s.scale * (s.width + (x - s.x)) / s.width
-                newScale = math.max(MIN_SCALE, math.min(MAX_SCALE, newScale))
-                map:SetScale(newScale)
-            else
-                -- Mausweg in Kartenpunkte umrechnen (die Karte ist evtl. skaliert); nach unten ziehen = höher
-                local maxWidth = UIParent:GetWidth() / s.scale - SidePanelWidth(map)
-                local maxHeight = UIParent:GetHeight() / s.scale
-                local width = math.max(400, math.min(maxWidth, s.mapWidth + (x - s.x) / s.scale))
-                local height = math.max(300, math.min(maxHeight, s.mapHeight + (s.y - y) / s.scale))
-                SetMapSize(map, math.floor(width + 0.5), math.floor(height + 0.5))
-            end
+            local x = GetCursorPosition() / uiScale
+            local newScale = s.scale * (s.width + (x - s.x)) / s.width
+            newScale = math.max(MIN_SCALE, math.min(MAX_SCALE, newScale))
+            map:SetScale(newScale)
             local current = map:GetScale()
             map:ClearAllPoints()
             map:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", s.left / current, s.top / current)
@@ -250,7 +233,6 @@ local function SetupMapMoving(map, top)
     end)
     grip:SetScript("OnMouseUp", function(self)
         self:SetScript("OnUpdate", nil)
-        if map.fqOrigSize then pcall(map.OnFrameSizeChanged or function() end, map) end
         SaveMapPlacement()
     end)
     grip:SetScript("OnEnter", function(self)
@@ -286,8 +268,8 @@ end
 local ownClose -- unser Schließen-Kreuz an der Karte ist angelegt
 local function SkinWorldMap()
     local map = _G.WorldMapFrame
-    if not map or map.fqSkinned then return end
-    map.fqSkinned = true
+    if not map or skinned[map] then return end
+    skinned[map] = true
     local color = Style.COLOR
     local border = map.BorderFrame
 
@@ -328,7 +310,7 @@ local function SkinWorldMap()
     Fade(map.NineSlice)
     Fade(map.Bg)
     Fade(map.PortraitContainer)
-    top.fqOwn = true
+    ownParts[top] = true
 
     -- Alle übrigen Blizzard-Flächen von Fenster und Rahmen (Eck-Verzierungen, Kanten): nur Texturen, kein Text,
     -- keine Knöpfe, nicht die Karte selbst (ScrollContainer) und nicht unsere eigenen Teile
@@ -342,7 +324,7 @@ local function SkinWorldMap()
         FadeTextures(border)
         for _, child in ipairs({ border:GetChildren() }) do
             local objectType = child.GetObjectType and child:GetObjectType()
-            if not child.fqOwn and objectType ~= "Button" and objectType ~= "CheckButton" then FadeTextures(child) end
+            if not ownParts[child] and objectType ~= "Button" and objectType ~= "CheckButton" then FadeTextures(child) end
         end
     end
     local questMap = _G.QuestMapFrame
@@ -361,7 +343,7 @@ local function SkinWorldMap()
     local function FadeDecorations(frame, depth)
         for _, child in ipairs({ frame:GetChildren() }) do
             local objectType = child.GetObjectType and child:GetObjectType()
-            if not keep[child] and not child.fqOwn and objectType == "Frame" then
+            if not keep[child] and not ownParts[child] and objectType == "Frame" then
                 FadeTextures(child)
                 if child.NineSlice then Fade(child.NineSlice) end
                 if depth > 1 then FadeDecorations(child, depth - 1) end
@@ -377,29 +359,45 @@ local function SkinWorldMap()
         end
     end
 
-    -- Schließen: unser Kreuz (wie an allen Forever-Fenstern) statt Blizzards rotem X. Blizzards Knopf bleibt
-    -- (unsichtbar) – unser Knopf liegt darüber und löst dessen Klick aus. Vollbild-Knopf ganz weg (Karte bleibt im
-    -- Fenster, verschieb- und skalierbar)
+    -- Schließen: unser Kreuz (wie an allen Forever-Fenstern) statt Blizzards rotem X – nur als Bild. Blizzards echter
+    -- Knopf bleibt unsichtbar (Deckkraft 0) OBEN liegen und bekommt den Klick selbst; ein weitergeleiteter Klick
+    -- (close:Click() aus unserem Code) ließ das ganze Schließen der Karte als Addon-Code laufen (Taint).
     local close = border and border.CloseButton or map.CloseButton
     local hubUI = _G.ForeverHub and _G.ForeverHub.UI
     if close and hubUI and hubUI.CloseButton and not ownClose then
         ownClose = true -- (eigener Merker statt eines Feldes an Blizzards Knopf)
         close:SetAlpha(0)
-        local own = hubUI.CloseButton(close:GetParent(), function()
-            if close.Click then close:Click() end
-        end)
+        local own = hubUI.CloseButton(close:GetParent())
         own:SetPoint("CENTER", close, "CENTER", -2, -1)
-        own:SetFrameLevel(close:GetFrameLevel() + 5)
-        own.fqOwn = true
+        own:SetFrameLevel(math.max(0, close:GetFrameLevel() - 1))
+        own:EnableMouse(false)
+        ownParts[own] = true
+        -- Hover/Druck auf Blizzards Knopf färbt unser Kreuz
+        for _, script in ipairs({ "OnEnter", "OnLeave", "OnMouseDown", "OnMouseUp" }) do
+            local handler = own:GetScript(script)
+            if handler then close:HookScript(script, function() handler(own) end) end
+        end
     elseif close and close.SetScale then
         close:SetScale(0.75)
     end
+    -- Vollbild-Knopf: im Fenstermodus unsichtbar und nicht anklickbar (Karte bleibt im Fenster, verschieb- und
+    -- skalierbar). Ist die Karte maximiert (z. B. alte Einstellung), bleibt er sichtbar, damit man selbst zurück
+    -- ins Fenster schalten kann – kein Minimize() und kein :Hide() aus unserem Code mehr.
     local maximize = (border and border.MaximizeMinimizeFrame) or map.MaximizeMinimizeFrame
     if maximize then
-        maximize:Hide()
-        maximize:HookScript("OnShow", maximize.Hide)
+        local function UpdateMaximizeButton()
+            local show = IsMaximized(map)
+            maximize:SetAlpha(show and 1 or 0)
+            for _, child in ipairs({ maximize:GetChildren() }) do
+                if child.EnableMouse then child:EnableMouse(show) end
+            end
+        end
+        UpdateMaximizeButton()
+        for _, method in ipairs({ "Maximize", "Minimize" }) do
+            if type(map[method]) == "function" then hooksecurefunc(map, method, UpdateMaximizeButton) end
+        end
+        map:HookScript("OnShow", UpdateMaximizeButton)
     end
-    if IsMaximized(map) and map.Minimize then pcall(map.Minimize, map) end
 
     -- Navigationsleiste; neue Knöpfe (beim Hineinzoomen) gleich mitgestalten
     SkinNavBar(map.NavBar)
@@ -588,17 +586,11 @@ local function RequestLogUpdate()
     C_Timer.After(0.05, ns.UpdateQuestLog)
 end
 
--- Maus über einer Quest: alle ihre Marker auf der Karte hervorheben (Questie-Symbole größer, andere blass;
--- dazu Blizzards eigene Hervorhebung des Questgebiets)
+-- Maus über einer Quest: Questie-Symbole dieser Quest größer, andere blass. Blizzards eigene Hervorhebung
+-- (map:SetHighlightedQuestID) rufen wir nicht mehr auf: sie baut Blizzards Questmarker aus unserem Code neu auf,
+-- danach wurden Klicks auf diese Marker blockiert (Taint, 2026-11-09)
 local function HighlightOnMap(questID)
     if ns.QuestieHover then ns.QuestieHover(questID) end
-    local map = _G.WorldMapFrame
-    if not map then return end
-    if questID and map.SetHighlightedQuestID then
-        pcall(map.SetHighlightedQuestID, map, questID)
-    elseif map.ClearHighlightedQuestID then
-        pcall(map.ClearHighlightedQuestID, map)
-    end
 end
 
 -- Scrollbereich mit Mausrad und schlankem Rollbalken (rechts, nur wenn der Inhalt länger ist);
@@ -770,8 +762,8 @@ local function FadeBlizzardSettings(area)
     if blizzBar then
         Fade(blizzBar)
         if blizzBar.EnableMouse then blizzBar:EnableMouse(false) end
-        if blizzBar.HookScript and not blizzBar.fqFaded then
-            blizzBar.fqFaded = true
+        if blizzBar.HookScript and not skinned[blizzBar] then
+            skinned[blizzBar] = true
             blizzBar:HookScript("OnShow", function(self) self:SetAlpha(0) end)
         end
     end

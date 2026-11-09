@@ -4,6 +4,8 @@
 
 - ForeverQuests: the automatic instance filter in the tracker now really shows only the quests of the instance (from the dungeon data and quests under the instance's name; quests of the zones outside, e.g. Durotar and the Barrens in Ragefire Chasm, no longer slip through) instead of all quests.
 
+- ForeverQuests: fixed "ForeverQuests has been blocked from an action only available to the Blizzard UI" after clicking a quest marker on the world map (super-tracking) and closing the map. The map can still be moved and scaled with the corner grip; freely changing its width/height was removed because it caused this error. If Leatrix Maps moves or scales the map, ForeverQuests leaves that to Leatrix Maps.
+
 - ForeverSkin / ForeverLoot: the red close X no longer comes back (e.g. in the loot window); the ForeverLoot roll window uses the Forever close cross too (window and the remove button of each item).
 
 ## 0.541b – 2026-11-08

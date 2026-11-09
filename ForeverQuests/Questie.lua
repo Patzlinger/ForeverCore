@@ -61,22 +61,44 @@ local function IsBlizzardQuestPin(template)
         and not template:find("Questie") and not template:find("Bonus")
 end
 
-local function HideQuestPins(map, template)
-    if not HideBlizzardMarkers() then return end
+-- Nur unsichtbar und nicht anklickbar (Deckkraft 0, keine Maus) – nie pin:Hide(): das startete Blizzards OnHide der
+-- Marker aus unserem Code, danach waren Klicks auf Questmarker blockiert (Taint, 2026-11-09). Merker in eigener
+-- Tabelle, damit abgeschaltete Marker beim Wiedereinschalten zurückkommen.
+local hiddenPins = setmetatable({}, { __mode = "k" })
+local pinHookDone = false
+
+local function UpdateQuestPins(map, template)
     if not map.EnumeratePinsByTemplate then return end
-    for pin in map:EnumeratePinsByTemplate(template) do pin:Hide() end
+    local hide = HideBlizzardMarkers()
+    for pin in map:EnumeratePinsByTemplate(template) do
+        if hide then
+            pin:SetAlpha(0)
+            if pin.EnableMouse then pin:EnableMouse(false) end
+            hiddenPins[pin] = true
+        elseif hiddenPins[pin] then
+            hiddenPins[pin] = nil
+            pin:SetAlpha(1)
+            if pin.EnableMouse then pin:EnableMouse(true) end
+        end
+    end
+end
+
+local function UpdateAllQuestPins()
+    local map = _G.WorldMapFrame
+    if not map then return end
+    for template in pairs(map.pinPools or {}) do
+        if IsBlizzardQuestPin(template) then UpdateQuestPins(map, template) end
+    end
 end
 
 local function HookMapPins()
     local map = _G.WorldMapFrame
-    if not map or map.fqQuestPinHook or type(map.AcquirePin) ~= "function" then return end
-    map.fqQuestPinHook = true
+    if not map or pinHookDone or type(map.AcquirePin) ~= "function" then return end
+    pinHookDone = true
     hooksecurefunc(map, "AcquirePin", function(self, template)
-        if IsBlizzardQuestPin(template) then HideQuestPins(self, template) end
+        if IsBlizzardQuestPin(template) then UpdateQuestPins(self, template) end
     end)
-    for template in pairs(map.pinPools or {}) do
-        if IsBlizzardQuestPin(template) then HideQuestPins(map, template) end
-    end
+    UpdateAllQuestPins()
 end
 
 -- Schalter im Rädchen des Questlogs: Blizzards Questmarker (Ziele/Questgeber) auf der Karte an/aus.
@@ -99,9 +121,9 @@ function ns.SetBlizzardQuestMarkers(show)
     elseif SetCVar then
         SetCVar("questPOI", show and "1" or "0")
     end
-    -- Karte neu zeichnen, damit die Marker sofort kommen bzw. gehen
-    local map = _G.WorldMapFrame
-    if map and map.RefreshAllDataProviders then pcall(map.RefreshAllDataProviders, map) end
+    -- Vorhandene Marker sofort ein-/ausblenden (nur Deckkraft). Kein map:RefreshAllDataProviders() aus unserem Code
+    -- mehr (Taint der Karte); Marker, die Blizzard erst neu anlegen muss, kommen beim nächsten Öffnen der Karte
+    pcall(UpdateAllQuestPins)
 end
 
 local pinStarter = CreateFrame("Frame")
@@ -114,7 +136,7 @@ pinStarter:SetScript("OnEvent", function(self, event, name)
         return
     end
     pcall(HookMapPins)
-    if _G.WorldMapFrame and _G.WorldMapFrame.fqQuestPinHook then self:UnregisterAllEvents() end
+    if pinHookDone then self:UnregisterAllEvents() end
 end)
 
 local guard = CreateFrame("Frame")
