@@ -1034,24 +1034,60 @@ function ns.ResetPosition()
     ns.Print(L("POS_RESET"))
 end
 
-local function StartDrag()
-    if InCombatLockdown() then return end
-    window.fbagsMoving = true
-    -- Vor dem Ziehen an der linken oberen Ecke festmachen, genau an der jetzigen Stelle: das Fenster hängt sonst an
-    -- der unteren rechten Ecke (gespeicherte Lage) bzw. an Bank/Händler (angedockt) – ändert sich beim Ziehen die
-    -- Höhe (Taschen aktualisieren sich), wuchs es nach oben weg und sprang unter der Maus davon
-    local left, top = window:GetLeft(), window:GetTop()
-    if left and top then
-        window:ClearAllPoints()
-        window:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", left, top)
+-- Eigenes Ziehen statt StartMoving: das Fenster folgt dem Mauszeiger jedes Bild neu (Griffpunkt in der Titelleiste
+-- bleibt unter der Maus), unabhängig von Skalierung, Ankerpunkt (unten rechts / angedockt) und Höhenänderungen.
+local dragDriver = CreateFrame("Frame")
+local dragTarget, dragOffX, dragOffY
+
+local function DragUpdate()
+    local w = dragTarget
+    if not w then return end
+    if not IsMouseButtonDown("LeftButton") then -- Loslassen verpasst (z. B. Maus über anderem Fenster)
+        if w.fbagsStopDrag then w.fbagsStopDrag() end
+        return
     end
-    window:StartMoving()
+    local cx, cy = GetCursorPosition()
+    local es = w:GetEffectiveScale()
+    local ues = UIParent:GetEffectiveScale()
+    -- Zielpunkt (obere linke Ecke) in Bildschirmpixeln -> Einheiten des Fensters relativ zu UIParent-Ursprung
+    w:ClearAllPoints()
+    w:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", (cx + dragOffX) / es, (cy + dragOffY) / es)
 end
 
-local function StopDrag()
+-- w = Fenster, stopFn = Funktion, die das Ziehen beendet (wird bei verpasstem Loslassen aufgerufen)
+function ns.BeginWindowDrag(w, stopFn)
+    local left, top = w:GetLeft(), w:GetTop()
+    if not (left and top) then return false end
+    local cx, cy = GetCursorPosition()
+    local es = w:GetEffectiveScale()
+    dragOffX, dragOffY = left * es - cx, top * es - cy
+    w.fbagsStopDrag = stopFn
+    dragTarget = w
+    dragDriver:SetScript("OnUpdate", DragUpdate)
+    return true
+end
+
+function ns.EndWindowDrag(w)
+    if dragTarget == w then
+        dragTarget = nil
+        dragDriver:SetScript("OnUpdate", nil)
+    end
+    w.fbagsStopDrag = nil
+end
+
+local StopDrag
+
+local function StartDrag()
+    if InCombatLockdown() then return end
+    if ns.BeginWindowDrag(window, function() StopDrag() end) then
+        window.fbagsMoving = true
+    end
+end
+
+function StopDrag()
     if not window.fbagsMoving then return end
     window.fbagsMoving = nil
-    window:StopMovingOrSizing()
+    ns.EndWindowDrag(window)
     -- bei Bank/Händler selbst gezogen: abgedockt, bis die wieder zu sind
     if (_G.ForeverBagsBank and _G.ForeverBagsBank:IsShown()) or (_G.MerchantFrame and _G.MerchantFrame:IsShown())
         or (_G.TradeFrame and _G.TradeFrame:IsShown()) then
@@ -1429,29 +1465,23 @@ function ns.CreateBagWindow(name, title, posKey, defaultPos)
         end
         w:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", pos[1] / scale, pos[2] / scale)
     end
-    w.header:SetScript("OnDragStart", function()
-        if InCombatLockdown() then return end
-        w.fbagsMoving = true
-        -- an der linken oberen Ecke festmachen (Standardlage "Mitte" hängt an der Mitte – Höhenänderung beim Ziehen
-        -- ließ das Fenster sonst unter der Maus wegrutschen)
-        local left, top = w:GetLeft(), w:GetTop()
-        if left and top then
-            w:ClearAllPoints()
-            w:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", left, top)
-        end
-        w:StartMoving()
-    end)
-    w.header:SetScript("OnDragStop", function()
+    local function Stop()
         if not w.fbagsMoving then return end
         w.fbagsMoving = nil
-        w:StopMovingOrSizing()
+        ns.EndWindowDrag(w)
         local left, top = w:GetLeft(), w:GetTop()
         if left and top then
             local s = w:GetEffectiveScale() / UIParent:GetEffectiveScale()
             ns.db[posKey] = { UI.Round(left * s), UI.Round(top * s) }
         end
         Restore()
+    end
+    w.header:SetScript("OnDragStart", function()
+        if InCombatLockdown() then return end
+        if ns.BeginWindowDrag(w, Stop) then w.fbagsMoving = true end
     end)
+    w.header:SetScript("OnDragStop", Stop)
+    w:HookScript("OnHide", Stop)
     w.RestorePosition = Restore
     if UI.AddMover then UI.AddMover(w, "ForeverBags") end
     local gear = CreateFrame("Button", nil, w.header)

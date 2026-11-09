@@ -154,7 +154,12 @@ local function CheckBuffs(issues)
     local classes = {}
     for _, u in ipairs(units) do
         local _, c = UnitClass(u)
-        if not IsSecret(c) and c and UnitIsConnected(u) then classes[c] = true end
+        if not IsSecret(c) and c and UnitIsConnected(u) then
+            -- höchste Stufe je Klasse (unbekannt/geheim = zählt als hoch genug)
+            local lvl = UnitLevel(u)
+            if IsSecret(lvl) or not lvl or lvl <= 0 then lvl = 999 end
+            if (classes[c] or 0) < lvl then classes[c] = lvl end
+        end
     end
 
     for _, fam in ipairs(ns.BUFFS) do
@@ -200,7 +205,7 @@ local function CheckBuffs(issues)
                                 T("Klick wirkt ihn auf den Ersten.", "Click casts it on the first one.") } }
                     end
                 end
-            elseif fam.group and inGroup and d.groupBuffs and classes[fam.class] and not mine then
+            elseif fam.group and inGroup and d.groupBuffs and classes[fam.class] and classes[fam.class] >= (fam.minLevel or 1) and not mine then
                 -- Gruppen-Buff, den mir jemand geben koennte
                 if not ActiveIn(fam, myIDs) then
                     local id = fam.lines[1][1]

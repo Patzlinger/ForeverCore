@@ -12,21 +12,21 @@ local ns = root.buffs
 
 ns.BUFFS = {
     -- Priester
-    { key = "fort", class = "PRIEST", self = true, group = true,
+    { key = "fort", class = "PRIEST", minLevel = 1, self = true, group = true,
       lines = { { 1243, 1244, 1245, 2791, 10937, 10938 } }, also = { 21562, 21564 } },
     { key = "innerfire", class = "PRIEST", self = true,
       lines = { { 588, 7128, 602, 1006, 10951, 10952 } } },
-    { key = "spirit", class = "PRIEST", self = true, group = true,
+    { key = "spirit", class = "PRIEST", minLevel = 30, self = true, group = true,
       lines = { { 14752, 14818, 14819, 27841 } }, also = { 27681 } },
-    { key = "shadowprot", class = "PRIEST", group = true, optional = true,
+    { key = "shadowprot", class = "PRIEST", minLevel = 30, group = true, optional = true,
       lines = { { 976, 10957, 10958 } }, also = { 27683 } },
     -- Magier
-    { key = "intellect", class = "MAGE", self = true, group = true,
+    { key = "intellect", class = "MAGE", minLevel = 14, self = true, group = true,
       lines = { { 1459, 1460, 1461, 10156, 10157 } }, also = { 23028 } },
     { key = "magearmor", class = "MAGE", self = true,
       lines = { { 168, 7300, 7301 }, { 7302, 7320, 10219, 10220 }, { 6117, 22782, 22783 } }, supersede = { [1] = 2 } },
     -- Druide
-    { key = "motw", class = "DRUID", self = true, group = true,
+    { key = "motw", class = "DRUID", minLevel = 1, self = true, group = true,
       lines = { { 1126, 5232, 6756, 5234, 8907, 9884, 9885 } }, also = { 21849, 21850 } },
     { key = "thorns", class = "DRUID", self = true,
       lines = { { 467, 782, 1075, 8914, 9756, 9910 } } },
