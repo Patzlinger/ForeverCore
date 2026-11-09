@@ -3082,6 +3082,7 @@ local function FindCurrentDungeon(instanceName, instanceID)
         end
     end
 end
+ns.FindCurrentDungeon = FindCurrentDungeon -- (auch für den Instanz-Filter im Tracker)
 
 -- Quests des Dungeons mit ID (eigene Fraktion): im Questlog bzw. noch nicht angenommen und schon möglich
 local function CountHintQuests(dungeon)

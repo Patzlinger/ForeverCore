@@ -1464,21 +1464,24 @@ local function GetCurrentInstanceName()
 end
 
 -- Quest-IDs der aktuellen Instanz aus den Dungeon-Daten (Dungeonfenster), je Instanzname zwischengespeichert
+-- (Suche wie der Dungeon-Hinweis: Name, sonst Instanz-ID über Questie. Nur Treffer merken – die Daten können beim
+-- Betreten noch laden.)
 local instanceQuests = {}
 local function InstanceQuestIDs(instanceName)
     if not instanceName then return nil end
-    if instanceQuests[instanceName] == nil then
-        local set = false
-        local dungeon = ns.FindDungeonForHeader and ns.FindDungeonForHeader(instanceName)
+    if not instanceQuests[instanceName] then
+        local instanceID = select(8, GetInstanceInfo())
+        local dungeon = ns.FindCurrentDungeon and ns.FindCurrentDungeon(instanceName, instanceID)
+            or (ns.FindDungeonForHeader and ns.FindDungeonForHeader(instanceName))
         if dungeon and type(dungeon.quests) == "table" then
-            set = {}
+            local set = {}
             for _, quest in ipairs(dungeon.quests) do
                 if quest.id then set[quest.id] = true end
             end
+            instanceQuests[instanceName] = set
         end
-        instanceQuests[instanceName] = set
     end
-    return instanceQuests[instanceName] or nil
+    return instanceQuests[instanceName]
 end
 
 -- Wird automatisch benutzt, wenn man eine Instanz betritt (Option im Menü)
@@ -1487,20 +1490,17 @@ local INSTANCE_FILTER = {
     textKey = "FILTER_INSTANCE",
     test = function(info, header)
         -- Quest gehört laut Dungeon-Daten zu dieser Instanz oder steht im Questlog unter ihrem Namen.
-        -- Dazu Quests mit Zielen auf der Karte der Instanz – wie beim Filter "Aktuelles Gebiet" über C_QuestLog.IsOnMap,
-        -- NICHT über info.isOnMap (das ist in diesem Client bei allen Quests gesetzt – der Filter ließ dann alles durch).
+        -- Nicht "auf der Karte" (info.isOnMap / C_QuestLog.IsOnMap): das meldet das Spiel in Instanzen auch für Quests
+        -- der Gebiete draußen (Ragefireabgrund: Durotar und Brachland) – der Filter ließ dann fast alles durch.
         local name = GetCurrentInstanceName()
         local ids = InstanceQuestIDs(name)
         if ids and ids[info.questID] then return true end
-        if C_QuestLog.IsOnMap then
-            local ok, onMap = pcall(C_QuestLog.IsOnMap, info.questID)
-            if ok and onMap then return true end
-        end
         return header ~= nil and (header == name or header == GetRealZoneText())
     end,
 }
 
--- Fehlersuche: /fq instanz – warum zeigt der Instanz-Filter eine Quest (D = Dungeon-Daten, K = Karte, U = Überschrift)
+-- Fehlersuche: /fq instanz – warum zeigt der Instanz-Filter eine Quest (D = Dungeon-Daten, U = Überschrift;
+-- K = "auf der Karte" nur zur Info, zählt nicht)
 function ns.DebugInstanceFilter()
     local name = GetCurrentInstanceName()
     local ids = InstanceQuestIDs(name)
@@ -1520,7 +1520,7 @@ function ns.DebugInstanceFilter()
             if C_QuestLog.IsOnMap then ok, onMap = pcall(C_QuestLog.IsOnMap, info.questID) end
             local k = ok and onMap and "K" or "-"
             local u = header ~= nil and (header == name or header == GetRealZoneText()) and "U" or "-"
-            local shown = d ~= "-" or k ~= "-" or u ~= "-"
+            local shown = d ~= "-" or u ~= "-" -- (K nur zur Info: zählt nicht mehr)
             print(string.format("  %s%s%s %s%s|r  [%s]", d, k, u, shown and "|cff33ff33" or "|cff888888",
                 tostring(info.title), tostring(header)))
         end

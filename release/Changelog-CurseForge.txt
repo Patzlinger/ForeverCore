@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- ForeverQuests: the automatic instance filter in the tracker now really shows only the quests of the instance (from the dungeon data, quests under the instance's name and quests with objectives on the instance map) instead of all quests.
+- ForeverQuests: the automatic instance filter in the tracker now really shows only the quests of the instance (from the dungeon data and quests under the instance's name; quests of the zones outside, e.g. Durotar and the Barrens in Ragefire Chasm, no longer slip through) instead of all quests.
 
 - ForeverSkin / ForeverLoot: the red close X no longer comes back (e.g. in the loot window); the ForeverLoot roll window uses the Forever close cross too (window and the remove button of each item).
 
