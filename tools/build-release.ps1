@@ -40,8 +40,9 @@ New-Item -ItemType Directory -Force $addonOut, $singleOut | Out-Null
 
 function Add-FolderToZip($zip, $folder, $name) {
     $base = [IO.Path]::GetFullPath($folder).TrimEnd('\', '/')
-    # Zips enthalten nur, was das Spiel braucht: keine Lizenz-, Lies-mich- oder Markdown-Dateien
-    Get-ChildItem $base -Recurse -File | Where-Object { $_.Name -notmatch '^(LICENSE|README)' -and $_.Extension -ne '.md' } | ForEach-Object {
+    # Zips enthalten nur Addon-Ordner (keine Dateien daneben). Darin: was das Spiel braucht plus der Lizenztext
+    # (LICENSE*); keine Lies-mich- oder Markdown-Dateien
+    Get-ChildItem $base -Recurse -File | Where-Object { $_.Name -notmatch '^README' -and $_.Extension -ne '.md' } | ForEach-Object {
         $full = [IO.Path]::GetFullPath($_.FullName)
         if (!$full.StartsWith($base + '\', [StringComparison]::OrdinalIgnoreCase)) { throw "Datei außerhalb von ${base}: $full" }
         $rel = $name + '/' + $full.Substring($base.Length + 1).Replace('\', '/')
