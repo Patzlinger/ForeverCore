@@ -16,3 +16,5 @@ Auswirkung im Spiel.
       2026-11-07 (Tracker.lua GetQuestTimerEnd) – im Spiel noch bestätigen
 - [ ] ⚠ **Essen/Trinken-Makro** (ForeverHelpers): Makro, das automatisch das beste Essen bzw. Getränk aus den Taschen
       nimmt
+- [ ] ⚠ **Suche nach Gruppe: nach Rolle filtern** (Tank, Heiler, Schaden): in der Gruppensuche die Ergebnisse nach der
+      gesuchten Rolle filtern können (Addon noch klären)
