@@ -55,4 +55,7 @@ Patzlinger und flowfy arbeiten zeitgleich, jeder mit seinem eigenen Claude, übe
 Junctions ins Spiel; `-AddOnsDir`), `check.ps1` (Prüflauf, siehe CLAUDE.md, Testen), `build-release.ps1` (Release.md), `write-build-info.ps1`
 (schreibt `ForeverCore/Build.lua`: Build-Nummer = Anzahl Commits, Commit, Datum/Uhrzeit, Zweig – unten auf der
 Übersichtsseite im Einstellungsfenster. **Nicht eingecheckt** (`.gitignore`), sonst Konflikt bei jedem Abgleich;
-erzeugt automatisch von session-sync/Auto-Sync, check, link-addons und build-release).
+erzeugt automatisch von session-sync/Auto-Sync, check, link-addons und build-release). Nach einem Commit/Pull ist sie
+bis zum nächsten dieser Läufe um eins veraltet (check.ps1 läuft vor dem Commit): darum nach jedem Commit/Pull einmal
+`pwsh -File tools/write-build-info.ps1` und im Spiel `/reload` (Regel: CLAUDE.md, Abschnitt 9). Git-Hooks dafür wurden
+bewusst nicht eingeführt.

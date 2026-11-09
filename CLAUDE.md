@@ -108,6 +108,14 @@ Regeländerungen immer hier bzw. in `docs/` eintragen, committen und pushen (nic
 - Changelog-Punkte (Englisch, für Spieler) unter `## Unreleased` in `release/Changelog-CurseForge.txt`.
 - **Release nur auf ausdrückliches Kommando des Nutzers** → vorher [docs/Release.md](docs/Release.md) lesen. Ausnahme
   `development` → `main` ohne Tag nur auf ausdrückliches Kommando (siehe Workflow.md).
+- **Versionsanzeige im Spiel** (unten auf der Übersichtsseite: „Version · Build N (Commit) · Stand Datum · Zweig · Hub vX“):
+  Build N = Anzahl Commits auf dem Stand, den man gerade ausgecheckt hat – gleiche Nummer + gleicher Commit = gleiche
+  Version bei allen. Sie kommt aus `ForeverCore/Build.lua`, erzeugt von `tools/write-build-info.ps1`; die Datei ist
+  **nie eingecheckt** (`.gitignore`). Pflege: Nach jedem eigenen Commit und jedem Pull/Rebase
+  `pwsh -File tools/write-build-info.ps1` ausführen (session-sync, Auto-Sync, `link-addons.ps1` und `check.ps1` tun es auch,
+  aber `check.ps1` läuft VOR dem Commit), dann dem Nutzer sagen: im Spiel `/reload`. Die Anzeige im Hub nicht entfernen
+  oder umbauen, `Build.lua` nicht einchecken und in der `.toc` von ForeverCore eingetragen lassen. Einmal je Rechner:
+  `pwsh -File tools/auto-sync-install.ps1` (aktualisiert die Nummer alle 5 Minuten von selbst).
 - CurseForge-App überschreibt die verknüpften Ordner = das Repository → danach `git status`, ggf. `git restore .`.
 
 ## 10. Dokumentation und alte Abschnittsnummern
