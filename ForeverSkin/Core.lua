@@ -989,6 +989,19 @@ function ns.SkinClose(button)
     look.edges = {}
     looks[button] = look
     hovers[button] = { close = true }
+    -- Blizzard setzt die rote Grafik beim Öffnen bzw. über SetNormalAtlas & Co. teils neu (z. B. Beute-Fenster):
+    -- danach jedes Mal wieder unsichtbar machen
+    local function Rehide(self)
+        ns.HideTextures(self)
+        for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetHighlightTexture", "GetDisabledTexture" }) do
+            if self[get] then ns.Hide(self[get](self)) end
+        end
+    end
+    button:HookScript("OnShow", Rehide)
+    for _, method in ipairs({ "SetNormalAtlas", "SetNormalTexture", "SetPushedAtlas", "SetPushedTexture",
+        "SetHighlightAtlas", "SetHighlightTexture", "SetDisabledAtlas", "SetDisabledTexture" }) do
+        if type(button[method]) == "function" then hooksecurefunc(button, method, Rehide) end
+    end
 end
 
 -- Knopf mit Text (z. B. "Annehmen", "Abschied"): flach wie die Hub-Knöpfe, beim Überfahren goldener Rand

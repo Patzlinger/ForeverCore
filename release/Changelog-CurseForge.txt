@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverSkin / ForeverLoot: the red close X no longer comes back (e.g. in the loot window); the ForeverLoot roll window uses the Forever close cross too.
+
 ## 0.541b – 2026-11-08
 
 - ForeverBars: the green "equipped" frame on action buttons is now a sharp frame exactly around the icon.

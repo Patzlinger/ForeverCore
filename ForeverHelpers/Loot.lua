@@ -388,9 +388,9 @@ frame.placeholder:SetText(T("Zum Verschieben ziehen.\nDanach in den Einstellunge
     "Drag to move.\nThen choose \"Lock\" in the settings."))
 frame.placeholder:Hide()
 
-local close = CreateFrame("Button", nil, frame, "UIPanelCloseButtonNoScripts")
-close:SetSize(18, 18)
-close:SetPoint("TOPRIGHT", 1, 1)
+-- Schließen: das Forever-Kreuz (wie in allen Forever-Fenstern) statt Blizzards rotem X
+local close = UI.CloseButton(frame)
+close:SetPoint("TOPRIGHT", -1, -1)
 
 local function SavePosition()
     local left, top = frame:GetLeft(), frame:GetTop()
