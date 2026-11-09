@@ -1463,14 +1463,40 @@ local function GetCurrentInstanceName()
     return (GetInstanceInfo())
 end
 
+-- Quest-IDs der aktuellen Instanz aus den Dungeon-Daten (Dungeonfenster), je Instanzname zwischengespeichert
+local instanceQuests = {}
+local function InstanceQuestIDs(instanceName)
+    if not instanceName then return nil end
+    if instanceQuests[instanceName] == nil then
+        local set = false
+        local dungeon = ns.FindDungeonForHeader and ns.FindDungeonForHeader(instanceName)
+        if dungeon and type(dungeon.quests) == "table" then
+            set = {}
+            for _, quest in ipairs(dungeon.quests) do
+                if quest.id then set[quest.id] = true end
+            end
+        end
+        instanceQuests[instanceName] = set
+    end
+    return instanceQuests[instanceName] or nil
+end
+
 -- Wird automatisch benutzt, wenn man eine Instanz betritt (Option im Menü)
 local INSTANCE_FILTER = {
     key = "INSTANCE",
     textKey = "FILTER_INSTANCE",
     test = function(info, header)
-        -- Quest steht unter der Instanz als Überschrift oder hat Ziele auf der aktuellen Karte
-        if info.isOnMap then return true end
-        return header ~= nil and (header == GetCurrentInstanceName() or header == GetRealZoneText())
+        -- Quest gehört laut Dungeon-Daten zu dieser Instanz oder steht im Questlog unter ihrem Namen.
+        -- Dazu Quests mit Zielen auf der Karte der Instanz – wie beim Filter "Aktuelles Gebiet" über C_QuestLog.IsOnMap,
+        -- NICHT über info.isOnMap (das ist in diesem Client bei allen Quests gesetzt – der Filter ließ dann alles durch).
+        local name = GetCurrentInstanceName()
+        local ids = InstanceQuestIDs(name)
+        if ids and ids[info.questID] then return true end
+        if C_QuestLog.IsOnMap then
+            local ok, onMap = pcall(C_QuestLog.IsOnMap, info.questID)
+            if ok and onMap then return true end
+        end
+        return header ~= nil and (header == name or header == GetRealZoneText())
     end,
 }
 
