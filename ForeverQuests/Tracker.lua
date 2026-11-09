@@ -1500,6 +1500,33 @@ local INSTANCE_FILTER = {
     end,
 }
 
+-- Fehlersuche: /fq instanz – warum zeigt der Instanz-Filter eine Quest (D = Dungeon-Daten, K = Karte, U = Überschrift)
+function ns.DebugInstanceFilter()
+    local name = GetCurrentInstanceName()
+    local ids = InstanceQuestIDs(name)
+    local n = 0
+    for _ in pairs(ids or {}) do n = n + 1 end
+    print(ns.ChatPrefix() .. ": Instanz " .. tostring(name) .. " | Gebiet " .. tostring(GetRealZoneText())
+        .. " | Filter an: " .. tostring(ns.db.instanceFilter) .. " | Dungeon-Daten: "
+        .. (ids and (n .. " Quests") or "kein Dungeon gefunden"))
+    local header
+    for i = 1, C_QuestLog.GetNumQuestLogEntries() do
+        local info = C_QuestLog.GetInfo(i)
+        if info and info.isHeader then
+            header = info.title
+        elseif info and not info.isHidden and info.questID then
+            local d = ids and ids[info.questID] and "D" or "-"
+            local ok, onMap = false, nil
+            if C_QuestLog.IsOnMap then ok, onMap = pcall(C_QuestLog.IsOnMap, info.questID) end
+            local k = ok and onMap and "K" or "-"
+            local u = header ~= nil and (header == name or header == GetRealZoneText()) and "U" or "-"
+            local shown = d ~= "-" or k ~= "-" or u ~= "-"
+            print(string.format("  %s%s%s %s%s|r  [%s]", d, k, u, shown and "|cff33ff33" or "|cff888888",
+                tostring(info.title), tostring(header)))
+        end
+    end
+end
+
 -- Ausgeblendete Gruppen: dbKey "hiddenFilters" (Tracker) oder "logHiddenFilters" (Questlog); [Schlüssel] = true
 local function FilterTable(dbKey)
     dbKey = dbKey or "hiddenFilters"

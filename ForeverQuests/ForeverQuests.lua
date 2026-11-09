@@ -165,6 +165,9 @@ SlashCmdList.FOREVERQUESTS = function(msg)
                     tostring(header)))
             end
         end
+    elseif msg == "instanz" or msg == "instance" then
+        -- Fehlersuche Instanz-Filter: je Quest, nach welcher Regel sie gezeigt wird
+        ns.DebugInstanceFilter()
     elseif msg == "dungeonquellen" or msg == "dungeonsources" then
         -- je Dungeon: wie viele Quests aus Questie, wie viele neu, wie viele aus dem alten Stand
         ns.DebugDungeonSources()
