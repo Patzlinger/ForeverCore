@@ -514,9 +514,10 @@ local function NewBlock()
         end
     end)
 
-    b.remove = CreateFrame("Button", nil, b, "UIPanelCloseButtonNoScripts")
+    -- Gegenstand aus der Liste nehmen: Forever-Kreuz statt Blizzards rotem X
+    b.remove = UI.CloseButton(b)
     b.remove:SetSize(16, 16)
-    b.remove:SetPoint("TOPRIGHT", b, "TOPRIGHT", 2, 2)
+    b.remove:SetPoint("TOPRIGHT", b, "TOPRIGHT", 1, 1)
     b.remove:SetScript("OnClick", function(self)
         local item = self:GetParent().item
         for i, it in ipairs(items) do

@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- ForeverSkin / ForeverLoot: the red close X no longer comes back (e.g. in the loot window); the ForeverLoot roll window uses the Forever close cross too.
+- ForeverSkin / ForeverLoot: the red close X no longer comes back (e.g. in the loot window); the ForeverLoot roll window uses the Forever close cross too (window and the remove button of each item).
 
 ## 0.541b – 2026-11-08
 
