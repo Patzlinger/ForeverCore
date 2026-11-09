@@ -916,7 +916,7 @@ local function GetQuestsInLog(dungeon)
     return list
 end
 
-local SHARE_ALL_DELAY = 1.5 -- Sekunden zwischen zwei geteilten Quests
+local SHARE_ALL_DELAY = 6 -- Sekunden zwischen zwei geteilten Quests
 
 -- Alle teilbaren Quests des Dungeons nacheinander mit der Gruppe teilen
 local function ShareAllQuests(dungeon)
