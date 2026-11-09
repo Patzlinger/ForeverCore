@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 82
+local VERSION = 83
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -574,16 +574,24 @@ function UI.RegisterWindow(f)
     if f.header and f.header.HookScript then f.header:HookScript("OnMouseDown", Front) end
     -- Controller: B-Taste (PAD2) schließt das Fenster wie Escape. Die Gamepad-Taste wird nur gelesen, solange das
     -- Fenster offen ist; alle anderen Tasten gehen unverändert weiter ans Spiel.
+    -- Hub v83: Weitergabe steht von Anfang an auf "weiter ans Spiel" und wird beim Schließen zurückgesetzt (vorher
+    -- blieb sie nach B auf "abfangen" stehen, dann schluckte das nächste geöffnete Fenster den ersten Gamepad-Druck).
+    -- Im Kampf wird SetPropagateKeyboardInput nie aufgerufen (für Addons gesperrt) – B schließt dann nicht.
     if f.EnableGamePadButton and f.SetPropagateKeyboardInput then
         pcall(function()
             f:EnableGamePadButton(true)
+            if not InCombatLockdown() then f:SetPropagateKeyboardInput(true) end
             f:HookScript("OnGamePadButtonDown", function(self, button)
-                if button == "PAD2" and not (InCombatLockdown() and self:IsProtected()) then
+                if InCombatLockdown() then return end
+                if button == "PAD2" then
                     self:SetPropagateKeyboardInput(false)
                     self:Hide()
                 else
                     self:SetPropagateKeyboardInput(true)
                 end
+            end)
+            f:HookScript("OnHide", function(self)
+                if not InCombatLockdown() then self:SetPropagateKeyboardInput(true) end
             end)
         end)
     end
@@ -5116,8 +5124,9 @@ end
 
 -- Standardplatz des ersten Details-Fensters: 310 x 158, rechts 4 und unten 50 vom Bildschirmrand
 -- (Details rechnet die Position als Mitte relativ zur Bildschirmmitte)
-local DETAILS_W, DETAILS_H, DETAILS_RIGHT, DETAILS_BOTTOM = 310, 158, 4, 50
 local function DetailsDefaultPosition(D)
+    -- (Maße hier statt auf oberster Ebene: Lua-Grenze 200 lokale Variablen je Datei)
+    local DETAILS_W, DETAILS_H, DETAILS_RIGHT, DETAILS_BOTTOM = 310, 158, 4, 50
     local instance = D.GetInstance and D:GetInstance(1)
     if not (instance and instance.baseframe and instance.mostrando == "normal") then return end
     local x = UIParent:GetWidth() / 2 - DETAILS_RIGHT - DETAILS_W / 2
@@ -5611,10 +5620,14 @@ end
 -- Hinweis: Kopien vor v21 hatten noch keinen gemeinsamen Zustand – was sich dort beim Laden
 -- angemeldet hat, kennt erst die naechste Version dieses Addons.
 ---------------------------------------------------------------------------
-for _, old in ipairs(SHARED.uiTables) do
-    if old ~= UI then
-        for key, value in pairs(UI) do
-            if type(value) == "function" then old[key] = value end
+-- (in einer eigenen Funktion: die Schleifen-Variablen zählten sonst zu den lokalen Variablen der Datei – Lua-Grenze 200)
+local function RedirectOldCopies()
+    for _, old in ipairs(SHARED.uiTables) do
+        if old ~= UI then
+            for key, value in pairs(UI) do
+                if type(value) == "function" then old[key] = value end
+            end
         end
     end
 end
+RedirectOldCopies()

@@ -6,6 +6,8 @@
 
 - ForeverQuests: fixed "ForeverQuests has been blocked from an action only available to the Blizzard UI" after clicking a quest marker on the world map (super-tracking) and closing the map. The map can still be moved and scaled with the corner grip; freely changing its width/height was removed because it caused this error. If Leatrix Maps moves or scales the map, ForeverQuests leaves that to Leatrix Maps.
 
+- Controller: after closing a Forever window with B, the next window (e.g. the bags) no longer swallows the first gamepad button press; no more blocked-action errors from gamepad input in combat (in combat, B no longer closes Forever windows – use Escape or close them after combat).
+
 - ForeverSkin / ForeverLoot: the red close X no longer comes back (e.g. in the loot window); the ForeverLoot roll window uses the Forever close cross too (window and the remove button of each item).
 
 ## 0.541b – 2026-11-08
