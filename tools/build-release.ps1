@@ -15,6 +15,12 @@ $addons = Get-Content (Join-Path $root 'release\addons.txt') | Where-Object { $_
 $core = 'ForeverCore'
 $addons = @($core) + @($addons | Where-Object { $_ -ne $core })
 
+# Prototypen, die nicht ins Release kommen (Datei liegt im Entwicklungsstand, aber nicht im Zip)
+$excludeFile = Join-Path $root 'release\exclude-from-release.txt'
+$excluded = if (Test-Path $excludeFile) {
+    @(Get-Content $excludeFile | Where-Object { $_ -and $_ -notmatch '^\s*#' } | ForEach-Object { $_.Trim().Replace('\', '/') })
+} else { @() }
+
 # Version prüfen: alle Release-Addons müssen dieselbe ## Version haben
 $versions = foreach ($a in $addons) {
     $line = Select-String -Path (Join-Path $root "$a\$a.toc") -Pattern '^## Version:\s*(.+)$'
@@ -64,6 +70,14 @@ $copied = foreach ($a in $addons) {
     $dest = Join-Path $addonOut $a
     if (Test-Path $dest) { Remove-Item $dest -Recurse -Force }
     Copy-Item (Join-Path $root $a) $dest -Recurse
+    # Prototypen (release\exclude-from-release.txt): Datei weglassen und aus der .toc im Zip nehmen
+    foreach ($ex in @($excluded | Where-Object { $_ -like "$a/*" })) {
+        $rel = $ex.Substring($a.Length + 1)
+        Remove-Item (Join-Path $dest $rel) -Force -ErrorAction SilentlyContinue
+        $tocPath = Join-Path $dest "$a.toc"
+        $tocLines = Get-Content $tocPath | Where-Object { $_.Trim() -ne $rel }
+        Set-Content $tocPath $tocLines -Encoding UTF8
+    }
     $folders = if ($a -eq $core) { @($dest) } else { @($dest, $coreDest) }
     New-Zip (Join-Path $singleOut "$a.zip") $folders
     $dest

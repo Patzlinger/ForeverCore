@@ -4,7 +4,7 @@
 ## Category: Forever Core UI
 ## Notes: Blizzard windows in the Forever Core UI look
 ## Notes-deDE: Blizzard-Fenster im Forever-Core-UI-Stil
-## Version: 0.541b
+## Version: 0.542b
 ## Author: flowfy
 ## X-License: MIT
 ## X-Curse-Project-ID: 1743753

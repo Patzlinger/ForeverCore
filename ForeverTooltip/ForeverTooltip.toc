@@ -4,7 +4,7 @@
 ## Category: Forever Core UI
 ## Notes: Blizzard's tooltip in the Forever Core UI look: quality and class colored border, item level, target, IDs, movable anchor
 ## Notes-deDE: Blizzards Tooltip im Forever-Core-UI-Stil: Rahmen in Qualitäts-/Klassenfarbe, Gegenstandsstufe, Ziel, IDs, verschiebbarer Ankerplatz
-## Version: 0.541b
+## Version: 0.542b
 ## X-Curse-Project-ID: 1743753
 ## Author: Patzlinger
 ## X-License: MIT
