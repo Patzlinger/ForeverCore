@@ -1067,9 +1067,37 @@ function UpdateMicro()
                 o:RegisterForClicks("AnyUp")
                 o:SetScript("OnClick", function() frame:SetShown(not frame:IsShown()) end)
                 local hl = o:CreateTexture(nil, "HIGHLIGHT")
-                hl:SetTexture("Interface\\Buttons\\UI-MicroButton-Hilight")
-                hl:SetBlendMode("ADD")
-                hl:SetAllPoints()
+                -- Hover-Schein: die Grafik und Lage von Blizzards eigenem Schein dieses Knopfes übernehmen (die alte
+                -- Datei "UI-MicroButton-Hilight" passt nicht zu den neuen Knöpfen und zeigte einen falschen Rahmen)
+                local copied = pcall(function()
+                    local src = mb.GetHighlightTexture and mb:GetHighlightTexture()
+                    if not src then error("kein Schein") end
+                    local atlas = src.GetAtlas and src:GetAtlas()
+                    if atlas then
+                        hl:SetAtlas(atlas)
+                    else
+                        local tex = src:GetTexture()
+                        if not tex then error("keine Grafik") end
+                        hl:SetTexture(tex)
+                        hl:SetTexCoord(src:GetTexCoord())
+                    end
+                    hl:SetBlendMode(src:GetBlendMode() or "ADD")
+                    hl:SetVertexColor(src:GetVertexColor())
+                    hl:SetAlpha(src:GetAlpha() > 0 and src:GetAlpha() or 1)
+                    hl:ClearAllPoints()
+                    local n = src:GetNumPoints()
+                    if n == 0 then error("keine Lage") end
+                    for i = 1, n do
+                        local point, rel, relPoint, x, y = src:GetPoint(i)
+                        hl:SetPoint(point, (rel == mb or rel == nil) and o or rel, relPoint, x, y)
+                    end
+                    if src.GetWidth and n == 1 then hl:SetSize(src:GetSize()) end
+                end)
+                if not copied then
+                    hl:SetTexture("Interface\\Buttons\\UI-MicroButton-Hilight")
+                    hl:SetBlendMode("ADD")
+                    hl:SetAllPoints()
+                end
                 o:SetScript("OnEnter", function(self)
                     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
                     GameTooltip:AddLine(T("Zauberbuch", "Spellbook"))
