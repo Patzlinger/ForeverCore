@@ -2643,8 +2643,12 @@ function ns.CreateTracker()
     else
         C_Timer.NewTicker(10, CheckAutoCollapse)
     end
-    -- Restzeit zeitbegrenzter Quests sekündlich nachführen (tut nichts, solange keine läuft)
-    C_Timer.NewTicker(1, TickTimers)
+    -- Restzeit zeitbegrenzter Quests sekündlich nachführen (tut nichts, solange keine läuft) – über den gemeinsamen Takt
+    if hub and hub.Every then
+        hub.Every(1, TickTimers, { addon = "ForeverQuests", name = "Quest timers" })
+    else
+        C_Timer.NewTicker(1, TickTimers)
+    end
 
     ns.ApplyLayout()
 end
