@@ -2409,7 +2409,7 @@ function ns.CreateTracker()
     tracker:SetResizable(true)
     tracker:SetResizeBounds(200, 100, 800, 1200)
     tracker:SetClampedToScreen(true)
-    tracker:SetScript("OnSizeChanged", ns.RequestUpdate)
+    tracker:SetScript("OnSizeChanged", function() ns.RequestUpdate() end) -- (sonst wäre der Rahmen die "Wartezeit")
 
     local Style = ns.Style
 
