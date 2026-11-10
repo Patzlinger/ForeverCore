@@ -11,6 +11,7 @@
 local UI = ForeverHub.UI
 local T = UI.T
 local function Chat(text) UI.Chat("ForeverMarks", text) end
+local issecret = issecretvalue or function() return false end -- gesperrte Werte dürfen nicht verglichen werden
 
 local MARKERS = { -- im Uhrzeigersinn ab oben: raid = Zielmarkierung 1–8, world = Bodenmarkierung
     { raid = 8, world = 8 }, { raid = 7, world = 4 }, { raid = 6, world = 1 }, { raid = 5, world = 7 },
@@ -180,11 +181,11 @@ local function RefreshActive()
         if groundMode then
             if IsRaidMarkerActive then
                 local ok, v = pcall(IsRaidMarkerActive, t.marker.world)
-                on = ok and v and true or false
+                on = ok and not issecret(v) and v and true or false
             end
         elseif unitToken then
             local ok, idx = pcall(GetRaidTargetIndex, unitToken)
-            on = ok and idx == t.marker.raid
+            on = ok and not issecret(idx) and idx == t.marker.raid
         end
         t.mark:SetShown(on)
     end
@@ -193,7 +194,6 @@ end
 ---------------------------------------------------------------------------
 -- Einheit unter der Maus beim Öffnen finden (Token zu GUID)
 ---------------------------------------------------------------------------
-local issecret = issecretvalue or function() return false end
 local function Guid(token)
     local ok, g = pcall(UnitGUID, token)
     if ok and g and not issecret(g) then return g end
