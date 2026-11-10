@@ -10,7 +10,9 @@ Auswirkung im Spiel.
 - [ ] ⚠ **Markierungen über Blizzards Schnell-Ping-Menü:** Weltmarkierungen mit dem Ping-Rad verbinden; Zielmarkierungen
       (Totenkopf, Kreuz …) per Mouseover über Gegner ebenfalls über das Ping-Rad setzen (Addon klären, z. B. ForeverHelpers).
       Die frühere Markierungsleiste ist seit 2026-11-07 die Gruppenleiste; Markierungs-Tasten laufen bis dahin
-      über unsichtbare Knöpfe weiter (ForeverBars, Bars.lua GetMarkButtons)
+      über unsichtbare Knöpfe weiter (ForeverBars, Bars.lua GetMarkButtons).
+      **Prototyp seit 2026-11-10:** `ForeverHelpers/Marks.lua`, Befehl `/fmarks` (eigenes Rad, kein Blizzard-Ping-Rad –
+      das lässt sich nicht erweitern); Grenzen: nur außerhalb des Kampfs, keine Einstellungsseite im Hub
 - [ ] ⚠ **Ablaufzeit von Questgegenständen** (ForeverQuests, Tracker): Restzeit auch anzeigen, wenn der Questgegenstand
       nur begrenzt haltbar ist (Gegenstand-Tooltip auslesen). Quests mit eigener Frist zeigen ihre Restzeit seit
       2026-11-07 (Tracker.lua GetQuestTimerEnd) – im Spiel noch bestätigen
