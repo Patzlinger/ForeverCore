@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.543b – 2026-11-10
+
+- ForeverSpellbook: the hover highlight on the spellbook button in the micro menu now looks like the highlight of the other buttons (it showed a wrong frame).
+
 ## 0.542b – 2026-11-10
 
 - ForeverPlates: enemy players (e.g. the other faction) now have their health bar in their class color instead of hostile red. New option "Bar in class color (other faction)" under Look > Enemy players, on by default.
