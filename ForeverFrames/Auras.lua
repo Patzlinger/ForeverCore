@@ -1043,12 +1043,32 @@ local function UpdateBuffs(b)
     return #known + #unknown, n
 end
 
--- Auren aktualisieren. Im Kampf sind alle Abfragen gesperrt: dann gar nicht erst versuchen –
--- die Blizzard-Anzeige zeichnet selbst, Typ-Symbol/Rahmen bleiben bis Kampfende stehen.
+-- Im Kampf: nur das Typ-Symbol und den Rahmen nachführen (sonst blieben sie nach dem Bannen bis Kampfende stehen).
+-- Die Liste der Aura-Nummern mit Filter ist auch im Kampf lesbar; die Farbe kommt (bei gesperrtem Typ) per Kurve von
+-- Blizzard. Ist die Abfrage gesperrt oder schlägt fehl, bleibt alles wie es war.
+local function UpdateDispelInCombat(b)
+    local v, db, unit = b.ff, GetDB(), b.ffUnit
+    if not v.dispelBorder or (not db.dispelShow and not db.dispelBorder) then return end
+    local filter = db.dispelOnlyMine and "HARMFUL|RAID" or "HARMFUL"
+    local ok, ids = pcall(C_UnitAuras.GetUnitAuraInstanceIDs, unit, filter)
+    if not ok or type(ids) ~= "table" or IsSecret(ids) then return end
+    if #ids == 0 then
+        HideDispel(v) -- nichts (mehr) zu bannen: Hinweis weg
+    elseif HasAura(GetAura(unit, ids[1])) then
+        ShowDispel(v, unit, ids[1])
+    end
+end
+
+-- Auren aktualisieren. Im Kampf sind fast alle Abfragen gesperrt: dann nur das Bann-Symbol nachführen –
+-- die Blizzard-Anzeige zeichnet die Symbole selbst.
 function ns.UpdateAuras(b)
     if not b.ff.debuffs or not b.ffUnit then return end
     engine.SetUnit(b)
-    if InCombatLockdown() then return end
+    if InCombatLockdown() then
+        local ok, err = pcall(UpdateDispelInCombat, b)
+        if not ok then ns.ReportError(T("Auren", "Auras"), err) end
+        return
+    end
     local ok, err = pcall(UpdateDebuffs, b)
     if ok then ok, err = pcall(UpdateBuffs, b) end
     if not ok then ns.ReportError(T("Auren", "Auras"), err) end
