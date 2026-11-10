@@ -1,11 +1,11 @@
 -- ForeverMarks (Prototyp, Modul von ForeverHelpers): Markierungs-Rad.
--- Ein Tastendruck (oder /fmarks) öffnet ein Rad mit den 8 Markierungen an der Maus; Klick auf ein Feld setzt sie.
+-- /fmarks (oder eine Taste) öffnet ein Rad mit den 8 Markierungen an der Maus. Wie beim Ping-Rad zählt die RICHTUNG:
+-- die Maus zeigt in ein Tortenstück, dieses leuchtet auf (Zeiger + großes Symbol), ein Linksklick setzt es.
 --   Modus "Ziel":  Markierung auf die Einheit, über der die Maus beim Öffnen stand (sonst auf das aktuelle Ziel)
---   Modus "Boden": Bodenmarkierung dort, wo das Feld auf dem Bildschirm liegt (also dort öffnen, wo sie hin soll)
--- Mitte = Modus umschalten, unten = Markierung(en) entfernen. Taste festlegen: /fmarks key ALT-X (/fmarks key aus = keine).
--- Prototyp-Grenzen: Öffnen und Moduswechsel nur außerhalb des Kampfs (die Markierungs-Knöpfe sind geschützt).
+--   Modus "Boden": Bodenmarkierung an der Mausposition beim Klick (das Rad also dort öffnen, wo sie hin soll)
+-- Klick in die Mitte = Modus umschalten, Knopf unten = Markierung(en) entfernen. Taste: /fmarks key ALT-X (key aus = keine).
+-- Prototyp-Grenzen: Öffnen und Moduswechsel nur außerhalb des Kampfs (die Markierungs-Aktion ist ein geschützter Knopf).
 -- Reihenfolge und Zuordnung Ziel-/Bodenmarkierung wie die unsichtbaren Markierungs-Knöpfe in ForeverBars.
-local _, root = ...
 local UI = ForeverHub.UI
 local T = UI.T
 local function Chat(text) UI.Chat("ForeverMarks", text) end
@@ -16,7 +16,9 @@ local MARKERS = { -- im Uhrzeigersinn ab oben: raid = Zielmarkierung 1–8, worl
 }
 local ICON = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_"
 local WHITE = "Interface\\Buttons\\WHITE8X8"
-local RADIUS, BTN, CLOSE_DIST = 66, 32, 130
+local RING, ICON_SIZE, ICON_BIG = 70, 34, 44
+local INNER, OUTER = 24, 120 -- Mitte (Moduswechsel) bis Außenrand der Tortenstücke
+local CLOSE_DIST = 190
 local GOLD = { 1, 0.82, 0 }
 
 local function DB()
@@ -27,10 +29,10 @@ local function DB()
 end
 
 ---------------------------------------------------------------------------
--- Rad
+-- Rad (Anzeige)
 ---------------------------------------------------------------------------
 local wheel = CreateFrame("Frame", "ForeverMarksWheel", UIParent)
-wheel:SetSize(2 * (RADIUS + BTN), 2 * (RADIUS + BTN) + 40)
+wheel:SetSize(2 * OUTER, 2 * OUTER)
 wheel:SetFrameStrata("DIALOG")
 wheel:SetClampedToScreen(true)
 wheel:Hide()
@@ -38,93 +40,231 @@ tinsert(UISpecialFrames, "ForeverMarksWheel") -- Esc schließt
 
 local mode = "unit" -- "unit" | "ground"
 local unitToken = "target"
-local buttons = {}
+local hoverIndex -- Tortenstück unter der Mausrichtung (1–8) oder nil (Mitte / außerhalb)
+local slots = {}
 
-local function Skin(b)
-    b:SetBackdrop({ bgFile = WHITE, edgeFile = WHITE, edgeSize = 1 })
-    b:SetBackdropColor(0.06, 0.06, 0.07, 0.92)
-    b:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
-    b:HookScript("OnEnter", function(self) self:SetBackdropBorderColor(GOLD[1], GOLD[2], GOLD[3], 1) end)
-    b:HookScript("OnLeave", function(self) self:SetBackdropBorderColor(0.3, 0.3, 0.3, 1) end)
+local function Skin(f, size)
+    f:SetSize(size, size)
+    f:SetBackdrop({ bgFile = WHITE, edgeFile = WHITE, edgeSize = 2 })
+    f:SetBackdropColor(0.06, 0.06, 0.07, 0.92)
 end
 
-local function NewButton(size)
-    local b = CreateFrame("Button", nil, wheel, "SecureActionButtonTemplate,BackdropTemplate")
-    b:SetSize(size, size)
-    b:RegisterForClicks("LeftButtonUp")
-    Skin(b)
-    b.icon = b:CreateTexture(nil, "ARTWORK")
-    b.icon:SetPoint("TOPLEFT", 3, -3)
-    b.icon:SetPoint("BOTTOMRIGHT", -3, 3)
-    b:HookScript("PostClick", function() C_Timer.After(0.05, function() wheel:Hide() end) end)
-    return b
+-- Ring-Hintergrund (rund wirkt das Rad dadurch geordneter)
+local disc = wheel:CreateTexture(nil, "BACKGROUND")
+disc:SetSize(2 * (RING + 30), 2 * (RING + 30))
+disc:SetPoint("CENTER")
+disc:SetTexture("Interface\\CHARACTERFRAME\\TempPortraitAlphaMask")
+disc:SetVertexColor(0, 0, 0, 0.45)
+
+-- Zeiger: kurzer Strich vom Zentrum in Richtung des gewählten Tortenstücks
+local pointer = wheel:CreateTexture(nil, "ARTWORK")
+pointer:SetTexture(WHITE)
+pointer:SetVertexColor(GOLD[1], GOLD[2], GOLD[3], 1)
+pointer:Hide()
+
+local function SlotAngle(i) return math.rad(90 - (i - 1) * 45) end
+
+local function RefreshSlot(s)
+    local r, g, b = 0.3, 0.3, 0.3
+    local size = ICON_SIZE
+    if s.flash then r, g, b = 0.2, 1, 0.3 size = ICON_BIG
+    elseif s.hover then r, g, b = 1, 1, 1 size = ICON_BIG
+    elseif s.active then r, g, b = GOLD[1], GOLD[2], GOLD[3] end
+    s:SetBackdropBorderColor(r, g, b, 1)
+    s:SetSize(size, size)
+    s:SetFrameLevel(wheel:GetFrameLevel() + (s.hover and 5 or 2))
 end
 
--- Beschriftung in der Mitte (Modus und Ziel)
-local label = wheel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-label:SetPoint("TOP", wheel, "BOTTOM", 0, 14)
+for i, m in ipairs(MARKERS) do
+    local s = CreateFrame("Frame", nil, wheel, "BackdropTemplate")
+    Skin(s, ICON_SIZE)
+    s:EnableMouse(false) -- Klicks gehen an die Fläche darunter
+    local a = SlotAngle(i)
+    s:SetPoint("CENTER", wheel, "CENTER", RING * math.cos(a), RING * math.sin(a))
+    s.icon = s:CreateTexture(nil, "ARTWORK")
+    s.icon:SetPoint("TOPLEFT", 3, -3)
+    s.icon:SetPoint("BOTTOMRIGHT", -3, 3)
+    s.icon:SetTexture(ICON .. m.raid)
+    s.marker = m
+    slots[i] = s
+end
 
--- Mitte: Modus umschalten (insecure, nur außerhalb des Kampfs wirksam)
-local center = CreateFrame("Button", nil, wheel, "BackdropTemplate")
-center:SetSize(44, 44)
-center:SetPoint("CENTER", wheel, "CENTER", 0, 20)
-Skin(center)
+-- Mitte: zeigt den Modus (Klick = umschalten)
+local center = CreateFrame("Frame", nil, wheel, "BackdropTemplate")
+Skin(center, 2 * INNER)
+center:SetPoint("CENTER")
+center:EnableMouse(false)
+center:SetFrameLevel(wheel:GetFrameLevel() + 1)
 center.text = center:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 center.text:SetPoint("CENTER")
 
-local function Apply()
-    if InCombatLockdown() then return end
-    for _, b in ipairs(buttons) do
-        if b.marker then
-            if mode == "unit" then
-                b:SetAttribute("type", "raidtarget")
-                b:SetAttribute("unit", unitToken)
-                b:SetAttribute("marker", b.marker.raid)
-            else
-                b:SetAttribute("type", "worldmarker")
-                b:SetAttribute("marker", b.marker.world)
-            end
-            b:SetAttribute("action", "toggle")
-        elseif b.isClear then
-            b:SetAttribute("type", mode == "unit" and "raidtarget" or "worldmarker")
-            b:SetAttribute("unit", unitToken)
-            b:SetAttribute("action", "clear")
-        end
-    end
-    local name = UnitName(unitToken)
+-- Beschriftung unter dem Rad
+local label = wheel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+
+---------------------------------------------------------------------------
+-- Welche Markierung steht gerade? (für die goldene Umrandung)
+---------------------------------------------------------------------------
+local function MarkActive(m)
     if mode == "unit" then
-        center.text:SetText(T("Ziel", "Unit"))
-        label:SetText(string.format(T("Ziel: %s", "Unit: %s"), name or T("(keins)", "(none)")))
-    else
-        center.text:SetText(T("Boden", "Ground"))
-        label:SetText(T("Boden: an der Stelle des Feldes", "Ground: at the spot of the slot"))
+        local ok, idx = pcall(GetRaidTargetIndex, unitToken)
+        return ok and idx == m.raid
     end
-    center.text:SetTextColor(mode == "unit" and 1 or GOLD[1], mode == "unit" and 1 or GOLD[2], mode == "unit" and 1 or GOLD[3])
+    if IsRaidMarkerActive then
+        local ok, on = pcall(IsRaidMarkerActive, m.world)
+        return ok and on and true or false
+    end
+    return false
 end
 
-center:SetScript("OnClick", function()
+local function RefreshAll()
+    for _, s in ipairs(slots) do
+        s.active = MarkActive(s.marker)
+        RefreshSlot(s)
+    end
+end
+
+local function UpdateLabel()
+    local name = UnitName(unitToken)
+    local head
+    if mode == "unit" then
+        head = string.format(T("Ziel: %s", "Unit: %s"), name or T("(keins)", "(none)"))
+    else
+        head = T("Boden: an der Mausposition", "Ground: at the mouse position")
+    end
+    if hoverIndex then
+        local raid = MARKERS[hoverIndex].raid
+        head = head .. "\n|cffffd100" .. (_G["RAID_TARGET_" .. raid] or ("#" .. raid)) .. "|r"
+    end
+    label:SetText(head)
+end
+
+local function SetMode(newMode)
+    mode = newMode
+    center.text:SetText(mode == "unit" and T("Ziel", "Unit") or T("Boden", "Ground"))
+    if mode == "unit" then center.text:SetTextColor(1, 1, 1) else center.text:SetTextColor(GOLD[1], GOLD[2], GOLD[3]) end
+    RefreshAll()
+    UpdateLabel()
+end
+
+---------------------------------------------------------------------------
+-- Auswahl: Tortenstück aus der Mausrichtung
+---------------------------------------------------------------------------
+local function CursorOffset()
+    local x, y = GetCursorPosition()
+    local s = wheel:GetEffectiveScale()
+    local cx, cy = wheel:GetCenter()
+    if not cx then return 0, 0 end
+    return x / s - cx, y / s - cy
+end
+
+-- 1 = oben, im Uhrzeigersinn; nil = Mitte
+local function SectorAt(dx, dy)
+    if math.sqrt(dx * dx + dy * dy) < INNER then return nil end
+    local deg = math.deg(math.atan2(dy, dx))
+    return math.floor(((90 - deg) % 360 + 22.5) / 45) % 8 + 1
+end
+
+local function SetHover(i)
+    if i == hoverIndex then return end
+    hoverIndex = i
+    for idx, s in ipairs(slots) do
+        s.hover = idx == i or nil
+        RefreshSlot(s)
+    end
+    if i then
+        local a = SlotAngle(i)
+        local mid = (INNER + 6 + ICON_BIG / 2 + 4) -- Strich zwischen Mitte und Symbol
+        local len = RING - ICON_BIG / 2 - INNER - 8
+        pointer:ClearAllPoints()
+        pointer:SetSize(math.max(len, 6), 4)
+        pointer:SetPoint("CENTER", wheel, "CENTER", (INNER + 4 + len / 2) * math.cos(a), (INNER + 4 + len / 2) * math.sin(a))
+        pointer:SetRotation(a)
+        pointer:Show()
+    else
+        pointer:Hide()
+    end
+    UpdateLabel()
+end
+
+-- Klick-Fläche: ein geschützter Knopf über dem ganzen Rad. Vor dem Klick (PreClick) wird eingestellt, was er tut –
+-- je nach Richtung der Maus. In der Mitte tut er nichts (dort wird nur der Modus umgeschaltet).
+local catcher = CreateFrame("Button", "ForeverMarksCatcher", wheel, "SecureActionButtonTemplate")
+catcher:SetAllPoints(wheel)
+catcher:SetFrameLevel(wheel:GetFrameLevel() + 1)
+-- Auf- UND Abwärts: je nach Spiel-Einstellung "bei Tastendruck auslösen" reagiert der geschützte Knopf nur auf eine
+-- der beiden Hälften
+catcher:RegisterForClicks("AnyUp", "AnyDown")
+
+local function Configure(sector)
     if InCombatLockdown() then return end
-    mode = mode == "unit" and "ground" or "unit"
-    DB().mode = mode
-    Apply()
+    if not sector then
+        catcher:SetAttribute("type", nil)
+        return
+    end
+    local m = MARKERS[sector]
+    if mode == "unit" then
+        catcher:SetAttribute("type", "raidtarget")
+        catcher:SetAttribute("unit", unitToken)
+        catcher:SetAttribute("marker", m.raid)
+    else
+        catcher:SetAttribute("type", "worldmarker")
+        catcher:SetAttribute("marker", m.world)
+    end
+    catcher:SetAttribute("action", "toggle") -- gleiche Markierung noch einmal = entfernen
+end
+
+catcher:SetScript("PreClick", function() Configure(SectorAt(CursorOffset())) end)
+
+-- einmal je Klick (OnMouseUp kommt genau einmal): Rückmeldung und Schließen
+catcher:SetScript("OnMouseUp", function(_, button)
+    if button ~= "LeftButton" then return end
+    local sector = SectorAt(CursorOffset())
+    if not sector then -- Mitte: Modus wechseln
+        if not InCombatLockdown() then
+            SetMode(mode == "unit" and "ground" or "unit")
+            DB().mode = mode
+        end
+        return
+    end
+    local s = slots[sector]
+    s.flash = true
+    RefreshSlot(s)
+    label:SetText(string.format(T("|cff33ff4dGesetzt:|r %s", "|cff33ff4dSent:|r %s"),
+        _G["RAID_TARGET_" .. s.marker.raid] or ("#" .. s.marker.raid)))
+    C_Timer.After(0.4, function()
+        s.flash = nil
+        wheel:Hide()
+    end)
 end)
 
-for i, m in ipairs(MARKERS) do
-    local b = NewButton(BTN)
-    local angle = math.rad(90 - (i - 1) * 45) -- 1 = oben, im Uhrzeigersinn
-    b:SetPoint("CENTER", wheel, "CENTER", RADIUS * math.cos(angle), RADIUS * math.sin(angle) + 20)
-    b.icon:SetTexture(ICON .. m.raid)
-    b.marker = m
-    buttons[#buttons + 1] = b
-end
+-- Rechtsklick auf die Fläche schließt
+catcher:HookScript("OnClick", function(_, button, down)
+    if button == "RightButton" and not down then wheel:Hide() end
+end)
 
-local clear = NewButton(22)
-clear:SetPoint("TOP", wheel, "BOTTOM", 0, -2)
+-- Unten: Markierung(en) entfernen
+local clear = CreateFrame("Button", "ForeverMarksClear", wheel, "SecureActionButtonTemplate,BackdropTemplate")
+Skin(clear, 24)
+clear:SetPoint("TOP", wheel, "BOTTOM", 0, 2)
+clear:RegisterForClicks("AnyUp", "AnyDown")
+clear.icon = clear:CreateTexture(nil, "ARTWORK")
+clear.icon:SetPoint("TOPLEFT", 3, -3)
+clear.icon:SetPoint("BOTTOMRIGHT", -3, 3)
 clear.icon:SetTexture("Interface\\Buttons\\UI-GroupLoot-Pass-Up")
-clear.isClear = true
-buttons[#buttons + 1] = clear
-label:ClearAllPoints()
-label:SetPoint("TOP", clear, "BOTTOM", 0, -3)
+clear:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
+clear:HookScript("OnEnter", function(self)
+    self:SetBackdropBorderColor(1, 1, 1, 1)
+    SetHover(nil)
+    label:SetText(T("Entfernen", "Clear"))
+end)
+clear:HookScript("OnLeave", function(self) self:SetBackdropBorderColor(0.3, 0.3, 0.3, 1) UpdateLabel() end)
+clear:HookScript("OnMouseUp", function(self)
+    self:SetBackdropBorderColor(0.2, 1, 0.3, 1)
+    label:SetText(T("|cff33ff4dEntfernt.|r", "|cff33ff4dCleared.|r"))
+    C_Timer.After(0.4, function() wheel:Hide() end)
+end)
+
+label:SetPoint("TOP", clear, "BOTTOM", 0, -4)
 
 ---------------------------------------------------------------------------
 -- Einheit unter der Maus beim Öffnen finden (Token zu GUID)
@@ -152,21 +292,23 @@ local function Open()
     unitToken = "target"
     local g = UnitExists("mouseover") and Guid("mouseover")
     if g then unitToken = TokenFor(g) or "target" end
-    mode = DB().mode == "ground" and "ground" or "unit"
-    Apply()
     local x, y = GetCursorPosition()
     local s = UIParent:GetEffectiveScale()
     wheel:ClearAllPoints()
-    wheel:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x / s, y / s - 20)
+    wheel:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x / s, y / s)
+    hoverIndex = nil
+    pointer:Hide()
+    for _, slot in ipairs(slots) do slot.hover, slot.flash = nil, nil end
+    SetMode(DB().mode == "ground" and "ground" or "unit")
     wheel:Show()
 end
 
--- schließt, wenn die Maus weit vom Rad wegwandert
+-- Richtung der Maus verfolgen; schließt, wenn die Maus weit vom Rad wegwandert
 wheel:SetScript("OnUpdate", function(self)
-    local x, y = GetCursorPosition()
-    local s = self:GetEffectiveScale()
-    local cx, cy = self:GetCenter()
-    if cx and math.sqrt((x / s - cx) ^ 2 + (y / s - cy - 20) ^ 2) > CLOSE_DIST then self:Hide() end
+    local dx, dy = CursorOffset()
+    if math.sqrt(dx * dx + dy * dy) > CLOSE_DIST then self:Hide() return end
+    if dy < -(OUTER + 4) then return end -- Knopf "Entfernen" unten: Hervorhebung bleibt aus
+    SetHover(SectorAt(dx, dy))
 end)
 
 ---------------------------------------------------------------------------
