@@ -103,11 +103,23 @@ local function CreateUnitFrame(info)
     b:SetClampedToScreen(true)
     b:SetScript("OnDragStart", function(self)
         if not GetDB().locked and not InCombatLockdown() then
+            self.fuMoving = true
             self:StartMoving()
             ns.BeginDrag(self)
         end
     end)
     b:SetScript("OnDragStop", function(self)
+        -- nur, wenn das Ziehen wirklich begann (gesperrt oder im Kampf begonnen: nie angefangen) – und im Kampf ist
+        -- StopMovingOrSizing an diesem geschützten Rahmen gesperrt: dann erst nach dem Kampf beenden
+        if not self.fuMoving then return end
+        self.fuMoving = nil
+        if InCombatLockdown() then
+            UI.AfterCombat("ForeverUnitsStopMove" .. tostring(self.key), function()
+                self:StopMovingOrSizing()
+                ns.EndDrag(self)
+            end)
+            return
+        end
         self:StopMovingOrSizing()
         local dx, dy = ns.EndDrag(self)
         if not InCombatLockdown() then
