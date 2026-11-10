@@ -247,7 +247,9 @@ local function SetupMapMoving(map, top)
     map:HookScript("OnShow", function() C_Timer.After(0, ApplyMapPlacement) end)
     if type(_G.UpdateUIPanelPositions) == "function" then
         hooksecurefunc("UpdateUIPanelPositions", function(frame)
-            if frame == nil or frame == map then ApplyMapPlacement() end
+            -- NICHT sofort: Position/Skalierung mitten in Blizzards Fensterverwaltung (ShowUIPanel -> Karte öffnen)
+            -- zu setzen färbt deren Ablauf an ("ForeverQuests tried to call PerformEmote()")
+            if frame == nil or frame == map then C_Timer.After(0, ApplyMapPlacement) end
         end)
     end
     for _, method in ipairs({ "Maximize", "Minimize" }) do
