@@ -221,6 +221,9 @@ do
     Check(T("Andere dämpfen, solange ein Ziel gewählt ist", "Dim the others while you have a target"), "dimOthers")
     Check(T("Gegner außer Reichweite blasser (Zauber der Klasse)", "Enemies out of range fainter (class spell)"), "rangeFade")
     Gap()
+    Header(T("Gegnerische Spieler", "Enemy players"))
+    Check(T("Leiste in Klassenfarbe (andere Fraktion)", "Bar in class color (other faction)"), "enemyClassColor")
+    Gap()
     Header(T("Verbündete", "Allies"))
     Check(T("Nur Name in Klassenfarbe", "Name only, in class color"), "friendlySimple", false,
         function() ns.ApplyFriendly() end)

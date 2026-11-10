@@ -73,6 +73,7 @@ ns.DEFAULTS = {
     executeColor = { 1, 0.2, 0.85 }, -- auffallend: leuchtendes Pink-Magenta (frei wählbar)
     combo = true,             -- Combopunkte auf dem Ziel
     friendlySimple = true,    -- Verbündete: nur Name in Klassenfarbe
+    enemyClassColor = true,   -- gegnerische Spieler (andere Fraktion): Leiste in Klassenfarbe statt Feindrot
     quest = true,             -- Questgegner-Symbol
     raidMarker = true,        -- großer Raidmarker über der Plakette
     raidMarkerSize = 26,
@@ -837,7 +838,15 @@ local function ApplyBarColor(fp)
 end
 
 local function CopyBlizzardColor(fp)
-    local r, g, b = Soften(fp.hb:GetStatusBarColor())
+    local r, g, b = fp.hb:GetStatusBarColor()
+    -- gegnerische Spieler (z. B. andere Fraktion): Klassenfarbe statt Blizzards Rot (Einstellung "enemyClassColor");
+    -- ist die Klasse gesperrt oder unbekannt, bleibt es bei Blizzards Farbe
+    if db.enemyClassColor and fp.enemy and fp.isPlayer and fp.unit then
+        local _, class = UnitClass(fp.unit)
+        local col = Yes(class) and C_ClassColor and C_ClassColor.GetClassColor(class)
+        if col then r, g, b = col.r, col.g, col.b end
+    end
+    r, g, b = Soften(r, g, b)
     fp.baseCol = { r, g, b }
     ApplyBarColor(fp)
 end
