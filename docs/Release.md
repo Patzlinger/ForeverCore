@@ -24,7 +24,9 @@ Vorher `git pull --rebase`, damit der Stand des anderen mit drin ist.
   neuen Befehlen/Funktionen anpassen.
 - `release/Changelog-CurseForge.txt` = Englisch, für Spieler geschrieben; wandert nicht ins Zip.
 - `release/Description-CurseForge.txt` = Text der CurseForge-Hauptseite (Englisch, Markdown); bei neuen
-  Addons/Funktionen anpassen, nicht ins Zip.
+  Addons/Funktionen anpassen, nicht ins Zip. Die Bilder darin liegen in `release/curseforge/` und werden direkt von
+  GitHub (Zweig `development`) eingebunden, damit sie nicht in der CurseForge-Galerie landen – nicht umbenennen oder
+  löschen; austauschen unter demselben Namen (Einzelheiten: `release/curseforge/README.md`).
 - Bauen mit `tools/build-release.ps1` (Versionsprüfung, Addon-Ordner, Einzel-Zips, Gesamt-Zip) nach
   `..\_Forever-Release-<Version>\`; fremde Zips im Zielordner werden nie angefasst.
 - Nie SavedVariables oder gebaute Zips ins Repository einchecken.

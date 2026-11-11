@@ -1,110 +1,47 @@
-# Forever Core UI
+![Forever Core UI](https://raw.githubusercontent.com/Patzlinger/ForeverCore/development/release/curseforge/00-header.jpg)
 
-*Less clutter. More control. Just the essentials.*
+Forever Core UI is a complete user interface for **World of Warcraft: Forever**: frames, bars, nameplates, quests, bags, map, chat and tooltips in one calm look – flat and dark with gold accents. Every part is its own addon, so use all fifteen or only the ones you need.
 
-Forever Core UI is a complete user interface for **World of Warcraft: Forever**. You get frames, bars, nameplates, quests, bags, map, chat and tooltips in one calm, consistent look. Install it, log in and play.
+![The whole interface](https://raw.githubusercontent.com/Patzlinger/ForeverCore/development/release/curseforge/03-interface.jpg)
 
-Our idea is simple: keep the game straightforward. We improve what's already there, and we build things from scratch where no existing addon did them the way we wanted. You don't have to hunt for a dozen addons and spend an evening making them fit together. Forever Core UI works out of the box and still lets you change every detail.
-
-Every part is its own addon. Use all of them, or only the ones you need.
-
----
-
-## Why Forever Core UI?
-- **One interface, not a pile of addons.** One settings window, one minimap button, one look: flat and dark with gold accents.
-- **Ready to play.** On a fresh install everything starts in a tidy, tested layout.
-- **Built for Forever.** First and last names, the classic rules for levels and experience, and the game's combat restrictions are all handled. There's no rotation help and no automation in combat.
-- **Works with what you already use.** Questie, Details!, Masque and TomTom are built right in. If you already have another addon for the same job, you choose which one should run.
-- **English and German.**
-
----
+![Why Forever Core UI? One interface, ready to play, built for Forever, works with Questie, Details!, Masque and TomTom](https://raw.githubusercontent.com/Patzlinger/ForeverCore/development/release/curseforge/05-why.jpg)
 
 ## The addons
 
-**ForeverFrames – party and raid frames** (/ff)
-- Clean, compact frames with click casting
-- Incoming heals, shields, dispellable debuffs and HoTs at a glance
-- Separate settings for party and raid, optional role sorting, pet frames, resurrection and summon icons
+![ForeverFrames – party and raid frames](https://raw.githubusercontent.com/Patzlinger/ForeverCore/development/release/curseforge/11-frames.jpg)
 
-**ForeverUnits – player, target, focus, pet and target of target** (/fu)
-- Class icon or portrait, level colors that follow the classic experience rules, and elite/rare/boss markers
-- Optional DoT bars for target and focus, which you can detach and place anywhere
-- Combo points for Rogues and Druids in cat form
+![ForeverUnits – player, target, focus and pet frames](https://raw.githubusercontent.com/Patzlinger/ForeverCore/development/release/curseforge/12-units.jpg)
 
-**ForeverPlates – nameplates** (/fplates) *(new)*
-- Health in percent and total, plus an execute color you choose yourself
-- Threat as a word and in percent
-- A cast bar that shows who the cast is aimed at, and briefly "Interrupted by …" when a cast gets stopped
-- Your DoTs, crowd control, combo points, raid markers and quest mobs (with Questie)
-- Plates stack neatly and stay sharp at any distance
+![ForeverPlates – nameplates](https://raw.githubusercontent.com/Patzlinger/ForeverCore/development/release/curseforge/13-plates.jpg)
 
-**ForeverCast – cast bar** (/fcast)
-- Latency, lag zone, spell queue window and global cooldown
+![ForeverCast – cast bar](https://raw.githubusercontent.com/Patzlinger/ForeverCore/development/release/curseforge/14-cast.jpg)
 
-**ForeverBars – action bars, experience and reputation** (/fb)
-- Flat action bars, plus pet, stance and totem bars, each with its own size, layout, fading and key bindings
-- A slim experience bar with XP per hour, time to level-up, rested XP and the XP from finished quests
-- A reputation bar, a marker bar with target and world markers, a profession bar, a bag bar and a micro menu
+![ForeverBars – action bars, experience and reputation](https://raw.githubusercontent.com/Patzlinger/ForeverCore/development/release/curseforge/21-bars.jpg)
 
-**ForeverQuests – quest tracker, quest log and dungeon quests** (/fq)
-- Quests grouped by zone, with tags, a reward chest, filters and pins
-- The world map's quest log in the Forever look, with a details page for every quest
-- **Quest together:** suggest a quest to your group and follow everyone's progress
-- A dungeon window with all dungeon quests, prerequisites, rewards and chains. It also shows who in your group has which quest.
-- **With Questie:** Questie's tracker makes room for ours, while its map icons follow your tracked quests. Quest chains, Wowhead links and TomTom waypoints are one right-click away.
+![ForeverQuests – quest tracker, quest log and dungeon quests](https://raw.githubusercontent.com/Patzlinger/ForeverCore/development/release/curseforge/31-quests.jpg)
 
-**ForeverBags – all bags in one window** (/fbags)
-- Search, sort, free slots, gold and currencies
-- Its own bank and guild bank windows. The bank opens in the middle of the screen with your bags right next to it.
-- The bags, bank and gold of all your characters. Item tooltips show how many of an item they own.
+![ForeverMinimap – minimap](https://raw.githubusercontent.com/Patzlinger/ForeverCore/development/release/curseforge/32-minimap.jpg)
 
-**ForeverAlts – all your characters** (/falts) *(new)*
-- Level, rested XP, gold, location, professions, played time, mail and last login, all in one table
-- The recipes of every character, and "Can be made by" in item tooltips
+![ForeverBags – all bags in one window](https://raw.githubusercontent.com/Patzlinger/ForeverCore/development/release/curseforge/41-bags.jpg)
 
-**ForeverMinimap – a simple minimap** (/fmm)
-- Round or square, with zone, clock and coordinates
-- A tidy button strip, a mail tile and the dungeon finder eye right in the map
+![ForeverSkin – Blizzard's windows in the Forever look](https://raw.githubusercontent.com/Patzlinger/ForeverCore/development/release/curseforge/42-skin.jpg)
 
-**ForeverChat – your chat, just cleaner** (/fchat)
-- A transparent window, flat tabs and names in class colors with their level
-- Short channel names, clickable links and highlighted mentions
-- Instant messaging: one tab per person for your whispers
+![ForeverSpellbook – compact spellbook](https://raw.githubusercontent.com/Patzlinger/ForeverCore/development/release/curseforge/43-spellbook.jpg)
 
-**ForeverTooltip – tooltips** (/ftip) *(new)*
-- The Forever look, with the border in item quality or class color
-- Item level, IDs, the unit's target and a movable anchor
+![ForeverAlts – all your characters](https://raw.githubusercontent.com/Patzlinger/ForeverCore/development/release/curseforge/44-alts.jpg)
 
-**ForeverSkin – Blizzard's windows in the Forever look** (/fskin) *(new)*
-- NPC and quest dialogs, merchant, trainers, macros, loot, flight map and Blizzard's options – flat, dark and tidy
-- A new merchant window: right-click to buy, Shift + right-click for an amount, hide items you can't use
-- Only the look changes: Blizzard's windows and buttons work exactly as before
+![ForeverTooltip – tooltips](https://raw.githubusercontent.com/Patzlinger/ForeverCore/development/release/curseforge/45-tooltip.jpg)
 
-**ForeverSpellbook – compact spellbook** (/fsb)
-- All your spells with a search
-- Finds lower spell ranks on your bars and fixes them with one click
-- Shows what your trainer has next and what it costs
+![ForeverChat – chat](https://raw.githubusercontent.com/Patzlinger/ForeverCore/development/release/curseforge/46-chat.jpg)
 
-**ForeverHelpers – the small things** (/fhelp)
-- **Loot rolls:** who picked Need, Greed or Pass, what everyone rolled and who won
-- **Buffs and consumables:** a small icon only when something is missing. Click it to cast.
-- **Merchant:** sells grey items, repairs and restocks reagents, food, drink and ammo, with a spending limit
+![ForeverCore – the hub](https://raw.githubusercontent.com/Patzlinger/ForeverCore/development/release/curseforge/51-core.jpg)
 
----
+![ForeverHelpers – loot rolls, buff reminder and merchant helper](https://raw.githubusercontent.com/Patzlinger/ForeverCore/development/release/curseforge/52-helpers.jpg)
 
-## Everything in one place
-- **/forever** or the Forever Core UI minimap button opens the settings window. The overview shows every addon as a tile, so one click turns it on or off. You can search all settings at once.
-- **/fmove** unlocks every frame, so you can place them on a grid. Frames snap to each other, and holding Shift lets you move them freely.
-- **Profiles per character**, for all addons at once (**/forever profile**).
-- **Share your setup:** export all settings as one text and import them anywhere (**/forever export**).
-- **Details!** gets the Forever look automatically, on a copy of your profile.
-- **Player names** are shortened to "Hexeron S." on frames and nameplates. You can choose this in the overview.
-
----
+![Ready in three steps: install, log in, type /forever](https://raw.githubusercontent.com/Patzlinger/ForeverCore/development/release/curseforge/90-start.jpg)
 
 ## Good to know
-- Every addon needs the small base addon **ForeverCore**. It's included in the package.
-- This is a **beta**. Thanks for helping us test it!
-
-## Found a bug or have an idea?
-We'd love to hear from you! The addon **BugSack** shows the exact error, so please include it in your report.
+- Every addon needs the small base addon **ForeverCore** – it's included in the package.
+- English and German. The screenshots were taken with the German client.
+- No rotation help and no automation in combat.
+- This is a **beta**. Found a bug? Please post it in the comments, ideally with the error text from **BugSack**.
