@@ -43,6 +43,17 @@ Ablauf:
 - **Nächster Schritt:** Spiel neu starten, Bearbeitungsmodus öffnen/schließen, BugSack prüfen. Tritt es wieder auf:
   `SetAlpha(0)` auf `ObjectiveTrackerFrame` (Hub `UI.HideBlizzard`) als Ursache prüfen. Gefunden 2026-11-08.
 
+### Handel in einer Instanz: Fenster schließt sofort, Gegenstand bleibt gesperrt (offen, ungeklärt)
+- **Was passiert:** In einer Instanz schließt sich das Handelsfenster direkt nach dem Handelsversuch; der Gegenstand,
+  der darin lag, bleibt in der Tasche gesperrt („stuck“). Gefunden 2026-11-11 (flowfy).
+- **Stand:** BugSack ohne Fehler dazu. Kein Forever-Code schließt den Handel: ForeverSkin (`Extra.lua`, nur Aussehen
+  + Ablegen per `ClickTradeButton`), ForeverBags (`Bags.lua`, öffnet/dockt Taschen bei `TRADE_SHOW`), ForeverCore
+  `Movers.lua` (verschiebbar). Nichts davon ist instanzabhängig. Vermutung: Abbruch durch das Spiel (Abstand > ~10 m)
+  + Blizzards Sperre nach Abbruch.
+- **Nächster Schritt:** Chatmeldung beim Schließen? Zeitpunkt (Hineinlegen / „Handeln“ / Aktion des anderen)? Frisch
+  erbeuteter seelengebundener Gegenstand? Nach `/reload` noch grau? Wenn nach `/reload` frei: ForeverBags aktualisiert
+  die Sperre (`ITEM_LOCK_CHANGED`/`TRADE_CLOSED`) nicht – dort ansetzen.
+
 ## Erledigt
 
 ### BugSack-Fehler vom 5.–7.11.2026 (behoben, per Zeitstempel gegen Commits geprüft, 2026-11-08)
