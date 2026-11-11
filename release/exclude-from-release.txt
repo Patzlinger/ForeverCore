@@ -1,4 +1,3 @@
 # Dateien, die im Entwicklungsstand liegen, aber NICHT ins Release gehoert (Prototypen). Eine Zeile je Datei: Addon/Datei.
 # Das Bauskript laesst sie weg und nimmt sie aus der .toc des Addons im Zip.
 ForeverHelpers/Marks.lua
-ForeverHelpers/GroupFilter.lua

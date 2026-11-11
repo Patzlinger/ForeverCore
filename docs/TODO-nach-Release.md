@@ -20,8 +20,3 @@ Auswirkung im Spiel.
       nimmt
 - [ ] ⚠ **Suche nach Gruppe: nach Rolle filtern** (Tank, Heiler, Schaden): in der Gruppensuche die Ergebnisse nach der
       gesuchten Rolle filtern können (Addon noch klären)
-      **Erste Fassung seit 2026-11-11:** `ForeverHelpers/GroupFilter.lua` – Leiste unter „Durchsuchen“ mit Tank/Heiler/
-      Schaden; unpassende Einträge werden abgedunkelt (nicht entfernt: Blizzards Liste bleibt unberührt, taint-frei).
-      Im Spiel noch nicht bestätigt – die Rollen-Erkennung rät den Aufbau der Spiel-Daten; Prüfbefehl `/flfg check`.
-      Bis zur Bestätigung vom Release ausgenommen (`release/exclude-from-release.txt`); danach dort streichen und
-      einen Changelog-Eintrag ergänzen
