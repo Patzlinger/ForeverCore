@@ -423,17 +423,26 @@ local function SkinMail()
     f:HookScript("OnShow", function() C_Timer.After(0, function() pcall(Place, f) end) end)
     local events = CreateFrame("Frame", nil, f)
     events:RegisterEvent("MAIL_INBOX_UPDATE")
-    events:SetScript("OnEvent", function() if f:IsShown() then pcall(Place, f) end end)
+    events:SetScript("OnEvent", function()
+        if f:IsShown() then
+            ns.MarkBusy(2) -- neue Post: Zeilen-Balken sofort nachziehen
+            pcall(Place, f)
+        end
+    end)
     -- solange offen: Brieftext hell halten (Blizzard färbt beim Wechsel neu), Reiter-Beschriftung mittig, Plätze
-    -- prüfen (fünfmal je Sekunde)
+    -- prüfen (fünfmal je Sekunde). Solange nicht damit gearbeitet wird, alles nur einmal je Sekunde (ns.Tick).
     local watch = CreateFrame("Frame", nil, f)
-    local waited = 0
+    local waited, idle = 0, 0
     watch:SetScript("OnUpdate", function(_, elapsed)
+        local tick = ns.Tick(0)
         waited = waited + elapsed
-        if waited >= 0.2 then
+        if waited >= math.max(0.2, tick) then
             waited = 0
             pcall(Place, f)
         end
+        idle = idle + elapsed
+        if idle < tick then return end
+        idle = 0
         pcall(LightText, G("SendMailBodyEditBox"))
         -- Balken nur bei sichtbaren Nachrichten-Zeilen
         for row, box in pairs(rowBoxes) do box:SetShown(row:IsVisible()) end
@@ -466,7 +475,13 @@ local function SkinOpenMail()
     ns.Watch(f)
     ns.Scaled(f)
     local watch = CreateFrame("Frame", nil, f)
-    watch:SetScript("OnUpdate", function() pcall(LightText, G("OpenMailBodyText")) end)
+    local idle = 0
+    watch:SetScript("OnUpdate", function(_, elapsed) -- (in jedem Bild nur, solange damit gearbeitet wird: ns.Tick)
+        idle = idle + elapsed
+        if idle < ns.Tick(0) then return end
+        idle = 0
+        pcall(LightText, G("OpenMailBodyText"))
+    end)
 end
 
 local function Run()

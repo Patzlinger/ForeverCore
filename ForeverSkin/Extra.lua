@@ -167,9 +167,20 @@ local function SkinLoot()
     ns.SkinArrowOnly(G("LootFrameDownButton"), "down")
     if f.ScrollBar then ns.SkinScrollBar(f.ScrollBar) end
     ns.Watch(f)
-    -- Zeilen baut Blizzard bei jeder Beute neu: solange das Fenster offen ist, in jedem Bild prüfen
+    -- Zeilen baut Blizzard bei jeder Beute neu: solange damit gearbeitet wird (2 s nach Öffnen/Klick/Beute-Ereignis,
+    -- Maus über dem Fenster), in jedem Bild prüfen – sonst einmal je Sekunde (ns.Tick)
     local watch = CreateFrame("Frame", nil, f)
-    watch:SetScript("OnUpdate", function() pcall(SkinLootRows) end)
+    for _, event in ipairs({ "LOOT_READY", "LOOT_OPENED", "LOOT_SLOT_CLEARED", "LOOT_SLOT_CHANGED" }) do
+        pcall(watch.RegisterEvent, watch, event)
+    end
+    watch:SetScript("OnEvent", function() ns.MarkBusy(2) end)
+    local idle = 0
+    watch:SetScript("OnUpdate", function(_, elapsed)
+        idle = idle + elapsed
+        if idle < ns.Tick(0) then return end
+        idle = 0
+        pcall(SkinLootRows)
+    end)
 end
 
 ---------------------------------------------------------------------------
@@ -747,8 +758,20 @@ local function SkinTrade()
     -- Solange das Fenster offen ist: Seltenheitsfarben, "hat Handeln gedrückt" (grüner Rand) – und Blizzards
     -- Knopf- und Eingabe-Grafiken erneut unsichtbar (Blizzard setzt sie bei Zustandswechseln teils neu)
     local accepted = setmetatable({}, { __mode = "k" })
+    -- Takt: in jedem Bild nur, solange damit gearbeitet wird (2 s nach Öffnen/Klick/Handels-Ereignis, Maus über dem
+    -- Fenster samt Titel- und Knopfleiste), sonst einmal je Sekunde (ns.Tick) – vorher lief das dauernd in jedem Bild
+    -- und erzeugte dabei laufend neue Listen (Datenmüll).
     local watch = CreateFrame("Frame", nil, f)
-    watch:SetScript("OnUpdate", function()
+    for _, event in ipairs({ "TRADE_SHOW", "TRADE_UPDATE", "TRADE_ACCEPT_UPDATE", "TRADE_PLAYER_ITEM_CHANGED",
+        "TRADE_TARGET_ITEM_CHANGED", "TRADE_MONEY_CHANGED", "PLAYER_TRADE_MONEY" }) do
+        pcall(watch.RegisterEvent, watch, event)
+    end
+    watch:SetScript("OnEvent", function() ns.MarkBusy(2) end) -- der andere ändert etwas: sofort wieder schnell
+    local idle = 0
+    watch:SetScript("OnUpdate", function(_, elapsed)
+        idle = idle + elapsed
+        if idle < ns.Tick(0) and not f:IsMouseOver(SHIFT, -DOWN, 0, 0) then return end
+        idle = 0
         for i = 1, (MAX_TRADE_ITEMS or 7) do
             UpdateTradeRow(G("TradePlayerItem" .. i .. "ItemButton"), GetTradePlayerItemLink and GetTradePlayerItemLink(i))
             UpdateTradeRow(G("TradeRecipientItem" .. i .. "ItemButton"), GetTradeTargetItemLink and GetTradeTargetItemLink(i))

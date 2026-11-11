@@ -327,15 +327,20 @@ local function SkinDressUp()
     -- solange offen: Blizzards Knopf-Grafiken unsichtbar halten, aufgeklappte Auswahlliste flach
     -- und alle 0,3 s die Liste rechts prüfen (Lage, Fläche – Blizzard hängt sie beim Aufklappen neu an)
     local watch = CreateFrame("Frame", nil, f)
-    local waited = 0
+    -- (in jedem Bild nur, solange damit gearbeitet wird – sonst alles einmal je Sekunde: ns.Tick)
+    local waited, idle = 0, 0
     watch:SetScript("OnUpdate", function(_, elapsed)
-        pcall(KeepButtonsFlat)
-        if ns.SkinOpenMenu then pcall(ns.SkinOpenMenu) end
+        local tick = ns.Tick(0)
         waited = waited + elapsed
-        if waited >= 0.3 then
+        if waited >= math.max(0.3, tick) then
             waited = 0
             pcall(SkinDetails, f)
         end
+        idle = idle + elapsed
+        if idle < tick then return end
+        idle = 0
+        pcall(KeepButtonsFlat)
+        if ns.SkinOpenMenu then pcall(ns.SkinOpenMenu) end
     end)
 end
 

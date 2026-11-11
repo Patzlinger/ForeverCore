@@ -586,20 +586,30 @@ local function SkinBook()
     -- solange offen: Blizzards Knopf-Grafiken unsichtbar halten, aufgeklappte Auswahlliste flach, alle 0,5 s neu
     -- entstandene Teile suchen (die Rezept-Ansicht baut Blizzard erst beim Wechseln auf)
     local watch = CreateFrame("Frame", nil, f)
-    local waited = 0
+    -- In jedem Bild nur, solange damit gearbeitet wird (2 s nach Öffnen/Klick, Maus über dem Fenster, beim Herstellen)
+    -- – sonst alles einmal je Sekunde (ns.Tick).
+    pcall(watch.RegisterUnitEvent, watch, "UNIT_SPELLCAST_START", "player")
+    pcall(watch.RegisterUnitEvent, watch, "UNIT_SPELLCAST_STOP", "player")
+    pcall(watch.RegisterUnitEvent, watch, "UNIT_SPELLCAST_SUCCEEDED", "player")
+    watch:SetScript("OnEvent", function() if f:IsShown() then ns.MarkBusy(2) end end) -- Herstellen: Knöpfe wechseln
+    local waited, idle = 0, 0
     watch:SetScript("OnUpdate", function(_, elapsed)
-        pcall(KeepButtonsFlat)
-        pcall(CloseTopGap, f) -- (jedes Bild: sonst rutschte der Inhalt erst Sekunden nach dem Öffnen hoch)
-        pcall(NudgeBottomButtons, f)
-        if ns.SkinOpenMenu then pcall(ns.SkinOpenMenu) end
+        local tick = ns.Tick(0)
         waited = waited + elapsed
-        if waited >= 0.5 then
+        if waited >= math.max(0.5, tick) then
             waited = 0
             pcall(Scan, f, 1)
             pcall(SkinWT, f)
             pcall(Overlays, f)
             pcall(ShrinkBottomButtons, f)
         end
+        idle = idle + elapsed
+        if idle < tick then return end
+        idle = 0
+        pcall(KeepButtonsFlat)
+        pcall(CloseTopGap, f) -- (jedes Bild nach dem Öffnen: sonst rutschte der Inhalt erst Sekunden später hoch)
+        pcall(NudgeBottomButtons, f)
+        if ns.SkinOpenMenu then pcall(ns.SkinOpenMenu) end
     end)
 end
 

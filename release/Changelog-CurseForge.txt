@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverSkin: the trade, loot, mail, macro, dressing room and profession windows use less CPU and memory while they are open and you are not using them.
+
 ## 0.543b – 2026-11-10
 
 - ForeverSpellbook: the hover highlight on the spellbook button in the micro menu now looks like the highlight of the other buttons (it showed a wrong frame).

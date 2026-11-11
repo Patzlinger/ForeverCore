@@ -86,7 +86,11 @@ local function SkinPopup(popup)
     ns.Watch(popup)
     ns.Scaled(popup, 0.85) -- kleiner als die übrigen Fenster (die Symbol-Auswahl ist sehr groß)
     local watch = CreateFrame("Frame", nil, popup)
-    watch:SetScript("OnUpdate", function()
+    local idle = 0
+    watch:SetScript("OnUpdate", function(_, elapsed) -- (in jedem Bild nur, solange damit gearbeitet wird: ns.Tick)
+        idle = idle + elapsed
+        if idle < ns.Tick(0) then return end
+        idle = 0
         pcall(SkinGrid, popup.IconSelector)
         if ns.SkinOpenMenu then pcall(ns.SkinOpenMenu) end -- aufgeklappte Auswahlliste ("Alle Symbole")
     end)
@@ -167,7 +171,11 @@ local function SkinMacro()
     -- Plätze baut Blizzard beim Blättern/Reiter-Wechsel neu: solange offen, sichtbare Plätze prüfen; Text der Reiter
     -- mittig; die Symbol-Auswahl gestalten, sobald es sie gibt
     local watch = CreateFrame("Frame", nil, f)
-    watch:SetScript("OnUpdate", function()
+    local idle = 0
+    watch:SetScript("OnUpdate", function(_, elapsed) -- (in jedem Bild nur, solange damit gearbeitet wird: ns.Tick)
+        idle = idle + elapsed
+        if idle < ns.Tick(0) then return end
+        idle = 0
         pcall(SkinGrid, selector)
         for i = 1, 2 do
             local tab = G("MacroFrameTab" .. i)
