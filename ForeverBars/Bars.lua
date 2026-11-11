@@ -175,9 +175,9 @@ local function DefaultPosition(key)
         bar1 = { width / 2, BarCenter(0) }, bar2 = { width / 2, BarCenter(1) }, bar3 = { width / 2, BarCenter(2) },
         bar6 = { width / 2, BarCenter(3) }, bar7 = { width / 2, BarCenter(4) }, bar8 = { width / 2, BarCenter(5) },
         bar4 = { width - 30, height / 2 }, bar5 = { width - 30 - ACTION_SIZE - 8, height / 2 },
-        pet = { topLeft, smallBottom },     -- BOTTOMLEFT
+        pet = { width / 2, smallBottom },   -- BOTTOM, mittig
         totem = { topLeft, smallBottom },   -- BOTTOMLEFT, beim Schamanen statt der Begleiterleiste
-        stance = { topRight, smallBottom }, -- BOTTOMRIGHT, rechtsbündig über der obersten Aktionsleiste
+        stance = { topLeft, smallBottom },  -- BOTTOMLEFT, linksbündig über der obersten Aktionsleiste
         prof = { left - SIDE_GAP - FRAME_SPACE, statusBase + FRAME_SPACE }, -- BOTTOMRIGHT (Rahmen eingerechnet)
         food = { right + SIDE_GAP + FRAME_SPACE, statusBase + FRAME_SPACE }, -- BOTTOMLEFT, gespiegelt zur Berufeleiste
         xp = { width / 2, statusCenter.xp or (EDGE + 9) }, rep = { width / 2, statusCenter.rep or (EDGE + 30) },

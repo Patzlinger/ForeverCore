@@ -139,10 +139,10 @@ ns.defaults.bars.stance.buttons = 10 -- Haltungsleiste zeigt immer so viele Knö
 -- links bzw. rechts bündig über den Aktionsleisten; Berufeleiste mit Rahmen links daneben;
 -- Menü und Taschen unten rechts; Erfahrung und Ruf oben mittig
 ns.defaults.bars.pet.scale = 66
-ns.defaults.bars.pet.point = "BOTTOMLEFT"
+ns.defaults.bars.pet.point = "BOTTOM" -- mittig über den Aktionsleisten
 ns.defaults.bars.stance.scale = 66
-ns.defaults.bars.stance.point = "BOTTOMRIGHT" -- rechtsbündig über der obersten Aktionsleiste
-ns.defaults.bars.stance.growX = "LEFT"        -- erster Knopf rechts, damit die Leiste rechtsbündig wächst
+ns.defaults.bars.stance.point = "BOTTOMLEFT" -- links über der obersten Aktionsleiste
+ns.defaults.bars.stance.growX = "RIGHT" -- wächst nach rechts
 ns.defaults.bars.prof.point = "BOTTOMRIGHT"
 ns.defaults.bars.prof.frame = true
 ns.defaults.bars.prof.scale = 84
@@ -250,7 +250,7 @@ ns.FillDefaults = FillDefaults
 --  26 (0.44b+): Erfahrung/Ruf direkt unter Aktionsleiste 1, dafür mehr Luft zum Bildschirmrand – Positionen neu
 --  27 (0.48b+): Haltungsleiste links über der Begleiterleiste (statt rechts), "Fahrzeug verlassen" darüber – neu
 --  28 (0.48b+): Haltungsleiste wieder rechtsbündig über der obersten Aktionsleiste (wie vor 27) – neu
-local LAYOUT_VERSION = 28
+local LAYOUT_VERSION = 29
 -- Standardgrößen vor 16 (nur Leisten, die noch darauf stehen, wachsen mit)
 local OLD_SCALES = { pet = 56, stance = 56, prof = 80, food = 80, bags = 76, queue = 50 }
 local STANDARD_LAYOUT_BARS = { "bar1", "bar2", "bar3", "bar6", "bar7", "bar8", "pet", "stance", "prof", "food",
@@ -289,6 +289,13 @@ function ns.MigrateLayout(db)
                     if stance.growX == "RIGHT" then stance.growX = "LEFT" end
                 end
                 if target.bars.vehicle then target.bars.vehicle.x, target.bars.vehicle.y = nil, nil end
+            end
+            if version < 29 then -- Begleiterleiste mittig, Haltungsleiste links und nach rechts wachsend (nur ungeänderte)
+                local pet, stance = target.bars.pet, target.bars.stance
+                if pet and not pet.moved then pet.x, pet.y, pet.point = nil, nil, "BOTTOM" end
+                if stance and not stance.moved then
+                    stance.x, stance.y, stance.point, stance.growX = nil, nil, "BOTTOMLEFT", "RIGHT"
+                end
             end
             if version < 26 and version >= 25 then
                 for _, key in ipairs(STANDARD_LAYOUT_BARS) do
