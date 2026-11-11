@@ -23,6 +23,7 @@ bekommt.** Neue Befehle hier eintragen (keine Doppelungen!).
 | /fbuffs, /foreverbuffs | ForeverBuffs |
 | /fvendor, /forevervendor | ForeverVendor |
 | /fhelp, /foreverhelpers | ForeverHelpers (Einstellungen der Helfer) |
+| /flfg, /foreverlfg | ForeverHelpers (Rollenfilter der Gruppensuche: `aus`, `check` = Prüfausgabe) |
 | /fsb, /fspellbook, /foreverspellbook | ForeverSpellbook |
 | /fchat, /foreverchat | ForeverChat |
 | /fmm, /foreverminimap | ForeverMinimap |
