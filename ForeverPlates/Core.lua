@@ -183,6 +183,10 @@ local function ColorObj(c)
     return o
 end
 
+-- Aggro-Text als Tank: Farbe, wenn ich die Aggro habe bzw. sie verloren habe (rot)
+local TANK_TEXT_OK = { 0.55, 0.85, 0.6 }
+local TANK_TEXT_LOST = { 1, 0.3, 0.3 }
+
 local function IsTank()
     if db.threatTank then return true end
     local role = UnitGroupRolesAssigned and UnitGroupRolesAssigned("player")
@@ -930,7 +934,7 @@ local function ThreatInfo(unit)
     if not IsSecret(tanking) and tanking == true and not IsSecret(status) and (status == nil or status < 2) then
         status = 3
     end
-    return status, pct
+    return status, pct, tanking
 end
 
 local function PlaceThreatText(fp)
@@ -989,12 +993,20 @@ local function UpdateThreat(fp)
     local col, show = nil, false
     fp.threatBadge.label:SetText("Aggro")
     if d.threat and fp.enemy and not fp.isPlayer and (IsInGroup() or UnitExists("pet")) then
-        local status, pct = ThreatInfo(fp.unit)
+        local status, pct, tanking = ThreatInfo(fp.unit)
         if IsSecret(status) then
-            -- Stufe geheim: nur die Zahl, neutral weiß
+            -- Stufe geheim: nur die Zahl; als Tank färbt Blizzards Farbrechnung nach "habe ich die Aggro?" auch mit
+            -- gesperrtem Wert (grün = Aggro, rot = verloren), sonst neutral weiß
             if d.threatText and Has(pct) then
                 fp.threatText:SetFormattedText("%.0f%%", pct)
-                fp.threatText:SetTextColor(0.9, 0.9, 0.9)
+                local colored = false
+                if IsTank() and tanking ~= nil and C_CurveUtil and C_CurveUtil.EvaluateColorFromBoolean and ColorObj(TANK_TEXT_OK) then
+                    colored = pcall(function()
+                        local c = C_CurveUtil.EvaluateColorFromBoolean(tanking, ColorObj(TANK_TEXT_OK), ColorObj(TANK_TEXT_LOST))
+                        fp.threatText:SetTextColor(c:GetRGBA())
+                    end)
+                end
+                if not colored then fp.threatText:SetTextColor(0.9, 0.9, 0.9) end
                 show = true
             end
         elseif status then
@@ -1019,6 +1031,10 @@ local function UpdateThreat(fp)
             local colorsOn = d.threatColorBar and (not d.threatColorTankOnly or (IsInGroup() and IsTank()))
             if colorsOn and c and (d.threatCustom or IsTank() or status > 0) then col = c end
             if not colorsOn and d.threatText then fp.threatText:SetTextColor(0.9, 0.9, 0.9) end
+            -- Als Tank in einer Gruppe: Aggro verloren (Stufe 0/1) = Text rot, unabhängig von den Leistenfarben
+            if d.threatText and c and IsInGroup() and IsTank() and status < 2 then
+                fp.threatText:SetTextColor(TANK_TEXT_LOST[1], TANK_TEXT_LOST[2], TANK_TEXT_LOST[3])
+            end
             -- Als Tank (in einer Gruppe, ich habe die Aggro): statt der eigenen 100 % der Abstand des Nächsten –
             -- "Nächster 85 %"; unter LEAD_SHOW gar nichts (wenig Text an der Seite, auch bei vielen Gegnern)
             if d.threatLead and d.threatText and status >= 2 and IsInGroup() and IsTank() then
