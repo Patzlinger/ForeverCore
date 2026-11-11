@@ -17,15 +17,16 @@ local MARKERS = { -- im Uhrzeigersinn ab oben: raid = Zielmarkierung 1–8, worl
     { raid = 8, world = 8 }, { raid = 7, world = 4 }, { raid = 6, world = 1 }, { raid = 5, world = 7 },
     { raid = 4, world = 2 }, { raid = 3, world = 3 }, { raid = 2, world = 6 }, { raid = 1, world = 5 },
 }
--- Blizzards Pings (im Uhrzeigersinn ab oben)
+-- Blizzards Pings (im Uhrzeigersinn ab oben). cmd als Zahl (Enum.PingSubjectType): "/ping attack" versteht nur der
+-- englische Client, sonst kommt der Standard-Ping „Herschauen“. Zahlen gehen in jeder Sprache (so macht es auch OPie).
 local PINGS = {
-    { cmd = "attack",  atlas = "Ping_Wheel_Icon_Attack",  icon = "Interface\\Icons\\Ability_Warrior_Charge",
+    { cmd = "1",  atlas = "Ping_Wheel_Icon_Attack",  icon = "Interface\\Icons\\Ability_Warrior_Charge",
       de = "Angreifen", en = "Attack" },
-    { cmd = "warning", atlas = "Ping_Wheel_Icon_Warning", icon = "Interface\\DialogFrame\\UI-Dialog-Icon-AlertNew",
+    { cmd = "2", atlas = "Ping_Wheel_Icon_Warning", icon = "Interface\\DialogFrame\\UI-Dialog-Icon-AlertNew",
       de = "Achtung", en = "Warning" },
-    { cmd = "onmyway", atlas = "Ping_Wheel_Icon_OnMyWay", icon = "Interface\\Icons\\Ability_Rogue_Sprint",
+    { cmd = "3", atlas = "Ping_Wheel_Icon_OnMyWay", icon = "Interface\\Icons\\Ability_Rogue_Sprint",
       de = "Unterwegs", en = "On my way" },
-    { cmd = "assist",  atlas = "Ping_Wheel_Icon_Assist",  icon = "Interface\\Icons\\Ability_Warrior_RallyingCry",
+    { cmd = "4",  atlas = "Ping_Wheel_Icon_Assist",  icon = "Interface\\Icons\\Ability_Warrior_RallyingCry",
       de = "Hilfe", en = "Assist" },
 }
 local ICON = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_"
