@@ -847,6 +847,7 @@ local function CopyBlizzardColor(fp)
     -- ist die Klasse gesperrt oder unbekannt, bleibt es bei Blizzards Farbe
     if db.enemyClassColor and fp.enemy and fp.isPlayer and fp.unit then
         local _, class = UnitClass(fp.unit)
+        if ns.testMode == "pvp" and fp.testClass then class = fp.testClass end
         local col = Yes(class) and C_ClassColor and C_ClassColor.GetClassColor(class)
         if col then r, g, b = col.r, col.g, col.b end
     end
@@ -992,15 +993,22 @@ local function UpdateThreat(fp)
     local d = db
     local col, show = nil, false
     fp.threatBadge.label:SetText("Aggro")
-    if d.threat and fp.enemy and not fp.isPlayer and (IsInGroup() or UnitExists("pet")) then
-        local status, pct, tanking = ThreatInfo(fp.unit)
+    -- Testmodus (/fplates test): Tank mit Aggro ("aggro") bzw. ohne ("lost"), erfundene Werte
+    local tm = ns.testMode
+    tm = (tm == "aggro" or tm == "lost") and tm or nil
+    local inGroup = tm and true or IsInGroup()
+    local tank = tm and true or IsTank()
+    if d.threat and fp.enemy and not fp.isPlayer and (inGroup or UnitExists("pet")) then
+        local status, pct, tanking
+        if tm then status, pct, tanking = (tm == "aggro" and 3 or 0), (tm == "aggro" and 100 or 45), tm == "aggro"
+        else status, pct, tanking = ThreatInfo(fp.unit) end
         if IsSecret(status) then
             -- Stufe geheim: nur die Zahl; als Tank färbt Blizzards Farbrechnung nach "habe ich die Aggro?" auch mit
             -- gesperrtem Wert (grün = Aggro, rot = verloren), sonst neutral weiß
             if d.threatText and Has(pct) then
                 fp.threatText:SetFormattedText("%.0f%%", pct)
                 local colored = false
-                if IsTank() and tanking ~= nil and C_CurveUtil and C_CurveUtil.EvaluateColorFromBoolean and ColorObj(TANK_TEXT_OK) then
+                if tank and tanking ~= nil and C_CurveUtil and C_CurveUtil.EvaluateColorFromBoolean and ColorObj(TANK_TEXT_OK) then
                     colored = pcall(function()
                         local c = C_CurveUtil.EvaluateColorFromBoolean(tanking, ColorObj(TANK_TEXT_OK), ColorObj(TANK_TEXT_LOST))
                         fp.threatText:SetTextColor(c:GetRGBA())
@@ -1016,7 +1024,7 @@ local function UpdateThreat(fp)
                 local key = ({ [0] = "threatColNone", "threatColGaining", "threatColLosing", "threatColAggro" })[status]
                 c = key and type(d[key]) == "table" and d[key] or nil
             else
-                c = (IsTank() and THREAT_TANK or THREAT_DPS)[status]
+                c = (tank and THREAT_TANK or THREAT_DPS)[status]
             end
             if d.threatText and c then
                 if Has(pct) then fp.threatText:SetFormattedText("%.0f%%", pct) else fp.threatText:SetText("") end
@@ -1028,17 +1036,17 @@ local function UpdateThreat(fp)
             -- eigene Farben: jede Stufe färbt (auch "keine Aggro")
             -- Standard (threatColorTankOnly): Farben nur, wenn man in einer Gruppe als Tank eingetragen ist (oder
             -- "Immer als Tank werten"); solo und als Schaden/Heiler bleibt die Leiste ohne Bedrohungsfarbe
-            local colorsOn = d.threatColorBar and (not d.threatColorTankOnly or (IsInGroup() and IsTank()))
-            if colorsOn and c and (d.threatCustom or IsTank() or status > 0) then col = c end
+            local colorsOn = d.threatColorBar and (not d.threatColorTankOnly or (inGroup and tank))
+            if colorsOn and c and (d.threatCustom or tank or status > 0) then col = c end
             if not colorsOn and d.threatText then fp.threatText:SetTextColor(0.9, 0.9, 0.9) end
             -- Als Tank in einer Gruppe: Aggro verloren (Stufe 0/1) = Text rot, unabhängig von den Leistenfarben
-            if d.threatText and c and IsInGroup() and IsTank() and status < 2 then
+            if d.threatText and c and inGroup and tank and status < 2 then
                 fp.threatText:SetTextColor(TANK_TEXT_LOST[1], TANK_TEXT_LOST[2], TANK_TEXT_LOST[3])
             end
             -- Als Tank (in einer Gruppe, ich habe die Aggro): statt der eigenen 100 % der Abstand des Nächsten –
             -- "Nächster 85 %"; unter LEAD_SHOW gar nichts (wenig Text an der Seite, auch bei vielen Gegnern)
-            if d.threatLead and d.threatText and status >= 2 and IsInGroup() and IsTank() then
-                local lead = GroupLead(fp.unit)
+            if d.threatLead and d.threatText and status >= 2 and inGroup and tank then
+                local lead = tm and 92 or GroupLead(fp.unit)
                 if lead then
                     if lead >= LEAD_SHOW then
                         local lc = THREAT_DPS[lead >= 100 and 3 or (lead >= 85 and 2 or 1)]
@@ -1097,6 +1105,7 @@ local function UpdateName(fp)
     local r, g, b = 1, 1, 1
     if fp.isPlayer then
         local _, class = UnitClass(unit)
+        if ns.testMode == "pvp" and fp.testClass then class = fp.testClass end
         local col = Yes(class) and C_ClassColor and C_ClassColor.GetClassColor(class)
         if col then r, g, b = col.r, col.g, col.b end
     end
@@ -1561,6 +1570,11 @@ local function Refresh(fp)
     local can = UnitCanAttack("player", unit)
     fp.enemy = IsSecret(can) or can and true or false
     fp.isPlayer = Yes(UnitIsPlayer(unit))
+    if ns.testMode == "pvp" and fp.enemy then
+        -- Testmodus: jede Gegner-Plakette als gegnerischer Spieler mit reihum verteilter Klasse
+        fp.isPlayer = true
+        fp.testClass = fp.testClass or ns.NextTestClass()
+    end
     -- Verbündete: Blizzards Plakette wie gewohnt
     if not fp.enemy then
         Mute(fp.frame, false)
@@ -1616,6 +1630,16 @@ local function Detach(unit)
 end
 
 if UI.On then UI.On("NameStyleChanged", function() if ns.ApplyAll then ns.ApplyAll() end end) end
+
+-- Testmodus: Klassen reihum für die PvP-Ansicht
+local TEST_CLASSES = { "WARRIOR", "MAGE", "PRIEST", "ROGUE", "DRUID", "HUNTER", "PALADIN", "SHAMAN", "WARLOCK", "DEATHKNIGHT", "MONK", "DEMONHUNTER", "EVOKER" }
+local testIdx = 0
+function ns.NextTestClass() testIdx = testIdx % #TEST_CLASSES + 1 return TEST_CLASSES[testIdx] end
+function ns.SetTestMode(mode)
+    ns.testMode = mode
+    for _, fp in pairs(plates) do fp.testClass = nil end
+    ns.ApplyAll()
+end
 
 function ns.ApplyAll()
     GetDB()

@@ -317,6 +317,13 @@ SlashCmdList["FOREVERPLATES"] = Safe("Befehl", function(msg)
         ns.ApplyAll()
         UI.Chat("ForeverPlates", d.skin and T("Forever-Rahmen an.", "Forever frame on.")
             or T("Forever-Rahmen aus.", "Forever frame off."))
+    elseif msg:find("^test") then
+        local m = strtrim(msg:sub(5))
+        local map = { aggro = "aggro", lost = "lost", verloren = "lost", pvp = "pvp" }
+        ns.SetTestMode(map[m])
+        UI.Chat("ForeverPlates", map[m] and (T("Testmodus: ", "Test mode: ") .. m
+            .. T(" – Gegner-Plakette ansehen; /fplates test = aus", " - look at an enemy plate; /fplates test = off"))
+            or T("Testmodus aus. Nutzung: /fplates test aggro | lost | pvp", "Test mode off. Usage: /fplates test aggro | lost | pvp"))
     elseif msg == "threat" or msg == "bedrohung" then
         if ns.ThreatDiag then ns.ThreatDiag() end
     else
