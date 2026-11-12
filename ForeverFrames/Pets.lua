@@ -137,7 +137,7 @@ local function ApplyPetLook(p)
     v.healthBg:SetTexture(tex)
     v.targetBorder:SetBackdropBorderColor(ns.Color("targetColor"))
     v.aggroBorder:SetBackdropBorderColor(ns.Color("aggroColor"))
-    v.label:SetFont(ns.FontPath(), db.petLabelSize, "OUTLINE")
+    v.label:SetFont(ns.FontPath(), db.petLabelSize + (ns.UI and ns.UI.FontAdd and ns.UI.FontAdd() or 0), "OUTLINE")
     v.label:SetShown(db.petLabel ~= "none")
 end
 

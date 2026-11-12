@@ -143,13 +143,15 @@ function ns.UpdateFonts()
     local flags = db.fontOutline and "OUTLINE" or ""
     -- SetFont auf einem Schrift-Objekt setzt ALLE Texte, die es nutzen, neu zusammen: nur bei echter Änderung
     -- aufrufen (nicht bei jeder Aktualisierung – das war der Ruckler bei Questziel-Meldungen)
-    local signature = path .. "|" .. db.fontSize .. "|" .. flags
+    local hub = _G.ForeverHub and _G.ForeverHub.UI
+    local fs = db.fontSize + (hub and hub.FontAdd and hub.FontAdd() or 0) -- + gemeinsamer Schrift-Zuschlag (Hub)
+    local signature = path .. "|" .. fs .. "|" .. flags
     if fonts.signature == signature then return end
     fonts.signature = signature
     local sizes = {
-        header = db.fontSize + 1,
-        quest = db.fontSize,
-        objective = math.max(6, db.fontSize - 1),
+        header = fs + 1,
+        quest = fs,
+        objective = math.max(6, fs - 1),
     }
     for key, size in pairs(sizes) do
         local fontObject = fonts[key]
@@ -2198,6 +2200,7 @@ do
         hubUI.On("ForeverMinimap.Layout", function() if ns.ApplyLayout then ns.ApplyLayout() end end)
         -- ForeverBars: Mikromenü unter der Karte angedockt bzw. gelöst
         hubUI.On("ForeverBars.Layout", function() if ns.ApplyLayout then ns.ApplyLayout() end end)
+        hubUI.On("UIStyleChanged", function() ns.UpdateFonts() if ns.ApplyLayout then ns.ApplyLayout() end end) -- Schrift-Zuschlag
     end
 end
 

@@ -334,7 +334,7 @@ local function SetLookFont(fs, size, flags)
     local _, path, outline = Look()
     local fl = flags or outline
     if fl == "NONE" then fl = "" end
-    size = size + ((db and db.fontSizeAdd) or 0)
+    size = size + ((db and db.fontSizeAdd) or 0) + (UI.FontAdd and UI.FontAdd() or 0)
     if not pcall(fs.SetFont, fs, path, size, fl) then
         if not pcall(fs.SetFont, fs, FONT, size, fl) then return end
     end
@@ -351,6 +351,7 @@ end
 local function ApplyFonts()
     for fs, t in pairs(texts) do SetLookFont(fs, t[1], t[2]) end
 end
+if UI.On then UI.On("UIStyleChanged", function() ApplyFonts() end) end -- Hub: gemeinsamer Schrift-Zuschlag
 
 local function NewText(parent, layer)
     return parent:CreateFontString(nil, layer or "OVERLAY")

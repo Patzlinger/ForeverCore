@@ -335,7 +335,7 @@ end
 local function PlaceText(v, fs, prefix, maxWidth)
     local db = GetDB()
     local outline = db.fontOutline
-    fs:SetFont(ns.FontPath(), db[prefix .. "Size"], outline)
+    fs:SetFont(ns.FontPath(), db[prefix .. "Size"] + (UI.FontAdd and UI.FontAdd() or 0), outline)
     if db.fontShadow then
         fs:SetShadowOffset(1, -1)
         fs:SetShadowColor(0, 0, 0, 1)
@@ -918,6 +918,7 @@ ns.ForEachShown = ForEachShown
 
 -- Hub: Einstellung "Spielernamen" geändert -> Namen neu
 if UI.On then
+    UI.On("UIStyleChanged", function() if ns.ApplyLayout then pcall(ns.ApplyLayout) end end) -- Hub: Schrift-Zuschlag
     UI.On("NameStyleChanged", function()
         for _, b in ipairs(ns.buttons or {}) do
             if b.ffUnit and UnitExists(b.ffUnit) then pcall(ns.UpdateAll, b) end

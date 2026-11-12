@@ -147,6 +147,22 @@ function UI.Fire(name, ...)
     end
 end
 
+-- Gemeinsame Darstellung (Hub > Übersicht > Allgemein), account-weit in ForeverHubDB:
+--   UI.FontAdd()  -> Schrift-Zuschlag in Punkten (-2 … +6, Standard 0). Jedes Addon rechnet ihn auf seine eigene
+--                    Einstellung drauf (Summe: Addon-Wert + FontAdd) – so bleibt je Addon eine eigene Größe möglich.
+--   UI.UIScale()  -> Faktor für alle Forever-Fenster (0.8 … 1.3, Standard 1), wird mit der Größe je Fenster multipliziert.
+--   Beim Ändern: UI.Fire("UIStyleChanged") – Addons wenden Schrift/Skalierung dann neu an.
+function UI.FontAdd()
+    local db = _G.ForeverHubDB
+    local v = type(db) == "table" and tonumber(db.fontAdd) or 0
+    return math.max(-2, math.min(6, math.floor(v + 0.5)))
+end
+function UI.UIScale()
+    local db = _G.ForeverHubDB
+    local v = type(db) == "table" and tonumber(db.uiScale) or 1
+    return math.max(0.8, math.min(1.3, v))
+end
+
 -- Stufenfarbe (Gegner, Quests, Dungeons) nach den klassischen Erfahrungsregeln – Forever levelt wie Classic.
 -- Blizzards GetCreatureDifficultyColor/GetQuestDifficultyColor rechnen im Forever-Client mit der Retail-Grenze
 -- und faerben Gegner zu frueh grau (z. B. Stufe 15 fuer einen 21er, obwohl es noch Erfahrung gibt).
@@ -626,6 +642,7 @@ local function CursorUI()
     return x / s, y / s
 end
 
+UI.scaleWindows = {} -- Fenstername -> Fenster (nur Modus "scale"), für die gemeinsame Skalierung
 function UI.MakeResizable(f, opts)
     opts = opts or {}
     local name = f:GetName()
@@ -665,7 +682,7 @@ function UI.MakeResizable(f, opts)
             else
                 db.scale = nil
                 local left, top = f:GetLeft() * f:GetScale(), f:GetTop() * f:GetScale()
-                f:SetScale(1)
+                f:SetScale(UI.UIScale())
                 f:ClearAllPoints()
                 f:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", left, top)
             end
@@ -709,7 +726,8 @@ function UI.MakeResizable(f, opts)
                 if i.opts.onResize then i.opts.onResize(f:GetWidth(), f:GetHeight()) end
             else
                 self:SetScript("OnUpdate", nil)
-                db.scale = math.floor(f:GetScale() * 100 + 0.5) / 100
+                -- gespeichert wird der eigene Faktor (ohne die gemeinsame Skalierung aus Übersicht > Allgemein)
+                db.scale = math.floor(f:GetScale() / UI.UIScale() * 100 + 0.5) / 100
             end
         end)
 
@@ -722,12 +740,29 @@ function UI.MakeResizable(f, opts)
             if i.mode == "size" and db.w and db.h then
                 f:SetSize(db.w, db.h)
                 if i.opts.onResize then i.opts.onResize(db.w, db.h) end
-            elseif i.mode == "scale" and db.scale then
-                f:SetScale(db.scale)
+            elseif i.mode == "scale" then
+                f:SetScale((db.scale or 1) * UI.UIScale())
             end
         end)
     end
+    if (opts.mode or "scale") == "scale" then UI.scaleWindows[name] = f end
 end
+
+-- gemeinsame Skalierung geändert: alle (schon erstellten) Skalierungs-Fenster neu setzen, linke obere Ecke bleibt stehen
+UI.On("UIStyleChanged", function()
+    for name, f in pairs(UI.scaleWindows) do
+        if f.fcResizeApplied then
+            local old = f:GetScale()
+            local left, top = f:GetLeft(), f:GetTop()
+            local s = (WindowDB(name).scale or 1) * UI.UIScale()
+            f:SetScale(s)
+            if left and top then
+                f:ClearAllPoints()
+                f:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", left * old / s, top * old / s)
+            end
+        end
+    end
+end)
 
 ---------------------------------------------------------------------------
 -- Abschnitte: jede Ueberschrift bekommt einen dezenten Kasten (wie in ForeverQuests).
@@ -2387,7 +2422,7 @@ local function BuildHubWindow()
     local listTop = 26 + HUB_INTRO_H + 24                 -- unter Einleitung und Überschrift "Addons"
     local tilesEnd = listTop + rowsN * (TILE_H + TILE_GAP)
     local generalY = tilesEnd + 56                        -- Überschrift "Allgemein"
-    local toolsY = generalY + 132                         -- Überschrift "Werkzeuge" (mind. ~24 px Luft zum Kasten davor)
+    local toolsY = generalY + 176                        -- Überschrift "Werkzeuge" (mind. ~24 px Luft zum Kasten davor)
     local H = toolsY + 112                                -- (+16: Build-Zeile ganz unten)
     local f = UI.SettingsPanel("ForeverHubWindow", UI.NAME, W, H,
         { key = "ForeverCore", group = UI.SETTINGS_GROUPS.core, label = T("Übersicht", "Overview") })
@@ -2608,6 +2643,22 @@ local function BuildHubWindow()
             "Blizzard windows are back in their place the next time you open them."))
     end)
     blizzReset:SetPoint("TOPLEFT", 360, -(generalY + 82))
+
+    -- Gemeinsame Darstellung: Schrift-Zuschlag und Fenster-Skalierung für alle Forever-Addons. Die Einstellungen der
+    -- einzelnen Addons bleiben bestehen und kommen oben drauf (z. B. Plaketten-Schrift +2 zusätzlich).
+    local fontSlider = UI.Slider(f, 16, -(generalY + 114), T("Schrift-Zuschlag (alle Addons)", "Font size bonus (all addons)"),
+        -2, 6, 1, function(v)
+            GetDB().fontAdd = v ~= 0 and v or nil
+            UI.Fire("UIStyleChanged")
+        end, { width = 200, format = function(v) return string.format("%+d", v) end })
+    local scaleSlider = UI.Slider(f, 360, -(generalY + 114), T("Fenster-Skalierung (alle Addons)", "Window scale (all addons)"),
+        80, 130, 5, function(v)
+            GetDB().uiScale = v ~= 100 and v / 100 or nil
+            UI.Fire("UIStyleChanged")
+        end, { width = 200, unit = " %" })
+    function fontSlider.LoadValue() fontSlider:Load(UI.FontAdd()) end
+    function scaleSlider.LoadValue() scaleSlider:Load(math.floor(UI.UIScale() * 100 + 0.5)) end
+    fontSlider.LoadValue() scaleSlider.LoadValue()
 
     ---------------------------------------------------------------------------
     -- Werkzeuge: andere Addons, Profile, Details, alle verschieben

@@ -1551,7 +1551,7 @@ function ns.Layout(b)
 
     -- Texte. "stacked" (Standard): Stufe + Name oben, Lebenspunkte darunter – wie bei den
     -- Raidrahmen, damit lange Namen nichts ueberdecken. "inline": alles in einer Zeile.
-    local size = f.fontSize
+    local size = f.fontSize + (UI.FontAdd and UI.FontAdd() or 0) -- + gemeinsamer Schrift-Zuschlag (Hub)
     -- zwei Zeilen nur, wenn der Lebensbalken hoch genug ist (sonst z. B. beim schmalen Begleiter-
     -- Rahmen: Name links, LP rechts in einer Zeile)
     local healthH = f.height - 2 * bs - ((f.powerHeight > 0) and (f.powerHeight + bs) or 0)
@@ -1677,6 +1677,7 @@ end
 -- Alles neu aufbauen (nach Aenderungen in den Einstellungen oder an der ForeverFrames-Optik)
 -- Hub: Einstellung "Spielernamen" geändert -> Namen neu
 if UI.On then
+    UI.On("UIStyleChanged", function() if ns.ApplyAll then pcall(ns.ApplyAll) end end) -- Hub: Schrift-Zuschlag
     UI.On("NameStyleChanged", function()
         for _, info in ipairs(ns.UNITS) do
             local b = ns.frames[info.key]

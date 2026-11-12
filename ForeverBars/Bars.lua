@@ -233,6 +233,8 @@ end
 -- Schrift setzen; fehlt die Schriftdatei, auf die Standardschrift zurückfallen
 local function SetTextFont(text, size)
     local flags = ns.db.fontOutline ~= "NONE" and ns.db.fontOutline or ""
+    local hub = _G.ForeverHub and _G.ForeverHub.UI
+    size = size + (hub and hub.FontAdd and hub.FontAdd() or 0) -- + gemeinsamer Schrift-Zuschlag (Hub)
     if not text:SetFont(GetFontPath(), size, flags) then
         text:SetFont(STANDARD_TEXT_FONT, size, flags)
     end
@@ -3496,6 +3498,7 @@ do
     local hubUI = _G.ForeverHub and _G.ForeverHub.UI
     if hubUI and hubUI.On then
         hubUI.On("ForeverMinimap.Layout", function() if ns.db and ns.db.bars.micro.dockMinimap then ns.RequestLayout() end end)
+        hubUI.On("UIStyleChanged", function() if ns.UpdateAllButtons then pcall(ns.UpdateAllButtons) end end) -- Schrift-Zuschlag
     end
 end
 
