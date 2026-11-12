@@ -243,8 +243,16 @@ local function Configure(kind, index)
     if kind == "mark" then
         local m = MARKERS[index]
         if groundMode then
-            catcher:SetAttribute("type", "worldmarker")
-            catcher:SetAttribute("marker", m.world)
+            -- Über das Makro "/wm [@cursor] N" statt type "worldmarker": Letzteres schaltet nur den Zielkreis ein und
+            -- wartet auf einen Mausklick – beim Rad (Taste loslassen = wählen) passierte dann scheinbar nichts.
+            -- [@cursor] setzt sofort an die Mausposition; liegt die Markierung schon, nimmt "/cwm N" sie wieder weg.
+            local active = false
+            if IsRaidMarkerActive then
+                local ok, v = pcall(IsRaidMarkerActive, m.world)
+                active = ok and not issecret(v) and v and true or false
+            end
+            catcher:SetAttribute("type", "macro")
+            catcher:SetAttribute("macrotext", active and ("/cwm " .. m.world) or ("/wm [@cursor] " .. m.world))
         else
             catcher:SetAttribute("type", "raidtarget")
             catcher:SetAttribute("unit", unitToken)
