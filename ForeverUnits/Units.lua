@@ -712,8 +712,8 @@ end
 local CLASSIFICATION = { elite = "+", rareelite = "R+", rare = "R", worldboss = "B" }
 -- Blizzards Symbole (dieselben wie an den Namensplaketten dieses Clients)
 local CLASS_ATLAS = {
-    elite = "Interface\\AddOns\\ForeverCore\\Media\\EliteGold", worldboss = "Interface\\AddOns\\ForeverCore\\Media\\EliteGold",
-    rareelite = "Interface\\AddOns\\ForeverCore\\Media\\RareEliteSilver", rare = "Interface\\AddOns\\ForeverCore\\Media\\RareSilver",
+    elite = "Interface\\AddOns\\ForeverCoreUI\\Media\\EliteGold", worldboss = "Interface\\AddOns\\ForeverCoreUI\\Media\\EliteGold",
+    rareelite = "Interface\\AddOns\\ForeverCoreUI\\Media\\RareEliteSilver", rare = "Interface\\AddOns\\ForeverCoreUI\\Media\\RareSilver",
 }
 ns.CLASS_ATLAS = CLASS_ATLAS
 

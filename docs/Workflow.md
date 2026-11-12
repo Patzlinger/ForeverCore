@@ -40,7 +40,7 @@ Patzlinger und flowfy arbeiten zeitgleich, jeder mit seinem eigenen Claude, übe
   umschreiben.
 
 ## Stellen, an denen man sich trifft (Konflikte vermeiden)
-- `ForeverCore/ForeverHub.lua`: ohne Absprache änderbar; vor jeder Änderung `git pull --rebase`, damit man auf dem
+- `ForeverCoreUI/ForeverHub.lua`: ohne Absprache änderbar; vor jeder Änderung `git pull --rebase`, damit man auf dem
   neuesten Stand arbeitet; treffen beide eine `VERSION`-Erhöhung, nimmt der Zweite die nächsthöhere Zahl.
 - `## Version` in den .toc, `release/`-Dateien: ändert nur, wer den Release baut (Release.md).
 - Changelog: neue Punkte während der Entwicklung unter `## Unreleased` oben in `release/Changelog-CurseForge.txt`
@@ -53,7 +53,7 @@ Patzlinger und flowfy arbeiten zeitgleich, jeder mit seinem eigenen Claude, übe
 ## Skripte in `tools/`
 `session-sync.ps1`, `auto-sync.ps1`, `auto-sync-install.ps1` (Abgleich, siehe oben), `link-addons.ps1` (Addon-Ordner als
 Junctions ins Spiel; `-AddOnsDir`), `check.ps1` (Prüflauf, siehe CLAUDE.md, Testen), `build-release.ps1` (Release.md), `write-build-info.ps1`
-(schreibt `ForeverCore/Build.lua`: Build-Nummer = Anzahl Commits, Commit, Datum/Uhrzeit, Zweig – unten auf der
+(schreibt `ForeverCoreUI/Build.lua`: Build-Nummer = Anzahl Commits, Commit, Datum/Uhrzeit, Zweig – unten auf der
 Übersichtsseite im Einstellungsfenster. **Nicht eingecheckt** (`.gitignore`), sonst Konflikt bei jedem Abgleich;
 erzeugt automatisch von session-sync/Auto-Sync, check, link-addons und build-release). Nach einem Commit/Pull ist sie
 bis zum nächsten dieser Läufe um eins veraltet (check.ps1 läuft vor dem Commit): darum nach jedem Commit/Pull einmal

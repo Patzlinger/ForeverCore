@@ -1,6 +1,6 @@
 # Addons, die ins Release (Ordner + Zips) kommen. Prototypen hier NICHT eintragen.
 # ForeverCore (Hub, Abhängigkeit aller Addons) baut das Skript immer mit – auch in jedes Einzel-Zip.
-ForeverCore
+ForeverCoreUI
 ForeverFrames
 ForeverUnits
 ForeverCast

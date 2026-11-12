@@ -4,12 +4,12 @@
 ## Category: Forever Core UI
 ## Notes: Better nameplates: health in % and total, threat with percent, slim cast bar with target, your DoTs on top, crowd control at the side, quest mobs, combo points, raid markers – optional Forever look
 ## Notes-deDE: Bessere Namensplaketten: Leben in % und gesamt, Bedrohung mit Prozent, schmale Zauberleiste mit Ziel, eigene DoTs oben, Kontrolleffekte an der Seite, Questgegner, Combopunkte, Raidmarker – wahlweise im Forever-Stil
-## Version: 0.543b
+## Version: 0.544b
 ## X-Curse-Project-ID: 1743753
 ## Author: Patzlinger
 ## X-License: MIT
-## Dependencies: ForeverCore
-## Group: ForeverCore
+## Dependencies: ForeverCoreUI
+## Group: ForeverCoreUI
 ## SavedVariables: ForeverPlatesDB
 
 Core.lua

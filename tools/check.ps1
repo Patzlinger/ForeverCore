@@ -1,4 +1,4 @@
-﻿# Prüflauf vor jedem Commit: findet die typischen Fehler, bevor sie im Spiel auffallen.
+# Prüflauf vor jedem Commit: findet die typischen Fehler, bevor sie im Spiel auffallen.
 #   pwsh -File tools\check.ps1                 -> nur geänderte Addons (gegenüber dem letzten Commit)
 #   pwsh -File tools\check.ps1 -All            -> alle Addons
 #   pwsh -File tools\check.ps1 ForeverPlates   -> nur diese Addons
@@ -19,7 +19,7 @@ $errors = New-Object System.Collections.Generic.List[string]
 $warnings = New-Object System.Collections.Generic.List[string]
 $notes = New-Object System.Collections.Generic.List[string]
 
-# ForeverCore\Build.lua (Build-Nummer, nicht eingecheckt) muss da sein – die .toc nennt sie
+# ForeverCoreUI\Build.lua (Build-Nummer, nicht eingecheckt) muss da sein – die .toc nennt sie
 & (Join-Path $PSScriptRoot 'write-build-info.ps1')
 
 $allAddons = Get-ChildItem $root -Directory | Where-Object { Test-Path (Join-Path $_.FullName ($_.Name + '.toc')) } |

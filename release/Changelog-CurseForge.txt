@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## 0.544b – 2026-11-13
+
+- **Important – compatibility with SkillUp Forever (and other addons by cjber):** our base addon folder was called `ForeverCore`, the same name as cjber's unrelated library, so installing one overwrote the other. It is now called **`ForeverCoreUI`**, so both suites can be installed side by side. Our addons are unchanged otherwise. **When updating by hand, delete the old `ForeverCore` folder from our suite first** (the CurseForge app does this for you; do NOT delete it if you use SkillUp Forever – that one belongs to cjber). Restart the game completely once (not just /reload). Note: the hub's own settings (player name style, window sizes, minimap button position) start fresh once; the settings of all other addons are kept.
+- New in the hub (Overview > General): **Font size bonus** (-2 to +6) and **Window scale** (80-130 %) for all Forever addons. Each addon keeps its own size settings; the hub values are added on top (e.g. nameplate text can still be larger than the rest). Works in nameplates, unit frames, group frames, action bars, quest tracker, loot window, tooltip and all Forever windows.
+- ForeverVendor: new slider "Vendor window size".
+- ForeverPlates: new test mode to check how the plates look without a group or a fight: `/fplates test aggro` (tank, you have aggro), `/fplates test lost` (tank, aggro lost) and `/fplates test pvp` (enemy players with class-colored bars); `/fplates test` turns it off.
+- ForeverPlates: as a tank the aggro text turns red when you lose aggro (also when the value is locked).
+- ForeverBars: the stance bar now sits at the left above the top action bar and grows to the right by default; the pet bar is centered.
+- ForeverHelpers (marker wheel): pings are sent as a number instead of the English word.
+- Hub: the experimental "Simple / Expert" button in the settings window was removed (it did not work reliably).
 - ForeverSkin: the trade, loot, mail, macro, dressing room and profession windows use less CPU and memory while they are open and you are not using them.
 
 ## 0.543b – 2026-11-10

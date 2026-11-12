@@ -12,7 +12,7 @@ Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
 
 $addons = Get-Content (Join-Path $root 'release\addons.txt') | Where-Object { $_ -and $_ -notmatch '^\s*#' } | ForEach-Object { $_.Trim() }
 # ForeverCore (Hub) ist Abhängigkeit aller Forever-Addons: immer dabei und zuerst gebaut
-$core = 'ForeverCore'
+$core = 'ForeverCoreUI'
 $addons = @($core) + @($addons | Where-Object { $_ -ne $core })
 
 # Prototypen, die nicht ins Release kommen (Datei liegt im Entwicklungsstand, aber nicht im Zip)
@@ -32,7 +32,7 @@ if (@($distinct).Count -ne 1) { throw "Unterschiedliche Versionen in den .toc-Da
 if (!$Version) { $Version = $distinct }
 elseif ($Version -ne $distinct) { throw "Angegebene Version $Version passt nicht zu den .toc ($distinct)" }
 
-# Build-Nummer und Datum des Stands in ForeverCore\Build.lua (wird mit ins Zip gepackt)
+# Build-Nummer und Datum des Stands in ForeverCoreUI\Build.lua (wird mit ins Zip gepackt)
 & (Join-Path $PSScriptRoot 'write-build-info.ps1')
 
 if (!$ReleaseDir) { $ReleaseDir = Join-Path (Split-Path $root -Parent) "_Forever-Release-$Version" }
@@ -64,7 +64,7 @@ function New-Zip($path, $folders, $extraFiles) {
     } finally { $zip.Dispose() }
 }
 
-# Einzel-Zips enthalten ForeverCore mit, damit jedes Addon auch allein heruntergeladen funktioniert
+# Einzel-Zips enthalten ForeverCoreUI mit, damit jedes Addon auch allein heruntergeladen funktioniert
 $coreDest = Join-Path $addonOut $core
 $copied = foreach ($a in $addons) {
     $dest = Join-Path $addonOut $a

@@ -1,4 +1,4 @@
-﻿# Wird beim Start einer Claude-Sitzung aufgerufen (SessionStart-Hook): holt den neuen Stand von GitHub,
+# Wird beim Start einer Claude-Sitzung aufgerufen (SessionStart-Hook): holt den neuen Stand von GitHub,
 # wechselt auf den Arbeitszweig "development" (wenn nichts Uncommittetes im Weg ist) und haengt eigene Commits
 # per Rebase hinter die neuen des anderen. Meldet in einer Zeile, wie der lokale Stand zu GitHub steht.
 # Ablauf und Regeln: CLAUDE.md, Abschnitt 15.
@@ -49,7 +49,7 @@ if ($counts.Count -lt 2) {
 }
 $dirty = @(git -C $root status --porcelain 2>$null).Count
 if ($dirty -gt 0) { $out += "$dirty nicht committete Dateien" }
-# Build-Nummer fürs Spiel (ForeverCore\Build.lua, Übersicht im Einstellungsfenster)
+# Build-Nummer fürs Spiel (ForeverCoreUI\Build.lua, Übersicht im Einstellungsfenster)
 try { & (Join-Path $PSScriptRoot 'write-build-info.ps1') } catch {}
 "Forever-Repo [$branch]: " + ($out -join " · ")
 exit 0

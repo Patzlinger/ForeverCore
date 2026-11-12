@@ -13,7 +13,7 @@ Vorher `git pull --rebase`, damit der Stand des anderen mit drin ist.
 
 ## Regeln und Dateien
 - `release/addons.txt` = Addons im Release (maßgeblich für „im Release“); Prototypen erst nach Freigabe eintragen.
-  ForeverCore baut das Skript immer mit – es steckt in **jedem Einzel-Zip** (sonst lädt das Addon nicht).
+  ForeverCoreUI baut das Skript immer mit – es steckt in **jedem Einzel-Zip** (sonst lädt das Addon nicht).
 - Alle Release-Addons tragen dieselbe `## Version` (Suite-Version, z. B. `0.44b`); `tools/build-release.ps1` prüft das.
 - Alle Release-.toc: `## Title: <Addon> |cff8a8a8a(Beta)|r`, `## X-Curse-Project-ID: 1743753`, `## X-License: MIT`
   (plus `LICENSE.txt` im Addon).

@@ -6,11 +6,11 @@
 ## Category: Forever Core UI
 ## Author: flowfy
 ## X-License: MIT
-## Version: 0.543b
+## Version: 0.544b
 ## X-Curse-Project-ID: 1743753
-## Dependencies: ForeverCore
+## Dependencies: ForeverCoreUI
 ## OptionalDeps: Questie
-## Group: ForeverCore
+## Group: ForeverCoreUI
 ## SavedVariables: ForeverQuestsDB, ForeverQuestsSeen
 ## SavedVariablesPerCharacter: ForeverQuestsCharDB
 

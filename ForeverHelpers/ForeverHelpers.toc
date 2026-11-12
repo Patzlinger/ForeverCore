@@ -4,12 +4,12 @@
 ## Category: Forever Core UI
 ## Notes: Small helpers in the Forever Core UI look: loot rolls (who chose what), buff reminder and vendor helper
 ## Notes-deDE: Kleine Helfer im Forever-Core-UI-Stil: Würfel-Drops (wer was gewählt hat), Buff-Erinnerung und Händler-Helfer
-## Version: 0.543b
+## Version: 0.544b
 ## X-Curse-Project-ID: 1743753
 ## Author: Patzlinger
 ## X-License: MIT
-## Dependencies: ForeverCore
-## Group: ForeverCore
+## Dependencies: ForeverCoreUI
+## Group: ForeverCoreUI
 ## SavedVariables: ForeverHelpersDB, ForeverLootDB, ForeverBuffsDB, ForeverVendorDB
 
 Core.lua

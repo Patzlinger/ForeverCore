@@ -17,7 +17,7 @@ Regeländerungen immer hier bzw. in `docs/` eintragen, committen und pushen (nic
 
 ## 2. Team
 - Patzlinger: ForeverFrames, Units, Cast, Helpers (Loot, Buffs, Vendor), Spellbook, Chat, Minimap, Tooltip, Plates.
-  flowfy: ForeverQuests, Bars, Bags, Alts, Skin. Gemeinsam: ForeverCore (Hub + Stil-Bibliothek), `tools/`, `release/`.
+  flowfy: ForeverQuests, Bars, Bags, Alts, Skin. Gemeinsam: ForeverCoreUI (Hub + Stil-Bibliothek; Ordnername seit 0.544b, vorher ForeverCore), `tools/`, `release/`.
   „Im Release“ gilt, was in `release/addons.txt` steht (derzeit alle 15 Addons).
 - **Jeder arbeitet frei an allen Addons**, ohne vorherige Absprache oder Rückfrage (auch Umbauten, Hub, Standardpositionen,
   Design – auch für den Claude des anderen). Die Änderung im Commit klar benennen (Addon vorne, was und warum).
@@ -49,8 +49,8 @@ Regeländerungen immer hier bzw. in `docs/` eintragen, committen und pushen (nic
 ## 4. Addon- und Hub-Grundstruktur
 **Vor neuem Addon oder neuen Hub-Funktionen: [docs/Hub.md](docs/Hub.md) lesen** (.toc-Vorlage, `KNOWN`, Minimap-Knopf, `UI.API`, Takt, Einstellungen, Profile).
 - Ordner im Wurzelverzeichnis `Forever<Name>`, .toc-Name = Ordnername; GUI in Lua, **kein XML** (außer `Bindings.xml`).
-  .toc mit `## Dependencies: ForeverCore` und `## Group: ForeverCore`; `ForeverHubDB` steht nur in ForeverCore.
-- **Hub:** `ForeverCore/ForeverHub.lua`, `local UI = ForeverHub.UI`; gibt es nur einmal. Bei Änderung `VERSION` erhöhen,
+  .toc mit `## Dependencies: ForeverCoreUI` und `## Group: ForeverCoreUI`; `ForeverHubDB` steht nur in ForeverCoreUI. **Nie wieder "ForeverCore" als Ordnername:** so heißt die Bibliothek von cjber (SkillUp Forever, GitHub cjber/forever-core) – gleicher Ordnername überschrieb sich gegenseitig.
+- **Hub:** `ForeverCoreUI/ForeverHub.lua`, `local UI = ForeverHub.UI`; gibt es nur einmal. Bei Änderung `VERSION` erhöhen,
   abwärtskompatibel bleiben (Aufruf bei Bedarf mit `if UI.Funktion then`). Gemeinsames gehört in den Hub.
 - Wiederkehrendes nur über `UI.Every(sekunden, fn, { addon, name, when })`, nie eigener Dauer-Ticker. Addons rufen sich nur
   über `UI.API.<Addon>` auf (mit `pcall`), Nachrichten über `UI.On`/`UI.Fire`. Fehler über `UI.ReportError`/`UI.Safe`.
@@ -110,11 +110,11 @@ Regeländerungen immer hier bzw. in `docs/` eintragen, committen und pushen (nic
   `development` → `main` ohne Tag nur auf ausdrückliches Kommando (siehe Workflow.md).
 - **Versionsanzeige im Spiel** (unten auf der Übersichtsseite: „Version · Build N (Commit) · Stand Datum · Zweig · Hub vX“):
   Build N = Anzahl Commits auf dem Stand, den man gerade ausgecheckt hat – gleiche Nummer + gleicher Commit = gleiche
-  Version bei allen. Sie kommt aus `ForeverCore/Build.lua`, erzeugt von `tools/write-build-info.ps1`; die Datei ist
+  Version bei allen. Sie kommt aus `ForeverCoreUI/Build.lua`, erzeugt von `tools/write-build-info.ps1`; die Datei ist
   **nie eingecheckt** (`.gitignore`). Pflege: Nach jedem eigenen Commit und jedem Pull/Rebase
   `pwsh -File tools/write-build-info.ps1` ausführen (session-sync, Auto-Sync, `link-addons.ps1` und `check.ps1` tun es auch,
   aber `check.ps1` läuft VOR dem Commit), dann dem Nutzer sagen: im Spiel `/reload`. Die Anzeige im Hub nicht entfernen
-  oder umbauen, `Build.lua` nicht einchecken und in der `.toc` von ForeverCore eingetragen lassen. Einmal je Rechner:
+  oder umbauen, `Build.lua` nicht einchecken und in der `.toc` von ForeverCoreUI eingetragen lassen. Einmal je Rechner:
   `pwsh -File tools/auto-sync-install.ps1` (aktualisiert die Nummer alle 5 Minuten von selbst).
 - CurseForge-App überschreibt die verknüpften Ordner = das Repository → danach `git status`, ggf. `git restore .`.
 

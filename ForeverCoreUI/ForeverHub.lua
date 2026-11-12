@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 84
+local VERSION = 85
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -2168,7 +2168,7 @@ local KNOWN = {
 }
 -- Hauptaddon (nur der Hub, kein eigenes Menue): steht nicht in der Liste, haelt aber Hub, Optionsmenue
 -- und Addon-Menue-Eintrag am Leben, auch wenn alle anderen Forever-Addons ausgeschaltet sind
-local CORE = "ForeverCore"
+local CORE = "ForeverCoreUI" -- Ordner-/Addon-Name (nicht "ForeverCore": so heißt die Bibliothek von cjber, SkillUp Forever)
 local function CoreLoaded() return C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded(CORE) end
 
 -- Bearbeitungsmodus-Anker ausgeschalteter Addons: Blizzard speichert im Layout Anker an Addon-Rahmen
@@ -4329,7 +4329,7 @@ end
 function UI.ExportSettings(addons)
     local E = Encoder()
     if not E then return nil, T("Dieser Client kann keine Einstellungen kodieren.", "This client cannot encode settings.") end
-    local payload = { fc = 1, suite = C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata("ForeverCore", "Version"),
+    local payload = { fc = 1, suite = C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata("ForeverCoreUI", "Version"),
         w = math.floor(UIParent:GetWidth() + 0.5), h = math.floor(UIParent:GetHeight() + 0.5),
         char = CharName(), addons = {} }
     local count = 0

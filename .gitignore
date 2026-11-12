@@ -16,4 +16,4 @@ desktop.ini
 tools/auto-sync-hidden.vbs
 
 # Build-Nummer fürs Spiel: erzeugt von tools/write-build-info.ps1 (ändert sich mit jedem Commit)
-ForeverCore/Build.lua
+ForeverCoreUI/Build.lua

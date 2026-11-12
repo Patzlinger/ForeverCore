@@ -32,14 +32,14 @@ nichts vorhat, findet dort Arbeit.
 ```
 _Forever-Source/
   ForeverBars/ ...        ein Ordner pro Addon (Ordnername = .toc-Name)
-  ForeverCore/            Hauptaddon: ForeverHub.lua = gemeinsame Bibliothek, Hub-Fenster, Begrüßung
+  ForeverCoreUI/          Hauptaddon: ForeverHub.lua = gemeinsame Bibliothek, Hub-Fenster, Begrüßung
   docs/                   Referenzen (Hub, Design, Menüs, Fallstricke, Workflow, Release, Befehle …)
   release/                README/Changelog fürs Paket, addons.txt = was ins Release kommt
   tools/                  Skripte (Abgleich, Verknüpfen, Prüflauf, Release-Bau)
 ```
 
-Alle Addons tragen `## Dependencies: ForeverCore` – ForeverCore lädt immer zuerst, `ForeverHub.UI` steht bereit. Den Hub
-gibt es nur einmal (`ForeverCore/ForeverHub.lua`).
+Alle Addons tragen `## Dependencies: ForeverCoreUI` – ForeverCore lädt immer zuerst, `ForeverHub.UI` steht bereit. Den Hub
+gibt es nur einmal (`ForeverCoreUI/ForeverHub.lua`).
 
 ## Einrichten (einmalig)
 
@@ -77,7 +77,7 @@ Nur auf ausdrückliche Anweisung; vollständiger Ablauf (Version, Changelog, Tag
 .\tools\build-release.ps1
 ```
 Prüft, dass alle `.toc` dieselbe `## Version` haben, und baut `..\_Forever-Release-<Version>\` mit Addon-Ordnern,
-`Einzeln\*.zip` (jedes mit ForeverCore) und `ForeverCore-<Version>.zip`. Welche Addons hineinkommen, steht in `release/addons.txt`.
+`Einzeln\*.zip` (jedes mit ForeverCoreUI) und `ForeverCore-<Version>.zip`. Welche Addons hineinkommen, steht in `release/addons.txt`.
 
 ## Achtung CurseForge-App
 

@@ -4,12 +4,12 @@
 ## Category: Forever Core UI
 ## Notes: Compact spellbook with search, outdated-rank reminder and a preview of what your trainer has next
 ## Notes-deDE: Kompaktes Zauberbuch mit Suche, Hinweis auf veraltete Ränge in den Leisten und Vorschau, was beim Lehrer noch kommt
-## Version: 0.543b
+## Version: 0.544b
 ## Author: Patzlinger
 ## X-License: MIT
 ## X-Curse-Project-ID: 1743753
-## Dependencies: ForeverCore
-## Group: ForeverCore
+## Dependencies: ForeverCoreUI
+## Group: ForeverCoreUI
 ## SavedVariables: ForeverSpellbookDB
 ## SavedVariablesPerCharacter: ForeverSpellbookCharDB
 

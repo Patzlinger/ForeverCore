@@ -1,21 +1,23 @@
 Forever Core UI – für World of Warcraft: Forever (Interface 16001)
 ===============================================================
 Less clutter. More control. Just the essentials.
-Version 0.52b (Beta) · by Patzlinger & flowfy · MIT License
+Version 0.544b (Beta) · by Patzlinger & flowfy · MIT License
 
 DEUTSCH
 -------
 Installation:
-  Den Ordner "ForeverCore" und die gewünschten Addons (z. B. "ForeverFrames") in diesen Ordner kopieren:
+  Den Ordner "ForeverCoreUI" und die gewünschten Addons (z. B. "ForeverFrames") in diesen Ordner kopieren:
   World of Warcraft\_classic_beta_\Interface\AddOns\
   Danach das Spiel neu starten oder /reload eingeben.
-  ForeverCore wird immer gebraucht (gemeinsame Grundlage); in jedem Einzel-Zip ist es schon dabei.
+  Wichtig: Der Ordner hieß früher "ForeverCore" – bitte den alten Ordner löschen (außer du nutzt SkillUp Forever, dessen
+  ForeverCore gehört cjber und darf bleiben). Danach das Spiel einmal komplett neu starten.
+  ForeverCoreUI wird immer gebraucht (gemeinsame Grundlage); in jedem Einzel-Zip ist es schon dabei.
 
 Beim ersten Start öffnet sich einmal der Forever Core UI Hub: Dort wählst du per Häkchen, welche
 Addons du nutzen möchtest, und lädst neu. Ein- und ausschalten geht später jederzeit mit /forever.
 
-Die Addons (jedes funktioniert auch einzeln, zusammen mit ForeverCore):
-  ForeverCore    Grundlage aller Forever-Addons: Hub-Fenster (/forever) zum Ein- und Ausschalten
+Die Addons (jedes funktioniert auch einzeln, zusammen mit ForeverCoreUI):
+  ForeverCoreUI  Grundlage aller Forever-Addons: Hub-Fenster (/forever) zum Ein- und Ausschalten
                  und zum Öffnen der Einstellungen, gemeinsamer Stil, Sammelknopf an der Minimap.
   ForeverFrames  Schlanke Gruppen- und Raidrahmen mit Klick-Zaubern, Debuffs/HoTs,
                  Heilvorhersage, Begleitern. Position per X/Y, Raster und Einrasten.
@@ -81,16 +83,18 @@ Sprache: Deutscher Client = Deutsch, alle anderen = Englisch.
 ENGLISH
 -------
 Installation:
-  Copy the "ForeverCore" folder and the addons you want (e.g. "ForeverFrames") into:
+  Copy the "ForeverCoreUI" folder and the addons you want (e.g. "ForeverFrames") into:
   World of Warcraft\_classic_beta_\Interface\AddOns\
   Then restart the game or type /reload.
-  ForeverCore is always required (shared base); every single-addon zip already includes it.
+  Important: the folder used to be called "ForeverCore" - please delete the old folder (unless you use SkillUp Forever, whose
+  ForeverCore belongs to cjber and must stay). Then restart the game completely once.
+  ForeverCoreUI is always required (shared base); every single-addon zip already includes it.
 
 On your first login the Forever Core UI Hub opens once: tick the addons you want to use and reload.
 You can turn addons on or off at any time later with /forever.
 
-The addons (each one also works on its own, together with ForeverCore):
-  ForeverCore    Base of all Forever addons: hub window (/forever) to turn addons on or off and
+The addons (each one also works on its own, together with ForeverCoreUI):
+  ForeverCoreUI  Base of all Forever addons: hub window (/forever) to turn addons on or off and
                  open their settings, shared look, one collector button at the minimap.
   ForeverFrames  Slim party and raid frames with click casting, debuffs/HoTs,
                  heal prediction and pets. Position via X/Y, grid and snapping.

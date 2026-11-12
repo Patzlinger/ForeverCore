@@ -1,10 +1,10 @@
-# Schreibt ForeverCore\Build.lua: fortlaufende Build-Nummer (Anzahl Commits), Commit-Kurzzeichen und Datum/Uhrzeit des
+# Schreibt ForeverCoreUI\Build.lua: fortlaufende Build-Nummer (Anzahl Commits), Commit-Kurzzeichen und Datum/Uhrzeit des
 # letzten Commits. Das Spiel kann git nicht lesen – die Übersicht im Einstellungsfenster zeigt diese Werte ganz unten.
 # Die Datei wird NICHT eingecheckt (.gitignore): sie ändert sich mit jedem Commit, eingecheckt gäbe das bei jedem
 # Abgleich zwischen zwei Rechnern einen Konflikt. Aufgerufen von session-sync.ps1 (also auch vom Auto-Sync),
 # check.ps1, link-addons.ps1 und build-release.ps1; von Hand: .\tools\write-build-info.ps1
 $root = Split-Path $PSScriptRoot -Parent
-$target = Join-Path $root 'ForeverCore\Build.lua'
+$target = Join-Path $root 'ForeverCoreUI\Build.lua'
 $count = (git -C $root rev-list --count HEAD 2>$null | Out-String).Trim()
 $hash = (git -C $root rev-parse --short HEAD 2>$null | Out-String).Trim()
 $date = (git -C $root log -1 '--format=%cd' '--date=format:%Y-%m-%d %H:%M' 2>$null | Out-String).Trim()

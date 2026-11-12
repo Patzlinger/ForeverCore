@@ -1090,8 +1090,8 @@ end
 -- Name und Stufe
 ---------------------------------------------------------------------------
 local CLASS_ATLAS = {
-    elite = "Interface\\AddOns\\ForeverCore\\Media\\EliteGold", worldboss = "Interface\\AddOns\\ForeverCore\\Media\\EliteGold",
-    rareelite = "Interface\\AddOns\\ForeverCore\\Media\\RareEliteSilver", rare = "Interface\\AddOns\\ForeverCore\\Media\\RareSilver",
+    elite = "Interface\\AddOns\\ForeverCoreUI\\Media\\EliteGold", worldboss = "Interface\\AddOns\\ForeverCoreUI\\Media\\EliteGold",
+    rareelite = "Interface\\AddOns\\ForeverCoreUI\\Media\\RareEliteSilver", rare = "Interface\\AddOns\\ForeverCoreUI\\Media\\RareSilver",
 }
 -- Eigene Grafik (Pfad) oder Blizzard-Atlas; false, wenn nicht ladbar
 local function SetClassTex(tex, src)

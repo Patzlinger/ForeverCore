@@ -7,7 +7,7 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 if (!$AddOnsDir) { $AddOnsDir = Join-Path (Split-Path $root -Parent) 'AddOns' }
 if (!(Test-Path $AddOnsDir)) { throw "AddOns-Ordner nicht gefunden: $AddOnsDir" }
-# Build-Nummer fürs Spiel (ForeverCore\Build.lua, nicht eingecheckt) anlegen
+# Build-Nummer fürs Spiel (ForeverCoreUI\Build.lua, nicht eingecheckt) anlegen
 try { & (Join-Path $PSScriptRoot 'write-build-info.ps1') } catch {}
 $backup = Join-Path (Split-Path $AddOnsDir -Parent) ('_AddOn-Backups\' + (Get-Date -Format 'yyyy-MM-dd') + '_vor-Git')
 

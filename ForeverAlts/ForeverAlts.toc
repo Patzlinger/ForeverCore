@@ -4,13 +4,13 @@
 ## Category: Forever Core UI
 ## Notes: Overview of all your characters: level, rested XP, gold, professions, location and open dungeon quests
 ## Notes-deDE: Übersicht aller deiner Charaktere: Stufe, Erholung, Gold, Berufe, Ort und offene Dungeonquests
-## Version: 0.543b
+## Version: 0.544b
 ## X-Curse-Project-ID: 1743753
 ## Author: flowfy
 ## X-License: MIT
-## Dependencies: ForeverCore
+## Dependencies: ForeverCoreUI
 ## OptionalDeps: ForeverQuests, ForeverBags
-## Group: ForeverCore
+## Group: ForeverCoreUI
 ## SavedVariables: ForeverAltsDB, ForeverAltsData
 
 Data.lua

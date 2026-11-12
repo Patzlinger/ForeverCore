@@ -17,15 +17,15 @@ wird oder ein Addon neue Hub-Funktionen, Einstellungen, Profile, Minimap-Knopf o
   ## Category: Forever Core UI
   ## Author: <Name>
   ## Version: <Suite-Version, identisch in allen .toc>
-  ## Dependencies: ForeverCore
-  ## Group: ForeverCore
+  ## Dependencies: ForeverCoreUI
+  ## Group: ForeverCoreUI
   ## SavedVariables: ForeverNameDB
 
   ... eigene Dateien ...
   ```
-  - `## Group: ForeverCore`: in Blizzards Addon-Liste eingerückt unter „Forever Core UI“ (wie AtlasLoot); Blizzard setzt
+  - `## Group: ForeverCoreUI`: in Blizzards Addon-Liste eingerückt unter „Forever Core UI“ (wie AtlasLoot); Blizzard setzt
     das nur bei gleichem Namensanfang automatisch, deshalb ausdrücklich eintragen.
-  - `## Dependencies: ForeverCore`: ForeverCore lädt garantiert vorher, `ForeverHub.UI` steht ab der ersten Zeile
+  - `## Dependencies: ForeverCoreUI`: ForeverCore lädt garantiert vorher, `ForeverHub.UI` steht ab der ersten Zeile
     bereit. **Keine eigene Kopie von `ForeverHub.lua`** ins Addon legen.
   - `ForeverHubDB` steht **nur in ForeverCore** (seit 2026-11-05; vorher als Übergang in jedem Addon – dadurch speicherte
     das Spiel dieselben Hub-Einstellungen 14-mal, und die Kopie eines länger ausgeschalteten Addons konnte neuere
@@ -36,11 +36,11 @@ wird oder ein Addon neue Hub-Funktionen, Einstellungen, Profile, Minimap-Knopf o
     die Kacheln der Übersicht nehmen das Logo aus der .toc.
   - Release-Addons zusätzlich: `## X-License: MIT`, `## X-Curse-Project-ID: 1743753`, `LICENSE.txt`.
 - Datei-Aufteilung frei; bewährt: `Core.lua` (Defaults, Start, Chatbefehl), `Locales.lua`, `Options.lua`, Funktionsdateien.
-- Neues Addon zusätzlich: in `ForeverCore/ForeverHub.lua` in die Liste `KNOWN` eintragen (Name + Minimap-Knopf) und
+- Neues Addon zusätzlich: in `ForeverCoreUI/ForeverHub.lua` in die Liste `KNOWN` eintragen (Name + Minimap-Knopf) und
   einmal `tools/link-addons.ps1` ausführen; Chatbefehl in Commands.md eintragen; Release-Aufnahme siehe Release.md.
 
 ## 6. ForeverHub (gemeinsame Bibliothek)
-- Der Hub liegt **nur einmal**: `ForeverCore/ForeverHub.lua` im Hauptaddon ForeverCore (seit 0.41b; vorher Kopie in
+- Der Hub liegt **nur einmal**: `ForeverCoreUI/ForeverHub.lua` im Hauptaddon ForeverCoreUI (seit 0.41b; vorher Kopie in
   jedem Addon – Stand davor: Git-Markierung `snapshot-vor-core-abhaengigkeit`). Bei Änderungen `VERSION` erhöhen
 - Gemeinsames (Stil, Sprache, Hilfsfunktionen, Begrüßung, Platzhalter …) gehört in den Hub, nicht in einzelne Addons
 - Erweiterungen müssen abwärtskompatibel sein (andere Addons rufen die Funktionen auf); Funktionen bei Bedarf mit
