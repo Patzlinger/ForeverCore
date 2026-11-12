@@ -388,11 +388,12 @@ local function HookAnchor()
 end
 
 local function ApplyScale()
-    local s = GetDB().scale or 1
+    local s = (GetDB().scale or 1) * UI.UIScale() -- eigene Größe x gemeinsame Skalierung (Hub)
     for _, name in ipairs({ "GameTooltip", "ItemRefTooltip", "ShoppingTooltip1", "ShoppingTooltip2" }) do
         if _G[name] then _G[name]:SetScale(s) end
     end
 end
+UI.On("UIStyleChanged", function() ApplyScale() end)
 
 local function ApplyAll()
     for tip in pairs(skinned) do ApplyLook(tip) end

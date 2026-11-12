@@ -680,7 +680,7 @@ function UI.MakeResizable(f, opts)
                 f:SetSize(i.defW, i.defH)
                 if i.opts.onResize then i.opts.onResize(i.defW, i.defH) end
             else
-                db.scale = nil
+                db.scale = nil f.fcOwn = 1
                 local left, top = f:GetLeft() * f:GetScale(), f:GetTop() * f:GetScale()
                 f:SetScale(UI.UIScale())
                 f:ClearAllPoints()
@@ -728,6 +728,7 @@ function UI.MakeResizable(f, opts)
                 self:SetScript("OnUpdate", nil)
                 -- gespeichert wird der eigene Faktor (ohne die gemeinsame Skalierung aus Übersicht > Allgemein)
                 db.scale = math.floor(f:GetScale() / UI.UIScale() * 100 + 0.5) / 100
+                f.fcOwn = db.scale
             end
         end)
 
@@ -741,7 +742,8 @@ function UI.MakeResizable(f, opts)
                 f:SetSize(db.w, db.h)
                 if i.opts.onResize then i.opts.onResize(db.w, db.h) end
             elseif i.mode == "scale" then
-                f:SetScale((db.scale or 1) * UI.UIScale())
+                f.fcOwn = db.scale or f:GetScale() -- eigener Faktor (z. B. Taschen 1.10), ohne gemeinsame Skalierung
+                f:SetScale(f.fcOwn * UI.UIScale())
             end
         end)
     end
@@ -754,7 +756,7 @@ UI.On("UIStyleChanged", function()
         if f.fcResizeApplied then
             local old = f:GetScale()
             local left, top = f:GetLeft(), f:GetTop()
-            local s = (WindowDB(name).scale or 1) * UI.UIScale()
+            local s = (f.fcOwn or 1) * UI.UIScale()
             f:SetScale(s)
             if left and top then
                 f:ClearAllPoints()

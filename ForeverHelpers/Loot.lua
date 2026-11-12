@@ -407,8 +407,9 @@ local function RestorePosition()
     else
         frame:SetPoint("TOPLEFT", UIParent, "TOP", 437, -284) -- Standard: rechts neben der Mitte
     end
-    frame:SetScale(GetDB().scale)
+    frame:SetScale(GetDB().scale * UI.UIScale()) -- eigene Größe x gemeinsame Skalierung (Hub)
 end
+UI.On("UIStyleChanged", function() frame:SetScale(GetDB().scale * UI.UIScale()) end)
 
 UI.AddMover(frame, "ForeverLoot") -- andere Forever-Rahmen rasten am Fenster ein (gelber Rahmen + Rechtsklick = Einstellungen, wenn entsperrt)
 frame:SetScript("OnDragStart", function(self)

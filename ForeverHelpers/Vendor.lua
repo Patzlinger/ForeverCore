@@ -17,6 +17,7 @@ local T = UI.T
 ---------------------------------------------------------------------------
 local GOLD = 10000 -- Kupfer pro Gold
 local DEFAULTS = {
+    panelScale = 100,        -- Größe der Händler-Fenster in % (x gemeinsame Skalierung aus dem Hub)
     enabled = false,         -- automatisch nachkaufen (standardmaessig aus); Verkaufen/Reparieren haben eigene Schalter
     sellGrey = true,
     repair = true,
@@ -883,7 +884,7 @@ end)
 local RefreshList
 do
 -- 720 breit: die deutschen Beschriftungen links sind laenger und brauchen ~370 px bis zur rechten Spalte
-local options = UI.SettingsPanel("ForeverVendorOptions", T("ForeverVendor – Händler", "ForeverVendor – Vendor"), 720, 690,
+local options = UI.SettingsPanel("ForeverVendorOptions", T("ForeverVendor – Händler", "ForeverVendor – Vendor"), 720, 740,
     { key = "ForeverHelpers.vendor", group = UI.SETTINGS_GROUPS.helpers, label = T("Händler", "Vendor") })
 local controls = {}
 local function Changed() UpdateIcon() end
@@ -938,6 +939,18 @@ Slider(L + 2, -538, T("Menge", "Amount"), "ammoCount", 200, 3000, 200, { width =
 UI.Header(options, L, -598, T("Anzeige", "Display"), LW)
 Check(L - 4, -620, T("Verschiebbares Symbol anzeigen (optional)", "Show movable icon (optional)"), "showIcon")
 local lockCheck = Check(L - 4, -644, T("Symbol sperren (entsperrt: ziehen)", "Lock icon (unlocked: drag)"), "locked")
+local function ApplyPanelScale()
+    local s = (GetDB().panelScale or 100) / 100 * UI.UIScale()
+    mpanel:SetScale(s)
+    panel:SetScale(s)
+end
+local panelScale = UI.Slider(options, L + 2, -676, T("Größe der Händler-Fenster", "Vendor window size"), 70, 150, 5, function(v)
+    GetDB().panelScale = v
+    ApplyPanelScale()
+end, { width = 150, unit = " %" })
+controls[#controls + 1] = function() panelScale:Load(GetDB().panelScale or 100) end
+UI.On("UIStyleChanged", ApplyPanelScale)
+ApplyPanelScale()
 
 -- rechte Spalte: Nachkauf-Liste
 UI.Header(options, R, -32, T("Nachkauf-Liste", "Restock list"), 300)
