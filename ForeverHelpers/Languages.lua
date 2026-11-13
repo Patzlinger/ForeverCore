@@ -135,12 +135,19 @@ local function RolesActive()
     return false
 end
 
--- passt der Eintrag zur Rollenauswahl? (true = hell lassen; auch, wenn nichts zu lesen ist)
+-- "Gruppen anzeigen" (Häkchen über der Liste): aus = alle Gruppen raus (ForeverHelpersDB.lfg.hideGroups)
+local function GroupsHidden()
+    local db = _G.ForeverHelpersDB
+    return type(db) == "table" and type(db.lfg) == "table" and db.lfg.hideGroups == true
+end
+
+-- bleibt der Eintrag in der Liste? (true auch, wenn nichts zu lesen ist)
 local function Matches(id)
     local okInfo, info = pcall(C_LFGList.GetSearchResultInfo, id)
     if not (okInfo and type(info) == "table") then return true end
-    -- Gruppen bleiben außen vor (immer hell) – der Filter gilt nur für einzelne Spieler (Wunsch von flowfy, 2026-11-13)
-    if info.numMembers ~= 1 then return true end
+    -- Gruppen: nur das Häkchen "Gruppen anzeigen" zählt; der Rollenfilter gilt nur für einzelne Spieler
+    if info.numMembers ~= 1 then return not GroupsHidden() end
+    if not RolesActive() then return true end
     local wanted = RoleDB()
     local ok, member = pcall(C_LFGList.GetSearchResultPlayerInfo, id, 1)
     if not (ok and type(member) == "table") then return true end
@@ -159,16 +166,20 @@ end
 -- Knoten mit GetData() = { resultID = … }); im klassischen Client eine flache Liste mit { resultID = … }.
 -- Erst sammeln, dann entfernen (beim Durchlaufen darf der Baum nicht verändert werden).
 local function FilterList(browse)
-    if not RolesActive() then return end
+    if not RolesActive() and not GroupsHidden() then return end
     local box = browse.ScrollBox
     local provider = box and box.GetDataProvider and box:GetDataProvider()
     if not (provider and provider.Remove) then return end
-    local drop = {}
+    local drop, headers = {}, {}
     local function Check(item)
         local data = item
         if type(item) == "table" and item.GetData then data = item:GetData() end
         local id = type(data) == "table" and data.resultID
-        if type(id) == "number" and not Matches(id) then drop[#drop + 1] = item end
+        if type(id) == "number" then
+            if not Matches(id) then drop[#drop + 1] = item end
+        elseif type(item) == "table" and item.GetNodes then
+            headers[#headers + 1] = item -- Überschrift ("Spieler"/"Gruppen"): danach prüfen, ob sie leer ist
+        end
     end
     if provider.GetRootNode and provider.ForEach then
         -- Baum: alle Knoten, auch die unter zugeklappten Überschriften (false = IncludeCollapsed)
@@ -177,6 +188,11 @@ local function FilterList(browse)
         for _, element in provider:Enumerate() do Check(element) end
     end
     for _, item in ipairs(drop) do provider:Remove(item) end
+    -- leer gewordene Überschriften mit entfernen (z. B. "Gruppen" bei ausgeblendeten Gruppen)
+    for _, header in ipairs(headers) do
+        local nodes = header:GetNodes()
+        if type(nodes) == "table" and #nodes == 0 and header.parent then provider:Remove(header) end
+    end
 end
 
 -- Auswahl geändert: Blizzards Liste aus den vorhandenen Ergebnissen neu aufbauen lassen (keine neue Suche – die
@@ -227,7 +243,7 @@ local function UpdateLangButton()
             b.flag:SetTexCoord(0, 0.75, 0, 1)
             b.flag:Show()
             b.count:ClearAllPoints()
-            b.count:SetPoint("LEFT", b.flag, "RIGHT", 2, 0)
+            b.count:SetPoint("LEFT", b.flag, "RIGHT", 1, 0)
             b.count:SetText(#on > 1 and ("+" .. (#on - 1)) or "")
         else
             b.flag:Hide()
@@ -388,17 +404,18 @@ end
 
 -- Flaggen-Knopf oben rechts neben Aktualisieren: öffnet das Sprach-Menü
 local function BuildLangButton(browse)
-    langButton = UI.Button(browse, "", 36)
+    -- (schmal und dicht am Aktualisieren-Knopf, etwas tiefer: ragte vorher rechts aus dem Fenster, 2026-11-13)
+    langButton = UI.Button(browse, "", 32)
     langButton:SetHeight(20)
     local refresh = browse.RefreshButton
     if refresh then
-        langButton:SetPoint("LEFT", refresh, "RIGHT", 6, 0)
+        langButton:SetPoint("LEFT", refresh, "RIGHT", 2, -3)
     else
-        langButton:SetPoint("TOPRIGHT", browse, "TOPRIGHT", -8, -8)
+        langButton:SetPoint("TOPRIGHT", browse, "TOPRIGHT", -12, -12)
     end
     langButton.flag = langButton:CreateTexture(nil, "ARTWORK")
     langButton.flag:SetSize(18, 12)
-    langButton.flag:SetPoint("CENTER", langButton, "CENTER", -4, 0)
+    langButton.flag:SetPoint("LEFT", langButton, "LEFT", 3, 0)
     langButton.count = langButton:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     langButton:SetScript("OnClick", function(self)
         if MenuUtil and MenuUtil.CreateContextMenu then MenuUtil.CreateContextMenu(self, MenuGenerator) end
@@ -444,6 +461,22 @@ local function Build(browse)
         b:SetPoint("LEFT", holder, "LEFT", (i - 1) * (ROLE_SIZE + ROLE_GAP), 0)
         roleButtons[i] = b
     end
+    -- Häkchen "Gruppen anzeigen" in der freien Fläche über der Liste (unter der Kategorie-Auswahl)
+    local groups = UI.Check(browse, nil, nil, T("Gruppen anzeigen", "Show groups"), function(checked)
+        if type(_G.ForeverHelpersDB) ~= "table" then _G.ForeverHelpersDB = {} end
+        local db = _G.ForeverHelpersDB
+        if type(db.lfg) ~= "table" then db.lfg = {} end
+        db.lfg.hideGroups = (not checked) or nil
+        Rebuild(browse)
+    end)
+    local category = browse.CategoryDropdown or browse.CategoryDropDown
+    if category then
+        groups:SetPoint("TOPLEFT", category, "BOTTOMLEFT", 2, -10)
+    else
+        groups:SetPoint("TOPLEFT", browse, "TOPLEFT", 16, -48)
+    end
+    groups:SetChecked(not GroupsHidden())
+    browse:HookScript("OnShow", function() groups:SetChecked(not GroupsHidden()) end)
     -- nach jedem Neuaufbau der Liste filtern (siehe Warnung oben)
     if type(browse.UpdateResults) == "function" then
         local reported = false
