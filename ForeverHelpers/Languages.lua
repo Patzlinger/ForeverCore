@@ -18,7 +18,8 @@
 -- das Addon die Anzeige selbst. Gelesen wird genau das, was Blizzards Liste für die Rollen-Symbole nutzt
 -- (Blizzard_LFGVanilla_Browse.lua):
 --   einzelner Spieler: C_LFGList.GetSearchResultPlayerInfo(id, 1).lfgRoles.tank/.healer/.dps -> bietet die Rolle an
--- Gruppen bleiben immer drin (gewünscht: der Filter gilt nur für einzelne Spieler). Unbekanntes bleibt drin.
+-- Gruppen bleiben immer drin (gewünscht: der Filter gilt nur für einzelne Spieler). Spieler ohne Rollenangabe
+-- fliegen bei aktivem Filter raus.
 -- Auswahl in ForeverHelpersDB.lfg.roles.
 --
 -- !! VERSUCH ENTGEGEN DER TAINT-REGEL (CLAUDE.md, Abschnitt 3), ausdrücklich gewünscht von flowfy (2026-11-13):
@@ -120,12 +121,6 @@ local ROLES = {
     { key = "healer", de = "Heiler", en = "Healer", atlas = "groupfinder-icon-role-micro-heal" },
     { key = "dps", de = "Schaden", en = "Damage", atlas = "groupfinder-icon-role-micro-dps" },
 }
--- Spieler ohne Rollenangabe: welche Rollen kann die Klasse überhaupt (Forever: klassische Klassen)?
--- Schaden können alle.
-local CLASS_ROLES = {
-    WARRIOR = { tank = true }, PALADIN = { tank = true, healer = true }, DRUID = { tank = true, healer = true },
-    PRIEST = { healer = true }, SHAMAN = { healer = true },
-}
 local function RoleDB()
     if type(_G.ForeverHelpersDB) ~= "table" then _G.ForeverHelpersDB = {} end
     local db = _G.ForeverHelpersDB
@@ -149,14 +144,9 @@ local function Matches(id)
     local ok, member = pcall(C_LFGList.GetSearchResultPlayerInfo, id, 1)
     if not (ok and type(member) == "table") then return true end
     local roles = member.lfgRoles
-    if type(roles) ~= "table" or not (roles.tank or roles.healer or roles.dps) then
-        -- keine Rolle angegeben (Blizzard zeigt dann kein "Rollen:"): nach der Klasse – ein Schurke fliegt beim
-        -- Heiler-Filter raus, ein Priester bleibt. Klasse unbekannt: raus (gewünscht: nur passende Spieler).
-        local class = member.classFilename or member.class
-        if type(class) ~= "string" then return false end
-        roles = { tank = false, healer = false, dps = true }
-        for key in pairs(CLASS_ROLES[class:upper()] or {}) do roles[key] = true end
-    end
+    -- keine Rolle angegeben (Blizzard zeigt dann kein "Rollen:"): bei aktivem Filter raus – gezeigt werden nur
+    -- Spieler, die die Rolle selbst angegeben haben (Wunsch von flowfy, 2026-11-13)
+    if type(roles) ~= "table" or not (roles.tank or roles.healer or roles.dps) then return false end
     for _, r in ipairs(ROLES) do
         if wanted[r.key] and roles[r.key] then return true end
     end
@@ -397,8 +387,8 @@ local function Build(browse)
         local tip = UI.GetTooltip()
         tip:SetOwner(self, "ANCHOR_TOP")
         tip:SetText(T("Nach Rolle filtern", "Filter by role"), 1, 0.82, 0)
-        tip:AddLine(T("Zeigt nur einzelne Spieler, die eine gewählte Rolle anbieten (ohne Angabe: wenn ihre Klasse die Rolle kann). Gruppen bleiben immer in der Liste.",
-            "Only shows single players who offer a selected role (if none is set: if their class can fill it). Groups always stay in the list."),
+        tip:AddLine(T("Zeigt nur einzelne Spieler, die eine gewählte Rolle angegeben haben. Spieler ohne Rollenangabe werden ausgeblendet. Gruppen bleiben immer in der Liste.",
+            "Only shows single players who listed a selected role. Players without a role are hidden. Groups always stay in the list."),
             1, 1, 1, true)
         tip:Show()
     end)
