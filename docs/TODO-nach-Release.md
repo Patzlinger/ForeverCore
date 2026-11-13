@@ -20,3 +20,6 @@ Auswirkung im Spiel.
       nimmt
 - [ ] ⚠ **Suche nach Gruppe: nach Rolle filtern** (Tank, Heiler, Schaden): in der Gruppensuche die Ergebnisse nach der
       gesuchten Rolle filtern können (Addon noch klären)
+- [ ] ⚠ **Sprachauswahl der Gruppensuche** (ForeverHelpers/Languages.lua, seit 2026-11-13): Knopf „Sprachen: …“ unter
+      „Durchsuchen“ mit Häkchen je Sprache (Blizzards Sprachfilter, C_LFGList.SaveLanguageSearchFilter). Im Spiel
+      noch nicht bestätigt; bis dahin in `release/exclude-from-release.txt`, danach dort streichen + Changelog-Eintrag
