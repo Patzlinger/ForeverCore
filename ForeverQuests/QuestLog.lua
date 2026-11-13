@@ -296,6 +296,7 @@ local function SkinWorldMap()
     line:SetPoint("BOTTOMRIGHT")
     line:SetHeight(1)
     line:SetColorTexture(color.accent[1], color.accent[2], color.accent[3], 0.6)
+    if Style.Theme then Style.Theme(skin, nil, band) end -- Runen-Optik (an/aus im Forever-Core-Menü)
 
     -- Blizzards Steinrahmen, Porträt (Buch oben links) und Kopf-Verzierung unsichtbar
     if border then
@@ -782,6 +783,7 @@ local function CreatePanel(area)
     panel:EnableMouse(true)
     -- voll deckend (die Grundfarbe ist leicht durchscheinend – Blizzards Liste darunter schimmerte durch)
     Style.SetFlat(panel, { color.background[1], color.background[2], color.background[3], 1 })
+    if Style.Theme then Style.Theme(panel) end -- Runen-Optik (an/aus im Forever-Core-Menü)
 
     -- Kopfzeile: Suche | Anzahl | Filter | Dungeons | Rädchen
     local header = HeaderBar(panel, HEADER_HEIGHT)

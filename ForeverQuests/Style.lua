@@ -34,6 +34,28 @@ function Style.SetFlat(frame, bg, border)
     frame:SetBackdropBorderColor(unpack(border or COLOR.border))
 end
 
+-- Runen-Optik (ForeverCoreUI/Theme.lua, gemeinsame Grundlage aller Forever-Fenster) für Fenster dieses Addons, die
+-- NICHT über Style.CreateWindow/UI.RegisterWindow laufen (Dungeonfenster, Questlog, Kartenrahmen): anmelden, damit sie
+-- Verlauf, Runenkreis und Goldrahmen bekommen und mit dem Design-Knopf im Forever-Core-Menü umschalten.
+-- header = Titelleiste mit Backdrop, band = Titel-Textur (beide optional) – sie werden mit umgefärbt.
+-- panels = große Innenkästen (optional): im Runen-Design durchscheinend (PANEL_ALPHA), sonst wie gewohnt.
+local PANEL_ALPHA = 0.45
+function Style.Theme(frame, header, band, panels)
+    local theme = HUB_UI and HUB_UI.Theme
+    if not (frame and theme and theme.Register) then return end
+    theme.Register(frame, {
+        onApply = function(on, colors)
+            local c = on and colors.header or COLOR.header
+            if header and header.SetBackdropColor then header:SetBackdropColor(c[1], c[2], c[3], 1) end
+            if band and band.SetColorTexture then band:SetColorTexture(c[1], c[2], c[3], 1) end
+            for _, panel in ipairs(panels or {}) do
+                local p = COLOR.panel
+                panel:SetBackdropColor(p[1], p[2], p[3], on and PANEL_ALPHA or (p[4] or 1))
+            end
+        end,
+    })
+end
+
 local function SetAccentBorder(frame, on)
     if on then
         frame:SetBackdropBorderColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3], 0.9)

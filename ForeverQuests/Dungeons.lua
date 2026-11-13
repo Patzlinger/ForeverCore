@@ -2709,6 +2709,9 @@ local function CreateWindow()
     -- Rechtes Feld: Dungeon-Kopf und Quests
     local detailPanel = CreateFrame("Frame", nil, window, "BackdropTemplate")
     SetFlat(detailPanel, COLOR.panel)
+    -- Runen-Optik (an/aus im Forever-Core-Menü): die beiden Kästen füllen fast das ganze Fenster – im Runen-Design
+    -- werden sie durchscheinend, sonst sähe man Verlauf und Runen nur am Rand
+    if ns.Style.Theme then ns.Style.Theme(window, header, nil, { listPanel, detailPanel }) end
     detailPanel:SetPoint("TOPLEFT", listPanel, "TOPRIGHT", 10, 0)
     detailPanel:SetPoint("BOTTOMRIGHT", -12, FOOTER_HEIGHT + 4)
 
