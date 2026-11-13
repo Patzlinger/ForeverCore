@@ -382,16 +382,7 @@ local function RoleButton(parent, role)
         end
         ToggleRole(self.role.key)
     end)
-    b:SetScript("OnEnter", function(self)
-        local tip = UI.GetTooltip()
-        tip:SetOwner(self, "ANCHOR_TOP")
-        tip:SetText(T(role.de, role.en), 1, 0.82, 0)
-        tip:AddLine(T("An: Es bleiben nur einzelne Spieler, die diese Rolle angegeben haben (Gruppen bleiben immer). Mehrere Rollen gleichzeitig möglich. Noch einmal klicken = aus.",
-            "On: only single players who listed this role stay (groups always stay). Several roles at once are possible. Click again = off."),
-            1, 1, 1, true)
-        tip:Show()
-    end)
-    b:SetScript("OnLeave", function() UI.GetTooltip():Hide() end)
+    -- (ohne Tooltip – auf Wunsch)
     return b
 end
 
@@ -412,22 +403,7 @@ local function BuildLangButton(browse)
     langButton:SetScript("OnClick", function(self)
         if MenuUtil and MenuUtil.CreateContextMenu then MenuUtil.CreateContextMenu(self, MenuGenerator) end
     end)
-    langButton:HookScript("OnEnter", function(self)
-        local tip = UI.GetTooltip()
-        tip:SetOwner(self, "ANCHOR_BOTTOM")
-        tip:SetText(T("Sprachen der Gruppensuche", "Group finder languages"), 1, 0.82, 0)
-        local names = {}
-        local cur = Current()
-        for _, lang in ipairs(Available()) do
-            if cur[lang] then names[#names + 1] = FlagTag(lang, 10) .. " " .. Name(lang) end
-        end
-        if #names > 0 then tip:AddLine(table.concat(names, "   "), 1, 1, 1, true) end
-        tip:AddLine(T("Klicken: Sprachen wählen, dann Aktualisieren – die Liste zeigt Einträge in allen gewählten Sprachen. Gilt für den ganzen Account.",
-            "Click: choose languages, then Refresh – the list shows listings in all selected languages. Applies to your whole account."),
-            0.8, 0.8, 0.8, true)
-        tip:Show()
-    end)
-    langButton:HookScript("OnLeave", function() UI.GetTooltip():Hide() end)
+    -- (ohne Tooltip – auf Wunsch)
 end
 
 -- Unsichtbarer eigener Knopf genau über Blizzards Aktualisieren-Knopf: fängt den Klick ab und sucht MIT Sprachen
