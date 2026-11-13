@@ -22,12 +22,13 @@
 -- fliegen bei aktivem Filter raus.
 -- Auswahl in ForeverHelpersDB.lfg.roles.
 --
--- !! VERSUCH ENTGEGEN DER TAINT-REGEL (CLAUDE.md, Abschnitt 3), ausdrücklich gewünscht von flowfy (2026-11-13):
+-- !! DOKUMENTIERTE AUSNAHME VON DER TAINT-REGEL (CLAUDE.md Abschnitt 3, docs/Technical-Pitfalls.md), von flowfy
+--    ausdrücklich erlaubt (2026-11-13), nur für diese Funktion – nicht „reparieren“ ohne Absprache:
 --    Unpassende Spieler werden aus Blizzards Ergebnisliste ENTFERNT (hooksecurefunc auf LFGBrowseFrame:UpdateResults,
 --    danach Elemente aus Blizzards DataProvider der ScrollBox löschen). Das schreibt in eine Tabelle, die Blizzard-Code
 --    liest – mögliche Folge: ADDON_ACTION_BLOCKED beim Einladen/Anschreiben/Bewerben aus der Gruppensuche.
 --    Rückweg (Abdunkeln statt Entfernen, regelkonform): git-Markierung "backup/gruppensuche-abdunkeln" (8f52d8e).
---    Von flowfy im Spiel als funktionierend bestätigt (2026-11-13) und seitdem im Release.
+--    Von flowfy im Spiel bestätigt (2026-11-13, auch Nachricht senden/Einladen) und seitdem im Release.
 local UI = ForeverHub.UI
 local T = UI.T
 

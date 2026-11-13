@@ -41,8 +41,9 @@ Regeländerungen immer hier bzw. in `docs/` eintragen, committen und pushen (nic
   Blizzard-Funktionen nur mit `hooksecurefunc`/`HookScript` erweitern, nie überschreiben. Nichts in Blizzards Knopflisten
   einhängen (z. B. `GameMenuFrame:AddButton`). **Nie eigene Funktionen/Werte in Tabellen legen, die Blizzard-Code liest.**
   Zwei Addons dürfen nicht denselben Blizzard-Teil „besitzen“. Dokumentierte Ausnahmen (ForeverBars `SetParent`,
-  ForeverQuests-Tracker `:Hide()`, ForeverBags Taschenfenster `:Hide()`) stehen in Technical-Pitfalls.md – nicht
-  „reparieren“ ohne Absprache.
+  ForeverQuests-Tracker `:Hide()`, ForeverBags Taschenfenster `:Hide()`, ForeverHelpers Gruppensuche: Einträge aus
+  Blizzards Ergebnisliste entfernen) stehen in Technical-Pitfalls.md – nicht „reparieren“ ohne Absprache. Die
+  Ausnahmen gelten nur für genau diese Stellen, nicht als Vorbild für anderes.
 - Namensplaketten sind restricted regions (kein `GetCenter`/`GetPoint`). Anzeige-Texte ohne „→“ (nimmt „»“ oder „–“).
   Spielernamen abgleichen statt vergleichen (Chat: „Vorname Nachname“, Gruppe: Vorname).
 

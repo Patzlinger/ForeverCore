@@ -81,3 +81,11 @@ geändert wird.** Die Kurzregeln stehen in CLAUDE.md; hier die Einzelheiten und 
   `hooksecurefunc` auf `ToggleAllBags`/`OpenAllBags`/`CloseAllBags` … mitgehört, nie überschrieben. Die eigenen
   Taschenplätze sind Blizzards `ContainerFrameItemButtonTemplate` (Elternrahmen mit `SetID(Tasche)`, Knopf mit
   `SetID(Platz)`) – Benutzen, Ziehen, Verkaufen und Tooltip erledigt damit Blizzard selbst.
+- **ForeverHelpers, Gruppensuche** (`Languages.lua`, Ausnahme von flowfy ausdrücklich erlaubt am 2026-11-13, NUR für
+  diese Funktion): Rollenfilter und „Gruppen anzeigen“ ENTFERNEN Einträge aus Blizzards Ergebnisliste von
+  „Suche nach Gruppe“ > Durchsuchen – `hooksecurefunc(LFGBrowseFrame, "UpdateResults", …)`, danach `Remove` auf dem
+  DataProvider der ScrollBox (in Forever ein Baum mit Überschriften). Das verändert eine Tabelle, die Blizzard-Code
+  liest, und verstößt damit gegen die Taint-Regel. Grund: Forever wertet den Rollenfilter der Suche nicht aus, und
+  Abdunkeln statt Entfernen war nicht gewünscht. Von flowfy im Spiel geprüft: Filtern, „Nachricht senden“ und
+  „Gruppeneinladung“ gehen. Falls doch `ADDON_ACTION_BLOCKED` aus der Gruppensuche gemeldet wird: zuerst hier suchen;
+  der regelkonforme Stand (Abdunkeln per `SetAlpha`) liegt als git-Markierung `backup/gruppensuche-abdunkeln`.
