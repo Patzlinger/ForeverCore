@@ -1,8 +1,8 @@
 -- ForeverHelpers – Languages.lua: Sprachauswahl für "Suche nach Gruppe" > Durchsuchen (LFGBrowseFrame).
 -- Blizzards Durchsuchen-Seite (Classic-Stil) gibt beim Suchen die Sprachauswahl NICHT mit – das Spiel liefert dann
 -- nur Einträge in der Client-Sprache (im Spiel gemessen 2026-11-13: 8 statt 100 Treffer). Darum:
---   - Knopf "Sprachen: …" unter dem Fenster: Liste mit Häkchen je Sprache und "Alle Sprachen"; jede Änderung
---     sucht sofort neu.
+--   - Knopf "Sprachen: …" unter dem Fenster: Liste mit Häkchen je Sprache und "Alle Sprachen"; speichert nur –
+--     wirksam wird die Auswahl beim nächsten Klick auf Aktualisieren.
 --   - Über Blizzards Aktualisieren-Knopf liegt ein unsichtbarer eigener Knopf: ein Klick darauf sucht mit den
 --     gewählten Sprachen (statt Blizzards Suche ohne Sprachen). Das Ergebnis zeigt Blizzards Liste wie gewohnt.
 --       C_LFGList.Search(Kategorie, 0, 0, Sprachen, false, nil, Aktivitäten) – wie Blizzards LFGBrowse_DoSearch
@@ -116,14 +116,14 @@ local function UpdateChecks()
     for lang, cb in pairs(checks) do cb:SetChecked(cur[lang] and true or false) end
 end
 
+-- Auswahl nur speichern – gesucht wird erst beim Klick auf Aktualisieren (auf Wunsch, 2026-11-13)
 local function Apply(filter)
     pcall(C_LFGList.SaveLanguageSearchFilter, filter)
     UpdateChecks()
     UpdateButton()
-    Search()
 end
 
--- neue Auswahl speichern und gleich neu suchen (Klick = Eingabe des Spielers)
+-- neue Auswahl speichern
 local function Save(lang, value)
     local cur = Current()
     local filter = {}
@@ -205,8 +205,8 @@ local function Build(browse)
         local tip = UI.GetTooltip()
         tip:SetOwner(self, "ANCHOR_BOTTOM")
         tip:SetText(T("Sprachen der Gruppensuche", "Group finder languages"), 1, 0.82, 0)
-        tip:AddLine(T("Die Liste zeigt Einträge in allen gewählten Sprachen; jede Änderung sucht sofort neu. Nach einem Wechsel der Kategorie einmal auf Aktualisieren klicken. Die Auswahl gilt für den ganzen Account.",
-            "The list shows listings in all selected languages; every change searches again right away. After changing the category, click Refresh once. The choice applies to your whole account."),
+        tip:AddLine(T("Wähle die Sprachen und klicke dann oben auf Aktualisieren: Die Liste zeigt dann Einträge in allen gewählten Sprachen. Die Auswahl gilt für den ganzen Account.",
+            "Choose the languages, then click Refresh at the top: the list then shows listings in all selected languages. The choice applies to your whole account."),
             1, 1, 1, true)
         tip:Show()
     end)
