@@ -3,13 +3,14 @@
 -- nur Einträge in der Client-Sprache (im Spiel gemessen 2026-11-13: 8 statt 100 Treffer). Darum:
 --   - Knopf "Sprachen: …" unter dem Fenster: Liste mit Häkchen je Sprache und "Alle Sprachen"; jede Änderung
 --     sucht sofort neu.
---   - Die Liste aktualisiert sich selbst mit den gewählten Sprachen: beim Öffnen von "Durchsuchen" und jedes Mal,
---     wenn Blizzard sucht (Aktualisieren, Kategorie …) – direkt danach im selben Klick eine eigene Suche, deren
---     Ergebnis Blizzards Liste wie gewohnt zeigt:
---       C_LFGList.Search(Kategorie, 0, 0, Sprachen, false)   (Reihenfolge laut Fehlermeldung des Spiels;
---       false = nur die eigene Fraktion)
--- Das Spiel lässt Addons nur auf einen Klick/Tastendruck des Spielers suchen – darum nur in solchen Momenten.
--- Die Sprachauswahl speichert das Spiel selbst (Account). Blizzards Rahmen bleiben unberührt: nur Hooks (Taint-Regel).
+--   - Über Blizzards Aktualisieren-Knopf liegt ein unsichtbarer eigener Knopf: ein Klick darauf sucht mit den
+--     gewählten Sprachen (statt Blizzards Suche ohne Sprachen). Das Ergebnis zeigt Blizzards Liste wie gewohnt.
+--       C_LFGList.Search(Kategorie, 0, 0, Sprachen, false, nil, Aktivitäten) – wie Blizzards LFGBrowse_DoSearch
+--       (Blizzard_LFGVanilla_Browse.lua), nur mit Sprachen statt languageFilter = nil.
+-- Das Spiel erlaubt Addons nur EINE Suche je Klick des Spielers (eine zweite direkt nach Blizzards Suche wurde
+-- blockiert: ADDON_ACTION_BLOCKED, 2026-11-13). Darum keine Hooks auf Blizzards Suche, und nach einem
+-- Kategorie-Wechsel (Blizzard sucht dann selbst, ohne Sprachen) einmal Aktualisieren.
+-- Die Sprachauswahl speichert das Spiel selbst (Account). Blizzards Rahmen bleiben unberührt (Taint-Regel).
 local UI = ForeverHub.UI
 local T = UI.T
 
@@ -35,25 +36,34 @@ local function Current()
     return ok and type(f) == "table" and f or {}
 end
 
--- Suche mit den gewählten Sprachen in der oben eingestellten Kategorie. quiet = ohne Hinweis, wenn noch keine
--- Kategorie gewählt ist (beim Öffnen und nach Blizzards Suche)
-local lastSearch
-local function Search(quiet)
-    local now = GetTime()
-    if lastSearch == now then return end -- (mehrere Anlässe im selben Klick: nur einmal suchen)
+-- Aktivitäten wie Blizzard: die im Filter angehakten, sonst alle der Kategorie (nur lesen)
+local function Activities(browse, category)
+    local dropdown = browse.ActivityDropdown or browse.ActivityDropDown
+    local selected = dropdown and dropdown.selectedValues
+    if type(selected) == "table" and #selected > 0 then
+        local copy = {}
+        for i, id in ipairs(selected) do copy[i] = id end
+        return copy
+    end
+    if type(_G.LFGUtil_GetFilteredActivities) == "function" then
+        local ok, list = pcall(_G.LFGUtil_GetFilteredActivities, category)
+        if ok and type(list) == "table" then return list end
+    end
+    return nil
+end
+
+-- Suche mit den gewählten Sprachen in der oben eingestellten Kategorie. Nur aus einem eigenen Klick aufrufen.
+local function Search()
     local browse = _G.LFGBrowseFrame
     if not (browse and browse:IsVisible()) then return end
     local dropdown = browse.CategoryDropdown or browse.CategoryDropDown
     local ok, category = false, nil
     if dropdown and dropdown.GetValue then ok, category = pcall(dropdown.GetValue, dropdown) end
     if not (ok and type(category) == "number" and category > 0) then
-        if not quiet then
-            UI.Chat("ForeverHelpers", T("Erst oben eine Kategorie wählen (z. B. Dungeons).", "Choose a category at the top first (e.g. Dungeons)."))
-        end
+        UI.Chat("ForeverHelpers", T("Erst oben eine Kategorie wählen (z. B. Dungeons).", "Choose a category at the top first (e.g. Dungeons)."))
         return
     end
-    lastSearch = now
-    local searched, err = pcall(C_LFGList.Search, category, 0, 0, Current(), false)
+    local searched, err = pcall(C_LFGList.Search, category, 0, 0, Current(), false, nil, Activities(browse, category))
     if not searched and UI.ReportError then UI.ReportError("ForeverHelpers", "Languages/Search", err) end
 end
 
@@ -125,29 +135,33 @@ local function BuildPopup()
     popup:SetScript("OnShow", UpdateChecks)
 end
 
--- Blizzards Suche abfangen (nur nachgeschaltet): direkt danach mit den gewählten Sprachen erneut suchen
-local function HookBlizzardSearch(browse)
-    local function After() Search(true) end
-    if type(_G.LFGBrowse_DoSearch) == "function" then hooksecurefunc("LFGBrowse_DoSearch", After) end
-    if type(browse.DoSearch) == "function" then hooksecurefunc(browse, "DoSearch", After) end
-    -- Aktualisieren-Knopf (Symbol ohne Text), Name/Schlüssel enthält "refresh" bzw. "search"
-    local function Find(frame, depth)
-        for key, child in pairs(frame) do
-            if type(key) == "string" and type(child) == "table" and child.IsObjectType and child.HookScript
-                and not (child.IsForbidden and child:IsForbidden()) and child:IsObjectType("Button") then
-                local k = key:lower()
-                if k:find("refresh") or k:find("search") then child:HookScript("OnClick", After) end
-            end
+-- Unsichtbarer eigener Knopf genau über Blizzards Aktualisieren-Knopf: fängt den Klick ab und sucht MIT Sprachen
+-- (Blizzards Knopf selbst bleibt unverändert – er bekommt den Klick nur nicht mehr). Sichtbar, solange er es ist.
+local function CoverRefresh(browse)
+    local refresh = browse.RefreshButton
+    if type(refresh) ~= "table" or not refresh.GetObjectType or (refresh.IsForbidden and refresh:IsForbidden()) then return end
+    local cover = CreateFrame("Button", nil, browse)
+    cover:SetAllPoints(refresh)
+    cover:SetFrameLevel(refresh:GetFrameLevel() + 5)
+    cover:RegisterForClicks("LeftButtonUp")
+    cover:SetScript("OnClick", function()
+        if PlaySound and SOUNDKIT and SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON then
+            PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
         end
-        if depth < 2 then
-            for _, child in ipairs({ frame:GetChildren() }) do
-                if not (child.IsForbidden and child:IsForbidden()) then Find(child, depth + 1) end
-            end
-        end
-    end
-    Find(browse, 1)
-    -- beim Öffnen der Seite (Klick auf den Reiter bzw. das Auge) gleich mit den gewählten Sprachen suchen
-    browse:HookScript("OnShow", After)
+        Search()
+    end)
+    cover:SetScript("OnEnter", function(self)
+        local tip = UI.GetTooltip()
+        tip:SetOwner(self, "ANCHOR_RIGHT")
+        tip:SetText(T("Aktualisieren", "Refresh"), 1, 0.82, 0)
+        tip:AddLine(T("Sucht mit allen gewählten Sprachen (Knopf „Sprachen“ unter dem Fenster).",
+            "Searches with all selected languages (\"Languages\" button below the window)."), 1, 1, 1, true)
+        tip:Show()
+    end)
+    cover:SetScript("OnLeave", function() UI.GetTooltip():Hide() end)
+    cover:SetShown(refresh:IsShown())
+    refresh:HookScript("OnShow", function() cover:Show() end)
+    refresh:HookScript("OnHide", function() cover:Hide() end)
 end
 
 local function Build(browse)
@@ -162,15 +176,15 @@ local function Build(browse)
         local tip = UI.GetTooltip()
         tip:SetOwner(self, "ANCHOR_BOTTOM")
         tip:SetText(T("Sprachen der Gruppensuche", "Group finder languages"), 1, 0.82, 0)
-        tip:AddLine(T("Die Gruppensuche zeigt Einträge in allen gewählten Sprachen und aktualisiert sich bei jeder Änderung selbst. Die Auswahl gilt für den ganzen Account.",
-            "The group finder shows listings in all selected languages and refreshes itself on every change. The choice applies to your whole account."),
+        tip:AddLine(T("Die Liste zeigt Einträge in allen gewählten Sprachen; jede Änderung sucht sofort neu. Nach einem Wechsel der Kategorie einmal auf Aktualisieren klicken. Die Auswahl gilt für den ganzen Account.",
+            "The list shows listings in all selected languages; every change searches again right away. After changing the category, click Refresh once. The choice applies to your whole account."),
             1, 1, 1, true)
         tip:Show()
     end)
     button:HookScript("OnLeave", function() UI.GetTooltip():Hide() end)
     browse:HookScript("OnShow", UpdateButton)
     browse:HookScript("OnHide", function() if popup then popup:Hide() end end)
-    HookBlizzardSearch(browse)
+    CoverRefresh(browse)
     UpdateButton()
 end
 
