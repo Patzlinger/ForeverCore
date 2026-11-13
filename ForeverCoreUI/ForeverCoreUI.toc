@@ -13,4 +13,5 @@
 ForeverHub.lua
 Build.lua
 Movers.lua
+Theme.lua
 Setup.lua

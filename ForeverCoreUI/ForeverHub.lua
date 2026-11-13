@@ -584,6 +584,7 @@ end
 function UI.RegisterWindow(f)
     if not f or SHARED.windows[f] then return end
     SHARED.windows[f] = true
+    if UI.Theme then UI.Theme.Apply(f) end -- Prototyp Runen-Design (Theme.lua); zum Entfernen diese Zeile löschen
     local function Front() UI.BringToFront(f) end
     f:HookScript("OnShow", Front)
     f:HookScript("OnMouseDown", Front)
@@ -3066,6 +3067,7 @@ local function SettingsWindow()
         if f.search then f.search:SetFrameLevel(base + 60) end -- Suchfeld ebenso
     end
     BuildSearch(f)
+    if UI.Theme then UI.Theme.AddButton(f) end -- Prototyp Runen-Design (Theme.lua): Knopf links neben dem Suchfeld
     hooksecurefunc(f, "SetFrameLevel", Levels)
     f.fcLevels = Levels
     Levels()
