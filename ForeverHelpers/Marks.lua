@@ -6,7 +6,7 @@
 --   Außen:  die 4 Blizzard-Pings (Angreifen, Achtung, Unterwegs, Hilfe) – über /ping.
 -- Da die Auswahl nur die RICHTUNG braucht, genügt ein kleiner Mausschwenk – die Bodenmarkierung liegt dann fast
 -- genau dort, wo das Rad geöffnet wurde. Das Rad fängt keine Mausklicks: die Maus bleibt über der Spielwelt.
--- Prototyp-Grenze: nur außerhalb des Kampfs (die Aktion ist ein geschützter Knopf, dessen Einstellung im Kampf gesperrt ist).
+-- Im Kampf stellt ein geschützter Baustein (SecureHandler) die Aktion ein – siehe unten; dort ohne An/Aus-Schalten.
 -- Reihenfolge und Zuordnung Ziel-/Bodenmarkierung wie die unsichtbaren Markierungs-Knöpfe in ForeverBars.
 local UI = ForeverHub.UI
 local T = UI.T
@@ -56,6 +56,7 @@ tinsert(UISpecialFrames, "ForeverMarksWheel") -- Esc schließt
 local originX, originY = 0, 0 -- Mausposition beim Öffnen (UI-Einheiten)
 local groundMode = true
 local unitToken
+local combatOpen = false -- Rad im Kampf geöffnet (Aktion stellt der geschützte Baustein ein)
 local hover -- { kind = "mark"|"ping", index = n } oder nil
 
 -- zarter runder Hintergrund hinter den Symbolen (kein Rahmen)
@@ -166,7 +167,11 @@ local function SetHover(kind, index)
         pointer:Show()
         if kind == "mark" then
             local name = _G["RAID_TARGET_" .. cur.marker.raid] or ("#" .. cur.marker.raid)
-            label:SetText(name .. "\n|cffaaaaaa" .. (groundMode and T("Boden", "Ground") or (UnitName(unitToken) or T("Ziel", "Unit"))) .. "|r")
+            local where
+            if groundMode then where = T("Boden", "Ground")
+            elseif combatOpen then where = T("Einheit unter der Maus, sonst Ziel", "Unit under the mouse, else target")
+            else where = (unitToken and UnitName(unitToken)) or T("Ziel", "Unit") end
+            label:SetText(name .. "\n|cffaaaaaa" .. where .. "|r")
         else
             label:SetText(T(cur.ping.de, cur.ping.en) .. "\n|cffaaaaaaPing|r")
         end
@@ -225,8 +230,13 @@ local function Open()
     -- automatisch: Einheit unter der Maus -> Ziel-Markierung, sonst Boden
     unitToken = nil
     local ok, exists = pcall(UnitExists, "mouseover")
-    if ok and not issecret(exists) and exists then unitToken = TokenFor(Guid("mouseover")) end
+    local over = ok and not issecret(exists) and exists and true or false
+    if over then unitToken = TokenFor(Guid("mouseover")) end
     groundMode = unitToken == nil
+    -- im Kampf entscheidet der geschützte Baustein: Einheit unter der Maus -> Zielmarkierung (auf die Einheit unter
+    -- der Maus beim Loslassen, sonst das Ziel) – die Anzeige richtet sich danach
+    combatOpen = InCombatLockdown() and true or false
+    if combatOpen then groundMode = not over end
     wheel:ClearAllPoints()
     wheel:SetPoint("CENTER", UIParent, "BOTTOMLEFT", originX, originY)
     SetHover(nil)
@@ -276,9 +286,87 @@ local function Configure(kind, index)
     end
 end
 
+---------------------------------------------------------------------------
+-- Im Kampf: Addon-Code darf den geschützten Knopf nicht umstellen (Configure oben greift dann nicht). Stattdessen
+-- stellt ihn ein geschützter Baustein ein (SecureHandler, läuft in Blizzards eingeschränkter Umgebung – erlaubt):
+--   Taste runter: Mausposition merken; steht die Maus über einer Einheit? (-> Ziel- statt Bodenmarkierung)
+--   Taste hoch:   aus der Mausrichtung dieselbe Auswahl wie Select() berechnen (nur Grundrechenarten und
+--                 Vergleiche) und die Aktion als Makro setzen.
+-- Grenzen im Kampf: kein An/Aus-Schalten (gleiche Markierung noch einmal entfernt sie nicht); die Zielmarkierung
+-- geht auf die Einheit unter der Maus beim LOSLASSEN, sonst auf das aktuelle Ziel (welche Einheit beim Öffnen unter
+-- der Maus stand, lässt sich dort nicht festhalten).
+-- Der Knopf überdeckt dafür unsichtbar den ganzen Bildschirm (ohne Maus: Klicks gehen durch) – der Baustein liest
+-- die Mausposition relativ zu ihm (GetMousePosition: Anteile 0–1 von links unten).
+---------------------------------------------------------------------------
+catcher:SetAllPoints(UIParent)
+catcher:EnableMouse(false)
+for i, m in ipairs(MARKERS) do
+    catcher:SetAttribute("fm-raid-" .. i, m.raid)
+    catcher:SetAttribute("fm-world-" .. i, m.world)
+end
+for i, p in ipairs(PINGS) do catcher:SetAttribute("fm-ping-" .. i, p.cmd) end
+catcher:SetAttribute("fm-dead", DEAD)
+catcher:SetAttribute("fm-split", SPLIT)
+
+local secureHeader = CreateFrame("Frame", nil, UIParent, "SecureHandlerBaseTemplate")
+secureHeader:WrapScript(catcher, "OnClick", [=[
+    local x, y = self:GetMousePosition()
+    if down then
+        self:SetAttribute("fm-x", x)
+        self:SetAttribute("fm-y", y)
+        if PlayerInCombat() then
+            self:SetAttribute("fm-unit", SecureCmdOptionParse("[@mouseover,exists] 1; 0"))
+            self:SetAttribute("type", nil) -- beim Drücken nichts auslösen
+        end
+        return
+    end
+    if not PlayerInCombat() then return end -- außerhalb des Kampfs stellt der Addon-Code ein (PreClick)
+    self:SetAttribute("type", nil)
+    local ox, oy = self:GetAttribute("fm-x"), self:GetAttribute("fm-y")
+    if not (x and y and ox and oy) then return end
+    local dx, dy = (x - ox) * self:GetWidth(), (y - oy) * self:GetHeight()
+    local d2 = dx * dx + dy * dy
+    local dead, split = self:GetAttribute("fm-dead"), self:GetAttribute("fm-split")
+    if d2 < dead * dead then return end -- Mitte: abbrechen
+    local ax, ay = dx, dy
+    if ax < 0 then ax = -ax end
+    if ay < 0 then ay = -ay end
+    local macro
+    if d2 >= split * split then
+        -- außen: 4 Pings (1 oben, im Uhrzeigersinn)
+        local i
+        if ay >= ax then
+            if dy > 0 then i = 1 else i = 3 end
+        else
+            if dx > 0 then i = 2 else i = 4 end
+        end
+        macro = "/ping " .. self:GetAttribute("fm-ping-" .. i)
+    else
+        -- innen: 8 Markierungen (1 oben, im Uhrzeigersinn); 0.41421 = tan(22,5°)
+        local i
+        if ax < ay * 0.41421 then
+            if dy > 0 then i = 1 else i = 5 end
+        elseif ay < ax * 0.41421 then
+            if dx > 0 then i = 3 else i = 7 end
+        elseif dx > 0 then
+            if dy > 0 then i = 2 else i = 4 end
+        else
+            if dy > 0 then i = 8 else i = 6 end
+        end
+        if self:GetAttribute("fm-unit") == "1" then
+            macro = "/tm [@mouseover,exists][] " .. self:GetAttribute("fm-raid-" .. i)
+        else
+            macro = "/wm [@cursor] " .. self:GetAttribute("fm-world-" .. i)
+        end
+    end
+    self:SetAttribute("type", "macro")
+    self:SetAttribute("macrotext", macro)
+]=])
+
 catcher:SetScript("PreClick", function(_, _, down)
     if InCombatLockdown() then
-        if down then Chat(T("Im Kampf nicht möglich (Prototyp).", "Not possible in combat (prototype).")) end
+        -- im Kampf nur die Anzeige; die Aktion stellt der geschützte Baustein oben ein
+        if down and not wheel:IsShown() then Open() end
         return
     end
     if down then
@@ -295,7 +383,6 @@ catcher:SetScript("PostClick", function(_, _, down)
     if not down then wheel:Hide() end
 end)
 
--- Kampf beginnt, während das Rad offen ist: schließen
 local ev = CreateFrame("Frame")
 ev:RegisterEvent("PLAYER_LOGIN")
 ev:RegisterEvent("PLAYER_REGEN_ENABLED")
@@ -314,7 +401,11 @@ local function ApplyKey()
 end
 
 ev:SetScript("OnEvent", function(_, event)
-    if event == "PLAYER_REGEN_DISABLED" then wheel:Hide() return end
+    -- (Kampf beginnt bei offenem Rad: es bleibt offen – beim Loslassen stellt der geschützte Baustein die Aktion ein)
+    if event == "PLAYER_REGEN_DISABLED" then
+        if wheel:IsShown() then combatOpen = true end
+        return
+    end
     ApplyKey()
 end)
 
