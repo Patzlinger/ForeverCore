@@ -15,11 +15,18 @@
 --
 -- Rollenfilter (Auswahlfeld "Rolle" rechts daneben): Forever nimmt den erweiterten Filter der Suche (needsTank …)
 -- zwar an, wertet ihn aber NICHT aus (im Spiel gemessen 2026-11-13: 17 ohne, 20 mit Heiler-Filter). Darum filtert
--- das Addon die Anzeige selbst und dunkelt unpassende Einträge ab (nur SetAlpha auf Blizzards Zeilen, die Liste
--- selbst bleibt unberührt). Gelesen wird genau das, was Blizzards Liste für die Rollen-Symbole nutzt
+-- das Addon die Anzeige selbst. Gelesen wird genau das, was Blizzards Liste für die Rollen-Symbole nutzt
 -- (Blizzard_LFGVanilla_Browse.lua):
 --   einzelner Spieler: C_LFGList.GetSearchResultPlayerInfo(id, 1).lfgRoles.tank/.healer/.dps -> bietet die Rolle an
--- Gruppen bleiben immer hell (gewünscht: der Filter gilt nur für einzelne Spieler). Unbekanntes bleibt hell. Wirkt sofort (keine neue Suche nötig); Auswahl in ForeverHelpersDB.lfg.roles.
+-- Gruppen bleiben immer drin (gewünscht: der Filter gilt nur für einzelne Spieler). Unbekanntes bleibt drin.
+-- Auswahl in ForeverHelpersDB.lfg.roles.
+--
+-- !! VERSUCH ENTGEGEN DER TAINT-REGEL (CLAUDE.md, Abschnitt 3), ausdrücklich gewünscht von flowfy (2026-11-13):
+--    Unpassende Spieler werden aus Blizzards Ergebnisliste ENTFERNT (hooksecurefunc auf LFGBrowseFrame:UpdateResults,
+--    danach Elemente aus Blizzards DataProvider der ScrollBox löschen). Das schreibt in eine Tabelle, die Blizzard-Code
+--    liest – mögliche Folge: ADDON_ACTION_BLOCKED beim Einladen/Anschreiben/Bewerben aus der Gruppensuche.
+--    Rückweg (Abdunkeln statt Entfernen, regelkonform): git-Markierung "backup/gruppensuche-abdunkeln" (8f52d8e).
+--    Nur im Entwicklungsstand: Datei steht in release/exclude-from-release.txt.
 local UI = ForeverHub.UI
 local T = UI.T
 
@@ -113,8 +120,6 @@ local ROLES = {
     { key = "healer", de = "Heiler", en = "Healer" },
     { key = "dps", de = "Schaden", en = "Damage" },
 }
-local DIM = 0.25 -- Deckkraft unpassender Einträge
-
 local function RoleDB()
     if type(_G.ForeverHelpersDB) ~= "table" then _G.ForeverHelpersDB = {} end
     local db = _G.ForeverHelpersDB
@@ -144,26 +149,30 @@ local function Matches(id)
     return false
 end
 
--- alle sichtbaren Zeilen der Liste abdunkeln bzw. wieder hell (Blizzard verwendet Zeilen beim Blättern wieder –
--- darum im Takt, solange die Seite offen ist und ein Filter gilt bzw. noch etwas abgedunkelt ist)
-local dimmed = setmetatable({}, { __mode = "k" })
-local function ApplyRoles(browse)
+-- Nach jedem Neuaufbau von Blizzards Liste (UpdateResults) die unpassenden Spieler aus deren DataProvider
+-- entfernen (siehe Warnung oben). Elemente sind { resultID = … } (Blizzard_LFGVanilla_Browse.lua).
+local function FilterList(browse)
+    if not RolesActive() then return end
     local box = browse.ScrollBox
-    if not (box and box.ForEachFrame) then return end
-    local active = RolesActive()
-    box:ForEachFrame(function(entry)
-        local id = entry.resultID
-        local match = not active or type(id) ~= "number" or Matches(id)
-        if match then
-            if dimmed[entry] then
-                dimmed[entry] = nil
-                entry:SetAlpha(1)
-            end
-        elseif not dimmed[entry] or entry:GetAlpha() > DIM + 0.01 then
-            dimmed[entry] = true
-            entry:SetAlpha(DIM)
-        end
-    end)
+    local provider = box and box.GetDataProvider and box:GetDataProvider()
+    if not (provider and provider.Enumerate and provider.Remove) then return end
+    local drop = {}
+    for _, element in provider:Enumerate() do
+        local id = type(element) == "table" and element.resultID
+        if type(id) == "number" and not Matches(id) then drop[#drop + 1] = element end
+    end
+    for _, element in ipairs(drop) do provider:Remove(element) end
+end
+
+-- Auswahl geändert: Blizzards Liste aus den vorhandenen Ergebnissen neu aufbauen lassen (keine neue Suche – die
+-- darf nur auf Klick); danach filtert der Hook. "Alle Rollen" bringt so alle Einträge zurück.
+local function Rebuild(browse)
+    if not (browse and browse:IsVisible()) then return end
+    if browse.UpdateResultList then
+        pcall(browse.UpdateResultList, browse)
+    elseif browse.UpdateResults then
+        pcall(browse.UpdateResults, browse)
+    end
 end
 
 ---------------------------------------------------------------------------
@@ -248,14 +257,14 @@ local function RoleMenuGenerator(_, root)
             function()
                 RoleDB()[r.key] = (not RoleDB()[r.key]) or nil
                 UpdateLabel()
-                if _G.LFGBrowseFrame then pcall(ApplyRoles, _G.LFGBrowseFrame) end
+                Rebuild(_G.LFGBrowseFrame)
             end)
     end
     root:CreateDivider()
     root:CreateButton(T("Alle Rollen", "All roles"), function()
         for _, r in ipairs(ROLES) do RoleDB()[r.key] = nil end
         UpdateLabel()
-        if _G.LFGBrowseFrame then pcall(ApplyRoles, _G.LFGBrowseFrame) end
+        Rebuild(_G.LFGBrowseFrame)
     end)
 end
 
@@ -363,26 +372,23 @@ local function Build(browse)
         local tip = UI.GetTooltip()
         tip:SetOwner(self, "ANCHOR_TOP")
         tip:SetText(T("Nach Rolle filtern", "Filter by role"), 1, 0.82, 0)
-        tip:AddLine(T("Einzelne Spieler bleiben hell, wenn sie eine gewählte Rolle anbieten; die übrigen Spieler werden abgedunkelt. Gruppen bleiben immer sichtbar.",
-            "Single players stay bright if they offer a selected role; other players are dimmed. Groups always stay visible."),
+        tip:AddLine(T("Zeigt nur einzelne Spieler, die eine gewählte Rolle anbieten. Gruppen bleiben immer in der Liste.",
+            "Only shows single players who offer a selected role. Groups always stay in the list."),
             1, 1, 1, true)
         tip:Show()
     end)
     roleDropdown:HookScript("OnLeave", function() UI.GetTooltip():Hide() end)
-    -- Rollenfilter im Takt anwenden (nur solange die Seite offen ist, die Uhr hängt an ihr)
-    local ticker = CreateFrame("Frame", nil, browse)
-    local waited = 0
-    ticker:SetScript("OnUpdate", function(self, elapsed)
-        waited = waited + elapsed
-        if waited < 0.2 then return end
-        waited = 0
-        if not RolesActive() and not next(dimmed) then return end
-        local ok, err = pcall(ApplyRoles, browse)
-        if not ok and not self.reported then
-            self.reported = true
-            if UI.ReportError then UI.ReportError("ForeverHelpers", "Languages/Roles", err) end
-        end
-    end)
+    -- nach jedem Neuaufbau der Liste filtern (siehe Warnung oben)
+    if type(browse.UpdateResults) == "function" then
+        local reported = false
+        hooksecurefunc(browse, "UpdateResults", function(self)
+            local ok, err = pcall(FilterList, self)
+            if not ok and not reported then
+                reported = true
+                if UI.ReportError then UI.ReportError("ForeverHelpers", "Languages/Roles", err) end
+            end
+        end)
+    end
     Place(browse)
     UpdateLabel()
     -- Knöpfe stehen erst nach dem ersten Öffnen fest: dann einreihen
