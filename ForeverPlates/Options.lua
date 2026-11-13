@@ -239,6 +239,8 @@ do
     Slider(T("Ziel vergrößern", "Enlarge target"), "targetScale", 100, 140, 5, " %", true)
     Check(T("Plaketten stapeln statt überlappen", "Stack plates instead of overlapping"), "stack", false,
         function() ns.ApplyFriendly() end)
+    Slider(T("Abstand beim Stapeln", "Stacking distance"), "stackSpacing", 110, 400, 10, " %", true, nil,
+        function() ns.ApplyFriendly() end)
     Check(T("Nicht mit der Entfernung verkleinern", "Don't shrink with distance"), "noShrink", false,
         function() ns.ApplyFriendly() end)
 

@@ -51,6 +51,7 @@ ns.DEFAULTS = {
     threatColGaining = { 0.85, 0.72, 0.3 },  -- keine Aggro, ziehst sie gleich (Stufe 1)
     threatColNone = { 0.45, 0.68, 0.45 },    -- keine Aggro (Stufe 0)
     stack = true,             -- Plaketten stapeln statt überlappen (Blizzard-Schalter)
+    stackSpacing = 200,       --   senkrechter Mindestabstand beim Stapeln in % (Blizzard: 110; unsere Plakette ist höher)
     noShrink = true,          -- nicht mit der Entfernung verkleinern (sonst wird kleine Schrift unleserlich)
     los = true,               -- "keine Sicht" am Ziel, wenn ein Zauber daran scheitert
     castbar = true,           -- eigene schmale Zauberleiste
@@ -1660,10 +1661,20 @@ end
 -- Verbündete: Blizzards eigene Schalter "nur Name" und "Name in Klassenfarbe" (vorherige Werte werden gemerkt)
 ---------------------------------------------------------------------------
 -- Schalter -> { gewünschter Wert, Einstellung, die ihn einschaltet }
+local function Num2(v) return string.format("%.2f", v) end
+local function SameCV(a, b) -- Werte als Zahl vergleichen ("1.10" = "1.1")
+    local x, y = tonumber(a), tonumber(b)
+    if x and y then return math.abs(x - y) < 0.0005 end
+    return a == b
+end
 local FRIEND_CVARS = {
     nameplateShowOnlyNameForFriendlyPlayerUnits = { "1", "friendlySimple" },
     nameplateUseClassColorForFriendlyPlayerUnitNames = { "1", "friendlySimple" },
     nameplateMotion = { "1", "stack" },            -- 1 = stapeln, 0 = überlappen
+    -- Abstand beim Stapeln: Blizzard rechnet mit seinem eigenen (kleinen) Plaketten-Rahmen, unsere Plakette ist mit
+    -- Name, Auren und Zauberleiste viel höher – darum Mindestabstand (senkrecht, Vielfaches) und Tempo erhöhen
+    nameplateOverlapV = { function(d) return Num2((d.stackSpacing or 200) / 100) end, "stack" },
+    nameplateMotionSpeed = { "0.06", "stack" },
     -- das Spiel verkleinert Plaketten mit der Entfernung (eigene Skalierung, nicht abschaltbar per Addon-Rahmen):
     -- kleinste und größte Größe gleich -> immer volle Größe, Schrift bleibt lesbar
     nameplateMinScale = { "1", "noShrink" },
@@ -1675,10 +1686,11 @@ function ns.ApplyFriendly()
         d._savedCVars = d._savedCVars or {}
         for cvar, info in pairs(FRIEND_CVARS) do
             local want, key = info[1], info[2]
+            if type(want) == "function" then want = want(d) end
             local cur = C_CVar.GetCVar(cvar)
             if cur ~= nil then
                 if d[key] then
-                    if cur ~= want then
+                    if not SameCV(cur, want) then
                         if d._savedCVars[cvar] == nil then d._savedCVars[cvar] = cur end
                         C_CVar.SetCVar(cvar, want)
                     end

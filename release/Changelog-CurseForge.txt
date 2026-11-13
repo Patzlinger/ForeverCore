@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverPlates: plates now stack much better when several enemies stand close together (e.g. when tanking). Blizzard only knew its own small plate size, so the taller Forever plates still overlapped; the stacking distance is now larger by default and can be set under Size and position > "Stacking distance". The plates also move apart faster.
+
 - ForeverQuests + Questie: quests that only the Forever tracker follows (more than the game's own tracking limit) no longer lose their objective progress in the mob and item tooltips after a few kills.
 
 - ForeverQuests: "Accept quests" and "Turn in quests" (automatic) can now also be switched on and off in the settings, not only in the small panel next to the quest window.
