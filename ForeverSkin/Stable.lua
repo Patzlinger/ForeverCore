@@ -10,7 +10,7 @@ local _, ns = ...
 local C = ns.C
 
 local WHITE = "Interface\\Buttons\\WHITE8x8"
-local SLOT = { 0.06, 0.06, 0.08, 0.85 } -- Platz-Farbe wie in ForeverBags
+local SLOT = ns.SLOT -- Platz-Farbe wie in ForeverBags (aus UI.COLOR, färbt im Runen-Design mit)
 
 local function G(name) return _G[name] end
 local function Forbidden(obj) return obj and obj.IsForbidden and obj:IsForbidden() end

@@ -2682,7 +2682,7 @@ local function UpdateMover(def, holder)
         mover = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
         -- Über dem Menüfenster, damit es die Griffe nicht verdeckt
         mover:SetFrameStrata("FULLSCREEN")
-        ns.Style.SetFlat(mover, { 0.10, 0.10, 0.12, 0.55 }, { MOVER_COLOR[1], MOVER_COLOR[2], MOVER_COLOR[3], 1 })
+        ns.Style.SetFlat(mover, { COLOR.panel[1], COLOR.panel[2], COLOR.panel[3], 0.55 }, { MOVER_COLOR[1], MOVER_COLOR[2], MOVER_COLOR[3], 1 })
         mover.text = mover:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
         mover.text:SetPoint("CENTER")
         mover:EnableMouse(true)

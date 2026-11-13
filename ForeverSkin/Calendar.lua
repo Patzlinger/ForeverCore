@@ -310,7 +310,7 @@ local function SkinClock()
     if watchCheck and not Forbidden(watchCheck) then
         ns.Hide(watchCheck:GetHighlightTexture())
         ns.Hide(watchCheck:GetCheckedTexture())
-        ns.Flat(watchCheck, { 0.06, 0.06, 0.08, 0.85 }, -1)
+        ns.Flat(watchCheck, ns.SLOT, -1)
         ns.Hover(watchCheck, function(b) return b:GetChecked() and true or false end)
     end
     local alarm = f.AlarmTimeFrame

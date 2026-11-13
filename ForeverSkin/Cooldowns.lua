@@ -62,7 +62,7 @@ local function SkinItem(item)
     local bar = item.Bar
     if type(bar) == "table" and bar.GetStatusBarTexture then
         local w = math.floor((item:GetWidth() or 317) + 0.5)
-        ns.Flat(item, { 0.06, 0.06, 0.08, 0.85 }, { 0, 0, math.max(0, w - 38), 0 })
+        ns.Flat(item, ns.SLOT, { 0, 0, math.max(0, w - 38), 0 })
         icon:ClearAllPoints()
         icon:SetPoint("TOPLEFT", 1, -1)
         icon:SetSize(36, 36)
@@ -72,7 +72,7 @@ local function SkinItem(item)
         ns.Flat(bar, ns.C.input, -1)
         if fill and fill.SetTexture then fill:SetTexture(WHITE) end
     else
-        ns.Flat(item, { 0.06, 0.06, 0.08, 0.85 })
+        ns.Flat(item, ns.SLOT)
         icon:ClearAllPoints()
         icon:SetPoint("TOPLEFT", 1, -1)
         icon:SetPoint("BOTTOMRIGHT", -1, 1)

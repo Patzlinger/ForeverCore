@@ -150,7 +150,7 @@ local function SkinSpell(button)
         icon:SetPoint("BOTTOMRIGHT", -1, 1)
         icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
     end
-    ns.Flat(button, { 0.06, 0.06, 0.08, 0.85 }, -1)
+    ns.Flat(button, ns.SLOT, -1)
     ns.Hover(button)
 end
 

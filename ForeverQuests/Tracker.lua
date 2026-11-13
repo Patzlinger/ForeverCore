@@ -2533,7 +2533,7 @@ function ns.CreateTracker()
     overlay:SetAllPoints()
     overlay:SetFrameLevel(tracker:GetFrameLevel() + 20)
     -- Entsperrt: goldener Rahmen und leicht getönter Hintergrund
-    Style.SetFlat(overlay, { 0.10, 0.10, 0.12, 0.75 },
+    Style.SetFlat(overlay, { Style.COLOR.panel[1], Style.COLOR.panel[2], Style.COLOR.panel[3], 0.75 },
         { Style.COLOR.accent[1], Style.COLOR.accent[2], Style.COLOR.accent[3], 1 })
     overlay:EnableMouse(true)
     overlay:HookScript("OnEnter", function(self) local h = _G.ForeverHub and _G.ForeverHub.UI if h and h.ShowMoverTip then h.ShowMoverTip(self, "ForeverQuests") end end)

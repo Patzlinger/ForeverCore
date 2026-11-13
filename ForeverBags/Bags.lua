@@ -89,7 +89,7 @@ ns.ApplyEdge = ApplyEdge
 local function AddForeverLook(button, bag)
     local bg = button:CreateTexture(nil, "BACKGROUND", nil, -8)
     bg:SetAllPoints()
-    bg:SetColorTexture(0.06, 0.06, 0.08, 0.85)
+    bg:SetColorTexture(C.input[1], C.input[2], C.input[3], 0.85) -- (aus UI.COLOR: färbt im Runen-Design mit)
     button.fbagsBg = bg
     local edge = CreateFrame("Frame", nil, button, "BackdropTemplate")
     edge:SetAllPoints()

@@ -53,7 +53,7 @@ end
 local FACTION_PILL = {
     Horde = { 0.55, 0.10, 0.10, 0.8 },
     Alliance = { 0.12, 0.25, 0.60, 0.8 },
-    Both = { 0.22, 0.22, 0.26, 1 },
+    Both = (_G.ForeverHub and _G.ForeverHub.UI and _G.ForeverHub.UI.COLOR.border) or { 0.22, 0.22, 0.26, 1 },
 }
 local FACTION_ICON = {
     Horde = "Interface\\FriendsFrame\\PlusManz-Horde",
@@ -2597,7 +2597,7 @@ local function CreateWindow()
     listPanel:SetWidth(LIST_WIDTH)
 
     searchBox = CreateFrame("EditBox", nil, listPanel, "BackdropTemplate")
-    SetFlat(searchBox, { 0.06, 0.06, 0.08, 1 })
+    SetFlat(searchBox, COLOR.input)
     searchBox:SetHeight(28)
     -- Reiter: alle Dungeons / nur der eigene Levelbereich / Schlachtzüge / Questlog
     local tabWidth = math.floor((LIST_WIDTH - 16 - 18) / 4)
@@ -2617,7 +2617,7 @@ local function CreateWindow()
                 tab:SetBackdropColor(0.30, 0.25, 0.05, 1)
                 tab:GetFontString():SetTextColor(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3])
             else
-                tab:SetBackdropColor(0.16, 0.16, 0.20, 1)
+                tab:SetBackdropColor(COLOR.button[1], COLOR.button[2], COLOR.button[3], 1)
                 tab:GetFontString():SetTextColor(0.8, 0.8, 0.8)
             end
         end

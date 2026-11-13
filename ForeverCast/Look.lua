@@ -74,8 +74,10 @@ local boxes, bars, texts = {}, {}, {}
 
 -- Rahmen wie die XP-/Ruf-Leiste von ForeverBars (Status.lua): feiner grauer 1-px-Rand rundum, innen eine dunkle
 -- Fuge, goldene Linie innen direkt unter der Oberkante; Füllung 2 px eingerückt (oben 3 px, unter der Goldlinie)
-local EDGE = { 0.22, 0.22, 0.26, 1 }
-local BG = { 0.05, 0.05, 0.065, 0.92 }
+-- (aus UI.COLOR abgeleitet, damit die Leisten im Runen-Design mit umfärben; im Standard-Design dieselben Grautöne
+-- wie vorher: Rand = border, Fläche etwas dunkler als input)
+local EDGE = UI.COLOR.border
+local BG = { UI.COLOR.input[1] * 0.85, UI.COLOR.input[2] * 0.85, UI.COLOR.input[3] * 0.85, 0.92 }
 
 local function Inset(region, px, parent, top)
     if not region then return end

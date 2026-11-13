@@ -8,6 +8,9 @@ local UI = ForeverHub.UI
 local T = UI.T
 local C = UI.COLOR
 ns.UI, ns.T, ns.C = UI, T, C
+-- Fläche leerer Plätze (Ausrüstung, Anhänge, Zauber …) wie in ForeverBags: aus der Eingabe-Farbe von UI.COLOR,
+-- damit sie im Runen-Design mit umfärbt (UI.COLOR ist beim Laden dieser Datei schon gesetzt)
+ns.SLOT = { C.input[1], C.input[2], C.input[3], 0.85 }
 
 ns.DEFAULTS = {
     gossip = true,   -- NPC-Gespräch

@@ -57,7 +57,7 @@ local function BagSlot(button)
     end
     local bg = button:CreateTexture(nil, "BACKGROUND", nil, -8)
     bg:SetAllPoints()
-    bg:SetColorTexture(0.06, 0.06, 0.08, 0.85)
+    bg:SetColorTexture(ns.SLOT[1], ns.SLOT[2], ns.SLOT[3], ns.SLOT[4])
     ours[bg] = true
     local edge = CreateFrame("Frame", nil, button, "BackdropTemplate")
     edge:SetAllPoints()
@@ -317,7 +317,7 @@ local function RowBox(row, button)
     local well = CreateFrame("Frame", nil, box, "BackdropTemplate")
     well:SetAllPoints(button)
     well:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8", edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 })
-    well:SetBackdropColor(0.06, 0.06, 0.08, 0.85)
+    well:SetBackdropColor(ns.SLOT[1], ns.SLOT[2], ns.SLOT[3], ns.SLOT[4])
     well:SetBackdropBorderColor(C.border[1], C.border[2], C.border[3], 1)
     well:EnableMouse(false)
     ours[well] = true

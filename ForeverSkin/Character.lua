@@ -193,7 +193,7 @@ local function SkinSlot(b)
     end
     -- dunkle Fläche; der feine Rand von ns.Flat weg – stattdessen ein eigener goldener Rand SLOT_EDGE dick (auf Wunsch,
     -- ersetzt Blizzards Verzierung); dauerhaft gold, Blizzards Hervorhebung beim Überfahren bleibt
-    local look = ns.Flat(b, { 0.06, 0.06, 0.08, 0.85 })
+    local look = ns.Flat(b, ns.SLOT)
     if look then
         for _, e in ipairs(look.edges or {}) do e:SetAlpha(0) end
     end
