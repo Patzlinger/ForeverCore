@@ -263,11 +263,32 @@ ns.SKINS = {
       background = { 0.20, 0.20, 0.25, 0.35 } },
 }
 
+-- Runen-Optik (ForeverCoreUI/Theme.lua, an/aus über den Design-Knopf im Forever-Core-Menü): Farben, wenn sie an ist
+local function ThemeColors()
+    local theme = _G.ForeverHub and _G.ForeverHub.UI and _G.ForeverHub.UI.Theme
+    if theme and theme.IsOn and theme.COLORS and theme.IsOn() then return theme.COLORS end
+    return nil
+end
+ns.ThemeColors = ThemeColors
+
+-- Im Runen-Design: gewählter Knopf-Stil mit goldenem Rand und dunkelblauer Fläche (Maße und Verhalten bleiben)
+local runeSkins = {}
 local function GetSkin()
+    local base = ns.SKINS[1]
     for _, skin in ipairs(ns.SKINS) do
-        if skin.key == ns.db.skin then return skin end
+        if skin.key == ns.db.skin then base = skin break end
     end
-    return ns.SKINS[1]
+    local tc = ThemeColors()
+    if not tc then return base end
+    local skin = runeSkins[base.key]
+    if not skin then
+        skin = {}
+        for k, v in pairs(base) do skin[k] = v end
+        skin.border = { tc.gold[1], tc.gold[2], tc.gold[3], 0.6 }
+        skin.background = { tc.bottom[1], tc.bottom[2], tc.bottom[3], (base.background and base.background[4]) or 0.9 }
+        runeSkins[base.key] = skin
+    end
+    return skin
 end
 
 -- Platz zwischen zwei Knöpfen. "Abstand" meint den Abstand zwischen den Symbolen: die Ränder benachbarter
@@ -2152,6 +2173,12 @@ local function UpdateBarFrame(def, cfg, holder)
     end
     -- Unter den Knöpfen (die Knöpfe liegen eine Ebene höher im Halter)
     frame:SetFrameLevel(holder:GetFrameLevel())
+    -- Runen-Optik: Fläche dunkelblau, Kopfzeile bläulich, Rand gold (sonst die gewohnten Grautöne)
+    local tc = ThemeColors()
+    local bg = tc and tc.top or COLOR.background
+    frame:SetBackdropColor(bg[1], bg[2], bg[3], 0.85)
+    local head = tc and tc.header or COLOR.header
+    frame.header:SetColorTexture(head[1], head[2], head[3], head[4] or 1)
     if backdropOnly then
         -- nur die dunkle Fläche, ohne Kopfzeile und ohne Rand (übereinanderliegende Leisten verschmelzen so zu
         -- einer Fläche, statt dass sich ihre Ränder kreuzen), eng um die Knöpfe
@@ -2165,7 +2192,11 @@ local function UpdateBarFrame(def, cfg, holder)
         frame:Show()
         return
     end
-    frame:SetBackdropBorderColor(unpack(COLOR.border))
+    if tc then
+        frame:SetBackdropBorderColor(tc.gold[1], tc.gold[2], tc.gold[3], 0.55)
+    else
+        frame:SetBackdropBorderColor(unpack(COLOR.border))
+    end
     local withTitle = cfg.frameTitle and true or false
     frame.header:SetShown(withTitle)
     frame.line:SetShown(withTitle)
@@ -3499,6 +3530,11 @@ do
     if hubUI and hubUI.On then
         hubUI.On("ForeverMinimap.Layout", function() if ns.db and ns.db.bars.micro.dockMinimap then ns.RequestLayout() end end)
         hubUI.On("UIStyleChanged", function() if ns.UpdateAllButtons then pcall(ns.UpdateAllButtons) end end) -- Schrift-Zuschlag
+        -- Runen-Optik umgeschaltet: Knöpfe, Leistenflächen und XP-/Rufleiste neu einfärben (im Kampf danach)
+        hubUI.On("ThemeChanged", function()
+            if ns.RequestLayout then pcall(ns.RequestLayout) end
+            if ns.ApplyStatusTheme then pcall(ns.ApplyStatusTheme) end
+        end)
     end
 end
 

@@ -647,7 +647,25 @@ function ns.FitStatusTexts(w)
     PlaceTicks(w) -- Striche unter dem Text zu Kerben kürzen
 end
 
+-- Runen-Optik (an/aus im Forever-Core-Menü): Erfahrungs- und Rufleiste dunkelblau mit goldenem Rand, sonst die
+-- gewohnten Farben (wie in Build)
+function ns.ApplyStatusTheme()
+    local tc = ns.ThemeColors and ns.ThemeColors()
+    for _, w in pairs(widgets) do
+        if tc then
+            w.root:SetBackdropColor(tc.top[1], tc.top[2], tc.top[3], 0.92)
+            w.root:SetBackdropBorderColor(tc.gold[1], tc.gold[2], tc.gold[3], 0.6)
+            w.track:SetColorTexture(tc.bottom[1], tc.bottom[2], tc.bottom[3], 0.95)
+        else
+            w.root:SetBackdropColor(0.05, 0.05, 0.065, 0.92)
+            w.root:SetBackdropBorderColor(EDGE[1], EDGE[2], EDGE[3], EDGE[4])
+            w.track:SetColorTexture(0.04, 0.04, 0.05, 0.95)
+        end
+    end
+end
+
 function ns.ApplyStatusLook(w)
+    ns.ApplyStatusTheme()
     PlaceTicks(w)
     -- etwas kleiner als die Knopfschrift (höchstens 10), ohne Umriss – wie in den Forever-Fenstern
     local innerH = (w.inner:GetHeight() or 12)

@@ -113,6 +113,9 @@ local function Build(f, opts)
 end
 
 local COLORS = { header = HEADER, gold = GOLD, top = TOP, bottom = BOTTOM }
+-- Farben der Runen-Optik für Teile, die keine Fenster sind (z. B. Knöpfe und Leisten von ForeverBars): nur lesen.
+-- Zusammen mit Theme.IsOn() und der Nachricht "ThemeChanged" (UI.On) nutzen.
+Theme.COLORS = COLORS
 
 -- Design auf ein Fenster anwenden bzw. wieder wegnehmen (je nach Einstellung)
 function Theme.Apply(f)

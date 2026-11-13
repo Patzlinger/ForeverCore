@@ -367,6 +367,18 @@ function Style.ShowMenu(owner, items, opts)
         menuFrame:SetClampedToScreen(true)
         menuFrame:EnableMouse(true)
         Style.SetFlat(menuFrame, COLOR.background)
+        -- Runen-Optik (an/aus im Forever-Core-Menü): Menü dunkelblau mit goldenem Rand, bei jedem Öffnen geprüft
+        menuFrame:HookScript("OnShow", function(self)
+            local theme = _G.ForeverHub and _G.ForeverHub.UI and _G.ForeverHub.UI.Theme
+            local tc = theme and theme.IsOn and theme.COLORS and theme.IsOn() and theme.COLORS
+            if tc then
+                self:SetBackdropColor(tc.top[1], tc.top[2], tc.top[3], 0.97)
+                self:SetBackdropBorderColor(tc.gold[1], tc.gold[2], tc.gold[3], 0.6)
+            else
+                self:SetBackdropColor(unpack(COLOR.background))
+                self:SetBackdropBorderColor(unpack(COLOR.border))
+            end
+        end)
         menuFrame:SetScript("OnHide", function() menuCatcher:Hide() end)
         menuFrame:Hide()
         tinsert(UISpecialFrames, "ForeverBarsPopupMenu") -- mit Escape schließbar
