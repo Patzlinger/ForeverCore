@@ -456,23 +456,23 @@ do
     W.Color(p, R + 220, -103, "", "healAbsorbColor", true)
     W.Check(p, R, -120, T("HoT-Vorhersage (eigene, schraffiert)", "HoT prediction (own, hatched)"), "hotPrediction")
 
-    W.Header(p, R, -140, T("Hervorhebungen", "Highlights"))
-    W.Check(p, R, -160, T("Aktuelles Ziel umranden", "Border around target"), "targetHighlight")
-    W.Color(p, R + 220, -163, "", "targetColor", true)
-    W.Check(p, R, -184, T("Mouseover aufhellen", "Brighten on mouseover"), "mouseoverHighlight")
-    W.Check(p, R, -208, T("Aggro-Rand (auch Begleiter)", "Aggro border (pets too)"), "aggroBorder")
-    W.Color(p, R + 220, -211, "", "aggroColor", true)
-    W.Check(p, R, -232, T("Wenig Leben: Balken orange / rot", "Low health: bar orange / red"), "healthGradient")
-    W.Check(p, R, -256, T("Kampf-Marker (Schwerter)", "Combat marker (swords)"), "combatMarker")
+    W.Header(p, R, -154, T("Hervorhebungen", "Highlights"))
+    W.Check(p, R, -174, T("Aktuelles Ziel umranden", "Border around target"), "targetHighlight")
+    W.Color(p, R + 220, -177, "", "targetColor", true)
+    W.Check(p, R, -198, T("Mouseover aufhellen", "Brighten on mouseover"), "mouseoverHighlight")
+    W.Check(p, R, -222, T("Aggro-Rand (auch Begleiter)", "Aggro border (pets too)"), "aggroBorder")
+    W.Color(p, R + 220, -225, "", "aggroColor", true)
+    W.Check(p, R, -246, T("Wenig Leben: Balken orange / rot", "Low health: bar orange / red"), "healthGradient")
+    W.Check(p, R, -270, T("Kampf-Marker (Schwerter)", "Combat marker (swords)"), "combatMarker")
 
-    W.Header(p, R, -282, T("Begleiter-Beschriftung (senkrecht)", "Pet label (vertical)"))
-    W.KeyChoice(p, R + 4, -304, T("Anzeigen", "Show"), "petLabel", {
+    W.Header(p, R, -306, T("Begleiter-Beschriftung (senkrecht)", "Pet label (vertical)"))
+    W.KeyChoice(p, R + 4, -328, T("Anzeigen", "Show"), "petLabel", {
         { key = "name", label = T("Name des Begleiters", "Pet name") },
         { key = "pet", label = "\"Pet\"" },
         { key = "none", label = T("Aus", "Off") },
     }, nil, 150)
-    W.Slider(p, R + 4, -334, T("Schriftgröße", "Font size"), "petLabelSize", 6, 14, 1, nil)
-    W.Hint(p, R + 4, -372, 300, T("Lange Namen werden auf die Höhe des Rahmens gekürzt.",
+    W.Slider(p, R + 4, -358, T("Schriftgröße", "Font size"), "petLabelSize", 6, 14, 1, nil)
+    W.Hint(p, R + 4, -396, 300, T("Lange Namen werden auf die Höhe des Rahmens gekürzt.",
         "Long names are shortened to the frame height."))
 end
 

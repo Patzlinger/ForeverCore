@@ -190,10 +190,10 @@ do
 
     Check(p, L, -268, T("Druide: Mana in Tiergestalt", "Druid: mana in animal form"), G("druidMana"))
 
-    UI.Header(p, L, -290, T("Auren", "Auras"))
-    Check(p, L, -310, T("Restzeit als Scheibe", "Remaining time as swipe"), G("auraTimer"))
-    Check(p, L, -334, T("Tooltip auf Auren (Klicks gehen durch)", "Tooltip on auras (clicks pass through)"), G("auraTooltip"))
-    Check(p, L, -358, T("DoT-Leisten nur bei angreifbaren Zielen", "DoT bars only on attackable targets"), G("dotOnlyHostile"))
+    UI.Header(p, L, -304, T("Auren", "Auras"))
+    Check(p, L, -324, T("Restzeit als Scheibe", "Remaining time as swipe"), G("auraTimer"))
+    Check(p, L, -348, T("Tooltip auf Auren (Klicks gehen durch)", "Tooltip on auras (clicks pass through)"), G("auraTooltip"))
+    Check(p, L, -372, T("DoT-Leisten nur bei angreifbaren Zielen", "DoT bars only on attackable targets"), G("dotOnlyHostile"))
 
     UI.Header(p, L, -404, T("Ausrichten (wenn entsperrt)", "Alignment (when unlocked)"))
     Check(p, L, -424, T("Raster anzeigen", "Show grid"), G("gridShow"))
@@ -228,16 +228,16 @@ do
     resetAll:SetPoint("TOPLEFT", R + 4, -202)
     Check(p, R, -228, T("Kampf-Marker (Schwerter)", "Combat marker (swords)"), G("combatMarker"))
 
-    UI.Header(p, R, -252, T("Kombopunkte (Ziel)", "Combo points (target)"))
-    Check(p, R, -272, T("Kombopunkte anzeigen", "Show combo points"), G("comboShow"))
-    Choice(p, R, -300, T("Ort", "Place"), 170, {
-        { key = "PORTRAIT", label = T("Spalte außen am Porträt", "Column outside the portrait") },
+    UI.Header(p, R, -264, T("Kombopunkte (Ziel)", "Combo points (target)"))
+    Check(p, R, -284, T("Kombopunkte anzeigen", "Show combo points"), G("comboShow"))
+    Choice(p, R, -312, T("Ort", "Place"), 170, {
+        { key = "PORTRAIT", label = T("Spalte am Porträt", "Column by portrait") },
         { key = "BELOW",    label = T("Balken mit Strichen unten", "Bar with segments below") },
         { key = "ABOVE",    label = T("Punkte oben", "Dots above") },
     }, G("comboPoint"))
-    Check(p, R, -328, T("Leere Punkte zeigen (angreifbares Ziel)", "Show empty points (attackable target)"), G("comboShowEmpty"))
-    Slider(p, R, -358, T("Größe", "Size"), 4, 16, 1, G("comboSize"), { unit = " px" })
-    UI.Hint(p, R + 4, -398, 300, T("Nur für Schurken und Druiden (Katzengestalt). Entsperrt zeigt ein Platzhalter die Lage.",
+    Check(p, R, -340, T("Leere Punkte zeigen (angreifbares Ziel)", "Show empty points (attackable target)"), G("comboShowEmpty"))
+    Slider(p, R, -370, T("Größe", "Size"), 4, 16, 1, G("comboSize"), { unit = " px" })
+    UI.Hint(p, R + 4, -410, 300, T("Nur für Schurken und Druiden (Katzengestalt). Entsperrt zeigt ein Platzhalter die Lage.",
         "Rogues and druids (cat form) only. When unlocked, a placeholder shows where they sit."))
 end
 
@@ -287,11 +287,11 @@ do
     Slider(p, L, -504, T("Anzahl", "Count"), 1, 10, 1, F("dotNum"), { width = 110 })
     Slider(p, L + 160, -504, T("Höhe", "Height"), 10, 30, 1, F("dotHeight"), { width = 90, unit = " px" })
     Slider(p, L, -540, T("Breite (0 = wie Rahmen)", "Width (0 = like frame)"), 0, 400, 2, F("dotWidth"), { unit = " px" })
-    UI.Header(p, R, -448, T("Position (X/Y ab Bildschirmmitte)", "Position (X/Y from screen center)"))
-    Number(p, R + 4, -470, "X", F("x"))
-    Number(p, R + 150, -470, "Y", F("y"))
+    UI.Header(p, R, -454, T("Position (X/Y ab Bildschirmmitte)", "Position (X/Y from screen center)"))
+    Number(p, R + 4, -476, "X", F("x"))
+    Number(p, R + 150, -476, "Y", F("y"))
 
-    local dotHint = UI.Hint(p, R + 4, -506, 300, "")
+    local dotHint = UI.Hint(p, R + 4, -512, 300, "")
     Register({ Load = function()
         dotHint:SetText(ns.dotBarBinding
             and T("DoT-Leisten: Restzeit läuft als Balken und Zahl. Zahl orange = Auffrischfenster (unter 30 %), rot = gleich vorbei.",
@@ -321,13 +321,13 @@ do
     Check(p, R, -188, T("Regeneration/s", "Regeneration/s"), G("powerRegen"))
     Check(p, R + 130, -188, T("5-Sekunden-Regel (Strich)", "Five-second rule (marker)"), G("fiveSecRule"))
 
-    UI.Header(p, R, -212, T("Auren", "Auras"))
-    Check(p, R, -232, T("Buffs", "Buffs"), F("buffs"))
-    Check(p, R, -256, T("Debuffs", "Debuffs"), F("debuffs"))
-    Check(p, R, -280, T("Nur meine Debuffs", "Only my debuffs"), F("onlyMine"))
-    Slider(p, R, -310, T("Größe", "Size"), 10, 40, 1, F("auraSize"), { unit = " px" })
-    Slider(p, R, -350, T("Anzahl", "Count"), 1, 16, 1, F("auraNum"))
-    UI.Hint(p, R + 4, -388, 300, T("Mit DoT-Leisten stehen bei \"Nur meine Debuffs\" hier die der anderen. " ..
+    UI.Header(p, R, -222, T("Auren", "Auras"))
+    Check(p, R, -242, T("Buffs", "Buffs"), F("buffs"))
+    Check(p, R, -266, T("Debuffs", "Debuffs"), F("debuffs"))
+    Check(p, R, -290, T("Nur meine Debuffs", "Only my debuffs"), F("onlyMine"))
+    Slider(p, R, -320, T("Größe", "Size"), 10, 40, 1, F("auraSize"), { unit = " px" })
+    Slider(p, R, -360, T("Anzahl", "Count"), 1, 16, 1, F("auraNum"))
+    UI.Hint(p, R + 4, -398, 300, T("Mit DoT-Leisten stehen bei \"Nur meine Debuffs\" hier die der anderen. " ..
         "Auren zeichnet die Blizzard-Anzeige – auch im Kampf aktuell.",
         "With DoT bars, \"Only my debuffs\" shows the others' debuffs here. " ..
         "Auras are drawn by the Blizzard display – up to date in combat too."))
@@ -369,20 +369,20 @@ do
     Color(p, R + 4, -108, T("Eigene Farbe fehlende LP", "Custom missing health color"), "lossColor", false)
     Check(p, R, -128, T("Trennlinie Leben / Ressource", "Divider line health / resource"), G("powerSeparator"))
 
-    UI.Header(p, R, -152, T("Heilung und Schilde (eigene Optik)", "Healing and shields (own look)"))
-    Check(p, R, -172, T("Heilvorhersage", "Heal prediction"), G("healPrediction"))
-    Color(p, R + 220, -175, "", "healColor", true)
-    Check(p, R, -196, T("Schilde (Absorption)", "Shields (absorbs)"), G("shields"))
-    Color(p, R + 220, -199, "", "shieldColor", true)
-    Check(p, R, -220, T("HoT-Vorhersage", "HoT prediction"), G("hotPrediction"))
-    Check(p, R + 130, -220, T("DoT-Schaden am Ziel", "DoT damage on target"), G("dotPrediction"))
+    UI.Header(p, R, -164, T("Heilung und Schilde (eigene Optik)", "Healing and shields (own look)"))
+    Check(p, R, -184, T("Heilvorhersage", "Heal prediction"), G("healPrediction"))
+    Color(p, R + 220, -187, "", "healColor", true)
+    Check(p, R, -208, T("Schilde (Absorption)", "Shields (absorbs)"), G("shields"))
+    Color(p, R + 220, -211, "", "shieldColor", true)
+    Check(p, R, -232, T("HoT-Vorhersage", "HoT prediction"), G("hotPrediction"))
+    Check(p, R + 130, -232, T("DoT-Schaden am Ziel", "DoT damage on target"), G("dotPrediction"))
 
-    UI.Header(p, R, -244, T("Skin (Test)", "Skin (test)"))
-    Choice(p, R, -266, T("Aussehen", "Style"), 170, {
+    UI.Header(p, R, -268, T("Skin (Test)", "Skin (test)"))
+    Choice(p, R, -290, T("Aussehen", "Style"), 170, {
         { key = "DEFAULT", label = T("Standard", "Default") },
         { key = "FOREVER", label = T("Forever (Test)", "Forever (test)") },
     }, G("skin"))
-    UI.Hint(p, R + 4, -294, 300, T("Nur das Aussehen, im Stil der Forever-Fenster: feine Kante mit Goldlinie, dunkle Fugen, gedeckte Balken mit leichtem Glanz, Namensband, goldene/silberne Eckklammern bei Elite/Rare, goldene Kante bei Maus darüber, rote Oberkante am Spieler im Kampf. Funktionen bleiben, wie sie sind.",
+    UI.Hint(p, R + 4, -318, 300, T("Nur das Aussehen, im Stil der Forever-Fenster: feine Kante mit Goldlinie, dunkle Fugen, gedeckte Balken mit leichtem Glanz, Namensband, goldene/silberne Eckklammern bei Elite/Rare, goldene Kante bei Maus darüber, rote Oberkante am Spieler im Kampf. Funktionen bleiben, wie sie sind.",
         "Look only, in the style of the Forever windows: fine edge with a gold line, dark seams, muted bars with a soft shine, name band, gold/silver corner brackets for elite/rare, gold edge on mouse-over, red top edge on the player in combat. Functions stay as they are."))
 end
 
