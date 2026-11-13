@@ -385,6 +385,27 @@ local function SkinBrowse(frame, depth)
     end
 end
 
+-- "Anmelden": kleine Text-Knöpfe auf der Seite (z. B. der rote Knopf "Rollenabfrage") flach wie die übrigen. Nur
+-- kleine Knöpfe (höchstens 30 hoch, 200 breit) – die großen Kategorie-Knöpfe mit Bild ("Dungeons" …) bleiben, und
+-- die Knöpfe der Fußleiste macht SkinBottomButtons
+local function SkinListingButtons(frame, depth)
+    for _, child in ipairs({ frame:GetChildren() }) do
+        if not Forbidden(child) and not browseDone[child] then
+            if child:IsObjectType("Button") then
+                local text = child.GetText and child:GetText()
+                if type(text) == "string" and text ~= "" and not child:IsObjectType("CheckButton")
+                    and not child:IsObjectType("DropdownButton") and not bottomButtons[child]
+                    and (child:GetHeight() or 99) <= 30 and (child:GetWidth() or 999) <= 200 then
+                    browseDone[child] = true
+                    ns.SkinButton(child)
+                end
+            elseif depth < 3 then
+                SkinListingButtons(child, depth + 1)
+            end
+        end
+    end
+end
+
 -- Ergebnislisten ("Wer ist da", "Durchsuchen"): Einträge als flache graue Balken mit feinem Rand (wie die Zeilen der
 -- übrigen Forever-Fenster), die Knöpfe darin (z. B. Einladen) flach mit ihrem Symbol. Blizzard legt die Einträge beim
 -- Blättern neu an – darum im Takt
@@ -739,6 +760,7 @@ local function SkinGroupFinder()
                 pcall(SkinBrowse, page, 1)
                 pcall(GoldDividers, page, 1)
                 if pageName == "LFGListingFrame" then
+                    pcall(SkinListingButtons, page, 1) -- ("Rollenabfrage" …)
                     -- (keine Ergebnisliste: die Aktivitätenauswahl hat Häkchen statt Einträgen mit Knöpfen)
                     local view = page.ActivityView
                     if type(view) == "table" and view:IsVisible() then pcall(SkinActivityView, f, view, 1) end
