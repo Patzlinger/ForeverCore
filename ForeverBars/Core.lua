@@ -255,6 +255,19 @@ local LAYOUT_VERSION = 29
 local OLD_SCALES = { pet = 56, stance = 56, prof = 80, food = 80, bags = 76, queue = 50 }
 local STANDARD_LAYOUT_BARS = { "bar1", "bar2", "bar3", "bar6", "bar7", "bar8", "pet", "stance", "prof", "food",
                                "micro", "bags", "vehicle", "xp", "rep", "totem" }
+-- "Neue Ränge automatisch in die Leisten" war bis 2026-11-05 standardmäßig an und steht bei Bestandsnutzern als
+-- gespeicherter Wert noch auf "an" (die Standardwert-Änderung erreicht sie nicht). Einmalig auf "aus" setzen (auch in
+-- allen gespeicherten Profilen); wer es will, schaltet es danach selbst wieder ein.
+function ns.MigrateRankUp(db)
+    if db.rankUpReset then return end
+    db.rankUpReset = true
+    db.autoRankUp = false
+    local fc = type(db._fc) == "table" and db._fc or nil
+    for _, profile in pairs(fc and fc.profiles or {}) do
+        if type(profile) == "table" then profile.autoRankUp = false end
+    end
+end
+
 function ns.MigrateLayout(db)
     local version = db.layoutVersion or 1
     if version >= LAYOUT_VERSION then return end
@@ -527,6 +540,7 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
         ForeverBarsDB = ForeverBarsDB or {}
         ns.MigrateBars(ForeverBarsDB.bars)
         ns.MigrateLayout(ForeverBarsDB)
+        ns.MigrateRankUp(ForeverBarsDB)
         FillDefaults(ForeverBarsDB, ns.defaults)
         ns.db = ForeverBarsDB
         -- Frühere Einstellung "Nur bei Maus darüber" ist jetzt das Einblenden bei Maus darüber
@@ -603,7 +617,7 @@ function ForeverBars_ToggleUnlock() if ns.SetUnlocked then ns.SetUnlocked(not ns
 ForeverHub.UI.RegisterSettings({
     addon = addonName, sv = "ForeverBarsDB", defaults = ns.defaults, version = 1,
     -- Minimap-Symbol und Stand der Standard-Anordnung gelten fuer alle Profile
-    global = { "showMinimapButton", "layoutVersion", "version" },
+    global = { "showMinimapButton", "layoutVersion", "version", "rankUpReset" },
     -- Profile aelterer Stande: Leisten-Einstellungen umrechnen (wie frueher beim Laden eines Profils)
     migrate = function(data) if ns.MigrateBars then ns.MigrateBars(data.bars) end end,
     -- eigenes Zuruecksetzen (sofort, ohne Neuladen; Positionen neu berechnet)

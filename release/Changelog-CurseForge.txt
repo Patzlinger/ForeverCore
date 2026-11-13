@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverBars: "Put new ranks on your bars automatically" is now really off for everyone. It was on by default until 0.53b, and installations that already had it saved as on kept replacing lower spell ranks on the bars after learning a new rank (bad for downranking). It is reset to off once; you can switch it on again in the settings. The "Replace" button in the spellbook still works as before.
+
 - ForeverPlates: plates now stack much better when several enemies stand close together (e.g. when tanking). Blizzard only knew its own small plate size, so the taller Forever plates still overlapped; the stacking distance is now larger by default and can be set under Size and position > "Stacking distance". The plates also move apart faster.
 
 - ForeverQuests + Questie: quests that only the Forever tracker follows (more than the game's own tracking limit) no longer lose their objective progress in the mob and item tooltips after a few kills.
