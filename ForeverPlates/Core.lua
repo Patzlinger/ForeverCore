@@ -1382,7 +1382,18 @@ local function UpdateRaid(fp)
     local idx
     if db.raidMarker and fp.unit then
         idx = GetRaidTargetIndex(fp.unit)
-        if IsSecret(idx) then idx = nil end
+        if IsSecret(idx) then
+            -- Gesperrte Nummer (bei Gegnern üblich – die Markierung fehlte darum an der Plakette, 2026-11-13): nicht
+            -- prüfen oder rechnen, nur an Blizzards Funktion weiterreichen (wie im Zielrahmen von ForeverUnits, dort
+            -- im Spiel bestätigt). Lehnt sie ab: verstecken.
+            local ok = SetRaidTargetIconTexture and pcall(SetRaidTargetIconTexture, fp.raid, idx)
+            if ok then
+                local size = db.raidMarkerSize
+                fp.raid:SetSize(size, size)
+            end
+            fp.raid:SetShown(ok and true or false)
+            return
+        end
     end
     if idx and SetRaidTargetIconTexture then
         local size = db.raidMarkerSize
