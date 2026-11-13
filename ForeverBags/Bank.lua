@@ -195,29 +195,15 @@ local function NextPurchase()
     return true, cost
 end
 
-StaticPopupDialogs["FOREVERBAGS_BUY_BANK_TAB"] = {
-    text = L("BUY_BANK_CONFIRM"),
-    button1 = YES or "Ja",
-    button2 = NO or "Nein",
-    OnAccept = function()
-        if C_Bank and C_Bank.PurchaseBankTab and BankType() then
-            local ok = pcall(C_Bank.PurchaseBankTab, BankType())
-            if not ok then ns.Print(L("BUY_BANK_FAILED")) end
-        end
-    end,
-    timeout = 0,
-    whileDead = true,
-    hideOnEscape = true,
-}
-
 ns.BankMoney = Money
 
--- nächsten Platz kaufen (Rückfrage mit Preis)
+-- nächsten Platz kaufen: C_Bank.PurchaseBankTab ist eine geschützte Funktion – ein Addon darf sie nicht aufrufen
+-- (auch nicht aus einem Rückfrage-Fenster: ADDON_ACTION_FORBIDDEN, Fehler vom 2026-11-13). Der Kauf geht nur über
+-- Blizzards eigenes Bankfenster; hier gibt es darum nur den Hinweis mit dem Preis.
 function ns.BuyBankSlot()
     local can, cost = NextPurchase()
     if not can then return end
-    local dialog = StaticPopup_Show("FOREVERBAGS_BUY_BANK_TAB", cost and Money(cost) or "?")
-    if not dialog then ns.Print(L("BUY_BANK_FAILED")) end
+    ns.Print(L("BUY_BANK_BLIZZARD") .. (cost and (" (" .. Money(cost) .. ")") or ""))
 end
 
 function ns.UpdateBankPurchase()
