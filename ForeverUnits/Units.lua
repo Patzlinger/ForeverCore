@@ -1212,9 +1212,19 @@ end
 local function UpdateMark(b)
     local v = b.v
     local index = GetDB().markShow and GetRaidTargetIndex(b.unit)
-    if IsSecret(index) or not index or index < 1 or index > 8 then v.mark:Hide() return end
+    if IsSecret(index) then
+        -- gesperrte Nummer (z. B. bei Spielern): nicht rechnen/vergleichen, nur weiterreichen – als Name der
+        -- Einzelgrafik (UI-RaidTargetingIcon_1 … _8). Ohne Markierung gibt es die Datei nicht: dann bleibt die Fläche
+        -- leer. Vorher wurde das Symbol in diesem Fall immer versteckt (Markierung nur über dem Kopf, 2026-11-13).
+        v.mark:SetTexture(string.format("Interface\\TargetingFrame\\UI-RaidTargetingIcon_%s", index))
+        v.mark:SetTexCoord(0, 1, 0, 1)
+        v.mark:Show()
+        return
+    end
+    if not index or index < 1 or index > 8 then v.mark:Hide() return end
     local i = index - 1
     local x, y = (i % 4) * 0.25, math.floor(i / 4) * 0.25
+    v.mark:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcons")
     v.mark:SetTexCoord(x, x + 0.25, y, y + 0.25)
     v.mark:Show()
 end
