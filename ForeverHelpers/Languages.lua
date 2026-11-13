@@ -1,8 +1,9 @@
 -- ForeverHelpers – Languages.lua: Sprachauswahl für "Suche nach Gruppe" > Durchsuchen (LFGBrowseFrame).
 -- Blizzards Durchsuchen-Seite (Classic-Stil) gibt beim Suchen die Sprachauswahl NICHT mit – das Spiel liefert dann
 -- nur Einträge in der Client-Sprache (im Spiel gemessen 2026-11-13: 8 statt 100 Treffer). Darum:
---   - Knopf "Sprachen: …" unter dem Fenster: Liste mit Häkchen je Sprache und "Alle Sprachen"; speichert nur –
---     wirksam wird die Auswahl beim nächsten Klick auf Aktualisieren.
+--   - Auswahlfeld "Sprachen: …" unten in der Leiste zwischen "Nachricht senden" und "Gruppeneinladung" – wie die
+--     Kategorie-Auswahl oben (Blizzards Menü, Häkchen je Sprache, "Alle Sprachen"; ForeverSkin gestaltet es mit).
+--     Speichert nur – wirksam wird die Auswahl beim nächsten Klick auf Aktualisieren.
 --   - Über Blizzards Aktualisieren-Knopf liegt ein unsichtbarer eigener Knopf: ein Klick darauf sucht mit den
 --     gewählten Sprachen (statt Blizzards Suche ohne Sprachen). Das Ergebnis zeigt Blizzards Liste wie gewohnt.
 --       C_LFGList.Search(Kategorie, 0, 0, Sprachen, false, nil, Aktivitäten) – wie Blizzards LFGBrowse_DoSearch
@@ -96,72 +97,107 @@ local function Search()
     end
 end
 
-local button, popup, checks = nil, nil, {}
+---------------------------------------------------------------------------
+-- Auswahlfeld
+---------------------------------------------------------------------------
+local dropdown
 
-local function UpdateButton()
-    if not button then return end
-    local on = {}
+local function Label()
+    local on, all = {}, Available()
     local cur = Current()
-    for _, lang in ipairs(Available()) do
+    for _, lang in ipairs(all) do
         if cur[lang] then on[#on + 1] = Short(lang) end
     end
     local text
-    if #on == 0 or #on == #Available() then text = T("alle", "all") else text = table.concat(on, ", ") end
-    button:SetText(T("Sprachen: ", "Languages: ") .. text)
-    button:SetWidth(math.max(110, math.floor((button:GetFontString():GetStringWidth() or 80) + 20)))
+    if #on == 0 or #on == #all then text = T("alle", "all") else text = table.concat(on, ", ") end
+    return T("Sprachen: ", "Languages: ") .. text
 end
 
-local function UpdateChecks()
-    local cur = Current()
-    for lang, cb in pairs(checks) do cb:SetChecked(cur[lang] and true or false) end
+local function UpdateLabel()
+    if not dropdown then return end
+    local text = Label()
+    if dropdown.OverrideText then pcall(dropdown.OverrideText, dropdown, text)
+    elseif dropdown.SetText then pcall(dropdown.SetText, dropdown, text) end
 end
 
 -- Auswahl nur speichern – gesucht wird erst beim Klick auf Aktualisieren (auf Wunsch, 2026-11-13)
-local function Apply(filter)
+local function Save(filter)
+    if not next(filter) then -- mindestens eine Sprache an lassen
+        UI.Chat("ForeverHelpers", T("Mindestens eine Sprache muss gewählt bleiben.", "At least one language must stay selected."))
+        return
+    end
     pcall(C_LFGList.SaveLanguageSearchFilter, filter)
-    UpdateChecks()
-    UpdateButton()
+    UpdateLabel()
 end
 
--- neue Auswahl speichern
-local function Save(lang, value)
+local function Toggle(lang)
     local cur = Current()
     local filter = {}
     for _, l in ipairs(Available()) do filter[l] = cur[l] and true or nil end
-    filter[lang] = value or nil
-    if not next(filter) then -- mindestens eine Sprache an lassen
-        UI.Chat("ForeverHelpers", T("Mindestens eine Sprache muss gewählt bleiben.", "At least one language must stay selected."))
-        UpdateChecks()
-        return
-    end
-    Apply(filter)
+    filter[lang] = (not cur[lang]) or nil
+    Save(filter)
 end
 
 local function SetAll()
     local filter = {}
     for _, l in ipairs(Available()) do filter[l] = true end
-    if next(filter) then Apply(filter) end
+    Save(filter)
 end
 
-local function BuildPopup()
-    popup = UI.Box(button)
-    popup:SetFrameStrata("DIALOG")
-    popup:SetPoint("TOPLEFT", button, "BOTTOMLEFT", 0, -2)
-    popup:EnableMouse(true)
-    popup:Hide()
-    local title = UI.Text(popup, "field", T("In diesen Sprachen suchen", "Search in these languages"))
-    title:SetPoint("TOPLEFT", popup, "TOPLEFT", 10, -8)
-    local y, widest = -30, title:GetStringWidth() or 150
+-- Menü wie Blizzards Kategorie-Auswahl (Blizzard_Menu): Überschrift, ein Häkchen je Sprache, "Alle Sprachen".
+-- Bleibt beim Anhaken offen (mehrere Sprachen nacheinander).
+local function MenuGenerator(_, root)
+    root:CreateTitle(T("In diesen Sprachen suchen", "Search in these languages"))
     for _, lang in ipairs(Available()) do
-        local cb = UI.Check(popup, 6, y, Name(lang), function(checked) Save(lang, checked) end)
-        checks[lang] = cb
-        widest = math.max(widest, 30 + (cb.label:GetStringWidth() or 80))
-        y = y - 24
+        root:CreateCheckbox(Name(lang),
+            function() return Current()[lang] and true or false end,
+            function() Toggle(lang) end)
     end
-    local all = UI.Button(popup, T("Alle Sprachen", "All languages"), 110, SetAll)
-    all:SetPoint("TOPLEFT", popup, "TOPLEFT", 10, y - 4)
-    popup:SetSize(math.floor(math.max(widest, 120) + 24), -y + 36)
-    popup:SetScript("OnShow", UpdateChecks)
+    root:CreateDivider()
+    root:CreateButton(T("Alle Sprachen", "All languages"), function() SetAll() end)
+end
+
+-- Platz unten in der Leiste: zwischen dem linken und rechten Text-Knopf ("Nachricht senden" / "Gruppeneinladung")
+local function FooterButtons(browse)
+    local bottom = browse:GetBottom()
+    if not bottom then return nil end
+    local found = {}
+    local function Scan(frame, depth)
+        for _, child in ipairs({ frame:GetChildren() }) do
+            if not (child.IsForbidden and child:IsForbidden()) and child ~= dropdown then
+                if child:IsObjectType("Button") then
+                    local text = child.GetText and child:GetText()
+                    if type(text) == "string" and text ~= "" and child:IsShown() and child:GetBottom()
+                        and child:GetBottom() - bottom < 50 and child:GetLeft() then
+                        found[#found + 1] = child
+                    end
+                elseif depth < 2 then
+                    Scan(child, depth + 1)
+                end
+            end
+        end
+    end
+    Scan(browse, 1)
+    if #found < 2 then return nil end
+    table.sort(found, function(a, b) return a:GetLeft() < b:GetLeft() end)
+    return found[1], found[#found]
+end
+
+local placed = false
+local function Place(browse)
+    if placed or not dropdown then return end
+    local left, right = FooterButtons(browse)
+    dropdown:ClearAllPoints()
+    if left and right then
+        placed = true
+        dropdown:SetPoint("LEFT", left, "RIGHT", 8, 0)
+        dropdown:SetPoint("RIGHT", right, "LEFT", -8, 0)
+        dropdown:SetHeight(math.floor((left:GetHeight() or 22) + 0.5))
+    else
+        -- (Knöpfe noch nicht gefunden: vorerst unten mittig; beim nächsten Öffnen erneut versuchen)
+        dropdown:SetPoint("BOTTOM", browse, "BOTTOM", 0, 6)
+        dropdown:SetSize(170, 22)
+    end
 end
 
 -- Unsichtbarer eigener Knopf genau über Blizzards Aktualisieren-Knopf: fängt den Klick ab und sucht MIT Sprachen
@@ -183,8 +219,8 @@ local function CoverRefresh(browse)
         local tip = UI.GetTooltip()
         tip:SetOwner(self, "ANCHOR_RIGHT")
         tip:SetText(T("Aktualisieren", "Refresh"), 1, 0.82, 0)
-        tip:AddLine(T("Sucht mit allen gewählten Sprachen (Knopf „Sprachen“ unter dem Fenster).",
-            "Searches with all selected languages (\"Languages\" button below the window)."), 1, 1, 1, true)
+        tip:AddLine(T("Sucht mit allen gewählten Sprachen (Auswahl „Sprachen“ unten im Fenster).",
+            "Searches with all selected languages (\"Languages\" selection at the bottom of the window)."), 1, 1, 1, true)
         tip:Show()
     end)
     cover:SetScript("OnLeave", function() UI.GetTooltip():Hide() end)
@@ -194,32 +230,33 @@ local function CoverRefresh(browse)
 end
 
 local function Build(browse)
-    local parent = _G.LFGParentFrame or browse
-    button = UI.Button(browse, "", 120, function()
-        if not popup then BuildPopup() end
-        popup:SetShown(not popup:IsShown())
-    end)
-    -- unter dem Fenster links (im Fenster ist kein Platz frei; Blizzards Rahmen bleiben unberührt)
-    button:SetPoint("TOPLEFT", parent, "BOTTOMLEFT", 0, -2)
-    button:HookScript("OnEnter", function(self)
+    dropdown = CreateFrame("DropdownButton", nil, browse, "WowStyle1DropdownTemplate")
+    dropdown:SetupMenu(MenuGenerator)
+    dropdown:HookScript("OnEnter", function(self)
         local tip = UI.GetTooltip()
-        tip:SetOwner(self, "ANCHOR_BOTTOM")
+        tip:SetOwner(self, "ANCHOR_TOP")
         tip:SetText(T("Sprachen der Gruppensuche", "Group finder languages"), 1, 0.82, 0)
-        tip:AddLine(T("Wähle die Sprachen und klicke dann oben auf Aktualisieren: Die Liste zeigt dann Einträge in allen gewählten Sprachen. Die Auswahl gilt für den ganzen Account.",
+        tip:AddLine(T("Sprachen wählen, dann oben auf Aktualisieren klicken: Die Liste zeigt dann Einträge in allen gewählten Sprachen. Die Auswahl gilt für den ganzen Account.",
             "Choose the languages, then click Refresh at the top: the list then shows listings in all selected languages. The choice applies to your whole account."),
             1, 1, 1, true)
         tip:Show()
     end)
-    button:HookScript("OnLeave", function() UI.GetTooltip():Hide() end)
-    browse:HookScript("OnShow", UpdateButton)
-    browse:HookScript("OnHide", function() if popup then popup:Hide() end end)
+    dropdown:HookScript("OnLeave", function() UI.GetTooltip():Hide() end)
+    Place(browse)
+    UpdateLabel()
+    -- Knöpfe stehen erst nach dem ersten Öffnen fest: dann einreihen
+    browse:HookScript("OnShow", function()
+        C_Timer.After(0, function()
+            pcall(Place, browse)
+            UpdateLabel()
+        end)
+    end)
     CoverRefresh(browse)
-    UpdateButton()
 end
 
 local events = CreateFrame("Frame")
 local function TryBuild()
-    if button then return end
+    if dropdown then return end
     if not (C_LFGList and C_LFGList.GetLanguageSearchFilter and C_LFGList.SaveLanguageSearchFilter and C_LFGList.Search) then
         events:UnregisterAllEvents() -- (gibt es in diesem Client nicht)
         return
