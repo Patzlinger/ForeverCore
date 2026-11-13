@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverChat: the whisper sound is louder now and can be adjusted (Chat settings > Whisper sound): volume Normal to Maximum, plus optional extra sounds (Ping, Notification) on top of Blizzard's sound. It plays independently of the "Sound effects" volume slider.
+
 - DoT damage prediction (nameplates, unit frames): spells whose damage depends on combo points, such as the druid's Rip, are now recognized and use the combo points you spent (read when you cast, so it also works in combat).
 
 - ForeverBags: buying a bank slot from the Forever bank window no longer causes a blocked-action error; it now uses Blizzard's own purchase button and confirmation (the same way Baganator does it).

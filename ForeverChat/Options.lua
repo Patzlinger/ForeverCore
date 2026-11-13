@@ -3,7 +3,7 @@ local ADDON_NAME, ns = ...
 local UI, T = ns.UI, ns.T
 
 -- Seite im zentralen Einstellungsfenster von Forever Core UI (verhält sich wie das bisherige eigene Fenster)
-local options = UI.SettingsPanel("ForeverChatOptions", T("ForeverChat – Einstellungen", "ForeverChat – Settings"), 660, 780,
+local options = UI.SettingsPanel("ForeverChatOptions", T("ForeverChat – Einstellungen", "ForeverChat – Settings"), 660, 860,
     { key = "ForeverChat", group = UI.SETTINGS_GROUPS.comfort, label = "Chat" })
 local loaders = {} -- Funktionen, die beim Oeffnen die aktuellen Werte anzeigen
 
@@ -97,6 +97,26 @@ Check(L - 4, -626, T("Reiter „IM“: je Person ein Unterreiter", "“IM” tab
     Changed()
 end)
 Check(L + 16, -650, T("Flüstern zusätzlich im normalen Chat", "Also show whispers in the normal chat"), "whispersInMain")
+-- Flüsterton (Messages.lua: ns.PlayWhisperSound)
+UI.Header(options, L, -730, T("Flüsterton", "Whisper sound"), 300)
+Choice(L + 2, -752, T("Ton", "Sound"), {
+    { key = "TELL", label = T("Blizzard (Standard)", "Blizzard (default)") },
+    { key = "PING", label = T("Ping (zusätzlich)", "Ping (additional)") },
+    { key = "NOTIFY", label = T("Benachrichtigung (zusätzlich)", "Notification (additional)") },
+    { key = "OFF", label = T("Nur Blizzards Ton", "Blizzard's sound only") },
+}, function() return ns.GetDB().whisperSound or "TELL" end, function(key)
+    ns.GetDB().whisperSound = key
+    if ns.PlayWhisperSound then ns.PlayWhisperSound() end -- Probe
+end, 220)
+Choice(L + 2, -800, T("Lautstärke", "Volume"), {
+    { key = 0, label = T("Normal", "Normal") },
+    { key = 1, label = T("Laut", "Loud") },
+    { key = 2, label = T("Sehr laut", "Very loud") },
+    { key = 3, label = T("Maximal", "Maximum") },
+}, function() return ns.GetDB().whisperLoud or 2 end, function(key)
+    ns.GetDB().whisperLoud = key
+    if ns.PlayWhisperSound then ns.PlayWhisperSound() end -- Probe
+end, 220)
 UI.Hint(options, L + 2, -676, 300, T("Im IM-Reiter schreibt die Eingabezeile (Enter) an die gewählte Person. "
     .. "/r kennt Absender nur, wenn Flüstern auch im normalen Chat steht.",
     "In the IM tab the input line (Enter) writes to the selected person. /r only knows senders shown in the normal chat."))

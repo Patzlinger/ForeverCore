@@ -38,6 +38,8 @@ ns.DEFAULTS = {
     urls = true,             -- Webadressen klickbar (Fenster zum Kopieren)
     mention = true,          -- eigenen Namen in fremden Nachrichten hervorheben
     mentionSound = false,    -- dazu ein leiser Ton
+    whisperSound = "TELL",   -- Flüsterton: TELL (Blizzards Ton), PING, NOTIFY (zusätzlich) oder OFF (nur Blizzards)
+    whisperLoud = 2,         -- zusätzliche gleichzeitige Kopien (0-3): lauter, unabhängig vom Regler Soundeffekte
     -- Instant Messaging (Messenger.lua)
     messenger = true,        -- Reiter "IM": Fluestern je Person in eigenem Unterreiter
     whispersInMain = true,   -- Fluestern zusaetzlich im normalen Chat zeigen (Standard seit Einstellungsversion 2)

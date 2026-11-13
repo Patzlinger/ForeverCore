@@ -178,3 +178,35 @@ function ns.SetupMessages()
         end, ns)
     end
 end
+
+---------------------------------------------------------------------------
+-- Flüsterton: lauter und wählbar. Blizzard spielt beim Eintreffen eines Flüsterns selbst einen leisen Ton (nur für Zeilen
+-- im normalen Chat). Wir spielen auf dem Kanal "Master" (gilt unabhängig vom Regler "Soundeffekte") dasselbe oder ein
+-- anderes Signal zusätzlich – mehrere gleichzeitig abgespielte Kopien klingen lauter. whisperSound: "TELL" (Blizzards Ton,
+-- dann nur lauter), "PING", "NOTIFY" (zusätzlich zu Blizzards Ton) oder "OFF" (nur Blizzards eigener Ton);
+-- whisperLoud: 0-3 zusätzliche Kopien.
+---------------------------------------------------------------------------
+local WHISPER_SOUNDS = {
+    TELL = (SOUNDKIT and SOUNDKIT.TELL_MESSAGE) or 3081,
+    PING = (SOUNDKIT and SOUNDKIT.MAP_PING) or 3175,
+    NOTIFY = (SOUNDKIT and SOUNDKIT.UI_BNET_TOAST) or 18019,
+}
+function ns.PlayWhisperSound()
+    local db = ns.GetDB()
+    local key = db.whisperSound or "TELL"
+    if key == "OFF" then return end
+    local id = WHISPER_SOUNDS[key] or WHISPER_SOUNDS.TELL
+    -- Blizzard spielt seinen Ton nur, wenn die Zeile im normalen Chat erscheint (nicht im reinen IM-Reiter)
+    local blizzardPlays = not (db.messenger and not db.whispersInMain)
+    local copies = math.max(0, math.min(3, tonumber(db.whisperLoud) or 0))
+    if key == "TELL" and not blizzardPlays then copies = copies + 1 end -- Blizzards eigener Ton fehlt: selbst spielen
+    if key ~= "TELL" then copies = copies + 1 end                        -- anderes Signal: mindestens einmal
+    for _ = 1, copies do pcall(PlaySound, id, "Master") end
+end
+
+do
+    local f = CreateFrame("Frame")
+    f:RegisterEvent("CHAT_MSG_WHISPER")
+    f:RegisterEvent("CHAT_MSG_BN_WHISPER")
+    f:SetScript("OnEvent", function() pcall(ns.PlayWhisperSound) end)
+end

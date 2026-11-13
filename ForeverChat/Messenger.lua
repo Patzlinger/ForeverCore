@@ -506,8 +506,5 @@ events:SetScript("OnEvent", ns.Safe(T("Messenger", "Messenger"), function(_, eve
         c.unread = c.unread + 1
     end
     if not current then current = key end
-    if info.incoming and not db.whispersInMain and SOUNDKIT then
-        PlaySound(SOUNDKIT.TELL_MESSAGE or 3081) -- Blizzard spielt den Ton nur fuer Zeilen im Hauptchat
-    end
     ns.UpdateIMTabs()
 end))
