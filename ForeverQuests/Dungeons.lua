@@ -35,10 +35,16 @@ local FOOTER_HEIGHT = 40
 
 -- Farben im flachen, dunklen Stil
 -- Grundfarben zentral aus ForeverCore (über ns.Style.COLOR), dazu die eigenen Kartenfarben des Dungeonfensters
+-- (Karten und neutrale Plaketten aus den Knopf-Farben abgeleitet statt fest grau: so färben sie im Runen-Design mit –
+-- UI.COLOR ist beim Laden dieser Datei schon gesetzt. Im Standard-Design dieselben Grautöne wie vorher.)
+local BASE = ns.Style.COLOR
+local function Shade(c, f) return { c[1] * f, c[2] * f, c[3] * f, 1 } end
 local COLOR = setmetatable({
-    card = { 0.13, 0.13, 0.16, 1 },
-    cardHover = { 0.18, 0.18, 0.22, 1 },
-}, { __index = ns.Style.COLOR })
+    card = Shade(BASE.button, 0.8),        -- vorher 0.13, 0.13, 0.16
+    cardHover = Shade(BASE.buttonHover, 0.82), -- vorher 0.18, 0.18, 0.22
+    pill = Shade(BASE.button, 1.25),       -- neutrale Plakette (Level, Anzahl), vorher 0.20, 0.20, 0.25
+    count = Shade(BASE.buttonHover, 1),    -- Anzahl in der Liste, vorher 0.22, 0.22, 0.27
+}, { __index = BASE })
 local FLAT_BACKDROP = {
     bgFile = "Interface\\Buttons\\WHITE8x8",
     edgeFile = "Interface\\Buttons\\WHITE8x8",
@@ -1771,7 +1777,7 @@ RefreshDetail = function()
     detailTitle:SetText(Localized(dungeon, "name"))
     local pillList = {}
     if isLog then
-        table.insert(pillList, { ns.L("QUESTLOG_COUNT", #dungeon.quests), { 0.18, 0.18, 0.22, 1 } })
+        table.insert(pillList, { ns.L("QUESTLOG_COUNT", #dungeon.quests), COLOR.cardHover })
         local ready = LogReadyCount(dungeon)
         if ready > 0 and dungeon ~= QUESTLOG then table.insert(pillList, { ns.L("READY_COUNT", ready), STATUS.READY.pill }) end
         -- Summe der Belohnungen (Erfahrung, Gold) – zeigt, wo sich ein Abstecher lohnt
@@ -1785,13 +1791,13 @@ RefreshDetail = function()
                 { 0.16, 0.30, 0.16, 1 } })
         end
         local m = MoneyText(moneySum)
-        if m then table.insert(pillList, { m, { 0.18, 0.18, 0.22, 1 } }) end
+        if m then table.insert(pillList, { m, COLOR.cardHover }) end
     end
     if dungeon.levels then
-        table.insert(pillList, { ns.L("LEVEL", ColoredLevels(dungeon.levels)), { 0.18, 0.18, 0.22, 1 } })
+        table.insert(pillList, { ns.L("LEVEL", ColoredLevels(dungeon.levels)), COLOR.cardHover })
     end
     if dungeon.zone then
-        table.insert(pillList, { Localized(dungeon, "zone"), { 0.18, 0.18, 0.22, 1 } })
+        table.insert(pillList, { Localized(dungeon, "zone"), COLOR.cardHover })
     end
     if dungeon.faction then
         table.insert(pillList, { FactionText(dungeon.faction), FACTION_PILL[dungeon.faction] or COLOR.card })
@@ -1843,7 +1849,7 @@ RefreshDetail = function()
                 if #ids > 0 then quest.rewards = ids end
             end
 
-            SetPill(entry.levelPill, ns.L("LEVEL", QuestLevel(quest) or "?"), { 0.20, 0.20, 0.25, 1 })
+            SetPill(entry.levelPill, ns.L("LEVEL", QuestLevel(quest) or "?"), COLOR.pill)
             if style.textKey then
                 SetPill(entry.statusPill, ns.L(style.textKey), style.pill)
             else
@@ -2436,7 +2442,7 @@ RefreshList = function()
             end
             local count, ready = #e.quests, LogReadyCount(e)
             button.sub:SetText("|cff8a8a8a" .. ns.L("QUESTLOG_COUNT", count) .. "  ·  " .. ns.L("READY_COUNT", ready) .. "|r")
-            if count > 0 then SetPill(button.countPill, count, { 0.22, 0.22, 0.27, 1 }) else button.countPill:Hide() end
+            if count > 0 then SetPill(button.countPill, count, COLOR.count) else button.countPill:Hide() end
             button.progressBg:SetShown(count > 0)
             if count > 0 and ready > 0 then
                 local barWidth = math.max(1, width - 8 - 34 - 44)
@@ -2499,7 +2505,7 @@ RefreshList = function()
             -- Anzahl der verbleibenden (noch nicht abgeschlossenen) Quests mit den aktuellen Filtern
             local count, completed = CountQuests(dungeon)
             if count > 0 then
-                SetPill(button.countPill, count, { 0.22, 0.22, 0.27, 1 })
+                SetPill(button.countPill, count, COLOR.count)
             else
                 button.countPill:Hide()
             end
