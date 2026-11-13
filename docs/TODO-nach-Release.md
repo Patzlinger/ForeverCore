@@ -12,7 +12,10 @@ Auswirkung im Spiel.
       Die frühere Markierungsleiste ist seit 2026-11-07 die Gruppenleiste; Markierungs-Tasten laufen bis dahin
       über unsichtbare Knöpfe weiter (ForeverBars, Bars.lua GetMarkButtons).
       **Prototyp seit 2026-11-10:** `ForeverHelpers/Marks.lua`, Befehl `/fmarks` (eigenes Rad, kein Blizzard-Ping-Rad –
-      das lässt sich nicht erweitern); Grenzen: nur außerhalb des Kampfs, keine Einstellungsseite im Hub
+      das lässt sich nicht erweitern). **Stand 2026-11-13:** auch im Kampf nutzbar (SecureHandler-Baustein, von flowfy
+      im Spiel bestätigt; dort ohne An/Aus-Schalten, Zielmarkierung auf die Einheit unter der Maus beim Loslassen,
+      sonst das Ziel); Pings und Bodenmarkierungen gehen im deutschen Client. Offen: Einstellungsseite im Hub
+      (Taste nur per `/fmarks key …`). Noch in `release/exclude-from-release.txt` – Freigabe entscheidet der Nutzer
 - [ ] ⚠ **Ablaufzeit von Questgegenständen** (ForeverQuests, Tracker): Restzeit auch anzeigen, wenn der Questgegenstand
       nur begrenzt haltbar ist (Gegenstand-Tooltip auslesen). Quests mit eigener Frist zeigen ihre Restzeit seit
       2026-11-07 (Tracker.lua GetQuestTimerEnd) – im Spiel noch bestätigen
