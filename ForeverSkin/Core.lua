@@ -280,8 +280,10 @@ function ns.Flat(frame, fill, inset)
     -- genug Platz) und Goldrahmen – an/aus über den Design-Knopf im Forever-Core-Menü. Die Texturen zählen als
     -- unsere eigenen (sonst blendet HideTextures sie wieder aus); die Titelleiste (look.head, von ns.SkinWindow)
     -- färben wir selbst um.
+    -- (nicht bei "leichten" Fenstern wie der Flugkarte: dort ist der Inhalt selbst eine Hintergrund-Grafik des
+    -- Fensters – die Runen-Ebene lag darüber und verdeckte die Karte, 2026-11-13)
     local theme = UI.Theme
-    if fill == C.background and theme and theme.Register and not look.themed then
+    if fill == C.background and theme and theme.Register and not look.themed and not ns.noThemeNext then
         look.themed = true
         theme.Register(frame, {
             anchor = look.fill,
@@ -518,7 +520,9 @@ function ns.SkinWindow(frame, keep, light)
             or { "Portrait", "PortraitFrame", "TitleBg", "Bg", "BgTop" }) do ns.Hide(_G[name .. suffix]) end
     end
     if frame.TitleContainer then ns.HideTextures(frame.TitleContainer) end
+    ns.noThemeNext = light -- (leichte Fenster: Inhalt liegt im Hintergrund – keine Runen-Ebene darüber)
     local look = ns.Flat(frame, C.background)
+    ns.noThemeNext = nil
     if look and not look.head then
         look.head = frame:CreateTexture(nil, "BORDER", nil, -7)
         look.head:SetTexture(WHITE)
