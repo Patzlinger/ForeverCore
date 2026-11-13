@@ -27,7 +27,7 @@
 --    danach Elemente aus Blizzards DataProvider der ScrollBox löschen). Das schreibt in eine Tabelle, die Blizzard-Code
 --    liest – mögliche Folge: ADDON_ACTION_BLOCKED beim Einladen/Anschreiben/Bewerben aus der Gruppensuche.
 --    Rückweg (Abdunkeln statt Entfernen, regelkonform): git-Markierung "backup/gruppensuche-abdunkeln" (8f52d8e).
---    Nur im Entwicklungsstand: Datei steht in release/exclude-from-release.txt.
+--    Von flowfy im Spiel als funktionierend bestätigt (2026-11-13) und seitdem im Release.
 local UI = ForeverHub.UI
 local T = UI.T
 

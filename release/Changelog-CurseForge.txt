@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Looking for Group > Browse now finds far more listings.** Blizzard's search only returned listings in your game client's language (in our test 8 instead of 100). New flag button next to Refresh: choose the languages to search in, then click Refresh.
+
+- Looking for Group > Browse: new role filter (round Tank / Healer / Damage buttons above the list) that only keeps single players who listed that role, and a "Show groups" checkbox to hide groups.
+
+- ForeverSkin: the "Role check" button on the Looking for Group listing page now has the flat Forever look.
+
+- Raid target markers now also show on the target frame and on nameplates when the game locks the marker value (it was hidden there before).
+
 - ForeverBags: the bank window shows a small line with the value of its items: vendor price, and with Auctionator also the price of the last auction house scan. Can be switched off in the settings (Windows > Show the value of the items in the bank).
 
 - ForeverBags: a bag put into a newly bought bank bag slot is now shown in that slot and you can drag bags onto the slot (before, the slot looked empty and said you had to buy it first).

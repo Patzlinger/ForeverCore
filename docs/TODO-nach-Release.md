@@ -18,8 +18,8 @@ Auswirkung im Spiel.
       2026-11-07 (Tracker.lua GetQuestTimerEnd) – im Spiel noch bestätigen
 - [ ] ⚠ **Essen/Trinken-Makro** (ForeverHelpers): Makro, das automatisch das beste Essen bzw. Getränk aus den Taschen
       nimmt
-- [ ] ⚠ **Suche nach Gruppe: nach Rolle filtern** (Tank, Heiler, Schaden): in der Gruppensuche die Ergebnisse nach der
-      gesuchten Rolle filtern können (Addon noch klären)
-- [ ] ⚠ **Sprachauswahl der Gruppensuche** (ForeverHelpers/Languages.lua, seit 2026-11-13): Knopf „Sprachen: …“ unter
-      „Durchsuchen“ mit Häkchen je Sprache (Blizzards Sprachfilter, C_LFGList.SaveLanguageSearchFilter). Im Spiel
-      noch nicht bestätigt; bis dahin in `release/exclude-from-release.txt`, danach dort streichen + Changelog-Eintrag
+- [x] ⚠ **Suche nach Gruppe: Sprachen, Rollenfilter, Gruppen ausblenden** (ForeverHelpers/Languages.lua, 2026-11-13,
+      von flowfy im Spiel bestätigt, im Release): Flaggen-Knopf neben Aktualisieren (Suche mit gewählten Sprachen),
+      runde Rollen-Knöpfe und Häkchen „Gruppen anzeigen“ über der Liste. Der Rollenfilter ENTFERNT Einträge aus
+      Blizzards Liste (bewusst entgegen der Taint-Regel, siehe Kopf der Datei). Treten beim Einladen/Anschreiben
+      „blocked“-Fehler auf: Rückweg ist die git-Markierung `backup/gruppensuche-abdunkeln` (Abdunkeln statt Entfernen)
