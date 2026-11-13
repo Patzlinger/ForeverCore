@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 85
+local VERSION = 86
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -5135,8 +5135,65 @@ end
 
 local function ToNumber(s) return tonumber((s:gsub("[%.,%s]", ""))) end
 
+-- Zauber mit Stufen nach Combopunkten (Druide: Zerfetzen/Rip): die Beschreibung listet jede Stufe –
+-- "1 Combopunkt: 42 Schaden über 12 Sek." / "1 point: 42 damage over 12 sec" … Ergebnis { [Combopunkte] = { amount, seconds } }
+-- (oder nil). Nur Lesen von Text; Combopunkte beim Wirken merkt overEvents (unten).
+UI.OverTier = {} -- (eine Tabelle statt mehrerer lokaler Variablen: Lua-Grenze 200)
+UI.OverTier.patterns = {
+    "%f[%d](%d)%s+[%a%s]-[Pp]unkte?%s*:%s*(%d[%d%.,]*)[^%d]-ber%s+(%d+[%.,]?%d*)", -- deutsch ("… Schaden über 12 Sek.")
+    "%f[%d](%d)%s+[%a%s]-[Pp]oints?%s*:%s*(%d[%d%.,]*)[^%d]-over%s+(%d+[%.,]?%d*)", -- englisch
+}
+function UI.OverTier.Parse(desc)
+    local tiers, n = {}, 0
+    for _, pat in ipairs(UI.OverTier.patterns) do
+        for cp, amount, seconds in desc:gmatch(pat) do
+            cp, amount, seconds = tonumber(cp), tonumber((amount:gsub("[%.,%s]", ""))), tonumber((seconds:gsub(",", ".")))
+            if cp and amount and seconds and amount > 0 and seconds > 0 and not tiers[cp] then
+                tiers[cp] = { amount = amount, seconds = seconds }
+                n = n + 1
+            end
+        end
+        if n >= 2 then break end
+    end
+    return n >= 2 and tiers or nil
+end
+
+-- Menge/Dauer einer Stufe: erst nach der Gesamtdauer der Aura (sicher lesbar nur außerhalb des Kampfes), sonst nach den
+-- Combopunkten beim Wirken (cp), sonst nach dem schon Gemerkten (known = { amount, seconds })
+function UI.OverTier.For(info, cp, duration, known)
+    if not info.tiers then return info.amount, info.seconds end
+    if type(duration) == "number" and not Secret(duration) and duration > 0 then
+        local best, diff
+        for _, t in pairs(info.tiers) do
+            local d = math.abs(t.seconds - duration)
+            if not diff or d < diff then best, diff = t, d end
+        end
+        if best and diff < 0.6 then return best.amount, best.seconds end
+    end
+    if known then return known.amount, known.seconds end
+    if type(cp) == "number" and cp > 0 then
+        local t = info.tiers[cp]
+        if not t then
+            for p = cp - 1, 1, -1 do if info.tiers[p] then t = info.tiers[p] break end end
+        end
+        if t then return t.amount, t.seconds end
+    end
+    local low
+    for p, t in pairs(info.tiers) do if not low or p < low then low = p end end
+    return info.tiers[low].amount, info.tiers[low].seconds
+end
+
 local function ParseOver(desc)
     desc = desc:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+    local tiers = UI.OverTier.Parse(desc)
+    if tiers then
+        local head = desc:lower():sub(1, 120)
+        local h, d = FirstPos(head, HEAL_WORDS), FirstPos(head, DMG_WORDS)
+        local kind = (h and (not d or h < d)) and "heal" or "damage"
+        local low
+        for p in pairs(tiers) do if not low or p < low then low = p end end
+        return { amount = tiers[low].amount, seconds = tiers[low].seconds, kind = kind, tiers = tiers }
+    end
     local pos, finish, seconds = desc:find("über%s+(%d+[%.,]?%d*)%s*[Ss]e")
     -- (deutsche Texte sagen oft auch "im Verlauf von 15 Sek." oder "innerhalb von 15 Sek.", z. B. Stiche des Jägers)
     if not pos then pos, finish, seconds = desc:find("[Vv]erlauf von%s+(%d+[%.,]?%d*)%s*[Ss]e") end
@@ -5280,7 +5337,19 @@ overEvents:RegisterUnitEvent("UNIT_SPELLCAST_SENT", "player")
 overEvents:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
 overEvents:SetScript("OnEvent", function(_, event, _, a, b, c)
     if event == "UNIT_SPELLCAST_SENT" then -- Einheit, Zielname, Zauber-GUID, Zauber-ID
-        if b and not Secret(b) and c and not Secret(c) then pendingCast[b] = { target = a, spellID = c } end
+        if b and not Secret(b) and c and not Secret(c) then
+            -- Combopunkte jetzt merken (beim "erfolgreich" sind sie schon verbraucht): für Zauber mit Stufen je Combopunkt
+            local cp
+            if GetComboPoints then
+                local ok, v = pcall(GetComboPoints, "player", "target")
+                if ok and not Secret(v) then cp = v end
+            end
+            if (not cp or cp == 0) and UnitPower then
+                local ok, v = pcall(UnitPower, "player", Enum and Enum.PowerType and Enum.PowerType.ComboPoints or 4)
+                if ok and not Secret(v) then cp = v end
+            end
+            pendingCast[b] = { target = a, spellID = c, cp = cp }
+        end
     else -- Einheit, Zauber-GUID, Zauber-ID
         if not a or Secret(a) then return end
         local p = pendingCast[a]
@@ -5292,8 +5361,10 @@ overEvents:SetScript("OnEvent", function(_, event, _, a, b, c)
         if not guid then return end
         local old = tracked[guid] and tracked[guid][info.kind] and tracked[guid][info.kind][p.spellID]
         local now = GetTime()
-        local carry = (old and old.expires > now) and math.min(old.expires - now, info.seconds * 0.3) or 0
-        Track(guid, info.kind, p.spellID, info, now + info.seconds + carry)
+        local amount, seconds = UI.OverTier.For(info, p.cp)
+        -- (Zauber mit Combopunkt-Stufen ersetzen den alten Effekt ganz: kein Übertrag der Restdauer)
+        local carry = (not info.tiers and old and old.expires > now) and math.min(old.expires - now, seconds * 0.3) or 0
+        Track(guid, info.kind, p.spellID, { amount = amount, seconds = seconds }, now + seconds + carry)
         NotifyOver()
     end
 end)
@@ -5355,8 +5426,10 @@ function ComputeOverTime(unit, kind)
             local info = OverInfo(id)
             if info and info.kind == kind then
                 found = true
-                total = total + info.amount * math.min(1, (expires - now) / info.seconds)
-                fresh[id] = { amount = info.amount, seconds = info.seconds, expires = expires }
+                local known = guid and tracked[guid] and tracked[guid][kind] and tracked[guid][kind][id]
+                local amount, seconds = UI.OverTier.For(info, nil, a.duration, known)
+                total = total + amount * math.min(1, (expires - now) / seconds)
+                fresh[id] = { amount = amount, seconds = seconds, expires = expires }
             end
         end
     end
@@ -5403,7 +5476,7 @@ SlashCmdList.FOREVEROVER = function(msg)
                         local parsed = ParseOver(desc)
                         shown = shown + 1
                         P(string.format("%s (%d): %s", tostring(info.name), id, parsed
-                            and string.format("|cff55dd55%s %d über %ss|r", parsed.kind, parsed.amount, parsed.seconds)
+                            and string.format("|cff55dd55%s %d über %ss%s|r", parsed.kind, parsed.amount, parsed.seconds, parsed.tiers and " (Stufen nach Combopunkten)" or "")
                             or ("|cffff7070nicht erkannt|r – " .. desc:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):sub(1, 110))))
                     end
                 end
