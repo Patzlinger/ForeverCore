@@ -116,10 +116,11 @@ end
 ---------------------------------------------------------------------------
 -- Rollenfilter (nur Anzeige)
 ---------------------------------------------------------------------------
+-- big = Rollen-Symbole der Gruppensuche (LFGBROWSE_GROUPDATA_ATLASES)
 local ROLES = {
-    { key = "tank", de = "Tank", en = "Tank", atlas = "groupfinder-icon-role-micro-tank" },
-    { key = "healer", de = "Heiler", en = "Healer", atlas = "groupfinder-icon-role-micro-heal" },
-    { key = "dps", de = "Schaden", en = "Damage", atlas = "groupfinder-icon-role-micro-dps" },
+    { key = "tank", de = "Tank", en = "Tank", big = "groupfinder-icon-role-large-tank" },
+    { key = "healer", de = "Heiler", en = "Healer", big = "groupfinder-icon-role-large-heal" },
+    { key = "dps", de = "Schaden", en = "Damage", big = "groupfinder-icon-role-large-dps" },
 }
 local function RoleDB()
     if type(_G.ForeverHelpersDB) ~= "table" then _G.ForeverHelpersDB = {} end
@@ -190,40 +191,68 @@ local function Rebuild(browse)
 end
 
 ---------------------------------------------------------------------------
--- Auswahlfelder
+-- Bedienung: Flaggen-Knopf oben (Sprachen, Menü), runde Rollen-Knöpfe unten
 ---------------------------------------------------------------------------
-local dropdown, roleDropdown
+-- Flaggen: eigene Grafiken (tools/make-flag-art.ps1), 64x32, die Flagge füllt links 48x32
+local FLAGS = "Interface\\AddOns\\ForeverHelpers\\Media\\Flags\\"
+local HAS_FLAG = { deDE = true, enUS = true, frFR = true, esES = true, ruRU = true, ptBR = true }
+local function FlagTag(lang, h)
+    if not HAS_FLAG[lang] then return "" end
+    return "|T" .. FLAGS .. lang .. ":" .. h .. ":" .. math.floor(h * 1.5 + 0.5) .. ":0:0:64:32:0:48:0:32|t"
+end
+local CIRCLE = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
+local WHITE = "Interface\\Buttons\\WHITE8x8"
 
-local function Label()
+local langButton
+local roleButtons = {}
+
+-- Flaggen-Knopf: Flagge der ersten gewählten Sprache, bei mehreren "+N" daneben; alle gewählt = "Alle"
+local function UpdateLangButton()
+    if not langButton then return end
     local on, all = {}, Available()
     local cur = Current()
     for _, lang in ipairs(all) do
-        if cur[lang] then on[#on + 1] = Short(lang) end
+        if cur[lang] then on[#on + 1] = lang end
     end
-    -- (kurz, damit es in die halbe Lücke passt: "Alle Spr." bzw. Kürzel "DE,EN")
-    if #on == 0 or #on == #all then return T("Alle Spr.", "All lang.") end
-    return table.concat(on, ",")
+    local b = langButton
+    if #on == 0 or #on == #all then
+        b.flag:Hide()
+        b.count:ClearAllPoints()
+        b.count:SetPoint("CENTER")
+        b.count:SetText(T("Alle", "All"))
+    else
+        local first = on[1]
+        if HAS_FLAG[first] then
+            b.flag:SetTexture(FLAGS .. first)
+            b.flag:SetTexCoord(0, 0.75, 0, 1)
+            b.flag:Show()
+            b.count:ClearAllPoints()
+            b.count:SetPoint("LEFT", b.flag, "RIGHT", 2, 0)
+            b.count:SetText(#on > 1 and ("+" .. (#on - 1)) or "")
+        else
+            b.flag:Hide()
+            b.count:ClearAllPoints()
+            b.count:SetPoint("CENTER")
+            b.count:SetText(Short(first) .. (#on > 1 and ("+" .. (#on - 1)) or ""))
+        end
+    end
 end
 
--- kurz: "Rollen" bzw. "Rolle" mit den kleinen Rollen-Symbolen der Gruppensuche
-local function RoleLabel()
-    local icons = {}
-    for _, r in ipairs(ROLES) do
-        if RoleDB()[r.key] then icons[#icons + 1] = "|A:" .. r.atlas .. ":14:14|a" end
+-- runde Rollen-Knöpfe: an = farbiges Symbol mit goldenem Ring, aus = blass mit grauem Ring
+local function UpdateRoleButtons()
+    local C = UI.COLOR
+    for _, b in ipairs(roleButtons) do
+        local on = RoleDB()[b.role.key] and true or false
+        b.icon:SetDesaturated(not on)
+        b.icon:SetAlpha(on and 1 or 0.45)
+        local c = on and C.accent or C.border
+        b.ring:SetVertexColor(c[1], c[2], c[3], 1)
     end
-    if #icons == 0 then return T("Rollen", "Roles") end
-    return T("Rolle ", "Role ") .. table.concat(icons, " ")
-end
-
-local function SetLabel(dd, text)
-    if not dd then return end
-    if dd.OverrideText then pcall(dd.OverrideText, dd, text)
-    elseif dd.SetText then pcall(dd.SetText, dd, text) end
 end
 
 local function UpdateLabel()
-    SetLabel(dropdown, Label())
-    SetLabel(roleDropdown, RoleLabel())
+    UpdateLangButton()
+    UpdateRoleButtons()
 end
 
 -- Auswahl nur speichern – gesucht wird erst beim Klick auf Aktualisieren (auf Wunsch, 2026-11-13)
@@ -250,12 +279,12 @@ local function SetAll()
     Save(filter)
 end
 
--- Menü wie Blizzards Kategorie-Auswahl (Blizzard_Menu): Überschrift, ein Häkchen je Sprache, "Alle Sprachen".
+-- Menü wie Blizzards Kategorie-Auswahl (Blizzard_Menu): Überschrift, je Sprache Häkchen mit Flagge, "Alle Sprachen".
 -- Bleibt beim Anhaken offen (mehrere Sprachen nacheinander).
 local function MenuGenerator(_, root)
     root:CreateTitle(T("In diesen Sprachen suchen", "Search in these languages"))
     for _, lang in ipairs(Available()) do
-        root:CreateCheckbox(Name(lang),
+        root:CreateCheckbox(FlagTag(lang, 12) .. "  " .. Name(lang),
             function() return Current()[lang] and true or false end,
             function() Toggle(lang) end)
     end
@@ -263,24 +292,10 @@ local function MenuGenerator(_, root)
     root:CreateButton(T("Alle Sprachen", "All languages"), function() SetAll() end)
 end
 
--- Rollen-Menü: ein Häkchen je Rolle, "Alle Rollen" = Filter aus. Wirkt sofort auf die Anzeige.
-local function RoleMenuGenerator(_, root)
-    root:CreateTitle(T("Spieler mit dieser Rolle", "Players with this role"))
-    for _, r in ipairs(ROLES) do
-        root:CreateCheckbox(T(r.de, r.en),
-            function() return RoleDB()[r.key] and true or false end,
-            function()
-                RoleDB()[r.key] = (not RoleDB()[r.key]) or nil
-                UpdateLabel()
-                Rebuild(_G.LFGBrowseFrame)
-            end)
-    end
-    root:CreateDivider()
-    root:CreateButton(T("Alle Rollen", "All roles"), function()
-        for _, r in ipairs(ROLES) do RoleDB()[r.key] = nil end
-        UpdateLabel()
-        Rebuild(_G.LFGBrowseFrame)
-    end)
+local function ToggleRole(key)
+    RoleDB()[key] = (not RoleDB()[key]) or nil
+    UpdateLabel()
+    Rebuild(_G.LFGBrowseFrame)
 end
 
 -- Platz unten in der Leiste: zwischen dem linken und rechten Text-Knopf ("Nachricht senden" / "Gruppeneinladung")
@@ -290,7 +305,7 @@ local function FooterButtons(browse)
     local found = {}
     local function Scan(frame, depth)
         for _, child in ipairs({ frame:GetChildren() }) do
-            if not (child.IsForbidden and child:IsForbidden()) and child ~= dropdown and child ~= roleDropdown then
+            if not (child.IsForbidden and child:IsForbidden()) and child ~= langButton then
                 if child:IsObjectType("Button") then
                     local text = child.GetText and child:GetText()
                     if type(text) == "string" and text ~= "" and child:IsShown() and child:GetBottom()
@@ -309,34 +324,110 @@ local function FooterButtons(browse)
     return found[1], found[#found]
 end
 
--- Beide Felder teilen sich die Lücke: Sprache links, Rolle rechts (je halbe Breite, 6 px Luft dazwischen)
+-- Rollen-Knöpfe mittig in die Lücke unten (zwischen "Nachricht senden" und "Gruppeneinladung")
+local ROLE_SIZE, ROLE_GAP = 26, 10
 local placed = false
-local gap
+local holder
 local function Place(browse)
-    if placed or not dropdown then return end
+    if placed or not holder then return end
     local left, right = FooterButtons(browse)
-    gap = gap or CreateFrame("Frame", nil, browse)
-    gap:ClearAllPoints()
-    local height = 22
+    holder:ClearAllPoints()
     if left and right then
         placed = true
-        gap:SetPoint("LEFT", left, "RIGHT", 8, 0)
-        gap:SetPoint("RIGHT", right, "LEFT", -8, 0)
-        height = math.floor((left:GetHeight() or 22) + 0.5)
+        -- Mitte der Lücke: zwischen rechter Kante des linken und linker Kante des rechten Knopfs
+        local spacer = holder.spacer or CreateFrame("Frame", nil, browse)
+        holder.spacer = spacer
+        spacer:ClearAllPoints()
+        spacer:SetPoint("LEFT", left, "RIGHT", 0, 0)
+        spacer:SetPoint("RIGHT", right, "LEFT", 0, 0)
+        spacer:SetHeight(1)
+        holder:SetPoint("CENTER", spacer, "CENTER", 0, 0)
     else
         -- (Knöpfe noch nicht gefunden: vorerst unten mittig; beim nächsten Öffnen erneut versuchen)
-        gap:SetPoint("BOTTOM", browse, "BOTTOM", 0, 6)
-        gap:SetWidth(240)
+        holder:SetPoint("BOTTOM", browse, "BOTTOM", 0, 8)
     end
-    gap:SetHeight(height)
-    dropdown:ClearAllPoints()
-    dropdown:SetPoint("TOPLEFT", gap, "TOPLEFT")
-    dropdown:SetPoint("BOTTOMRIGHT", gap, "BOTTOM", -3, 0)
-    if roleDropdown then
-        roleDropdown:ClearAllPoints()
-        roleDropdown:SetPoint("TOPLEFT", gap, "TOP", 3, 0)
-        roleDropdown:SetPoint("BOTTOMRIGHT", gap, "BOTTOMRIGHT")
+end
+
+-- runder Knopf: dunkle Scheibe, Ring (Farbe nach Zustand), Rollen-Symbol darin
+local function RoleButton(parent, role)
+    local b = CreateFrame("Button", nil, parent)
+    b:SetSize(ROLE_SIZE, ROLE_SIZE)
+    b.role = role
+    local function Disk(size, layer, sub)
+        local t = b:CreateTexture(nil, layer, nil, sub)
+        t:SetTexture(WHITE)
+        t:SetSize(size, size)
+        t:SetPoint("CENTER")
+        local mask = b:CreateMaskTexture()
+        mask:SetTexture(CIRCLE, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+        mask:SetAllPoints(t)
+        t:AddMaskTexture(mask)
+        return t
     end
+    b.ring = Disk(ROLE_SIZE, "BACKGROUND", 1)
+    local bg = UI.COLOR.background
+    b.disk = Disk(ROLE_SIZE - 3, "BACKGROUND", 2)
+    b.disk:SetVertexColor(bg[1], bg[2], bg[3], 1)
+    b.icon = b:CreateTexture(nil, "ARTWORK")
+    b.icon:SetSize(ROLE_SIZE - 6, ROLE_SIZE - 6)
+    b.icon:SetPoint("CENTER")
+    b.icon:SetAtlas(role.big)
+    -- Maus darüber: Ring heller gold
+    b.hover = Disk(ROLE_SIZE, "HIGHLIGHT", 1)
+    local a = UI.COLOR.accent
+    b.hover:SetVertexColor(a[1], a[2], a[3], 0.5)
+    b:SetScript("OnClick", function(self)
+        if PlaySound and SOUNDKIT and SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON then
+            PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
+        end
+        ToggleRole(self.role.key)
+    end)
+    b:SetScript("OnEnter", function(self)
+        local tip = UI.GetTooltip()
+        tip:SetOwner(self, "ANCHOR_TOP")
+        tip:SetText(T(role.de, role.en), 1, 0.82, 0)
+        tip:AddLine(T("An: Es bleiben nur einzelne Spieler, die diese Rolle angegeben haben (Gruppen bleiben immer). Mehrere Rollen gleichzeitig möglich. Noch einmal klicken = aus.",
+            "On: only single players who listed this role stay (groups always stay). Several roles at once are possible. Click again = off."),
+            1, 1, 1, true)
+        tip:Show()
+    end)
+    b:SetScript("OnLeave", function() UI.GetTooltip():Hide() end)
+    return b
+end
+
+-- Flaggen-Knopf oben rechts neben Aktualisieren: öffnet das Sprach-Menü
+local function BuildLangButton(browse)
+    langButton = UI.Button(browse, "", 36)
+    langButton:SetHeight(20)
+    local refresh = browse.RefreshButton
+    if refresh then
+        langButton:SetPoint("LEFT", refresh, "RIGHT", 6, 0)
+    else
+        langButton:SetPoint("TOPRIGHT", browse, "TOPRIGHT", -8, -8)
+    end
+    langButton.flag = langButton:CreateTexture(nil, "ARTWORK")
+    langButton.flag:SetSize(18, 12)
+    langButton.flag:SetPoint("CENTER", langButton, "CENTER", -4, 0)
+    langButton.count = langButton:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    langButton:SetScript("OnClick", function(self)
+        if MenuUtil and MenuUtil.CreateContextMenu then MenuUtil.CreateContextMenu(self, MenuGenerator) end
+    end)
+    langButton:HookScript("OnEnter", function(self)
+        local tip = UI.GetTooltip()
+        tip:SetOwner(self, "ANCHOR_BOTTOM")
+        tip:SetText(T("Sprachen der Gruppensuche", "Group finder languages"), 1, 0.82, 0)
+        local names = {}
+        local cur = Current()
+        for _, lang in ipairs(Available()) do
+            if cur[lang] then names[#names + 1] = FlagTag(lang, 10) .. " " .. Name(lang) end
+        end
+        if #names > 0 then tip:AddLine(table.concat(names, "   "), 1, 1, 1, true) end
+        tip:AddLine(T("Klicken: Sprachen wählen, dann Aktualisieren – die Liste zeigt Einträge in allen gewählten Sprachen. Gilt für den ganzen Account.",
+            "Click: choose languages, then Refresh – the list shows listings in all selected languages. Applies to your whole account."),
+            0.8, 0.8, 0.8, true)
+        tip:Show()
+    end)
+    langButton:HookScript("OnLeave", function() UI.GetTooltip():Hide() end)
 end
 
 -- Unsichtbarer eigener Knopf genau über Blizzards Aktualisieren-Knopf: fängt den Klick ab und sucht MIT Sprachen
@@ -358,8 +449,8 @@ local function CoverRefresh(browse)
         local tip = UI.GetTooltip()
         tip:SetOwner(self, "ANCHOR_RIGHT")
         tip:SetText(T("Aktualisieren", "Refresh"), 1, 0.82, 0)
-        tip:AddLine(T("Sucht mit allen gewählten Sprachen (Auswahl „Sprachen“ unten im Fenster).",
-            "Searches with all selected languages (\"Languages\" selection at the bottom of the window)."), 1, 1, 1, true)
+        tip:AddLine(T("Sucht mit allen gewählten Sprachen (Flaggen-Knopf rechts daneben).",
+            "Searches with all selected languages (flag button to the right)."), 1, 1, 1, true)
         tip:Show()
     end)
     cover:SetScript("OnLeave", function() UI.GetTooltip():Hide() end)
@@ -369,30 +460,14 @@ local function CoverRefresh(browse)
 end
 
 local function Build(browse)
-    dropdown = CreateFrame("DropdownButton", nil, browse, "WowStyle1DropdownTemplate")
-    dropdown:SetupMenu(MenuGenerator)
-    dropdown:HookScript("OnEnter", function(self)
-        local tip = UI.GetTooltip()
-        tip:SetOwner(self, "ANCHOR_TOP")
-        tip:SetText(T("Sprachen der Gruppensuche", "Group finder languages"), 1, 0.82, 0)
-        tip:AddLine(T("Sprachen wählen, dann oben auf Aktualisieren klicken: Die Liste zeigt dann Einträge in allen gewählten Sprachen. Die Auswahl gilt für den ganzen Account.",
-            "Choose the languages, then click Refresh at the top: the list then shows listings in all selected languages. The choice applies to your whole account."),
-            1, 1, 1, true)
-        tip:Show()
-    end)
-    dropdown:HookScript("OnLeave", function() UI.GetTooltip():Hide() end)
-    roleDropdown = CreateFrame("DropdownButton", nil, browse, "WowStyle1DropdownTemplate")
-    roleDropdown:SetupMenu(RoleMenuGenerator)
-    roleDropdown:HookScript("OnEnter", function(self)
-        local tip = UI.GetTooltip()
-        tip:SetOwner(self, "ANCHOR_TOP")
-        tip:SetText(T("Nach Rolle filtern", "Filter by role"), 1, 0.82, 0)
-        tip:AddLine(T("Zeigt nur einzelne Spieler, die eine gewählte Rolle angegeben haben. Spieler ohne Rollenangabe werden ausgeblendet. Gruppen bleiben immer in der Liste.",
-            "Only shows single players who listed a selected role. Players without a role are hidden. Groups always stay in the list."),
-            1, 1, 1, true)
-        tip:Show()
-    end)
-    roleDropdown:HookScript("OnLeave", function() UI.GetTooltip():Hide() end)
+    BuildLangButton(browse)
+    holder = CreateFrame("Frame", nil, browse)
+    holder:SetSize(#ROLES * ROLE_SIZE + (#ROLES - 1) * ROLE_GAP, ROLE_SIZE)
+    for i, role in ipairs(ROLES) do
+        local b = RoleButton(holder, role)
+        b:SetPoint("LEFT", holder, "LEFT", (i - 1) * (ROLE_SIZE + ROLE_GAP), 0)
+        roleButtons[i] = b
+    end
     -- nach jedem Neuaufbau der Liste filtern (siehe Warnung oben)
     if type(browse.UpdateResults) == "function" then
         local reported = false
@@ -418,7 +493,7 @@ end
 
 local events = CreateFrame("Frame")
 local function TryBuild()
-    if dropdown then return end
+    if langButton then return end
     if not (C_LFGList and C_LFGList.GetLanguageSearchFilter and C_LFGList.SaveLanguageSearchFilter and C_LFGList.Search) then
         events:UnregisterAllEvents() -- (gibt es in diesem Client nicht)
         return
