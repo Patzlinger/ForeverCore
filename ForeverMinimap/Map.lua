@@ -1132,16 +1132,12 @@ function ns.UpdateTools()
         moreButton:Hide()
     end
     strip:SetWidth(width)
-    -- Breite im ausgeklappten Zustand merken: ForeverQuests (Tracker) und ForeverBars (Mikromenü) richten ihre Breite
-    -- danach, damit sie beim Auf-/Zuklappen nicht springen (siehe ForeverMinimap_GetSpan)
+    -- Breite merken, nach der ForeverQuests (Tracker) und ForeverBars (Mikromenü) ihre Breite richten (siehe
+    -- ForeverMinimap_GetSpan): immer nur die ERSTE Spalte – weitere Spalten (aufgeklappt, „Weitere Knöpfe“) zählen
+    -- nicht (auf Wunsch, 2026-11-13). So springt beim Auf-/Zuklappen nichts, und die Fenster darunter bleiben bündig
+    -- mit der ersten Spalte.
     local full = width
-    if not round then
-        local saved = expanded
-        expanded = true
-        local _, _, w = LayoutSquare(items, side, height)
-        expanded = saved
-        full = w
-    end
+    if not round then full = ITEM + 2 * PAD end
     if strip.fmmFullWidth ~= full then
         strip.fmmFullWidth = full
         C_Timer.After(0, function() if UI.Fire then UI.Fire("ForeverMinimap.Layout") end end)
@@ -1249,7 +1245,8 @@ end
 
 local zoomToken, lastBase = 0, nil
 -- Fuer andere Addons (ForeverQuests-Tracker, ForeverBars-Mikromenue darunter): linke und rechte Kante von Karte
--- samt 1-px-Rahmen und der AUSGEKLAPPTEN Knopfleiste, in Bildschirmpixeln. Runde Karte: nur die Karte.
+-- samt 1-px-Rahmen und der ERSTEN Spalte der Knopfleiste (weitere Spalten zaehlen nicht), in Bildschirmpixeln.
+-- Runde Karte: nur die Karte.
 function ForeverMinimap_GetSpan()
     local left, right = Minimap:GetLeft(), Minimap:GetRight()
     if not left then return nil end
