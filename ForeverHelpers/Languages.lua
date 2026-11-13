@@ -1,14 +1,17 @@
--- ForeverHelpers – Languages.lua: Sprachauswahl und erweiterte Suche für "Suche nach Gruppe" > Durchsuchen.
--- Blizzards Durchsuchen-Seite (Classic-Stil) gibt beim Suchen KEINE Sprachen und nicht "andere Fraktion" mit – das
--- Spiel liefert dann nur Einträge in der Client-Sprache der eigenen Fraktion (im Spiel gemessen 2026-11-13: 8 statt
--- 100 Treffer). Darum unter dem Fenster: Knopf "Sprachen: …" (Liste mit Häkchen je Sprache, "Andere Fraktion",
--- "Alle") und Knopf "Suchen", der selbst sucht:
---   C_LFGList.Search(Kategorie, 0, 0, Sprachen, andere Fraktion)   (Reihenfolge laut Fehlermeldung des Spiels)
--- Die Ergebnisse zeigt Blizzards Liste wie gewohnt. Die Sprachauswahl speichert das Spiel selbst (Account),
--- "Andere Fraktion" steht in ForeverHelpersDB.lfg. Blizzards Rahmen bleiben unberührt (Taint-Regel).
+-- ForeverHelpers – Languages.lua: Sprachauswahl für "Suche nach Gruppe" > Durchsuchen (LFGBrowseFrame).
+-- Blizzards Durchsuchen-Seite (Classic-Stil) gibt beim Suchen die Sprachauswahl NICHT mit – das Spiel liefert dann
+-- nur Einträge in der Client-Sprache (im Spiel gemessen 2026-11-13: 8 statt 100 Treffer). Darum:
+--   - Knopf "Sprachen: …" unter dem Fenster: Liste mit Häkchen je Sprache und "Alle Sprachen"; jede Änderung
+--     sucht sofort neu.
+--   - Die Liste aktualisiert sich selbst mit den gewählten Sprachen: beim Öffnen von "Durchsuchen" und jedes Mal,
+--     wenn Blizzard sucht (Aktualisieren, Kategorie …) – direkt danach im selben Klick eine eigene Suche, deren
+--     Ergebnis Blizzards Liste wie gewohnt zeigt:
+--       C_LFGList.Search(Kategorie, 0, 0, Sprachen, false)   (Reihenfolge laut Fehlermeldung des Spiels;
+--       false = nur die eigene Fraktion)
+-- Das Spiel lässt Addons nur auf einen Klick/Tastendruck des Spielers suchen – darum nur in solchen Momenten.
+-- Die Sprachauswahl speichert das Spiel selbst (Account). Blizzards Rahmen bleiben unberührt: nur Hooks (Taint-Regel).
 local UI = ForeverHub.UI
 local T = UI.T
-local C = UI.COLOR
 
 -- Namen der Sprachen in beiden Sprachen (Blizzards Texte dafür sind je Client verschieden benannt)
 local NAMES = {
@@ -32,30 +35,29 @@ local function Current()
     return ok and type(f) == "table" and f or {}
 end
 
-local function DB()
-    if type(_G.ForeverHelpersDB) ~= "table" then _G.ForeverHelpersDB = {} end
-    local db = _G.ForeverHelpersDB
-    if type(db.lfg) ~= "table" then db.lfg = {} end
-    if db.lfg.crossFaction == nil then db.lfg.crossFaction = true end
-    return db.lfg
-end
-
--- Suche mit den gewählten Sprachen (und auf Wunsch der anderen Fraktion). Nur auf Klick des Spielers aufrufen:
--- das Spiel lässt Addons nur auf Tastendruck/Klick suchen.
-local function Search()
+-- Suche mit den gewählten Sprachen in der oben eingestellten Kategorie. quiet = ohne Hinweis, wenn noch keine
+-- Kategorie gewählt ist (beim Öffnen und nach Blizzards Suche)
+local lastSearch
+local function Search(quiet)
+    local now = GetTime()
+    if lastSearch == now then return end -- (mehrere Anlässe im selben Klick: nur einmal suchen)
     local browse = _G.LFGBrowseFrame
-    local dropdown = browse and (browse.CategoryDropdown or browse.CategoryDropDown)
+    if not (browse and browse:IsVisible()) then return end
+    local dropdown = browse.CategoryDropdown or browse.CategoryDropDown
     local ok, category = false, nil
     if dropdown and dropdown.GetValue then ok, category = pcall(dropdown.GetValue, dropdown) end
-    if not (ok and type(category) == "number") then
-        UI.Chat("ForeverHelpers", T("Erst oben eine Kategorie wählen (z. B. Dungeons).", "Choose a category at the top first (e.g. Dungeons)."))
+    if not (ok and type(category) == "number" and category > 0) then
+        if not quiet then
+            UI.Chat("ForeverHelpers", T("Erst oben eine Kategorie wählen (z. B. Dungeons).", "Choose a category at the top first (e.g. Dungeons)."))
+        end
         return
     end
-    local searched, err = pcall(C_LFGList.Search, category, 0, 0, Current(), DB().crossFaction and true or false)
+    lastSearch = now
+    local searched, err = pcall(C_LFGList.Search, category, 0, 0, Current(), false)
     if not searched and UI.ReportError then UI.ReportError("ForeverHelpers", "Languages/Search", err) end
 end
 
-local button, searchButton, popup, checks = nil, nil, nil, {}
+local button, popup, checks = nil, nil, {}
 
 local function UpdateButton()
     if not button then return end
@@ -75,6 +77,13 @@ local function UpdateChecks()
     for lang, cb in pairs(checks) do cb:SetChecked(cur[lang] and true or false) end
 end
 
+local function Apply(filter)
+    pcall(C_LFGList.SaveLanguageSearchFilter, filter)
+    UpdateChecks()
+    UpdateButton()
+    Search()
+end
+
 -- neue Auswahl speichern und gleich neu suchen (Klick = Eingabe des Spielers)
 local function Save(lang, value)
     local cur = Current()
@@ -86,20 +95,13 @@ local function Save(lang, value)
         UpdateChecks()
         return
     end
-    pcall(C_LFGList.SaveLanguageSearchFilter, filter)
-    UpdateChecks()
-    UpdateButton()
-    Search()
+    Apply(filter)
 end
 
 local function SetAll()
     local filter = {}
     for _, l in ipairs(Available()) do filter[l] = true end
-    if not next(filter) then return end
-    pcall(C_LFGList.SaveLanguageSearchFilter, filter)
-    UpdateChecks()
-    UpdateButton()
-    Search()
+    if next(filter) then Apply(filter) end
 end
 
 local function BuildPopup()
@@ -117,19 +119,35 @@ local function BuildPopup()
         widest = math.max(widest, 30 + (cb.label:GetStringWidth() or 80))
         y = y - 24
     end
-    -- Gruppen der anderen Fraktion mitsuchen (Blizzards Durchsuchen-Seite tut das nicht)
-    local faction = UI.Check(popup, 6, y - 6, T("Auch andere Fraktion", "Include other faction"), function(checked)
-        DB().crossFaction = checked
-        Search()
-    end)
-    faction:SetChecked(DB().crossFaction)
-    widest = math.max(widest, 30 + (faction.label:GetStringWidth() or 80))
-    y = y - 30
     local all = UI.Button(popup, T("Alle Sprachen", "All languages"), 110, SetAll)
     all:SetPoint("TOPLEFT", popup, "TOPLEFT", 10, y - 4)
     popup:SetSize(math.floor(math.max(widest, 120) + 24), -y + 36)
-    -- schließt mit der Gruppensuche, mit Escape (über den Knopf) und beim nächsten Klick auf den Knopf
     popup:SetScript("OnShow", UpdateChecks)
+end
+
+-- Blizzards Suche abfangen (nur nachgeschaltet): direkt danach mit den gewählten Sprachen erneut suchen
+local function HookBlizzardSearch(browse)
+    local function After() Search(true) end
+    if type(_G.LFGBrowse_DoSearch) == "function" then hooksecurefunc("LFGBrowse_DoSearch", After) end
+    if type(browse.DoSearch) == "function" then hooksecurefunc(browse, "DoSearch", After) end
+    -- Aktualisieren-Knopf (Symbol ohne Text), Name/Schlüssel enthält "refresh" bzw. "search"
+    local function Find(frame, depth)
+        for key, child in pairs(frame) do
+            if type(key) == "string" and type(child) == "table" and child.IsObjectType and child.HookScript
+                and not (child.IsForbidden and child:IsForbidden()) and child:IsObjectType("Button") then
+                local k = key:lower()
+                if k:find("refresh") or k:find("search") then child:HookScript("OnClick", After) end
+            end
+        end
+        if depth < 2 then
+            for _, child in ipairs({ frame:GetChildren() }) do
+                if not (child.IsForbidden and child:IsForbidden()) then Find(child, depth + 1) end
+            end
+        end
+    end
+    Find(browse, 1)
+    -- beim Öffnen der Seite (Klick auf den Reiter bzw. das Auge) gleich mit den gewählten Sprachen suchen
+    browse:HookScript("OnShow", After)
 end
 
 local function Build(browse)
@@ -144,34 +162,22 @@ local function Build(browse)
         local tip = UI.GetTooltip()
         tip:SetOwner(self, "ANCHOR_BOTTOM")
         tip:SetText(T("Sprachen der Gruppensuche", "Group finder languages"), 1, 0.82, 0)
-        tip:AddLine(T("Die Gruppensuche zeigt nur Einträge in den gewählten Sprachen. Die Auswahl gilt für den ganzen Account.",
-            "The group finder only shows listings in the selected languages. The choice applies to your whole account."),
+        tip:AddLine(T("Die Gruppensuche zeigt Einträge in allen gewählten Sprachen und aktualisiert sich bei jeder Änderung selbst. Die Auswahl gilt für den ganzen Account.",
+            "The group finder shows listings in all selected languages and refreshes itself on every change. The choice applies to your whole account."),
             1, 1, 1, true)
         tip:Show()
     end)
     button:HookScript("OnLeave", function() UI.GetTooltip():Hide() end)
-    -- eigene Suche (mit Sprachen und anderer Fraktion) – Blizzards Aktualisieren sucht nur in der Client-Sprache
-    searchButton = UI.Button(browse, T("Suchen", "Search"), 80, Search)
-    searchButton:SetPoint("LEFT", button, "RIGHT", 4, 0)
-    searchButton:HookScript("OnEnter", function(self)
-        local tip = UI.GetTooltip()
-        tip:SetOwner(self, "ANCHOR_BOTTOM")
-        tip:SetText(T("Suchen mit allen gewählten Sprachen", "Search with all selected languages"), 1, 0.82, 0)
-        tip:AddLine(T("Blizzards eigene Suche findet nur Einträge in deiner Client-Sprache und Fraktion. Dieser Knopf sucht in der gewählten Kategorie mit allen gewählten Sprachen (und auf Wunsch der anderen Fraktion).",
-            "Blizzard's own search only finds listings in your client language and faction. This button searches the chosen category with all selected languages (and the other faction, if enabled)."),
-            1, 1, 1, true)
-        tip:Show()
-    end)
-    searchButton:HookScript("OnLeave", function() UI.GetTooltip():Hide() end)
     browse:HookScript("OnShow", UpdateButton)
     browse:HookScript("OnHide", function() if popup then popup:Hide() end end)
+    HookBlizzardSearch(browse)
     UpdateButton()
 end
 
 local events = CreateFrame("Frame")
 local function TryBuild()
     if button then return end
-    if not (C_LFGList and C_LFGList.GetLanguageSearchFilter and C_LFGList.SaveLanguageSearchFilter) then
+    if not (C_LFGList and C_LFGList.GetLanguageSearchFilter and C_LFGList.SaveLanguageSearchFilter and C_LFGList.Search) then
         events:UnregisterAllEvents() -- (gibt es in diesem Client nicht)
         return
     end
