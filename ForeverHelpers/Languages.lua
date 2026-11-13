@@ -437,8 +437,10 @@ local function Build(browse)
     local activity = browse.ActivityDropdown or browse.ActivityDropDown
     local box = browse.ScrollBox
     if type(box) == "table" and box.GetObjectType then
-        groups:SetPoint("BOTTOMLEFT", box, "TOPLEFT", 8, 7)
-        holder:SetPoint("BOTTOMRIGHT", box, "TOPRIGHT", -4, 3)
+        -- (die erste Überschrift beginnt rund 11 px unter der Oberkante der Liste: die Zeile reicht darum 8 px in
+        -- die Liste hinein und sitzt so mittig zwischen Kastenrand und Überschrift – am Bild gemessen, 2026-11-13)
+        groups:SetPoint("BOTTOMLEFT", box, "TOPLEFT", 8, -1)
+        holder:SetPoint("BOTTOMRIGHT", box, "TOPRIGHT", -4, -5)
     else
         -- (ohne Liste: feste Lage unter den Auswahlfeldern)
         if category then
