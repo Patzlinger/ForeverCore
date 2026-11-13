@@ -285,10 +285,25 @@ local function MaxTabs()
     return 9 -- (Grundfach + 8 Taschenplätze wie in Blizzards Fenster)
 end
 
-local function InvSlotFor(tabID)
-    if not (tabID and C_Bank and C_Bank.BankBagTypeAndIDToInvSlot) then return nil end
-    local ok, slot = pcall(C_Bank.BankBagTypeAndIDToInvSlot, BankType(), tabID)
-    if ok and type(slot) == "number" then return slot end
+-- Ausrüstungsplatz der Bank-Tasche Nr. i (1 = erster Taschenplatz) bzw. des Fachs tabID. Der klassische Weg
+-- (BankButtonIDToInvSlotID(i, 1), so zählen Baganator/Syndicator und Blizzards Rechtsklick-Ablage) kann von
+-- C_Bank.BankBagTypeAndIDToInvSlot(Art, Fach) abweichen – dann lag eine neu gekaufte Tasche im einen Platz, wir zeigten
+-- und belegten aber den anderen ("erst Platz kaufen", Platz sieht leer aus). Darum: den Platz nehmen, in dem wirklich eine
+-- Tasche steckt; sonst den klassischen.
+local function InvSlotFor(i, tabID)
+    local classic
+    if BankButtonIDToInvSlotID then
+        local ok, slot = pcall(BankButtonIDToInvSlotID, i, 1)
+        if ok and type(slot) == "number" then classic = slot end
+    end
+    local tabbed
+    if tabID and C_Bank and C_Bank.BankBagTypeAndIDToInvSlot then
+        local ok, slot = pcall(C_Bank.BankBagTypeAndIDToInvSlot, BankType(), tabID)
+        if ok and type(slot) == "number" then tabbed = slot end
+    end
+    if classic and GetInventoryItemID and GetInventoryItemID("player", classic) then return classic end
+    if tabbed and GetInventoryItemID and GetInventoryItemID("player", tabbed) then return tabbed end
+    return classic or tabbed
 end
 
 local function BagButton(i)
@@ -354,7 +369,7 @@ function ns.UpdateBankBagBar()
         b:ClearAllPoints()
         b:SetPoint("LEFT", bagBar.label, "RIGHT", 8 + (i - 1) * (BAGSLOT + 4), 0)
         local tabID = ids[i + 1] -- (ids[1] = Grundfach)
-        b.invSlot = InvSlotFor(tabID)
+        b.invSlot = tabID and InvSlotFor(i, tabID) or nil
         b.locked = tabID == nil
         b.buyable = b.locked and firstLocked and canBuy
         b.cost = cost
