@@ -165,6 +165,53 @@ end
 
 UI.On("ThemeChanged", Theme.Refresh)
 
+-- Abfrage /frunen: welche Forever-Fenster haben die Runen-Optik noch NICHT? Geprüft werden alle Rahmen, die es
+-- gerade gibt (viele Fenster entstehen erst beim ersten Öffnen – also vorher öffnen): Name beginnt mit "Forever",
+-- eigene Hintergrundfläche, mindestens 180 x 120 groß und weder selbst noch über ein Elternfenster angemeldet.
+-- Andere Addons hängen eigene Prüfungen an (Theme.reporters: function(liste) – ForeverSkin meldet umgestaltete
+-- Blizzard-Fenster ohne Optik).
+Theme.reporters = {}
+function Theme.Report()
+    local missing = {}
+    local function Covered(f)
+        local p, n = f, 0
+        while p and n < 12 do
+            if SHARED.windows[p] or extra[p] then return true end
+            p = p.GetParent and p:GetParent()
+            n = n + 1
+        end
+        return false
+    end
+    local f = EnumerateFrames()
+    while f do
+        if not (f.IsForbidden and f:IsForbidden()) then
+            local name = f.GetName and f:GetName()
+            if type(name) == "string" and name:find("^Forever") and f.GetBackdrop and f:GetBackdrop()
+                and (f:GetWidth() or 0) >= 180 and (f:GetHeight() or 0) >= 120 and not Covered(f) then
+                missing[#missing + 1] = name
+            end
+        end
+        f = EnumerateFrames(f)
+    end
+    for _, fn in ipairs(Theme.reporters) do pcall(fn, missing) end
+    table.sort(missing)
+    local chat = function(text) UI.Chat("Forever Core UI", text) end
+    if #missing == 0 then
+        chat(T("Runen-Optik: alle bisher geöffneten Fenster haben sie. (Fenster, die noch nie offen waren, vorher öffnen.)",
+            "Runes design: all windows opened so far have it. (Open windows that were never shown first.)"))
+        return
+    end
+    chat(string.format(T("Runen-Optik fehlt bei %d Fenster(n):", "Runes design missing on %d window(s):"), #missing))
+    for _, name in ipairs(missing) do chat("  " .. name) end
+end
+
+SLASH_FOREVERRUNEN1 = "/frunen"
+SLASH_FOREVERRUNEN2 = "/foreverrunen"
+SlashCmdList["FOREVERRUNEN"] = function()
+    local ok, err = pcall(Theme.Report)
+    if not ok and UI.ReportError then UI.ReportError("ForeverCoreUI", "Theme/Report", err) end
+end
+
 -- Knopf links neben dem Suchfeld des Einstellungsfensters (wird von SettingsWindow aufgerufen)
 function Theme.AddButton(f)
     if f.themeBtn or not f.search then return end

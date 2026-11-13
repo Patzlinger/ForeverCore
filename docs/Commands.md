@@ -13,6 +13,7 @@ bekommt.** Neue Befehle hier eintragen (keine Doppelungen!).
 | Befehl | Addon |
 |---|---|
 | /forever, /fhub, /fmove; /forever profile, export, import, options, reset, leistung, einrichtung (setup) | ForeverHub |
+| /frunen, /foreverrunen | ForeverCoreUI (Theme.lua: listet Fenster, denen die Runen-Optik noch fehlt) |
 | /ff, /foreverframes | ForeverFrames |
 | /fu, /foreverunits | ForeverUnits |
 | /fcast, /forevercast | ForeverCast |

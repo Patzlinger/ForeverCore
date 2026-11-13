@@ -271,6 +271,26 @@ local function ThemeColors()
 end
 ns.ThemeColors = ThemeColors
 
+-- kleine flache Knöpfe (Einklapp-Pfeile an Taschen-, Berufe- und Gruppenleiste): Fläche und Rand je nach Design
+local flatButtons = {}
+local function ThemeButton(frame)
+    local tc = ThemeColors()
+    if tc then
+        frame:SetBackdropColor(tc.top[1], tc.top[2], tc.top[3], 1)
+        frame:SetBackdropBorderColor(tc.gold[1], tc.gold[2], tc.gold[3], 0.6)
+    else
+        frame:SetBackdropColor(unpack(COLOR.button))
+        frame:SetBackdropBorderColor(unpack(COLOR.border))
+    end
+end
+local function AddFlatButton(frame)
+    flatButtons[#flatButtons + 1] = frame
+    ThemeButton(frame)
+end
+function ns.ApplyButtonTheme()
+    for _, frame in ipairs(flatButtons) do ThemeButton(frame) end
+end
+
 -- Im Runen-Design: gewählter Knopf-Stil mit goldenem Rand und dunkelblauer Fläche (Maße und Verhalten bleiben)
 local runeSkins = {}
 local function GetSkin()
@@ -2800,9 +2820,10 @@ function ns.UpdateBagToggle(def, cfg, holder)
             tip:Show()
         end)
         toggle:SetScript("OnLeave", function(self)
-            self:SetBackdropBorderColor(unpack(COLOR.border))
+            ThemeButton(self)
             ns.Style.GetTooltip():Hide()
         end)
+        AddFlatButton(toggle)
         holder.fbBagToggle = toggle
     end
     -- Pfeil zeigt in die Richtung, in die sich die Taschen öffnen bzw. schließen
@@ -3334,9 +3355,10 @@ function ns.UpdateCollapseArrow(def, cfg, holder)
             tip:Show()
         end)
         arrow:SetScript("OnLeave", function(self)
-            self:SetBackdropBorderColor(unpack(COLOR.border))
+            ThemeButton(self)
             ns.Style.GetTooltip():Hide()
         end)
+        AddFlatButton(arrow)
         holder.fbCollapseArrow = arrow
     end
     -- Seite des Pfeils: im Menü wählbar (arrowSide); "AUTO" = Innenseite, also die Seite zur Bildschirmmitte hin
@@ -3534,6 +3556,7 @@ do
         hubUI.On("ThemeChanged", function()
             if ns.RequestLayout then pcall(ns.RequestLayout) end
             if ns.ApplyStatusTheme then pcall(ns.ApplyStatusTheme) end
+            if ns.ApplyButtonTheme then pcall(ns.ApplyButtonTheme) end
         end)
     end
 end

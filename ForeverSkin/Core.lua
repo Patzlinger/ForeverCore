@@ -533,6 +533,26 @@ function ns.SkinWindow(frame, keep, light)
     end
 end
 
+-- Abfrage /frunen (ForeverCoreUI/Theme.lua): umgestaltete Blizzard-Flächen ab Fenstergröße, die die Runen-Optik
+-- noch nicht haben (z. B. Fenster, die nur über ns.Flat statt ns.SkinWindow gestaltet sind)
+if UI.Theme and UI.Theme.reporters then
+    table.insert(UI.Theme.reporters, function(list)
+        for frame, look in pairs(looks) do
+            if look.fill and not look.themed and frame.GetWidth and not (frame.IsForbidden and frame:IsForbidden())
+                and (frame:GetWidth() or 0) >= 180 and (frame:GetHeight() or 0) >= 120 then
+                -- (Innenflächen eines Fensters mit Optik zählen nicht: nur, wenn kein Elternrahmen sie hat)
+                local parent, covered, n = frame:GetParent(), false, 0
+                while parent and n < 12 do
+                    if looks[parent] and looks[parent].themed then covered = true break end
+                    parent = parent.GetParent and parent:GetParent()
+                    n = n + 1
+                end
+                if not covered then list[#list + 1] = "ForeverSkin: " .. (frame:GetName() or "(ohne Namen)") end
+            end
+        end
+    end)
+end
+
 -- Gliederung wie bei Blizzard, aber flach: abgesetzter Kasten für den Inhalt (wie die Abschnitts-Kästen der
 -- Menüs) und unten eine dunklere Leiste mit feiner goldener Linie für die Knöpfe. footer = Höhe der unteren Leiste.
 function ns.ContentBox(frame, footer, top, noBox)
