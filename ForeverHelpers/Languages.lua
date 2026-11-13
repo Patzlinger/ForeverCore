@@ -436,11 +436,33 @@ local function Build(browse)
     local category = browse.CategoryDropdown or browse.CategoryDropDown
     local activity = browse.ActivityDropdown or browse.ActivityDropDown
     local box = browse.ScrollBox
-    if type(box) == "table" and box.GetObjectType then
-        -- (die erste Überschrift beginnt rund 11 px unter der Oberkante der Liste: die Zeile reicht darum 8 px in
-        -- die Liste hinein und sitzt so mittig zwischen Kastenrand und Überschrift – am Bild gemessen, 2026-11-13)
-        groups:SetPoint("BOTTOMLEFT", box, "TOPLEFT", 8, -1)
-        holder:SetPoint("BOTTOMRIGHT", box, "TOPRIGHT", -4, -5)
+    if type(box) == "table" and box.GetObjectType and category then
+        -- Die Liste liegt je nach Zustand unterschiedlich tief unter den Auswahlfeldern (mit gewählter Kategorie rund
+        -- 9 px tiefer) – ein fester Abstand passte immer nur in einem der beiden Zustände. Darum wird die Mitte der
+        -- freien Fläche GEMESSEN: zwischen Kastenrand (12 unter den Auswahlfeldern) und erster Überschrift (6 unter
+        -- der Oberkante der Liste); die Zeile sitzt mittig darin. Nachgemessen, solange die Seite offen ist.
+        local last
+        local function PlaceRow()
+            local top, listTop = category:GetBottom(), box:GetTop()
+            if not (top and listTop) then return end
+            local offset = math.floor(((top - 12) + (listTop - 6)) / 2 - listTop + 0.5)
+            if offset == last then return end
+            last = offset
+            groups:ClearAllPoints()
+            groups:SetPoint("LEFT", box, "TOPLEFT", 8, offset)
+            holder:ClearAllPoints()
+            holder:SetPoint("RIGHT", box, "TOPRIGHT", -4, offset)
+        end
+        groups:SetPoint("BOTTOMLEFT", box, "TOPLEFT", 8, 2) -- (bis zur ersten Messung)
+        holder:SetPoint("BOTTOMRIGHT", box, "TOPRIGHT", -4, -2)
+        local ticker = CreateFrame("Frame", nil, browse)
+        local waited = 1
+        ticker:SetScript("OnUpdate", function(_, elapsed)
+            waited = waited + elapsed
+            if waited < 0.25 then return end
+            waited = 0
+            pcall(PlaceRow)
+        end)
     else
         -- (ohne Liste: feste Lage unter den Auswahlfeldern)
         if category then
