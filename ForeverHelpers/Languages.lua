@@ -430,17 +430,27 @@ local function Build(browse)
     end)
     -- Lage in der freien Fläche: Häkchen links (bündig mit den Einträgen), Rollen-Knöpfe rechts (bündig mit deren
     -- rechter Kante), beide auf einer Höhe. Maße gegen die beiden Auswahlfelder oben gemessen.
+    -- Die Liste beginnt je nach Zustand unterschiedlich hoch (ohne gewählte Kategorie rund 10 px höher – dann
+    -- überschnitten sich Häkchen/Knöpfe mit der ersten Überschrift, 2026-11-13). Darum hängt die Zeile direkt an der
+    -- Oberkante der Liste und wandert mit ihr.
     local category = browse.CategoryDropdown or browse.CategoryDropDown
     local activity = browse.ActivityDropdown or browse.ActivityDropDown
-    if category then
-        groups:SetPoint("TOPLEFT", category, "BOTTOMLEFT", -58, -22)
+    local box = browse.ScrollBox
+    if type(box) == "table" and box.GetObjectType then
+        groups:SetPoint("BOTTOMLEFT", box, "TOPLEFT", 8, 7)
+        holder:SetPoint("BOTTOMRIGHT", box, "TOPRIGHT", -4, 3)
     else
-        groups:SetPoint("TOPLEFT", browse, "TOPLEFT", 16, -48)
-    end
-    if activity then
-        holder:SetPoint("TOPRIGHT", activity, "BOTTOMRIGHT", 60, -18)
-    else
-        holder:SetPoint("TOPRIGHT", browse, "TOPRIGHT", -30, -44)
+        -- (ohne Liste: feste Lage unter den Auswahlfeldern)
+        if category then
+            groups:SetPoint("TOPLEFT", category, "BOTTOMLEFT", -58, -22)
+        else
+            groups:SetPoint("TOPLEFT", browse, "TOPLEFT", 16, -48)
+        end
+        if activity then
+            holder:SetPoint("TOPRIGHT", activity, "BOTTOMRIGHT", 60, -18)
+        else
+            holder:SetPoint("TOPRIGHT", browse, "TOPRIGHT", -30, -44)
+        end
     end
     groups:SetChecked(not GroupsHidden())
     browse:HookScript("OnShow", function() groups:SetChecked(not GroupsHidden()) end)
