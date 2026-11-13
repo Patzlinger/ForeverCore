@@ -73,7 +73,9 @@ Regeländerungen immer hier bzw. in `docs/` eintragen, committen und pushen (nic
 
 ## 6. Design und Sprache
 **Vor neuen/umgebauten Fenstern: [docs/Design.md](docs/Design.md); vor Einstellungsfenstern zusätzlich [docs/Menues.md](docs/Menues.md); vor neuen ForeverSkin-Fenstern [docs/Fenster-Stil.md](docs/Fenster-Stil.md) (beim ersten Versuch anwenden).**
-- Flacher dunkler Stil aus ForeverQuests; nur `UI.COLOR` (Gold = einzige Akzentfarbe), nie aus einem Addon verändern. Keine
+- Flacher dunkler Stil aus ForeverQuests; nur `UI.COLOR` (Gold = einzige Akzentfarbe), nie aus einem Addon verändern
+  (einzige Ausnahme: der Hub selbst stellt die Tabelle im Runen-Design beim Laden auf Blautöne um – ForeverCoreUI/Theme.lua;
+  darum Farben IMMER aus `UI.COLOR` lesen, nie feste Grautöne eintragen, sonst fehlt dem Teil der Runen-Look). Keine
   dritten Stile. Einstellungen = Seite im zentralen Fenster (`UI.SettingsPanel`, 176 + 720 × 832). Fenster mit
   `UI.RegisterWindow` anmelden, nicht per `SetFrameLevel` festnageln. Umbau bestehender Fenster = 1:1, nie kleiner als vorher.
 - **Jede sichtbare Zeichenkette zweisprachig (Deutsch + Englisch)**; Sprache nur über `UI.GetLanguage()`/`UI.T`, nicht

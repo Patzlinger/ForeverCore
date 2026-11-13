@@ -24,6 +24,36 @@ local RUNES = "Interface\\AddOns\\" .. tostring(select(1, ...) or "ForeverCoreUI
 local Theme = {}
 UI.Theme = Theme
 
+---------------------------------------------------------------------------
+-- EINE Basis für alle Forever-Addons: Alle Addons holen ihre Grundfarben aus UI.COLOR (Fenster, Kästen, Knöpfe,
+-- Eingabefelder, Tooltips, Minimap, Quest-Tracker, Helfer …). Ist das Runen-Design an, stellt der Hub genau diese
+-- Tabelle beim Laden auf Blautöne um – BEVOR die anderen Addons laden (sie hängen alle von ForeverCoreUI ab). Damit
+-- bekommen alle Addons den Look ohne eigenen Code. Gold (accent) bleibt. Weil die Farben beim Aufbau der Rahmen
+-- gelesen werden, wirkt das Umschalten vollständig erst nach dem Neuladen (der Design-Knopf lädt darum neu).
+-- (Die Regel "UI.COLOR nie aus einem Addon verändern" gilt weiter – das hier ist der Hub selbst.)
+---------------------------------------------------------------------------
+local RUNE_COLOR = {
+    background = { 0.055, 0.080, 0.155, 0.97 },
+    header = { 0.070, 0.100, 0.190, 1 },
+    panel = { 0.075, 0.105, 0.195, 0.95 },
+    border = { 0.20, 0.25, 0.38, 1 },
+    input = { 0.035, 0.050, 0.110, 1 },
+    button = { 0.105, 0.145, 0.255, 1 },
+    buttonHover = { 0.150, 0.200, 0.330, 1 },
+}
+local colorsSwapped = false
+local function SwapColors()
+    if colorsSwapped then return end
+    colorsSwapped = true
+    for key, c in pairs(RUNE_COLOR) do
+        local target = UI.COLOR[key]
+        if type(target) == "table" then
+            for i = 1, 4 do target[i] = c[i] end -- (dieselbe Tabelle behalten: Addons halten Verweise darauf)
+        end
+    end
+end
+Theme.RUNE_COLOR = RUNE_COLOR
+
 -- Gemeinsame Grundlage für ALLE Forever-Fenster (2026-11-13): außer den beim Hub angemeldeten Fenstern
 -- (UI.RegisterWindow) können sich weitere Rahmen anmelden – Theme.Register(frame, opts) –, z. B. die von ForeverSkin
 -- umgestalteten Blizzard-Fenster. Zustand je Fenster steht in eigenen (schwachen) Tabellen, NICHT im Rahmen selbst:
@@ -222,13 +252,15 @@ function Theme.AddButton(f)
         Theme.Set(not Theme.IsOn())
         UI.Fire("ThemeChanged")
         self:SetText(Label())
+        -- die Grundfarben aller Addons (UI.COLOR) werden beim Laden gesetzt: vollständig erst nach dem Neuladen
+        ReloadUI()
     end)
     btn:SetPoint("RIGHT", f.search, "LEFT", -6, 0)
     btn:HookScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
         GameTooltip:SetText(T("Design (Prototyp)", "Design (prototype)"))
-        GameTooltip:AddLine(T("Wechselt zwischen dem flachen Standard-Stil und dem Runen-Design (dunkles Blau, Gold).",
-            "Switches between the flat default style and the runes design (dark blue, gold)."), 1, 1, 1, true)
+        GameTooltip:AddLine(T("Wechselt zwischen dem flachen Standard-Stil und dem Runen-Design (dunkles Blau, Gold) – für alle Forever-Addons. Die Oberfläche wird dafür neu geladen.",
+            "Switches between the flat default style and the runes design (dark blue, gold) – for all Forever addons. The interface reloads for this."), 1, 1, 1, true)
         GameTooltip:Show()
     end)
     btn:HookScript("OnLeave", function() GameTooltip:Hide() end)
@@ -238,10 +270,17 @@ function Theme.AddButton(f)
     f.themeBtn = btn
 end
 
--- beim Laden: schon vorhandene Fenster (Einstellung wird erst mit den gespeicherten Werten bekannt)
+-- beim Laden: sobald die gespeicherten Einstellungen da sind (ADDON_LOADED dieses Addons – vor allen anderen
+-- Forever-Addons) die Grundfarben umstellen; nach dem Anmelden die schon vorhandenen Fenster einkleiden
+local ADDON = select(1, ...) or "ForeverCoreUI"
 local boot = CreateFrame("Frame")
+boot:RegisterEvent("ADDON_LOADED")
 boot:RegisterEvent("PLAYER_LOGIN")
-boot:SetScript("OnEvent", function(self)
+boot:SetScript("OnEvent", function(self, event, name)
+    if event == "ADDON_LOADED" then
+        if name == ADDON and Theme.IsOn() then SwapColors() end
+        return
+    end
     self:UnregisterAllEvents()
     Theme.Refresh()
 end)
