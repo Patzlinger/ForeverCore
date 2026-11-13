@@ -217,6 +217,25 @@ function ns.HideTextures(frame, keep)
     end
 end
 
+-- Runen-Optik: Innenkästen (Flächen in der Kasten-Farbe C.panel – Seiten des Charakterfensters, Listen, Insets)
+-- liegen in Unter-Rahmen ÜBER dem Verlauf des Fensters und deckten ihn grau zu. Im Runen-Design werden sie darum
+-- durchscheinend; im Standard-Design sind sie wie gewohnt.
+local panelFills = setmetatable({}, { __mode = "k" })
+local PANEL_THEME_ALPHA = 0.35
+local function ThemePanel(texture)
+    local on = UI.Theme and UI.Theme.IsOn and UI.Theme.IsOn()
+    texture:SetVertexColor(C.panel[1], C.panel[2], C.panel[3], on and PANEL_THEME_ALPHA or (C.panel[4] or 1))
+end
+function ns.PanelFill(texture)
+    panelFills[texture] = true
+    ThemePanel(texture)
+end
+if UI.On then
+    UI.On("ThemeChanged", function()
+        for texture in pairs(panelFills) do pcall(ThemePanel, texture) end
+    end)
+end
+
 -- flache Fläche mit feinem Rand als Texturen IM Rahmen (Ebene BACKGROUND/BORDER, also unter Blizzards Texten)
 function ns.Flat(frame, fill, inset)
     if not frame or not frame.CreateTexture then return end
@@ -244,6 +263,7 @@ function ns.Flat(frame, fill, inset)
     f:SetPoint("TOPLEFT", l, -t)
     f:SetPoint("BOTTOMRIGHT", -r, b)
     f:SetVertexColor(fill[1], fill[2], fill[3], fill[4] or 1)
+    if fill == C.panel then ns.PanelFill(f) else panelFills[f] = nil end -- (Runen-Optik: Kästen durchscheinend)
     for i, p in ipairs({ { "TOPLEFT", "TOPRIGHT", 1 }, { "BOTTOMLEFT", "BOTTOMRIGHT", 1 },
         { "TOPLEFT", "BOTTOMLEFT", nil }, { "TOPRIGHT", "BOTTOMRIGHT", nil } }) do
         e[i]:ClearAllPoints()
