@@ -1,4 +1,4 @@
-# Prüflauf vor jedem Commit: findet die typischen Fehler, bevor sie im Spiel auffallen.
+﻿# Prüflauf vor jedem Commit: findet die typischen Fehler, bevor sie im Spiel auffallen.
 #   pwsh -File tools\check.ps1                 -> nur geänderte Addons (gegenüber dem letzten Commit)
 #   pwsh -File tools\check.ps1 -All            -> alle Addons
 #   pwsh -File tools\check.ps1 ForeverPlates   -> nur diese Addons

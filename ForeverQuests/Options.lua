@@ -5,7 +5,7 @@ local options
 local controls = {}
 
 local PANEL_WIDTH = 322
-local PANEL_HEIGHT = 394
+local PANEL_HEIGHT = 442
 local DROPDOWN_X = 150
 
 ---------------------------------------------------------------------------
@@ -169,7 +169,7 @@ end
 local function CreateOptions()
     -- Seite im zentralen Einstellungsfenster von Forever Core UI (verhält sich wie das bisherige eigene Fenster)
     local HUB = _G.ForeverHub.UI
-    options = HUB.SettingsPanel("ForeverQuestsOptions", L("OPT_TITLE"), 680, 644,
+    options = HUB.SettingsPanel("ForeverQuestsOptions", L("OPT_TITLE"), 680, 692,
         { key = "ForeverQuests", group = HUB.SETTINGS_GROUPS.nav, label = HUB.T("Quest- und Dungeontracker", "Quest & dungeon tracker"), kind = "menu" })
     options.subText:SetText(L("ADDON_NAME"))
     -- Beim Schließen des Menüs wird der Tracker wieder gesperrt
@@ -207,6 +207,9 @@ local function CreateOptions()
     CreateSelector(display, L("OPT_REWARDS"), 14, -300, 158, RewardChoices(), "rewardHighlight")
     -- Stufenbereich hinter dem Gebietsnamen auf der Weltkarte (ZoneLevels.lua)
     CreateSettingCheckbox(display, L("OPT_ZONE_LEVELS"), 14, -342, "zoneLevels")
+    -- Automatisch annehmen/abgeben (AutoQuest.lua): dieselben Schalter wie im Feld am Quest-Dialog, hier zum Ausschalten
+    CreateSettingCheckbox(display, L("AUTO_ACCEPT") .. " (" .. L("AUTO_TITLE") .. ")", 14, -366, "autoAccept")
+    CreateSettingCheckbox(display, L("AUTO_TURNIN") .. " (" .. L("AUTO_TITLE") .. ")", 14, -390, "autoTurnIn")
     local rewardHint = display:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     rewardHint:SetPoint("TOPLEFT", 14, -322)
     rewardHint:SetWidth(PANEL_WIDTH - 28)

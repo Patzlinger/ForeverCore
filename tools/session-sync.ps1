@@ -1,4 +1,4 @@
-# Wird beim Start einer Claude-Sitzung aufgerufen (SessionStart-Hook): holt den neuen Stand von GitHub,
+﻿# Wird beim Start einer Claude-Sitzung aufgerufen (SessionStart-Hook): holt den neuen Stand von GitHub,
 # wechselt auf den Arbeitszweig "development" (wenn nichts Uncommittetes im Weg ist) und haengt eigene Commits
 # per Rebase hinter die neuen des anderen. Meldet in einer Zeile, wie der lokale Stand zu GitHub steht.
 # Ablauf und Regeln: CLAUDE.md, Abschnitt 15.

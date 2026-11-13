@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverQuests: "Accept quests" and "Turn in quests" (automatic) can now also be switched on and off in the settings, not only in the small panel next to the quest window.
+
 ## 0.544b – 2026-11-13
 
 - **Important – compatibility with SkillUp Forever (and other addons by cjber):** our base addon folder was called `ForeverCore`, the same name as cjber's unrelated library, so installing one overwrote the other. It is now called **`ForeverCoreUI`**, so both suites can be installed side by side. Our addons are unchanged otherwise. **When updating by hand, delete the old `ForeverCore` folder from our suite first** (the CurseForge app does this for you; do NOT delete it if you use SkillUp Forever – that one belongs to cjber). Restart the game completely once (not just /reload). Note: the hub's own settings (player name style, window sizes, minimap button position) start fresh once; the settings of all other addons are kept.
