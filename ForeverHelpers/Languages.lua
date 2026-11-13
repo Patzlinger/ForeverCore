@@ -116,9 +116,15 @@ end
 -- Rollenfilter (nur Anzeige)
 ---------------------------------------------------------------------------
 local ROLES = {
-    { key = "tank", de = "Tank", en = "Tank" },
-    { key = "healer", de = "Heiler", en = "Healer" },
-    { key = "dps", de = "Schaden", en = "Damage" },
+    { key = "tank", de = "Tank", en = "Tank", atlas = "groupfinder-icon-role-micro-tank" },
+    { key = "healer", de = "Heiler", en = "Healer", atlas = "groupfinder-icon-role-micro-heal" },
+    { key = "dps", de = "Schaden", en = "Damage", atlas = "groupfinder-icon-role-micro-dps" },
+}
+-- Spieler ohne Rollenangabe: welche Rollen kann die Klasse überhaupt (Forever: klassische Klassen)?
+-- Schaden können alle.
+local CLASS_ROLES = {
+    WARRIOR = { tank = true }, PALADIN = { tank = true, healer = true }, DRUID = { tank = true, healer = true },
+    PRIEST = { healer = true }, SHAMAN = { healer = true },
 }
 local function RoleDB()
     if type(_G.ForeverHelpersDB) ~= "table" then _G.ForeverHelpersDB = {} end
@@ -141,8 +147,16 @@ local function Matches(id)
     if info.numMembers ~= 1 then return true end
     local wanted = RoleDB()
     local ok, member = pcall(C_LFGList.GetSearchResultPlayerInfo, id, 1)
-    local roles = ok and type(member) == "table" and member.lfgRoles
-    if type(roles) ~= "table" or not (roles.tank or roles.healer or roles.dps) then return true end
+    if not (ok and type(member) == "table") then return true end
+    local roles = member.lfgRoles
+    if type(roles) ~= "table" or not (roles.tank or roles.healer or roles.dps) then
+        -- keine Rolle angegeben (Blizzard zeigt dann kein "Rollen:"): nach der Klasse – ein Schurke fliegt beim
+        -- Heiler-Filter raus, ein Priester bleibt. Klasse unbekannt: raus (gewünscht: nur passende Spieler).
+        local class = member.classFilename or member.class
+        if type(class) ~= "string" then return false end
+        roles = { tank = false, healer = false, dps = true }
+        for key in pairs(CLASS_ROLES[class:upper()] or {}) do roles[key] = true end
+    end
     for _, r in ipairs(ROLES) do
         if wanted[r.key] and roles[r.key] then return true end
     end
@@ -196,18 +210,19 @@ local function Label()
     for _, lang in ipairs(all) do
         if cur[lang] then on[#on + 1] = Short(lang) end
     end
-    local text
-    if #on == 0 or #on == #all then text = T("alle", "all") else text = table.concat(on, ", ") end
-    return T("Sprache: ", "Language: ") .. text
+    -- (kurz, damit es in die halbe Lücke passt: "Alle Spr." bzw. Kürzel "DE,EN")
+    if #on == 0 or #on == #all then return T("Alle Spr.", "All lang.") end
+    return table.concat(on, ",")
 end
 
+-- kurz: "Rollen" bzw. "Rolle" mit den kleinen Rollen-Symbolen der Gruppensuche
 local function RoleLabel()
-    local on = {}
+    local icons = {}
     for _, r in ipairs(ROLES) do
-        if RoleDB()[r.key] then on[#on + 1] = T(r.de, r.en) end
+        if RoleDB()[r.key] then icons[#icons + 1] = "|A:" .. r.atlas .. ":14:14|a" end
     end
-    if #on == 0 or #on == #ROLES then return T("Rolle: alle", "Role: all") end
-    return T("Rolle: ", "Role: ") .. table.concat(on, ", ")
+    if #icons == 0 then return T("Rollen", "Roles") end
+    return T("Rolle ", "Role ") .. table.concat(icons, " ")
 end
 
 local function SetLabel(dd, text)
@@ -382,8 +397,8 @@ local function Build(browse)
         local tip = UI.GetTooltip()
         tip:SetOwner(self, "ANCHOR_TOP")
         tip:SetText(T("Nach Rolle filtern", "Filter by role"), 1, 0.82, 0)
-        tip:AddLine(T("Zeigt nur einzelne Spieler, die eine gewählte Rolle anbieten. Gruppen bleiben immer in der Liste.",
-            "Only shows single players who offer a selected role. Groups always stay in the list."),
+        tip:AddLine(T("Zeigt nur einzelne Spieler, die eine gewählte Rolle anbieten (ohne Angabe: wenn ihre Klasse die Rolle kann). Gruppen bleiben immer in der Liste.",
+            "Only shows single players who offer a selected role (if none is set: if their class can fill it). Groups always stay in the list."),
             1, 1, 1, true)
         tip:Show()
     end)
