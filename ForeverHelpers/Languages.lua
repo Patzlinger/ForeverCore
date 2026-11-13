@@ -12,6 +12,15 @@
 -- blockiert: ADDON_ACTION_BLOCKED, 2026-11-13). Darum keine Hooks auf Blizzards Suche, und nach einem
 -- Kategorie-Wechsel (Blizzard sucht dann selbst, ohne Sprachen) einmal Aktualisieren.
 -- Die Sprachauswahl speichert das Spiel selbst (Account). Blizzards Rahmen bleiben unberührt (Taint-Regel).
+--
+-- Rollenfilter (Auswahlfeld "Rolle" rechts daneben): Forever nimmt den erweiterten Filter der Suche (needsTank …)
+-- zwar an, wertet ihn aber NICHT aus (im Spiel gemessen 2026-11-13: 17 ohne, 20 mit Heiler-Filter). Darum filtert
+-- das Addon die Anzeige selbst und dunkelt unpassende Einträge ab (nur SetAlpha auf Blizzards Zeilen, die Liste
+-- selbst bleibt unberührt). Gelesen wird genau das, was Blizzards Liste für die Rollen-Symbole nutzt
+-- (Blizzard_LFGVanilla_Browse.lua):
+--   einzelner Spieler: C_LFGList.GetSearchResultPlayerInfo(id, 1).lfgRoles.tank/.healer/.dps -> bietet die Rolle an
+--   Gruppe:            C_LFGList.GetSearchResultMemberCounts(id).TANK_/HEALER_/DAMAGER_REMAINING > 0 -> sucht sie
+-- Unbekanntes bleibt hell. Wirkt sofort (keine neue Suche nötig); Auswahl in ForeverHelpersDB.lfg.roles.
 local UI = ForeverHub.UI
 local T = UI.T
 
@@ -98,9 +107,76 @@ local function Search()
 end
 
 ---------------------------------------------------------------------------
--- Auswahlfeld
+-- Rollenfilter (nur Anzeige)
 ---------------------------------------------------------------------------
-local dropdown
+local ROLES = {
+    { key = "tank", remaining = "TANK_REMAINING", de = "Tank", en = "Tank" },
+    { key = "healer", remaining = "HEALER_REMAINING", de = "Heiler", en = "Healer" },
+    { key = "dps", remaining = "DAMAGER_REMAINING", de = "Schaden", en = "Damage" },
+}
+local DIM = 0.25 -- Deckkraft unpassender Einträge
+
+local function RoleDB()
+    if type(_G.ForeverHelpersDB) ~= "table" then _G.ForeverHelpersDB = {} end
+    local db = _G.ForeverHelpersDB
+    if type(db.lfg) ~= "table" then db.lfg = {} end
+    if type(db.lfg.roles) ~= "table" then db.lfg.roles = {} end
+    return db.lfg.roles
+end
+
+local function RolesActive()
+    for _, r in ipairs(ROLES) do if RoleDB()[r.key] then return true end end
+    return false
+end
+
+-- passt der Eintrag zur Rollenauswahl? (true = hell lassen; auch, wenn nichts zu lesen ist)
+local function Matches(id)
+    local okInfo, info = pcall(C_LFGList.GetSearchResultInfo, id)
+    if not (okInfo and type(info) == "table") then return true end
+    local wanted = RoleDB()
+    if info.numMembers == 1 then
+        local ok, member = pcall(C_LFGList.GetSearchResultPlayerInfo, id, 1)
+        local roles = ok and type(member) == "table" and member.lfgRoles
+        if type(roles) ~= "table" or not (roles.tank or roles.healer or roles.dps) then return true end
+        for _, r in ipairs(ROLES) do
+            if wanted[r.key] and roles[r.key] then return true end
+        end
+        return false
+    end
+    local ok, counts = pcall(C_LFGList.GetSearchResultMemberCounts, id)
+    if not (ok and type(counts) == "table") or type(counts.TANK_REMAINING) ~= "number" then return true end
+    for _, r in ipairs(ROLES) do
+        if wanted[r.key] and (counts[r.remaining] or 0) > 0 then return true end
+    end
+    return false
+end
+
+-- alle sichtbaren Zeilen der Liste abdunkeln bzw. wieder hell (Blizzard verwendet Zeilen beim Blättern wieder –
+-- darum im Takt, solange die Seite offen ist und ein Filter gilt bzw. noch etwas abgedunkelt ist)
+local dimmed = setmetatable({}, { __mode = "k" })
+local function ApplyRoles(browse)
+    local box = browse.ScrollBox
+    if not (box and box.ForEachFrame) then return end
+    local active = RolesActive()
+    box:ForEachFrame(function(entry)
+        local id = entry.resultID
+        local match = not active or type(id) ~= "number" or Matches(id)
+        if match then
+            if dimmed[entry] then
+                dimmed[entry] = nil
+                entry:SetAlpha(1)
+            end
+        elseif not dimmed[entry] or entry:GetAlpha() > DIM + 0.01 then
+            dimmed[entry] = true
+            entry:SetAlpha(DIM)
+        end
+    end)
+end
+
+---------------------------------------------------------------------------
+-- Auswahlfelder
+---------------------------------------------------------------------------
+local dropdown, roleDropdown
 
 local function Label()
     local on, all = {}, Available()
@@ -110,14 +186,27 @@ local function Label()
     end
     local text
     if #on == 0 or #on == #all then text = T("alle", "all") else text = table.concat(on, ", ") end
-    return T("Sprachen: ", "Languages: ") .. text
+    return T("Sprache: ", "Language: ") .. text
+end
+
+local function RoleLabel()
+    local on = {}
+    for _, r in ipairs(ROLES) do
+        if RoleDB()[r.key] then on[#on + 1] = T(r.de, r.en) end
+    end
+    if #on == 0 or #on == #ROLES then return T("Rolle: alle", "Role: all") end
+    return T("Rolle: ", "Role: ") .. table.concat(on, ", ")
+end
+
+local function SetLabel(dd, text)
+    if not dd then return end
+    if dd.OverrideText then pcall(dd.OverrideText, dd, text)
+    elseif dd.SetText then pcall(dd.SetText, dd, text) end
 end
 
 local function UpdateLabel()
-    if not dropdown then return end
-    local text = Label()
-    if dropdown.OverrideText then pcall(dropdown.OverrideText, dropdown, text)
-    elseif dropdown.SetText then pcall(dropdown.SetText, dropdown, text) end
+    SetLabel(dropdown, Label())
+    SetLabel(roleDropdown, RoleLabel())
 end
 
 -- Auswahl nur speichern – gesucht wird erst beim Klick auf Aktualisieren (auf Wunsch, 2026-11-13)
@@ -157,6 +246,26 @@ local function MenuGenerator(_, root)
     root:CreateButton(T("Alle Sprachen", "All languages"), function() SetAll() end)
 end
 
+-- Rollen-Menü: ein Häkchen je Rolle, "Alle Rollen" = Filter aus. Wirkt sofort auf die Anzeige.
+local function RoleMenuGenerator(_, root)
+    root:CreateTitle(T("Einträge für diese Rolle", "Listings for this role"))
+    for _, r in ipairs(ROLES) do
+        root:CreateCheckbox(T(r.de, r.en),
+            function() return RoleDB()[r.key] and true or false end,
+            function()
+                RoleDB()[r.key] = (not RoleDB()[r.key]) or nil
+                UpdateLabel()
+                if _G.LFGBrowseFrame then pcall(ApplyRoles, _G.LFGBrowseFrame) end
+            end)
+    end
+    root:CreateDivider()
+    root:CreateButton(T("Alle Rollen", "All roles"), function()
+        for _, r in ipairs(ROLES) do RoleDB()[r.key] = nil end
+        UpdateLabel()
+        if _G.LFGBrowseFrame then pcall(ApplyRoles, _G.LFGBrowseFrame) end
+    end)
+end
+
 -- Platz unten in der Leiste: zwischen dem linken und rechten Text-Knopf ("Nachricht senden" / "Gruppeneinladung")
 local function FooterButtons(browse)
     local bottom = browse:GetBottom()
@@ -164,7 +273,7 @@ local function FooterButtons(browse)
     local found = {}
     local function Scan(frame, depth)
         for _, child in ipairs({ frame:GetChildren() }) do
-            if not (child.IsForbidden and child:IsForbidden()) and child ~= dropdown then
+            if not (child.IsForbidden and child:IsForbidden()) and child ~= dropdown and child ~= roleDropdown then
                 if child:IsObjectType("Button") then
                     local text = child.GetText and child:GetText()
                     if type(text) == "string" and text ~= "" and child:IsShown() and child:GetBottom()
@@ -183,20 +292,33 @@ local function FooterButtons(browse)
     return found[1], found[#found]
 end
 
+-- Beide Felder teilen sich die Lücke: Sprache links, Rolle rechts (je halbe Breite, 6 px Luft dazwischen)
 local placed = false
+local gap
 local function Place(browse)
     if placed or not dropdown then return end
     local left, right = FooterButtons(browse)
-    dropdown:ClearAllPoints()
+    gap = gap or CreateFrame("Frame", nil, browse)
+    gap:ClearAllPoints()
+    local height = 22
     if left and right then
         placed = true
-        dropdown:SetPoint("LEFT", left, "RIGHT", 8, 0)
-        dropdown:SetPoint("RIGHT", right, "LEFT", -8, 0)
-        dropdown:SetHeight(math.floor((left:GetHeight() or 22) + 0.5))
+        gap:SetPoint("LEFT", left, "RIGHT", 8, 0)
+        gap:SetPoint("RIGHT", right, "LEFT", -8, 0)
+        height = math.floor((left:GetHeight() or 22) + 0.5)
     else
         -- (Knöpfe noch nicht gefunden: vorerst unten mittig; beim nächsten Öffnen erneut versuchen)
-        dropdown:SetPoint("BOTTOM", browse, "BOTTOM", 0, 6)
-        dropdown:SetSize(170, 22)
+        gap:SetPoint("BOTTOM", browse, "BOTTOM", 0, 6)
+        gap:SetWidth(240)
+    end
+    gap:SetHeight(height)
+    dropdown:ClearAllPoints()
+    dropdown:SetPoint("TOPLEFT", gap, "TOPLEFT")
+    dropdown:SetPoint("BOTTOMRIGHT", gap, "BOTTOM", -3, 0)
+    if roleDropdown then
+        roleDropdown:ClearAllPoints()
+        roleDropdown:SetPoint("TOPLEFT", gap, "TOP", 3, 0)
+        roleDropdown:SetPoint("BOTTOMRIGHT", gap, "BOTTOMRIGHT")
     end
 end
 
@@ -242,6 +364,32 @@ local function Build(browse)
         tip:Show()
     end)
     dropdown:HookScript("OnLeave", function() UI.GetTooltip():Hide() end)
+    roleDropdown = CreateFrame("DropdownButton", nil, browse, "WowStyle1DropdownTemplate")
+    roleDropdown:SetupMenu(RoleMenuGenerator)
+    roleDropdown:HookScript("OnEnter", function(self)
+        local tip = UI.GetTooltip()
+        tip:SetOwner(self, "ANCHOR_TOP")
+        tip:SetText(T("Nach Rolle filtern", "Filter by role"), 1, 0.82, 0)
+        tip:AddLine(T("Einzelne Spieler bleiben hell, wenn sie eine gewählte Rolle anbieten, Gruppen, wenn ihnen eine gewählte Rolle noch fehlt. Alles andere wird abgedunkelt.",
+            "Single players stay bright if they offer a selected role, groups if they still need one. Everything else is dimmed."),
+            1, 1, 1, true)
+        tip:Show()
+    end)
+    roleDropdown:HookScript("OnLeave", function() UI.GetTooltip():Hide() end)
+    -- Rollenfilter im Takt anwenden (nur solange die Seite offen ist, die Uhr hängt an ihr)
+    local ticker = CreateFrame("Frame", nil, browse)
+    local waited = 0
+    ticker:SetScript("OnUpdate", function(self, elapsed)
+        waited = waited + elapsed
+        if waited < 0.2 then return end
+        waited = 0
+        if not RolesActive() and not next(dimmed) then return end
+        local ok, err = pcall(ApplyRoles, browse)
+        if not ok and not self.reported then
+            self.reported = true
+            if UI.ReportError then UI.ReportError("ForeverHelpers", "Languages/Roles", err) end
+        end
+    end)
     Place(browse)
     UpdateLabel()
     -- Knöpfe stehen erst nach dem ersten Öffnen fest: dann einreihen
