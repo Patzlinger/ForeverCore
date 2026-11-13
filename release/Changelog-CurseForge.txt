@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverBags: the bank window shows a small line with the value of its items: vendor price, and with Auctionator also the price of the last auction house scan. Can be switched off in the settings (Windows > Show the value of the items in the bank).
+
 - ForeverBags: a bag put into a newly bought bank bag slot is now shown in that slot and you can drag bags onto the slot (before, the slot looked empty and said you had to buy it first).
 
 - ForeverChat: the whisper sound is louder now and can be adjusted (Chat settings > Whisper sound): volume Normal to Maximum, plus optional extra sounds (Ping, Notification) on top of Blizzard's sound. It plays independently of the "Sound effects" volume slider.

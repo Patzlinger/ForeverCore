@@ -90,6 +90,7 @@ local function CreateOptions()
         if ns.LayoutBank then ns.LayoutBank() end
     end, { width = 200 })
     bankColumns.Refresh = function() bankColumns:Load(ns.db.bankColumns) end
+    Check(options, x, -344, L("OPT_BANK_VALUE"), "bankValue", function() if ns.UpdateBankValue then ns.UpdateBankValue() end end)
     controls[#controls + 1] = bankColumns
 
     -- rechte Spalte: Aussehen

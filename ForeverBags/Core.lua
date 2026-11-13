@@ -22,6 +22,7 @@ ns.defaults = {
     reagentColor = { 0.25, 0.75, 0.55 }, -- Rand der Plätze in der Reagenzientasche
     replaceBank = true,     -- eigenes Bankfenster beim Bankier
     bankColumns = 14,
+    bankValue = true,       -- Wert der Gegenstände (Händler / Auktionspreis) in der Bank-Fußzeile
     replaceGuildBank = true, -- eigenes Gildenbankfenster
     tooltipCounts = true,   -- im Gegenstands-Tooltip: wie viele jeder Charakter hat
     currencies = {},        -- [Währungs-ID] = true: in der Fußzeile zeigen (Rechtsklick auf die Fußzeile)

@@ -8,7 +8,7 @@ local addonName, ns = ...
 local L = ns.L
 local UI = ForeverHub.UI
 
-local PAD, HEADER, TOOLBAR, FOOTER = 8, 27, 28, 30 -- (Fußzeile mit Platz für "Kaufen" in voller Höhe)
+local PAD, HEADER, TOOLBAR, FOOTER = 8, 27, 28, 48 -- (Fußzeile: Wertzeile, darunter "… frei" und "Kaufen" in voller Höhe)
 local BAGBAR, BAGSLOT = 48, 30 -- Zeile "Taschenplätze" unter den Bankplätzen (Höhe samt Luft, Kantenlänge eines Platzes)
 local DEFAULT_POS = "CENTER" -- noch nie verschoben: Bildschirmmitte; danach die gemerkte Lage (Ziehen speichert sie)
 
@@ -82,6 +82,7 @@ function ns.LayoutBank()
         bank:SetSize(math.max(width + 2 * PAD, 330), HEADER + TOOLBAR + height + BAGBAR + FOOTER + 2 * PAD)
     end
     freeText:SetText(L("FREE_SLOTS", total - used, total))
+    if ns.UpdateBankValue then ns.UpdateBankValue() end
     if ns.UpdateBankPurchase then ns.UpdateBankPurchase() end
     if ns.UpdateBankBagBar then ns.UpdateBankBagBar() end
 end
@@ -196,6 +197,58 @@ local function NextPurchase()
 end
 
 ns.BankMoney = Money
+
+---------------------------------------------------------------------------
+-- Wert der Gegenstände in der Bank: Händlerpreis (Spiel) und – wenn Auctionator läuft – Preis des letzten
+-- Auktionshaus-Scans, jeweils mal Stapelgröße. Eine Zeile in der Fußzeile. Wird gebündelt berechnet (nicht bei jedem
+-- Aktualisieren), und bei noch nicht geladenen Gegenstandsdaten nach kurzer Zeit wiederholt.
+---------------------------------------------------------------------------
+local valueText, valuePending, valueRetries = nil, false, 0
+
+local function AuctionPrice(itemID)
+    local api = _G.Auctionator and _G.Auctionator.API and _G.Auctionator.API.v1
+    if not (api and api.GetAuctionPriceByItemID) then return nil end
+    local ok, price = pcall(api.GetAuctionPriceByItemID, "ForeverBags", itemID)
+    if ok and type(price) == "number" and price > 0 then return price end
+end
+
+local function ComputeBankValue()
+    valuePending = false
+    if not valueText then return end
+    if not (ns.db and ns.db.bankValue) or not bank or not bank:IsShown() then
+        valueText:SetText("")
+        return
+    end
+    local vendor, auction, hasAH, missing = 0, 0, false, false
+    for _, bag in ipairs(ns.BankIDs()) do
+        for slot = 1, (C_Container.GetContainerNumSlots(bag) or 0) do
+            local info = C_Container.GetContainerItemInfo(bag, slot)
+            local id = info and info.itemID
+            if type(id) == "number" then
+                local count = info.stackCount or 1
+                local _, _, _, _, _, _, _, _, _, _, sell = C_Item.GetItemInfo(id)
+                if sell then vendor = vendor + sell * count else missing = true end
+                local price = AuctionPrice(id)
+                if price then auction, hasAH = auction + price * count, true end
+            end
+        end
+    end
+    local text = L("VALUE_LINE", Money(vendor))
+    if hasAH then text = text .. L("VALUE_AH", Money(auction)) end
+    valueText:SetText("|cffbbbbbb" .. text .. "|r")
+    -- Gegenstandsdaten fehlen noch (Server): in 2 Sekunden erneut, höchstens 5-mal
+    if missing and valueRetries < 5 then
+        valueRetries = valueRetries + 1
+        C_Timer.After(2, function() ns.UpdateBankValue(true) end)
+    end
+end
+
+function ns.UpdateBankValue(retry)
+    if not retry then valueRetries = 0 end
+    if valuePending then return end
+    valuePending = true
+    C_Timer.After(0.4, ComputeBankValue)
+end
 
 -- nächsten Platz kaufen: C_Bank.PurchaseBankTab ist geschützt – ein Addon darf sie nicht selbst aufrufen (auch nicht aus
 -- einem eigenen Rückfrage-Fenster: ADDON_ACTION_FORBIDDEN, Fehler vom 2026-11-13). Wie Baganator: ein durchsichtiger
@@ -432,6 +485,8 @@ local function CreateBank()
     content:SetSize(1, 1)
     freeText = bank:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     freeText:SetPoint("BOTTOMLEFT", PAD, PAD + 2)
+    valueText = bank:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    valueText:SetPoint("BOTTOMLEFT", PAD, PAD + 22)
 
     -- Taschenleiste unter den Bankplätzen: "Taschenplätze:" und die Plätze, rechts daneben Preis und "Kaufen"
     bagBar = CreateFrame("Frame", nil, bank)
