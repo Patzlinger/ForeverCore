@@ -52,6 +52,31 @@ local function Activities(browse, category)
     return nil
 end
 
+-- Schutzfläche während unserer Suche: das Spiel verwirft die alten Treffer sofort, Blizzards Liste zeigt sie aber
+-- bis zu den neuen Ergebnissen weiter (Blizzard leert sie nur bei der EIGENEN Suche). Fährt die Maus dann über
+-- einen alten Eintrag, wirft Blizzards Tooltip einen Fehler (searchResultInfo nil, 2026-11-13). Eine unsichtbare,
+-- mausfangende Fläche über dem Fenster verhindert das – bis die Ergebnisse da sind, höchstens 3 s. Blizzards
+-- Liste selbst bleibt unberührt.
+local shield
+local function Shield(browse)
+    if not shield then
+        shield = CreateFrame("Frame", nil, browse)
+        shield:SetAllPoints(browse)
+        shield:SetFrameLevel(browse:GetFrameLevel() + 50)
+        shield:EnableMouse(true)
+        shield:Hide()
+        for _, event in ipairs({ "LFG_LIST_SEARCH_RESULTS_RECEIVED", "LFG_LIST_SEARCH_FAILED" }) do
+            pcall(shield.RegisterEvent, shield, event)
+        end
+        shield:SetScript("OnEvent", function(self) self:Hide() end)
+        browse:HookScript("OnHide", function() shield:Hide() end)
+    end
+    shield:Show()
+    local token = {}
+    shield.token = token
+    C_Timer.After(3, function() if shield.token == token then shield:Hide() end end)
+end
+
 -- Suche mit den gewählten Sprachen in der oben eingestellten Kategorie. Nur aus einem eigenen Klick aufrufen.
 local function Search()
     local browse = _G.LFGBrowseFrame
@@ -64,7 +89,11 @@ local function Search()
         return
     end
     local searched, err = pcall(C_LFGList.Search, category, 0, 0, Current(), false, nil, Activities(browse, category))
-    if not searched and UI.ReportError then UI.ReportError("ForeverHelpers", "Languages/Search", err) end
+    if searched then
+        pcall(Shield, browse)
+    elseif UI.ReportError then
+        UI.ReportError("ForeverHelpers", "Languages/Search", err)
+    end
 end
 
 local button, popup, checks = nil, nil, {}
