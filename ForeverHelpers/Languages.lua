@@ -19,8 +19,7 @@
 -- selbst bleibt unberührt). Gelesen wird genau das, was Blizzards Liste für die Rollen-Symbole nutzt
 -- (Blizzard_LFGVanilla_Browse.lua):
 --   einzelner Spieler: C_LFGList.GetSearchResultPlayerInfo(id, 1).lfgRoles.tank/.healer/.dps -> bietet die Rolle an
---   Gruppe:            C_LFGList.GetSearchResultMemberCounts(id).TANK_/HEALER_/DAMAGER_REMAINING > 0 -> sucht sie
--- Unbekanntes bleibt hell. Wirkt sofort (keine neue Suche nötig); Auswahl in ForeverHelpersDB.lfg.roles.
+-- Gruppen bleiben immer hell (gewünscht: der Filter gilt nur für einzelne Spieler). Unbekanntes bleibt hell. Wirkt sofort (keine neue Suche nötig); Auswahl in ForeverHelpersDB.lfg.roles.
 local UI = ForeverHub.UI
 local T = UI.T
 
@@ -110,9 +109,9 @@ end
 -- Rollenfilter (nur Anzeige)
 ---------------------------------------------------------------------------
 local ROLES = {
-    { key = "tank", remaining = "TANK_REMAINING", de = "Tank", en = "Tank" },
-    { key = "healer", remaining = "HEALER_REMAINING", de = "Heiler", en = "Healer" },
-    { key = "dps", remaining = "DAMAGER_REMAINING", de = "Schaden", en = "Damage" },
+    { key = "tank", de = "Tank", en = "Tank" },
+    { key = "healer", de = "Heiler", en = "Healer" },
+    { key = "dps", de = "Schaden", en = "Damage" },
 }
 local DIM = 0.25 -- Deckkraft unpassender Einträge
 
@@ -133,20 +132,14 @@ end
 local function Matches(id)
     local okInfo, info = pcall(C_LFGList.GetSearchResultInfo, id)
     if not (okInfo and type(info) == "table") then return true end
+    -- Gruppen bleiben außen vor (immer hell) – der Filter gilt nur für einzelne Spieler (Wunsch von flowfy, 2026-11-13)
+    if info.numMembers ~= 1 then return true end
     local wanted = RoleDB()
-    if info.numMembers == 1 then
-        local ok, member = pcall(C_LFGList.GetSearchResultPlayerInfo, id, 1)
-        local roles = ok and type(member) == "table" and member.lfgRoles
-        if type(roles) ~= "table" or not (roles.tank or roles.healer or roles.dps) then return true end
-        for _, r in ipairs(ROLES) do
-            if wanted[r.key] and roles[r.key] then return true end
-        end
-        return false
-    end
-    local ok, counts = pcall(C_LFGList.GetSearchResultMemberCounts, id)
-    if not (ok and type(counts) == "table") or type(counts.TANK_REMAINING) ~= "number" then return true end
+    local ok, member = pcall(C_LFGList.GetSearchResultPlayerInfo, id, 1)
+    local roles = ok and type(member) == "table" and member.lfgRoles
+    if type(roles) ~= "table" or not (roles.tank or roles.healer or roles.dps) then return true end
     for _, r in ipairs(ROLES) do
-        if wanted[r.key] and (counts[r.remaining] or 0) > 0 then return true end
+        if wanted[r.key] and roles[r.key] then return true end
     end
     return false
 end
@@ -248,7 +241,7 @@ end
 
 -- Rollen-Menü: ein Häkchen je Rolle, "Alle Rollen" = Filter aus. Wirkt sofort auf die Anzeige.
 local function RoleMenuGenerator(_, root)
-    root:CreateTitle(T("Einträge für diese Rolle", "Listings for this role"))
+    root:CreateTitle(T("Spieler mit dieser Rolle", "Players with this role"))
     for _, r in ipairs(ROLES) do
         root:CreateCheckbox(T(r.de, r.en),
             function() return RoleDB()[r.key] and true or false end,
@@ -370,8 +363,8 @@ local function Build(browse)
         local tip = UI.GetTooltip()
         tip:SetOwner(self, "ANCHOR_TOP")
         tip:SetText(T("Nach Rolle filtern", "Filter by role"), 1, 0.82, 0)
-        tip:AddLine(T("Einzelne Spieler bleiben hell, wenn sie eine gewählte Rolle anbieten, Gruppen, wenn ihnen eine gewählte Rolle noch fehlt. Alles andere wird abgedunkelt.",
-            "Single players stay bright if they offer a selected role, groups if they still need one. Everything else is dimmed."),
+        tip:AddLine(T("Einzelne Spieler bleiben hell, wenn sie eine gewählte Rolle anbieten; die übrigen Spieler werden abgedunkelt. Gruppen bleiben immer sichtbar.",
+            "Single players stay bright if they offer a selected role; other players are dimmed. Groups always stay visible."),
             1, 1, 1, true)
         tip:Show()
     end)
