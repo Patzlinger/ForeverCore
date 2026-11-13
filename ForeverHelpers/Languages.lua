@@ -475,7 +475,7 @@ local function Build(browse)
     end)
     local category = browse.CategoryDropdown or browse.CategoryDropDown
     if category then
-        groups:SetPoint("TOPLEFT", category, "BOTTOMLEFT", 2, -15)
+        groups:SetPoint("TOPLEFT", category, "BOTTOMLEFT", 2, -23) -- (mittig zwischen Kastenrand und erster Überschrift)
     else
         groups:SetPoint("TOPLEFT", browse, "TOPLEFT", 16, -48)
     end
