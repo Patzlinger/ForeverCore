@@ -197,9 +197,44 @@ end
 
 ns.BankMoney = Money
 
--- nächsten Platz kaufen: C_Bank.PurchaseBankTab ist eine geschützte Funktion – ein Addon darf sie nicht aufrufen
--- (auch nicht aus einem Rückfrage-Fenster: ADDON_ACTION_FORBIDDEN, Fehler vom 2026-11-13). Der Kauf geht nur über
--- Blizzards eigenes Bankfenster; hier gibt es darum nur den Hinweis mit dem Preis.
+-- nächsten Platz kaufen: C_Bank.PurchaseBankTab ist geschützt – ein Addon darf sie nicht selbst aufrufen (auch nicht aus
+-- einem eigenen Rückfrage-Fenster: ADDON_ACTION_FORBIDDEN, Fehler vom 2026-11-13). Wie Baganator: ein durchsichtiger
+-- Knopf mit Blizzards eigener Vorlage "BankPanelPurchaseButtonScriptTemplate" liegt über unserem Knopf; sein Klick
+-- führt Blizzards Kauf-Rückfrage aus (Blizzard-Code, kein Taint), die Bankart steht im Attribut "overrideBankType".
+local function BuyProxy(owner)
+    if owner.buyProxy ~= nil then return owner.buyProxy or nil end
+    local ok, proxy = pcall(CreateFrame, "Button", nil, owner:GetParent(), "BankPanelPurchaseButtonScriptTemplate")
+    if not ok or not proxy then
+        owner.buyProxy = false
+        return nil
+    end
+    proxy:SetAttribute("overrideBankType", BankType())
+    proxy:SetAllPoints(owner)
+    proxy:SetFrameLevel(owner:GetFrameLevel() + 10)
+    proxy:Hide()
+    -- Maus: Hinweistexte und Hervorhebung bleiben die des darunterliegenden Knopfs
+    proxy:HookScript("OnEnter", function()
+        local fn = owner:GetScript("OnEnter")
+        if fn then fn(owner) end
+        if owner.LockHighlight then owner:LockHighlight() end
+    end)
+    proxy:HookScript("OnLeave", function()
+        local fn = owner:GetScript("OnLeave")
+        if fn then fn(owner) end
+        if owner.UnlockHighlight then owner:UnlockHighlight() end
+    end)
+    owner.buyProxy = proxy
+    return proxy
+end
+
+-- Kauf-Knopf über dem Knopf "owner" ein-/ausblenden (im Kampf nicht anfassen: der Knopf ist geschützt)
+local function ShowBuyProxy(owner, shown)
+    local proxy = BuyProxy(owner)
+    if not proxy or InCombatLockdown() then return end
+    proxy:SetShown(shown and true or false)
+end
+
+-- Rückfall (Vorlage fehlt im Client): nur ein Hinweis
 function ns.BuyBankSlot()
     local can, cost = NextPurchase()
     if not can then return end
@@ -211,13 +246,15 @@ function ns.UpdateBankPurchase()
     local can, cost = NextPurchase()
     buyButton:SetShown(can)
     buyText:SetShown(can)
+    local affordable = false
     if can then
         buyText:SetText(L("BUY_BANK_NEXT") .. " " .. (cost and Money(cost) or "?"))
-        local affordable = not cost or (GetMoney and GetMoney() >= cost)
+        affordable = not cost or (GetMoney and GetMoney() >= cost)
         buyButton:SetEnabled(affordable)
         buyButton:SetAlpha(affordable and 1 or 0.45)
         buyText:SetTextColor(affordable and 1 or 1, affordable and 1 or 0.35, affordable and 1 or 0.35)
     end
+    ShowBuyProxy(buyButton, can and affordable)
 end
 
 ---------------------------------------------------------------------------
@@ -321,6 +358,7 @@ function ns.UpdateBankBagBar()
         b.locked = tabID == nil
         b.buyable = b.locked and firstLocked and canBuy
         b.cost = cost
+        ShowBuyProxy(b, b.buyable and (not cost or (GetMoney and GetMoney() >= cost)))
         b.icon:ClearAllPoints()
         if b.locked then
             firstLocked = false

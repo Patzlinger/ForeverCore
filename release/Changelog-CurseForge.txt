@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- ForeverBags: the "Buy" button for bank slots no longer triggers a blocked-action error (buying a bank slot is only allowed for Blizzard's own bank window; the button now tells you that and shows the price).
+- ForeverBags: buying a bank slot from the Forever bank window no longer causes a blocked-action error; it now uses Blizzard's own purchase button and confirmation (the same way Baganator does it).
 
 - ForeverBars: "Put new ranks on your bars automatically" is now really off for everyone. It was on by default until 0.53b, and installations that already had it saved as on kept replacing lower spell ranks on the bars after learning a new rank (bad for downranking). It is reset to off once; you can switch it on again in the settings. The "Replace" button in the spellbook still works as before.
 
