@@ -252,6 +252,10 @@ local function UpdateLangButton()
             b.count:SetText(Short(first) .. (#on > 1 and ("+" .. (#on - 1)) or ""))
         end
     end
+    -- Breite nach dem Inhalt: der Kasten umfasst Flagge UND Zahl ("+1" stand vorher rechts außerhalb)
+    local textW = math.ceil(b.count:GetStringWidth() or 0)
+    local width = 3 + (b.flag:IsShown() and (b.flag:GetWidth() + (textW > 0 and 1 or 0)) or 3) + textW + 4
+    b:SetWidth(math.max(24, math.floor(width + 0.5)))
 end
 
 -- runde Rollen-Knöpfe: an = farbiges Symbol mit goldenem Ring, aus = blass mit grauem Ring
@@ -414,7 +418,7 @@ local function BuildLangButton(browse)
         langButton:SetPoint("TOPRIGHT", browse, "TOPRIGHT", -12, -12)
     end
     langButton.flag = langButton:CreateTexture(nil, "ARTWORK")
-    langButton.flag:SetSize(18, 12)
+    langButton.flag:SetSize(16, 11)
     langButton.flag:SetPoint("LEFT", langButton, "LEFT", 3, 0)
     langButton.count = langButton:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     langButton:SetScript("OnClick", function(self)
@@ -471,7 +475,7 @@ local function Build(browse)
     end)
     local category = browse.CategoryDropdown or browse.CategoryDropDown
     if category then
-        groups:SetPoint("TOPLEFT", category, "BOTTOMLEFT", 2, -10)
+        groups:SetPoint("TOPLEFT", category, "BOTTOMLEFT", 2, -15)
     else
         groups:SetPoint("TOPLEFT", browse, "TOPLEFT", 16, -48)
     end
