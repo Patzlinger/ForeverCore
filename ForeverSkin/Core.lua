@@ -252,6 +252,23 @@ function ns.Flat(frame, fill, inset)
         ns.OnePixel(e[i], p[3] ~= nil)
     end
     ns.EdgeColor(frame, C.border)
+    -- Runen-Optik (ForeverCoreUI/Theme.lua, gemeinsame Grundlage aller Forever-Fenster): jede Fläche in der
+    -- Fenster-Grundfarbe (C.background) ist ein Fenster, Dialog oder Popup und bekommt Verlauf, Runenkreis (nur bei
+    -- genug Platz) und Goldrahmen – an/aus über den Design-Knopf im Forever-Core-Menü. Die Texturen zählen als
+    -- unsere eigenen (sonst blendet HideTextures sie wieder aus); die Titelleiste (look.head, von ns.SkinWindow)
+    -- färben wir selbst um.
+    local theme = UI.Theme
+    if fill == C.background and theme and theme.Register and not look.themed then
+        look.themed = true
+        theme.Register(frame, {
+            anchor = look.fill,
+            own = function(texture) look.mine[texture] = true end,
+            onApply = function(on, colors)
+                local c = on and colors.header or C.header
+                if look.head then look.head:SetVertexColor(c[1], c[2], c[3], 1) end
+            end,
+        })
+    end
     return look
 end
 
@@ -516,21 +533,8 @@ function ns.SkinWindow(frame, keep, light)
         close:SetPoint("CENTER", frame, "TOPRIGHT", -12, -12)
     end
     ns.HeaderGold(frame) -- Kontostand links in der Titelleiste (Stilregel)
-    -- Runen-Optik (ForeverCoreUI/Theme.lua, gemeinsame Grundlage aller Forever-Fenster): Verlauf, Runenkreis und
-    -- Goldrahmen über unserer Fläche, an/aus über den Design-Knopf im Forever-Core-Menü. Die Texturen zählen als
-    -- unsere eigenen (sonst blendet HideTextures sie wieder aus); die Titelleiste färben wir selbst um.
-    local theme = ns.UI and ns.UI.Theme
-    if theme and theme.Register and look and not look.themed then
-        look.themed = true
-        theme.Register(frame, {
-            anchor = look.fill,
-            own = function(texture) look.mine[texture] = true end,
-            onApply = function(on, colors)
-                local c = on and colors.header or C.header
-                if look.head then look.head:SetVertexColor(c[1], c[2], c[3], 1) end
-            end,
-        })
-    end
+    -- Runen-Optik: angemeldet hat das Fenster schon ns.Flat (oben); jetzt gibt es auch die Titelleiste – nachfärben
+    if look and look.themed and UI.Theme and UI.Theme.Apply then pcall(UI.Theme.Apply, frame) end
 end
 
 -- Abfrage /frunen (ForeverCoreUI/Theme.lua): umgestaltete Blizzard-Flächen ab Fenstergröße, die die Runen-Optik
@@ -547,7 +551,16 @@ if UI.Theme and UI.Theme.reporters then
                     parent = parent.GetParent and parent:GetParent()
                     n = n + 1
                 end
-                if not covered then list[#list + 1] = "ForeverSkin: " .. (frame:GetName() or "(ohne Namen)") end
+                if not covered then
+                    -- (ohne eigenen Namen: Name des nächsten benannten Elternrahmens dazu – hilft beim Finden)
+                    local name = frame:GetName()
+                    if not name then
+                        local p = frame:GetParent()
+                        while p and not (p.GetName and p:GetName()) do p = p.GetParent and p:GetParent() end
+                        name = "(ohne Namen, in " .. ((p and p:GetName()) or "?") .. ")"
+                    end
+                    list[#list + 1] = "ForeverSkin: " .. name
+                end
             end
         end
     end)

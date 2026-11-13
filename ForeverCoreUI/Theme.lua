@@ -78,6 +78,8 @@ local function Build(f, opts)
     local function Place()
         local w, h = anchor:GetSize()
         if not w or not h or w <= 0 or h <= 0 then return end
+        -- kleine Flächen (Popups, Hinweise, Würfelfenster): kein Runenkreis – nur Verlauf und Goldrahmen
+        t.runes:SetAlpha(math.min(w, h) < 120 and 0 or RUNES_ALPHA)
         local size = math.max(64, math.min(w, h) * 0.92)
         t.runes:SetSize(size, size)
         t.runes:ClearAllPoints()
