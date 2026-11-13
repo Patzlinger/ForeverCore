@@ -1,6 +1,8 @@
 -- ForeverCoreUI – Theme.lua: PROTOTYP "Runen"-Design (dunkles Blau, goldener Rahmen, dezenter Runenkreis).
--- Legt hinter jedes Forever-Fenster (alles, was über UI.Window / UI.RegisterWindow läuft) eine zusätzliche Ebene aus
--- Texturen; der normale flache Stil bleibt darunter unverändert – ausschalten = wie vorher. Einstellung:
+-- Legt hinter jedes Forever-Fenster (alles, was über UI.Window / UI.RegisterWindow läuft – auch Dungeonfenster,
+-- Taschen, Bank, Twinks – und über Theme.Register die von ForeverSkin umgestalteten Blizzard-Fenster) eine
+-- zusätzliche Ebene aus Texturen; der normale flache Stil bleibt darunter unverändert – ausschalten = wie vorher.
+-- Diese Datei ist die EINE gemeinsame Grundlage der Runen-Optik: Farben und Grafik nur hier ändern. Einstellung:
 -- ForeverHubDB.theme = "runes" (nil = Standard). Umschalten per Knopf links neben dem Suchfeld des Einstellungsfensters.
 -- Zum Entfernen: diese Datei, Media\ThemeRunes.tga, tools\make-theme-art.ps1, die Zeile "Theme.lua" in der .toc und die
 -- zwei Zeilen "UI.Theme" in ForeverHub.lua (UI.RegisterWindow, SettingsWindow) löschen.
@@ -21,6 +23,16 @@ local RUNES = "Interface\\AddOns\\" .. tostring(select(1, ...) or "ForeverCoreUI
 
 local Theme = {}
 UI.Theme = Theme
+
+-- Gemeinsame Grundlage für ALLE Forever-Fenster (2026-11-13): außer den beim Hub angemeldeten Fenstern
+-- (UI.RegisterWindow) können sich weitere Rahmen anmelden – Theme.Register(frame, opts) –, z. B. die von ForeverSkin
+-- umgestalteten Blizzard-Fenster. Zustand je Fenster steht in eigenen (schwachen) Tabellen, NICHT im Rahmen selbst:
+-- in Blizzard-Rahmen legen wir keine eigenen Werte ab (Taint-Regel).
+--   opts.anchor  = Fläche, an der sich Verlauf, Runen und Goldrahmen ausrichten (Standard: der Rahmen selbst)
+--   opts.own     = function(textur) – wird für jede angelegte Textur aufgerufen (ForeverSkin merkt sie als eigene)
+--   opts.onApply = function(an, farben) – eigene Teile umfärben (farben.header, farben.gold)
+local state = setmetatable({}, { __mode = "k" }) -- [Fenster] = { list = Texturen, header = alte Titelfarbe }
+local extra = setmetatable({}, { __mode = "k" }) -- [Rahmen] = opts (nicht über UI.RegisterWindow angemeldet)
 
 function Theme.IsOn()
     local db = _G.ForeverHubDB
@@ -45,16 +57,18 @@ local function Gradient(tex, top, bottom)
 end
 
 -- Texturen einmal je Fenster anlegen (sie liegen auf dem Fenster selbst, unter allen Kindern)
-local function Build(f)
+local function Build(f, opts)
     local t = { list = {} }
+    local anchor = (opts and opts.anchor) or f
     local function New(sub)
         local x = f:CreateTexture(nil, "BACKGROUND", nil, sub)
         t.list[#t.list + 1] = x
+        if opts and opts.own then pcall(opts.own, x) end
         return x
     end
     t.bg = New(1)
-    t.bg:SetPoint("TOPLEFT", 1, -1)
-    t.bg:SetPoint("BOTTOMRIGHT", -1, 1)
+    t.bg:SetPoint("TOPLEFT", anchor, "TOPLEFT", 1, -1)
+    t.bg:SetPoint("BOTTOMRIGHT", anchor, "BOTTOMRIGHT", -1, 1)
     t.bg:SetColorTexture(1, 1, 1, 1)
     Gradient(t.bg, TOP, BOTTOM)
 
@@ -62,21 +76,24 @@ local function Build(f)
     t.runes:SetTexture(RUNES)
     t.runes:SetAlpha(RUNES_ALPHA)
     local function Place()
-        local w, h = f:GetSize()
+        local w, h = anchor:GetSize()
+        if not w or not h or w <= 0 or h <= 0 then return end
         local size = math.max(64, math.min(w, h) * 0.92)
         t.runes:SetSize(size, size)
         t.runes:ClearAllPoints()
-        t.runes:SetPoint("CENTER", f, "CENTER", (w - size) / 2 - 10, 0)
+        t.runes:SetPoint("CENTER", anchor, "CENTER", (w - size) / 2 - 10, 0)
     end
     Place()
+    t.place = Place
     f:HookScript("OnSizeChanged", Place)
+    f:HookScript("OnShow", Place) -- (Blizzard-Fenster haben ihre Größe oft erst beim Öffnen)
 
     -- goldener Innenrahmen mit Eckmarken
     local function Line(a1, r1, a2, r2, w, h, alpha, x1, y1, x2, y2)
         local l = New(3)
         l:SetColorTexture(GOLD[1], GOLD[2], GOLD[3], alpha)
-        l:SetPoint(a1, f, r1, x1, y1)
-        if a2 then l:SetPoint(a2, f, r2, x2, y2) end
+        l:SetPoint(a1, anchor, r1, x1, y1)
+        if a2 then l:SetPoint(a2, anchor, r2, x2, y2) end
         if w then l:SetWidth(w) end
         if h then l:SetHeight(h) end
     end
@@ -91,38 +108,56 @@ local function Build(f)
         Line(p, p, nil, nil, C, 2, 1, sx * (I - 1), sy * (I - 1))
         Line(p, p, nil, nil, 2, C, 1, sx * (I - 1), sy * (I - 1))
     end
-    f.fcTheme = t
+    state[f] = t
     return t
 end
 
+local COLORS = { header = HEADER, gold = GOLD, top = TOP, bottom = BOTTOM }
+
 -- Design auf ein Fenster anwenden bzw. wieder wegnehmen (je nach Einstellung)
 function Theme.Apply(f)
-    if not f or not f.CreateTexture then return end
+    if not f or not f.CreateTexture or (f.IsForbidden and f:IsForbidden()) then return end
     local on = Theme.IsOn()
-    local t = f.fcTheme
-    if on and not t then t = Build(f) end
+    local opts = extra[f]
+    local t = state[f]
+    if on and not t then t = Build(f, opts) end
     if t then
         for _, x in ipairs(t.list) do x:SetShown(on) end
+        if on and t.place then t.place() end
     end
-    -- Titelleiste: bläulich statt grau; beim Ausschalten die alte Farbe zurück
-    local h = f.header
-    if h and h.SetBackdropColor then
+    -- Titelleiste: bläulich statt grau; beim Ausschalten die alte Farbe zurück (nur eigene Forever-Fenster –
+    -- angemeldete fremde Rahmen färben ihre Teile selbst über opts.onApply)
+    local h = not opts and f.header
+    if h and h.SetBackdropColor and t then
         if on then
-            if not f.fcThemeHeader then f.fcThemeHeader = { h:GetBackdropColor() } end
+            if not t.header then t.header = { h:GetBackdropColor() } end
             h:SetBackdropColor(HEADER[1], HEADER[2], HEADER[3], 1)
-        elseif f.fcThemeHeader then
-            local c = f.fcThemeHeader
+        elseif t.header then
+            local c = t.header
             h:SetBackdropColor(c[1], c[2], c[3], c[4] or 1)
-            f.fcThemeHeader = nil
+            t.header = nil
         end
     end
+    if opts and opts.onApply then pcall(opts.onApply, on, COLORS) end
+end
+
+-- Weiteren Rahmen anmelden (siehe oben); wirkt sofort und bei jedem Umschalten
+function Theme.Register(f, opts)
+    if not f or not f.CreateTexture or extra[f] then return end
+    extra[f] = opts or {}
+    local ok, err = pcall(Theme.Apply, f)
+    if not ok and UI.ReportError then UI.ReportError("ForeverCoreUI", "Theme/Register", err) end
 end
 
 function Theme.Refresh()
-    for f in pairs(SHARED.windows or {}) do
-        local ok, err = pcall(Theme.Apply, f)
-        if not ok and UI.ReportError then UI.ReportError("ForeverCoreUI", "Theme", err) end
+    local function Each(list)
+        for f in pairs(list or {}) do
+            local ok, err = pcall(Theme.Apply, f)
+            if not ok and UI.ReportError then UI.ReportError("ForeverCoreUI", "Theme", err) end
+        end
     end
+    Each(SHARED.windows)
+    Each(extra)
 end
 
 UI.On("ThemeChanged", Theme.Refresh)

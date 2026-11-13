@@ -516,6 +516,21 @@ function ns.SkinWindow(frame, keep, light)
         close:SetPoint("CENTER", frame, "TOPRIGHT", -12, -12)
     end
     ns.HeaderGold(frame) -- Kontostand links in der Titelleiste (Stilregel)
+    -- Runen-Optik (ForeverCoreUI/Theme.lua, gemeinsame Grundlage aller Forever-Fenster): Verlauf, Runenkreis und
+    -- Goldrahmen über unserer Fläche, an/aus über den Design-Knopf im Forever-Core-Menü. Die Texturen zählen als
+    -- unsere eigenen (sonst blendet HideTextures sie wieder aus); die Titelleiste färben wir selbst um.
+    local theme = ns.UI and ns.UI.Theme
+    if theme and theme.Register and look and not look.themed then
+        look.themed = true
+        theme.Register(frame, {
+            anchor = look.fill,
+            own = function(texture) look.mine[texture] = true end,
+            onApply = function(on, colors)
+                local c = on and colors.header or C.header
+                if look.head then look.head:SetVertexColor(c[1], c[2], c[3], 1) end
+            end,
+        })
+    end
 end
 
 -- Gliederung wie bei Blizzard, aber flach: abgesetzter Kasten für den Inhalt (wie die Abschnitts-Kästen der
