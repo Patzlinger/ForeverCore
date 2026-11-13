@@ -200,12 +200,21 @@ local function Guid(token)
     if ok and g and not issecret(g) then return g end
 end
 
+-- Token einer Einheit, die auch NACH dem Öffnen noch gilt (mouseover ändert sich, sobald die Maus weiterwandert).
+-- Erst über die GUID; bei Spielern hält das Spiel die GUID oft geheim (gegnerische Spieler wurden darum nicht
+-- gefunden, 2026-11-13) – dann über UnitIsUnit("mouseover", token), soweit dessen Antwort lesbar ist.
 local function TokenFor(guid)
     local list = { "target", "focus", "player", "pet", "targettarget" }
     for i = 1, 4 do list[#list + 1] = "party" .. i; list[#list + 1] = "party" .. i .. "target" end
     for i = 1, 40 do list[#list + 1] = "nameplate" .. i end
+    if guid then
+        for _, t in ipairs(list) do
+            if Guid(t) == guid then return t end
+        end
+    end
     for _, t in ipairs(list) do
-        if Guid(t) == guid then return t end
+        local ok, same = pcall(UnitIsUnit, "mouseover", t)
+        if ok and not issecret(same) and same then return t end
     end
 end
 
@@ -215,8 +224,8 @@ local function Open()
     originX, originY = x / s, y / s
     -- automatisch: Einheit unter der Maus -> Ziel-Markierung, sonst Boden
     unitToken = nil
-    local g = UnitExists("mouseover") and Guid("mouseover")
-    if g then unitToken = TokenFor(g) end
+    local ok, exists = pcall(UnitExists, "mouseover")
+    if ok and not issecret(exists) and exists then unitToken = TokenFor(Guid("mouseover")) end
     groundMode = unitToken == nil
     wheel:ClearAllPoints()
     wheel:SetPoint("CENTER", UIParent, "BOTTOMLEFT", originX, originY)
