@@ -318,55 +318,10 @@ local function ToggleRole(key)
     Rebuild(_G.LFGBrowseFrame)
 end
 
--- Platz unten in der Leiste: zwischen dem linken und rechten Text-Knopf ("Nachricht senden" / "Gruppeneinladung")
-local function FooterButtons(browse)
-    local bottom = browse:GetBottom()
-    if not bottom then return nil end
-    local found = {}
-    local function Scan(frame, depth)
-        for _, child in ipairs({ frame:GetChildren() }) do
-            if not (child.IsForbidden and child:IsForbidden()) and child ~= langButton then
-                if child:IsObjectType("Button") then
-                    local text = child.GetText and child:GetText()
-                    if type(text) == "string" and text ~= "" and child:IsShown() and child:GetBottom()
-                        and child:GetBottom() - bottom < 50 and child:GetLeft() then
-                        found[#found + 1] = child
-                    end
-                elseif depth < 2 then
-                    Scan(child, depth + 1)
-                end
-            end
-        end
-    end
-    Scan(browse, 1)
-    if #found < 2 then return nil end
-    table.sort(found, function(a, b) return a:GetLeft() < b:GetLeft() end)
-    return found[1], found[#found]
-end
-
--- Rollen-Knöpfe mittig in die Lücke unten (zwischen "Nachricht senden" und "Gruppeneinladung")
-local ROLE_SIZE, ROLE_GAP = 26, 10
-local placed = false
+-- Rollen-Knöpfe: in der freien Fläche über der Liste rechts ("Gruppen anzeigen" steht dort links) – auf Wunsch,
+-- vorher unten in der Fußleiste
+local ROLE_SIZE, ROLE_GAP = 24, 6
 local holder
-local function Place(browse)
-    if placed or not holder then return end
-    local left, right = FooterButtons(browse)
-    holder:ClearAllPoints()
-    if left and right then
-        placed = true
-        -- Mitte der Lücke: zwischen rechter Kante des linken und linker Kante des rechten Knopfs
-        local spacer = holder.spacer or CreateFrame("Frame", nil, browse)
-        holder.spacer = spacer
-        spacer:ClearAllPoints()
-        spacer:SetPoint("LEFT", left, "RIGHT", 0, 0)
-        spacer:SetPoint("RIGHT", right, "LEFT", 0, 0)
-        spacer:SetHeight(1)
-        holder:SetPoint("CENTER", spacer, "CENTER", 0, 0)
-    else
-        -- (Knöpfe noch nicht gefunden: vorerst unten mittig; beim nächsten Öffnen erneut versuchen)
-        holder:SetPoint("BOTTOM", browse, "BOTTOM", 0, 8)
-    end
-end
 
 -- runder Knopf: dunkle Scheibe, Ring (Farbe nach Zustand), Rollen-Symbol darin
 local function RoleButton(parent, role)
@@ -473,11 +428,19 @@ local function Build(browse)
         db.lfg.hideGroups = (not checked) or nil
         Rebuild(browse)
     end)
+    -- Lage in der freien Fläche: Häkchen links (bündig mit den Einträgen), Rollen-Knöpfe rechts (bündig mit deren
+    -- rechter Kante), beide auf einer Höhe. Maße gegen die beiden Auswahlfelder oben gemessen.
     local category = browse.CategoryDropdown or browse.CategoryDropDown
+    local activity = browse.ActivityDropdown or browse.ActivityDropDown
     if category then
-        groups:SetPoint("TOPLEFT", category, "BOTTOMLEFT", 2, -23) -- (mittig zwischen Kastenrand und erster Überschrift)
+        groups:SetPoint("TOPLEFT", category, "BOTTOMLEFT", -58, -22)
     else
         groups:SetPoint("TOPLEFT", browse, "TOPLEFT", 16, -48)
+    end
+    if activity then
+        holder:SetPoint("TOPRIGHT", activity, "BOTTOMRIGHT", 60, -18)
+    else
+        holder:SetPoint("TOPRIGHT", browse, "TOPRIGHT", -30, -44)
     end
     groups:SetChecked(not GroupsHidden())
     browse:HookScript("OnShow", function() groups:SetChecked(not GroupsHidden()) end)
@@ -492,15 +455,8 @@ local function Build(browse)
             end
         end)
     end
-    Place(browse)
     UpdateLabel()
-    -- Knöpfe stehen erst nach dem ersten Öffnen fest: dann einreihen
-    browse:HookScript("OnShow", function()
-        C_Timer.After(0, function()
-            pcall(Place, browse)
-            UpdateLabel()
-        end)
-    end)
+    browse:HookScript("OnShow", function() C_Timer.After(0, UpdateLabel) end)
     CoverRefresh(browse)
 end
 
