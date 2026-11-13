@@ -237,10 +237,80 @@ function Theme.Report()
     for _, name in ipairs(missing) do chat("  " .. name) end
 end
 
+-- /frunen grau: in den GERADE OFFENEN Fenstern mit Runen-Optik nach Stellen suchen, die noch grau sind:
+--   a) Flächen in neutralem Grau (Backdrop- oder Texturfarbe mit r ≈ g ≈ b, dunkel bis mittel, deutlich sichtbar)
+--   b) Blizzard-Grafiken im Hintergrund (Ebene BACKGROUND/BORDER, Datei oder Atlas, ab 60 x 16), die nicht
+--      ausgeblendet sind – ihre Farbe steckt im Bild und ist nicht lesbar, darum werden sie als Verdacht gemeldet
+-- Ausgabe mit Blizzards Pfadnamen (GetDebugName), damit die Stelle im Code zu finden ist.
+local WHITE_TEX = { ["interface\\buttons\\white8x8"] = true, ["interface\\buttons\\white8x8.blp"] = true }
+local function IsGrey(r, g, b, a)
+    if not (r and g and b) then return false end
+    local hi, lo = math.max(r, g, b), math.min(r, g, b)
+    return hi - lo < 0.035 and hi >= 0.04 and hi <= 0.42 and (a or 1) > 0.4
+end
+local function DebugName(obj)
+    local ok, name = pcall(obj.GetDebugName, obj)
+    if ok and type(name) == "string" and name ~= "" then return name end
+    return (obj.GetName and obj:GetName()) or "?"
+end
+function Theme.ScanGrey()
+    local roots = {}
+    for f in pairs(SHARED.windows or {}) do if f:IsVisible() then roots[f] = true end end
+    for f in pairs(extra) do if f.IsVisible and f:IsVisible() then roots[f] = true end end
+    local hits, seen = {}, {}
+    local function Add(text)
+        if not seen[text] and #hits < 40 then seen[text] = true hits[#hits + 1] = text end
+    end
+    local function Check(frame, depth)
+        if not frame or (frame.IsForbidden and frame:IsForbidden()) or not frame:IsVisible() then return end
+        if frame.GetBackdropColor and frame.GetBackdrop and frame:GetBackdrop() then
+            local r, g, b, a = frame:GetBackdropColor()
+            if IsGrey(r, g, b, (a or 1) * frame:GetEffectiveAlpha()) then
+                Add(string.format("%s  |cffaaaaaa(graue Fläche %.2f)|r", DebugName(frame), r))
+            end
+        end
+        for _, region in ipairs({ frame:GetRegions() }) do
+            if region:IsObjectType("Texture") and region:IsVisible() and region:GetEffectiveAlpha() > 0.3 then
+                local layer = region:GetDrawLayer()
+                local w, h = region:GetWidth() or 0, region:GetHeight() or 0
+                local file = region.GetTexture and region:GetTexture()
+                local atlas = region.GetAtlas and region:GetAtlas()
+                local isWhite = type(file) == "string" and WHITE_TEX[file:lower()]
+                if not atlas and (isWhite or file == nil or (type(file) == "number" and file == 0)) then
+                    -- eigene Fläche (weiße Textur, Farbe = Vertex-Farbe)
+                    local r, g, b, a = region:GetVertexColor()
+                    if w >= 20 and h >= 10 and IsGrey(r, g, b, a) then
+                        Add(string.format("%s  |cffaaaaaa(graue Fläche %.2f)|r", DebugName(region), r))
+                    end
+                elseif (layer == "BACKGROUND" or layer == "BORDER") and w >= 60 and h >= 16 then
+                    Add(string.format("%s  |cffaaaaaa(Blizzard-Grafik %s)|r", DebugName(region), tostring(atlas or file)))
+                end
+            end
+        end
+        if depth < 12 then
+            for _, child in ipairs({ frame:GetChildren() }) do Check(child, depth + 1) end
+        end
+    end
+    for f in pairs(roots) do pcall(Check, f, 1) end
+    local chat = function(text) UI.Chat("Forever Core UI", text) end
+    if not Theme.IsOn() then
+        chat(T("Erst das Runen-Design einschalten, dann /frunen grau.", "Switch on the runes design first, then /frunen grau."))
+        return
+    end
+    if #hits == 0 then
+        chat(T("Keine grauen Stellen in den offenen Fenstern gefunden.", "No grey spots found in the open windows."))
+        return
+    end
+    chat(string.format(T("%d Verdachtsstelle(n) in offenen Fenstern (höchstens 40):", "%d suspect spot(s) in open windows (max. 40):"), #hits))
+    for _, line in ipairs(hits) do chat("  " .. line) end
+end
+
 SLASH_FOREVERRUNEN1 = "/frunen"
 SLASH_FOREVERRUNEN2 = "/foreverrunen"
-SlashCmdList["FOREVERRUNEN"] = function()
-    local ok, err = pcall(Theme.Report)
+SlashCmdList["FOREVERRUNEN"] = function(msg)
+    msg = strtrim(msg or ""):lower()
+    local fn = (msg == "grau" or msg == "grey" or msg == "gray") and Theme.ScanGrey or Theme.Report
+    local ok, err = pcall(fn)
     if not ok and UI.ReportError then UI.ReportError("ForeverCoreUI", "Theme/Report", err) end
 end
 
