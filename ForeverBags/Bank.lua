@@ -354,9 +354,18 @@ local function InvSlotFor(i, tabID)
         local ok, slot = pcall(C_Bank.BankBagTypeAndIDToInvSlot, BankType(), tabID)
         if ok and type(slot) == "number" then tabbed = slot end
     end
-    if classic and GetInventoryItemID and GetInventoryItemID("player", classic) then return classic end
-    if tabbed and GetInventoryItemID and GetInventoryItemID("player", tabbed) then return tabbed end
-    return classic or tabbed
+    -- dritter Weg (so macht es Baganator bei Taschen/Fächern): Fach-ID = Container-ID → Ausrüstungsplatz
+    local byContainer
+    if tabID and C_Container and C_Container.ContainerIDToInventoryID then
+        local ok, slot = pcall(C_Container.ContainerIDToInventoryID, tabID)
+        if ok and type(slot) == "number" and slot > 0 then byContainer = slot end
+    end
+    if GetInventoryItemID then
+        for _, slot in ipairs({ classic or 0, tabbed or 0, byContainer or 0 }) do
+            if slot > 0 and GetInventoryItemID("player", slot) then return slot end
+        end
+    end
+    return byContainer or classic or tabbed
 end
 
 local function BagButton(i)
