@@ -150,18 +150,28 @@ local function Matches(id)
 end
 
 -- Nach jedem Neuaufbau von Blizzards Liste (UpdateResults) die unpassenden Spieler aus deren DataProvider
--- entfernen (siehe Warnung oben). Elemente sind { resultID = … } (Blizzard_LFGVanilla_Browse.lua).
+-- entfernen (siehe Warnung oben). In Forever ist das eine BAUM-Liste (Überschriften "Spieler"/"Gruppen", darunter
+-- Knoten mit GetData() = { resultID = … }); im klassischen Client eine flache Liste mit { resultID = … }.
+-- Erst sammeln, dann entfernen (beim Durchlaufen darf der Baum nicht verändert werden).
 local function FilterList(browse)
     if not RolesActive() then return end
     local box = browse.ScrollBox
     local provider = box and box.GetDataProvider and box:GetDataProvider()
-    if not (provider and provider.Enumerate and provider.Remove) then return end
+    if not (provider and provider.Remove) then return end
     local drop = {}
-    for _, element in provider:Enumerate() do
-        local id = type(element) == "table" and element.resultID
-        if type(id) == "number" and not Matches(id) then drop[#drop + 1] = element end
+    local function Check(item)
+        local data = item
+        if type(item) == "table" and item.GetData then data = item:GetData() end
+        local id = type(data) == "table" and data.resultID
+        if type(id) == "number" and not Matches(id) then drop[#drop + 1] = item end
     end
-    for _, element in ipairs(drop) do provider:Remove(element) end
+    if provider.GetRootNode and provider.ForEach then
+        -- Baum: alle Knoten, auch die unter zugeklappten Überschriften (false = IncludeCollapsed)
+        provider:ForEach(Check, false)
+    elseif provider.Enumerate then
+        for _, element in provider:Enumerate() do Check(element) end
+    end
+    for _, item in ipairs(drop) do provider:Remove(item) end
 end
 
 -- Auswahl geändert: Blizzards Liste aus den vorhandenen Ergebnissen neu aufbauen lassen (keine neue Suche – die
