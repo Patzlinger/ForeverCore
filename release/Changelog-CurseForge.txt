@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverQuests + Questie: quests that only the Forever tracker follows (more than the game's own tracking limit) no longer lose their objective progress in the mob and item tooltips after a few kills.
+
 - ForeverQuests: "Accept quests" and "Turn in quests" (automatic) can now also be switched on and off in the settings, not only in the small panel next to the quest window.
 
 ## 0.544b – 2026-11-13

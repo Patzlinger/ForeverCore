@@ -308,8 +308,28 @@ local function WrapShouldShow()
     local original = questieQuest.ShouldShowQuestNotes
     questieQuest.ShouldShowQuestNotes = function(self, questId)
         if focusQuestID then return questId == focusQuestID end
-        return original(self, questId)
+        if original(self, questId) then return true end
+        -- Quests, die nur unser Tracker verfolgt (über Blizzards Grenze hinaus, ns.IsQuestTracked), zählen für Questie
+        -- sonst als "nicht verfolgt": es nimmt dann bei jedem Fortschritt die Quest aus den Tooltips (Zielanzeige am
+        -- Mob/Gegenstand verschwindet nach einigen Kills, nach /reload kommt sie wieder)
+        return ns.IsQuestTracked and ns.IsQuestTracked(questId) and true or false
     end
+end
+
+-- Die Ergänzung muss von Anfang an gelten (nicht erst beim ersten Öffnen der Questlog-Detailansicht): sobald Questie
+-- fertig gestartet ist, einhängen
+do
+    local tries = 0
+    local ticker
+    ticker = C_Timer.NewTicker(2, function()
+        tries = tries + 1
+        if ns.HasQuestie() then
+            ticker:Cancel()
+            pcall(WrapShouldShow)
+        elseif tries >= 60 then
+            ticker:Cancel()
+        end
+    end)
 end
 
 local function RefreshQuestieIcons()
