@@ -43,16 +43,21 @@ Ablauf:
 - **Nächster Schritt:** Spiel neu starten, Bearbeitungsmodus öffnen/schließen, BugSack prüfen. Tritt es wieder auf:
   `SetAlpha(0)` auf `ObjectiveTrackerFrame` (Hub `UI.HideBlizzard`) als Ursache prüfen. Gefunden 2026-11-08.
 
-### Handel in einer Instanz: Fenster schließt sofort, Gegenstand bleibt gesperrt (offen, ungeklärt)
+### Handel in einer Instanz: Fenster schließt sofort, Gegenstand bleibt gesperrt (offen – Abbruch kommt vom Server)
 - **Was passiert:** In einer Instanz schließt sich das Handelsfenster direkt nach dem Handelsversuch; der Gegenstand,
   der darin lag, bleibt in der Tasche gesperrt („stuck“). Gefunden 2026-11-11 (flowfy).
 - **Stand:** BugSack ohne Fehler dazu. Kein Forever-Code schließt den Handel: ForeverSkin (`Extra.lua`, nur Aussehen
   + Ablegen per `ClickTradeButton`), ForeverBags (`Bags.lua`, öffnet/dockt Taschen bei `TRADE_SHOW`), ForeverCore
   `Movers.lua` (verschiebbar). Nichts davon ist instanzabhängig. Vermutung: Abbruch durch das Spiel (Abstand > ~10 m)
   + Blizzards Sperre nach Abbruch.
-- **Nächster Schritt:** Chatmeldung beim Schließen? Zeitpunkt (Hineinlegen / „Handeln“ / Aktion des anderen)? Frisch
-  erbeuteter seelengebundener Gegenstand? Nach `/reload` noch grau? Wenn nach `/reload` frei: ForeverBags aktualisiert
-  die Sperre (`ITEM_LOCK_CHANGED`/`TRADE_CLOSED`) nicht – dort ansetzen.
+- **Messung 2026-11-14** (temporäres Mess-Addon, Instanz, Gruppe, außerhalb des Kampfs): Gegenstand auf den Spieler
+  gezogen → `TRADE_PLAYER_ITEM_CHANGED`, `TRADE_SHOW`, Plätze des anderen geladen → **0,1 s später
+  `TRADE_REQUEST_CANCEL` vom Server**, danach schließt Blizzards `TradeFrame` sich selbst (`TradeFrame.lua` →
+  `HideUIPanel` → `CloseTrade`), Meldung „Handel abgebrochen.“. **Kein Forever-Addon ruft etwas auf** – der Abbruch
+  kommt vom Server bzw. vom Client des Handelspartners.
+- **Nächster Schritt:** Handel ohne Gegenstand starten (Porträt > Handeln), anderen Gegenstand probieren, Gegenprobe
+  außerhalb der Instanz, Handelspartner nach handelsblockierenden Addons fragen bzw. ihn handeln lassen. Liegt es am
+  Server/Partner: als „nicht von uns“ nach Erledigt.
 
 ## Erledigt
 
