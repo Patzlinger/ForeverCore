@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- ForeverBags: dragging an item onto a group or target frame to trade no longer cancels the trade right away (with "Replace Blizzard's bag windows" on).
+
+- Runes look: the small loot alerts ("You received …") no longer get a misplaced rune circle.
+
 - DoT damage prediction: the druid's Rake is now recognized (the "1 combo point" in its description was mistaken for the damage amount).
 
 - ForeverSkin: fixed a taint error ("secret string value" in the tooltip) when opening an NPC dialog window.

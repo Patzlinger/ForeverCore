@@ -57,7 +57,7 @@ Ablauf:
   Forever-Funktion beteiligt). **Korrektur:** doch von uns – ohne Forever-Addons geht es. Eingegrenzt (flowfy):
   ForeverBags, Einstellung „Blizzards Taschenfenster ersetzen“: Blizzard öffnet beim Handelsstart seine Taschen,
   ForeverBags machte sie sofort im `OnShow` zu → Server bricht ab. Behoben `5a78311`: Schließen erst im nächsten Bild
-  (bis dahin unsichtbar). Im Spiel noch bestätigen.
+  (bis dahin unsichtbar). Von flowfy im Spiel bestätigt (2026-11-14).
 
 ### BugSack-Fehler vom 5.–7.11.2026 (behoben, per Zeitstempel gegen Commits geprüft, 2026-11-08)
 - Bars.lua `ManaNow` gesperrtes Mana (25×) → `Readable()` (2026-11-05); Units.lua `PlaceCombat` und Hub `GuidOf`
