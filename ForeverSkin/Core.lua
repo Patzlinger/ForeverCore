@@ -822,8 +822,7 @@ function ns.NpcCard(frame, unit, label, roleFn, rightInset)
 end
 
 -- Titel eines NPCs ("<Schneiderbedarf>") aus seinem Tooltip – ohne Klammern; "" wenn er keinen hat.
--- Erst Blizzards Tooltip-Daten, sonst ein eigener unsichtbarer Tooltip. Farbcodes und Leerzeichen werden entfernt.
-local scanTip
+-- Aus Blizzards Tooltip-Daten. Farbcodes und Leerzeichen werden entfernt.
 local function TitleIn(text)
     if type(text) ~= "string" or (issecretvalue and issecretvalue(text)) then return nil end
     text = strtrim((text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")))
@@ -840,23 +839,9 @@ function ns.UnitTitle(unit)
             end
         end
     end
-    if not scanTip then
-        scanTip = CreateFrame("GameTooltip", "ForeverSkinScanTooltip", UIParent, "GameTooltipTemplate")
-    end
-    local ok = pcall(function()
-        scanTip:SetOwner(WorldFrame, "ANCHOR_NONE")
-        scanTip:SetUnit(unit)
-    end)
-    local found = ""
-    if ok then
-        for i = 2, math.min(6, scanTip:NumLines()) do
-            local line = _G["ForeverSkinScanTooltipTextLeft" .. i]
-            local title = line and TitleIn(line:GetText())
-            if title then found = title break end
-        end
-    end
-    scanTip:Hide()
-    return found
+    -- Kein eigener Scan-Tooltip mehr: SetUnit darauf lief im geschützten Ablauf von Blizzards Gesprächsfenster
+    -- und löste Taint (gesperrte GUID) aus. Weiter unten kommen Questies Datenbank und die gemerkte Rolle.
+    return ""
 end
 
 -- Ohne Titel im Tooltip: Titel aus Questies NPC-Datenbank ("subName", z. B. "Hexenmeisterlehrer"; Questie ist GPL,
