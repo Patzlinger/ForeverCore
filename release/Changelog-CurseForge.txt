@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- DoT damage prediction: the druid's Rake is now recognized (the "1 combo point" in its description was mistaken for the damage amount).
+
 - ForeverSkin: fixed a taint error ("secret string value" in the tooltip) when opening an NPC dialog window.
 
 - ForeverChat: the IM tab now has arrow buttons (< >) to switch between whisper conversations when there are more than fit in the tab row. The arrow turns gold if a hidden conversation has unread messages.

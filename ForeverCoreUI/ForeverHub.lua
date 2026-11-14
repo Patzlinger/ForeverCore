@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 86
+local VERSION = 87
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -5218,6 +5218,8 @@ local function ParseOver(desc)
     if amount then
         local rest = desc:sub(finish + at, finish + at + 12):lower()
         if rest:match("^%s*sek") or rest:match("^%s*sec") or rest:match("^%s*min") then amount = nil end
+        -- "… über 9 Sek. Gewährt 1 Combopunkt" (Krallenhieb/Rake): die 1 ist ein Combopunkt, keine Schadensmenge
+        if rest:match("^%s*combo") or rest:match("^%s*kombo") then amount = nil end
     end
     local segment
     if lang then
