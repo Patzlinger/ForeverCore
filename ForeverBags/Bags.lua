@@ -1510,11 +1510,20 @@ ns.SimpleTip, ns.HideTip = SimpleTip, HideTip
 local function Replacing() return ns.db and ns.db.replaceBlizzard end
 
 -- Blizzards Taschenfenster sofort wieder zumachen, wenn sie aufgehen (siehe Erklärung am Dateianfang)
+-- Erst im NÄCHSTEN Bild zumachen (bis dahin unsichtbar): Sofort im OnShow zugemacht, brach das einen gerade
+-- startenden Handel ab, wenn er per Gegenstand-auf-Einheitenrahmen begann – Blizzard öffnet dabei seine Taschen, das
+-- sofortige Schließen mitten im Ablauf ließ den Server den Handel abbrechen (gemessen 2026-11-14: TRADE_REQUEST_CANCEL
+-- 0,16 s nach TRADE_SHOW; mit "Blizzards Taschenfenster ersetzen" aus ging es).
 local function KeepClosed(frame)
     if not frame or frame.fbagsHooked then return end
     frame.fbagsHooked = true
     frame:HookScript("OnShow", function(self)
-        if Replacing() then self:Hide() end
+        if not Replacing() then return end
+        self:SetAlpha(0) -- (kein Aufblitzen bis zum Schließen)
+        C_Timer.After(0, function()
+            if Replacing() and self:IsShown() and not InCombatLockdown() then self:Hide() end
+            self:SetAlpha(1) -- (für den Fall, dass die Einstellung später ausgeschaltet wird)
+        end)
     end)
 end
 

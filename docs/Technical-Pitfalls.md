@@ -75,8 +75,10 @@ geändert wird.** Die Kurzregeln stehen in CLAUDE.md; hier die Einzelheiten und 
   geschützte Questgegenstand-Knöpfe, die unsichtbar anklickbar blieben. Falls Taint-Meldungen auftauchen:
   `RegisterStateDriver(ObjectiveTrackerFrame, "visibility", "hide")` im Spiel testen. (Stand KNOWN-BUGS.md: der Tracker
   wird seit `f3e1c27` über Deckkraft ausgeblendet; ein möglicher Taint im Bearbeitungsmodus ist dort offen.)
-- **ForeverBags** macht Blizzards Taschenfenster (`ContainerFrameCombinedBags`, `ContainerFrame1…`) in deren `OnShow`
-  per `:Hide()` wieder zu (nur mit Einstellung „Blizzards Taschenfenster ersetzen“). Sie sind keine geschützten
+- **ForeverBags** macht Blizzards Taschenfenster (`ContainerFrameCombinedBags`, `ContainerFrame1…`) nach deren `OnShow`
+  per `:Hide()` wieder zu (nur mit Einstellung „Blizzards Taschenfenster ersetzen“) – **erst im nächsten Bild**, bis
+  dahin `SetAlpha(0)`: sofort im `OnShow` zugemacht, brach das einen Handel ab, der per Gegenstand-auf-Einheitenrahmen
+  startete (2026-11-14). Sie sind keine geschützten
   Rahmen; `UI.HideBlizzard` passt nicht (die Taschenplätze blieben unsichtbar anklickbar). Öffnen/Schließen wird nur per
   `hooksecurefunc` auf `ToggleAllBags`/`OpenAllBags`/`CloseAllBags` … mitgehört, nie überschrieben. Die eigenen
   Taschenplätze sind Blizzards `ContainerFrameItemButtonTemplate` (Elternrahmen mit `SetID(Tasche)`, Knopf mit
