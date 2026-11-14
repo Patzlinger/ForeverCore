@@ -17,5 +17,6 @@ Data.lua
 Recipes.lua
 ProfessionTab.lua
 Gear.lua
+Flights.lua
 Window.lua
 Options.lua

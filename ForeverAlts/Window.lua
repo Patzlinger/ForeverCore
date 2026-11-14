@@ -587,6 +587,8 @@ local function Build()
     footer:SetPoint("BOTTOMLEFT", PAD + 4, 16)
     local settings = UI.Button(window, T("Einstellungen", "Settings"), 110, function() ns.ToggleOptions() end)
     settings:SetPoint("BOTTOMRIGHT", -PAD - 16, 10)
+    local flights = UI.Button(window, T("Flugpunkte", "Flight points"), 110, function() ns.ToggleFlights() end)
+    flights:SetPoint("RIGHT", settings, "LEFT", -6, 0)
 
     window:HookScript("OnShow", ns.Safe("Fenster", function()
         ns.Update() -- eigener Stand frisch

@@ -82,6 +82,9 @@ SlashCmdList["FOREVERALTS"] = ns.Safe(T("Befehl", "Command"), function(msg)
     msg = strtrim(msg or ""):lower()
     if msg == "options" or msg == "optionen" then
         ns.ToggleOptions()
+    elseif msg:match("^flug") or msg:match("^flight") then
+        -- Prototyp: /falts flug [Name] -> Fenster "Flugpunkte" (Flights.lua), optional mit Suchtext
+        ns.ToggleFlights(strtrim((msg:gsub("^%S+", "", 1))))
     elseif msg == "reiter" or msg == "tab" then
         -- Prüfbefehl: Zustand des Reiters am Berufe-Fenster (ProfessionTab.lua)
         if ns.CheckProfessionTab then ns.CheckProfessionTab() else print("ForeverAlts: ProfessionTab.lua ist nicht geladen (Spiel komplett neu starten)") end
