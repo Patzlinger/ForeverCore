@@ -44,11 +44,10 @@ local function Skin(frame)
             if type(item.IconBorder) == "table" then item.IconBorder:SetAlpha(0) end
             ns.Flat(item, C.input, -1)
         end
-        -- (Hinweis-Kärtchen: keine Runen-Ebene – Runenkreis und Goldrahmen lagen schief über dem kleinen Kärtchen,
-        -- 2026-11-14; die blaue Grundfarbe aus UI.COLOR bleibt)
-        ns.noThemeNext = true
+        -- Runen-Optik wie die Fenster: blauer Verlauf und goldener Rahmen. Den Runenkreis lässt die Optik bei so
+        -- kleinen Flächen weg (er lag vorher schief darüber, weil das Kärtchen beim Aufbau noch keine Größe hatte –
+        -- behoben in ForeverCoreUI/Theme.lua, 2026-11-14)
         ns.Flat(frame, C.background, 6)
-        ns.noThemeNext = nil
         local line = frame:CreateTexture(nil, "BORDER", nil, -6)
         line:SetTexture(WHITE)
         line:SetVertexColor(C.accent[1], C.accent[2], C.accent[3], 0.8)
