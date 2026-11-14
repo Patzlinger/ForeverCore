@@ -90,5 +90,8 @@ geändert wird.** Die Kurzregeln stehen in CLAUDE.md; hier die Einzelheiten und 
   DataProvider der ScrollBox (in Forever ein Baum mit Überschriften). Das verändert eine Tabelle, die Blizzard-Code
   liest, und verstößt damit gegen die Taint-Regel. Grund: Forever wertet den Rollenfilter der Suche nicht aus, und
   Abdunkeln statt Entfernen war nicht gewünscht. Von flowfy im Spiel geprüft: Filtern, „Nachricht senden“ und
-  „Gruppeneinladung“ gehen. Falls doch `ADDON_ACTION_BLOCKED` aus der Gruppensuche gemeldet wird: zuerst hier suchen;
+  „Gruppeneinladung“ gehen. **Bekannte, hingenommene Folge** (flowfy 2026-11-15: „keine eingeschränkte Funktion“):
+  bei aktivem Filter gelegentlich `Blizzard_LFGVanilla_Browse.lua:373: attempt to compare field 'numMembers' (a secret
+  number value, while execution tainted by 'ForeverHelpers')` – Blizzard frischt dann eine Zeile nicht auf, bis zur
+  nächsten Suche; nur Anzeige. Falls doch `ADDON_ACTION_BLOCKED` aus der Gruppensuche gemeldet wird: zuerst hier suchen;
   der regelkonforme Stand (Abdunkeln per `SetAlpha`) liegt als git-Markierung `backup/gruppensuche-abdunkeln`.
