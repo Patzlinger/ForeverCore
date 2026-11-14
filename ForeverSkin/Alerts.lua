@@ -44,7 +44,11 @@ local function Skin(frame)
             if type(item.IconBorder) == "table" then item.IconBorder:SetAlpha(0) end
             ns.Flat(item, C.input, -1)
         end
+        -- (Hinweis-Kärtchen: keine Runen-Ebene – Runenkreis und Goldrahmen lagen schief über dem kleinen Kärtchen,
+        -- 2026-11-14; die blaue Grundfarbe aus UI.COLOR bleibt)
+        ns.noThemeNext = true
         ns.Flat(frame, C.background, 6)
+        ns.noThemeNext = nil
         local line = frame:CreateTexture(nil, "BORDER", nil, -6)
         line:SetTexture(WHITE)
         line:SetVertexColor(C.accent[1], C.accent[2], C.accent[3], 0.8)

@@ -104,7 +104,8 @@ local function Build(f, opts)
 
     t.runes = New(2)
     t.runes:SetTexture(RUNES)
-    t.runes:SetAlpha(RUNES_ALPHA)
+    t.runes:SetAlpha(0) -- (erst sichtbar, wenn Place eine brauchbare Größe gemessen hat – sonst stand der Kreis
+                        -- bei kleinen Flächen ohne gemessene Größe groß und schief darüber)
     local function Place()
         local w, h = anchor:GetSize()
         if not w or not h or w <= 0 or h <= 0 then return end
