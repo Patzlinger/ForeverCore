@@ -1514,16 +1514,35 @@ local function Replacing() return ns.db and ns.db.replaceBlizzard end
 -- startenden Handel ab, wenn er per Gegenstand-auf-Einheitenrahmen begann – Blizzard öffnet dabei seine Taschen, das
 -- sofortige Schließen mitten im Ablauf ließ den Server den Handel abbrechen (gemessen 2026-11-14: TRADE_REQUEST_CANCEL
 -- 0,16 s nach TRADE_SHOW; mit "Blizzards Taschenfenster ersetzen" aus ging es).
+-- Ein Bild reichte nicht immer (2026-11-15 wieder aufgetreten): solange ein Gegenstand am Mauszeiger hängt oder der
+-- Handelsstart (TRADE_SHOW) weniger als 1 s her ist, bleiben Blizzards Taschen unsichtbar offen; alle 0,1 s neu
+-- prüfen, spätestens nach 3 s zumachen.
+local tradeShownAt = 0
+local tradeWatch = CreateFrame("Frame")
+tradeWatch:RegisterEvent("TRADE_SHOW")
+tradeWatch:SetScript("OnEvent", function() tradeShownAt = GetTime() end)
+
+local function Busy()
+    return (CursorHasItem and CursorHasItem()) or GetTime() - tradeShownAt < 1
+end
+
 local function KeepClosed(frame)
     if not frame or frame.fbagsHooked then return end
     frame.fbagsHooked = true
     frame:HookScript("OnShow", function(self)
         if not Replacing() then return end
         self:SetAlpha(0) -- (kein Aufblitzen bis zum Schließen)
-        C_Timer.After(0, function()
-            if Replacing() and self:IsShown() and not InCombatLockdown() then self:Hide() end
+        local started = GetTime()
+        local function Try()
+            if not (Replacing() and self:IsShown()) then self:SetAlpha(1) return end
+            if (Busy() and GetTime() - started < 3) or InCombatLockdown() then
+                if not InCombatLockdown() then C_Timer.After(0.1, Try) return end
+            else
+                self:Hide()
+            end
             self:SetAlpha(1) -- (für den Fall, dass die Einstellung später ausgeschaltet wird)
-        end)
+        end
+        C_Timer.After(0, Try)
     end)
 end
 

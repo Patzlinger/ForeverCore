@@ -78,7 +78,8 @@ geändert wird.** Die Kurzregeln stehen in CLAUDE.md; hier die Einzelheiten und 
 - **ForeverBags** macht Blizzards Taschenfenster (`ContainerFrameCombinedBags`, `ContainerFrame1…`) nach deren `OnShow`
   per `:Hide()` wieder zu (nur mit Einstellung „Blizzards Taschenfenster ersetzen“) – **erst im nächsten Bild**, bis
   dahin `SetAlpha(0)`: sofort im `OnShow` zugemacht, brach das einen Handel ab, der per Gegenstand-auf-Einheitenrahmen
-  startete (2026-11-14). Sie sind keine geschützten
+  startete (2026-11-14). Ein Bild reichte nicht immer (2026-11-15): jetzt erst, wenn nichts am Mauszeiger hängt und
+  `TRADE_SHOW` ≥ 1 s her ist (Prüfung alle 0,1 s, spätestens nach 3 s). Sie sind keine geschützten
   Rahmen; `UI.HideBlizzard` passt nicht (die Taschenplätze blieben unsichtbar anklickbar). Öffnen/Schließen wird nur per
   `hooksecurefunc` auf `ToggleAllBags`/`OpenAllBags`/`CloseAllBags` … mitgehört, nie überschrieben. Die eigenen
   Taschenplätze sind Blizzards `ContainerFrameItemButtonTemplate` (Elternrahmen mit `SetID(Tasche)`, Knopf mit
