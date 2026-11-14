@@ -21,6 +21,7 @@ local order = {}        -- Schluessel, neueste zuerst
 local current           -- gewaehltes Gespraech
 local panel, view, input, placeholder, emptyHint, imTab
 local subTabs = {}
+local tabFirst, ensureCurrent, arrows = 1, false, nil
 local hiddenChat        -- Chatfenster, das waehrend der Messenger-Ansicht unsichtbar ist
 ns.imActive = false
 
@@ -189,6 +190,7 @@ local function ShowConversation(key)
     end
     emptyHint:SetShown(c == nil)
     input:SetShown(c ~= nil and ns.imActive)
+    ensureCurrent = true
     ns.UpdateIMTabs()
 end
 
@@ -231,32 +233,111 @@ local function SubTab(i)
     return b
 end
 
+-- Pfeile links/rechts, wenn mehr Gespräche da sind, als in die Reiterleiste passen
+local ARROW_W = 18
+
+
+local function Arrow(dir)
+    local b = CreateFrame("Button", nil, panel, "BackdropTemplate")
+    b:SetSize(ARROW_W, SUBTAB_H)
+    Flat(b, { C.button[1], C.button[2], C.button[3], 0.85 }, C.border)
+    local fs = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    fs:SetPoint("CENTER", 0, 0)
+    fs:SetText(dir < 0 and "<" or ">")
+    b.label = fs
+    local hl = b:CreateTexture(nil, "HIGHLIGHT")
+    hl:SetPoint("TOPLEFT", 1, -1)
+    hl:SetPoint("BOTTOMRIGHT", -1, 1)
+    hl:SetColorTexture(1, 1, 1, 0.08)
+    b:SetScript("OnClick", function()
+        tabFirst = math.max(1, math.min(#order, tabFirst + dir))
+        ns.UpdateIMTabs()
+    end)
+    b:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:AddLine(dir < 0 and T("Frühere Gespräche", "Earlier conversations") or T("Weitere Gespräche", "More conversations"))
+        GameTooltip:Show()
+    end)
+    b:SetScript("OnLeave", GameTooltip_Hide)
+    return b
+end
+
 function ns.UpdateIMTabs()
     UpdateIMTab()
     if not panel then return end
     local width = panel:GetWidth()
-    local x, shown = 0, 0
+    local widths, total, curIdx = {}, 0, nil
     for i, key in ipairs(order) do
         local c = convs[key]
         local b = SubTab(i)
         b.key = key
         b:SetText(c.unread > 0 and (c.name .. " |cffffd100" .. c.unread .. "|r") or c.name)
-        local w = math.min(130, b:GetFontString():GetStringWidth() + 18)
-        if x + w > width then b:Hide() else
+        widths[i] = math.min(130, b:GetFontString():GetStringWidth() + 18)
+        total = total + widths[i] + 3
+        if key == current then curIdx = i end
+    end
+    local overflow = total - 3 > width
+    local avail = overflow and (width - 2 * ARROW_W - 8) or width
+    if not overflow then tabFirst = 1 end
+    tabFirst = math.max(1, math.min(#order, tabFirst))
+    if overflow and ensureCurrent and curIdx then -- das gewaehlte Gespraech soll sichtbar sein
+        if curIdx < tabFirst then
+            tabFirst = curIdx
+        else
+            while tabFirst < curIdx do
+                local s = 0
+                for j = tabFirst, curIdx do s = s + widths[j] + 3 end
+                if s - 3 <= avail then break end
+                tabFirst = tabFirst + 1
+            end
+        end
+    end
+    ensureCurrent = false
+
+    local x, last = 0, tabFirst - 1
+    local hiddenLeftUnread, hiddenRightUnread = false, false
+    for i, key in ipairs(order) do
+        local c, b = convs[key], subTabs[i]
+        local fits = i >= tabFirst and (i == tabFirst or x + widths[i] <= avail) and last == i - 1
+        if fits then
             b:ClearAllPoints()
             b:SetPoint("TOPLEFT", panel, "TOPLEFT", x, -2)
-            b:SetWidth(w)
+            b:SetWidth(widths[i])
             local on = key == current
             Flat(b, on and { C.header[1], C.header[2], C.header[3], 0.95 } or { C.button[1], C.button[2], C.button[3], 0.85 },
                 on and { C.accent[1], C.accent[2], C.accent[3], 0.75 } or C.border)
             b:GetFontString():SetTextColor(on and C.accent[1] or 0.82, on and C.accent[2] or 0.82, on and C.accent[3] or 0.82)
             SetBlink(b, c.unread > 0) -- Unterreiter mit ungelesenen Nachrichten blinkt gold
             b:Show()
-            x = x + w + 3
-            shown = shown + 1
+            x = x + widths[i] + 3
+            last = i
+        else
+            b:Hide()
+            if c.unread > 0 then
+                if i < tabFirst then hiddenLeftUnread = true else hiddenRightUnread = true end
+            end
         end
     end
     for i = #order + 1, #subTabs do subTabs[i]:Hide() end
+
+    if overflow then
+        if not arrows then arrows = { Arrow(-1), Arrow(1) } end
+        arrows[2]:ClearAllPoints()
+        arrows[2]:SetPoint("TOPRIGHT", panel, "TOPRIGHT", 0, -2)
+        arrows[1]:ClearAllPoints()
+        arrows[1]:SetPoint("RIGHT", arrows[2], "LEFT", -3, 0)
+        local canLeft, canRight = tabFirst > 1, last < #order
+        for k, a in ipairs(arrows) do
+            local can = k == 1 and canLeft or canRight
+            local unread = k == 1 and hiddenLeftUnread or hiddenRightUnread
+            a:SetEnabled(can)
+            a:SetAlpha(can and 1 or 0.35)
+            if unread then a.label:SetTextColor(C.accent[1], C.accent[2], C.accent[3]) else a.label:SetTextColor(0.82, 0.82, 0.82) end
+            a:Show()
+        end
+    elseif arrows then
+        arrows[1]:Hide() arrows[2]:Hide()
+    end
 end
 
 local function SendText(text)

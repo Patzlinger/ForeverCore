@@ -1,5 +1,9 @@
 # Forever Core – Changelog
 
+## Unreleased
+
+- ForeverChat: the IM tab now has arrow buttons (< >) to switch between whisper conversations when there are more than fit in the tab row. The arrow turns gold if a hidden conversation has unread messages.
+
 ## 0.545b – 2026-11-14
 
 - **New optional "Runes" look** (prototype): a dark blue look with a gold frame and a faint rune circle for the Forever windows. Switch it with the "Design" button next to the search box in the settings window. It also recolors the action bars, XP/reputation bar, quest log, dungeon window, the ForeverSkin windows and more; `/frunen` lists windows that still lack the look. Switch it off again and everything is exactly as before.
