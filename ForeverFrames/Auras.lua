@@ -1051,11 +1051,19 @@ local function UpdateDispelInCombat(b)
     if not v.dispelBorder or (not db.dispelShow and not db.dispelBorder) then return end
     local filter = db.dispelOnlyMine and "HARMFUL|RAID" or "HARMFUL"
     local ok, ids = pcall(C_UnitAuras.GetUnitAuraInstanceIDs, unit, filter)
-    if not ok or type(ids) ~= "table" or IsSecret(ids) then return end
+    if not ok or type(ids) ~= "table" or IsSecret(ids) then
+        -- Liste gesperrt: wenigstens prüfen, ob es überhaupt noch eine solche Aura gibt – sonst blieb der Rahmen nach
+        -- dem Bannen stehen
+        if C_UnitAuras.GetAuraDataByIndex then
+            local ok2, first = pcall(C_UnitAuras.GetAuraDataByIndex, unit, 1, filter)
+            if ok2 and first == nil then HideDispel(v) end
+        end
+        return
+    end
     if #ids == 0 then
         HideDispel(v) -- nichts (mehr) zu bannen: Hinweis weg
-    elseif HasAura(GetAura(unit, ids[1])) then
-        ShowDispel(v, unit, ids[1])
+    else
+        ShowDispel(v, unit, ids[1]) -- (ShowDispel blendet selbst aus, wenn die Aura nicht lesbar/ohne Typ ist)
     end
 end
 
