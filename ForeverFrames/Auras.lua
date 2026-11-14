@@ -607,14 +607,109 @@ local function SetContainerUnit(c, unit)
     end
 end
 
+-- Bann-Rahmen und Typ-Symbole ueber die Blizzard-Anzeige: im Kampf sperrt Forever jede Abfrage durch das Addon, die
+-- Blizzard-Anzeige zeichnet (und entfernt!) dagegen auch im Kampf selbst. Ein eigener Container mit Filter
+-- "HARMFUL|RAID" (nur was ich bannen kann) und genau einem Symbol, das den ganzen Rahmen ausfuellt; Rahmenkanten und
+-- Typ-Symbole faerbt Blizzard per AddDispelTypeTexture nach dem Debuff-Typ (Vorbild: BetterBlizzPlates).
+-- Ist der Container aktiv (v.dispelEngine), zeichnet das alte System weder Rahmen noch Symbole.
+local function EnsureDispelContainer(v)
+    local db = GetDB()
+    v.engineC = v.engineC or {}
+    local c = v.engineC.dispel
+    local w, h = v.content and v.content:GetWidth() or 0, v.content and v.content:GetHeight() or 0
+    local styleEnum = Enum and Enum.CustomAuraButtonDispelTypeTextureStyle
+    if not (db.dispelBorder or db.dispelShow) or not styleEnum or w < 4 or h < 4 then
+        if c then c:Hide() end
+        return nil
+    end
+    local filter = db.dispelOnlyMine and "HARMFUL|RAID" or "HARMFUL"
+    local sig = table.concat({ math.floor(w + 0.5), math.floor(h + 0.5), db.dispelBorder and db.dispelBorderSize or 0,
+        tostring(db.dispelShow), db.dispelSize, db.dispelPoint, db.dispelX, db.dispelY, filter, ColorKeySignature() }, ":")
+    if not c or c.ffSig ~= sig then
+        RetireContainer(c)
+        c = CreateContainer(v.auraLayer)
+        if not c then return nil end
+        local border, symbols, size = db.dispelBorder, db.dispelShow, db.dispelBorderSize
+        local symSize, symPoint, symX, symY = db.dispelSize, db.dispelPoint, db.dispelX, db.dispelY
+        local colors, none = {}, CreateColor(0, 0, 0, 0)
+        for _, t in ipairs(ns.DEBUFF_TYPES) do
+            local r, g, bl = ns.Color(t.key)
+            colors[t.name] = CreateColor(r, g, bl, 1)
+        end
+        colors.None = none
+        local ok, err = pcall(c.AddAuraGroup, c, "ff_dispel", filter, {
+            maxFrameCount = 1,
+            sortMethod = AuraContainerSortMethod.Default,
+            sortDirection = AuraContainerSortDirection.Normal,
+            initializeFrame = function(button)
+                button:SetSize(w, h)
+                button:EnableMouse(false)
+                local icon = button:CreateTexture(nil, "BACKGROUND")
+                icon:SetAllPoints()
+                icon:SetAlpha(0)
+                button:SetIcon(icon)
+                if border then
+                    local opts = { style = styleEnum.PreserveAsset, showWhenHarmful = true, showWhenHelpful = false,
+                        showWithoutDispelType = false, customDispelColorMap = colors }
+                    local edges = {}
+                    for i = 1, 4 do
+                        local e = button:CreateTexture(nil, "OVERLAY")
+                        e:SetTexture(WHITE)
+                        edges[i] = e
+                    end
+                    edges[1]:SetPoint("TOPLEFT") edges[1]:SetPoint("TOPRIGHT") edges[1]:SetHeight(size)
+                    edges[2]:SetPoint("BOTTOMLEFT") edges[2]:SetPoint("BOTTOMRIGHT") edges[2]:SetHeight(size)
+                    edges[3]:SetPoint("TOPLEFT") edges[3]:SetPoint("BOTTOMLEFT") edges[3]:SetWidth(size)
+                    edges[4]:SetPoint("TOPRIGHT") edges[4]:SetPoint("BOTTOMRIGHT") edges[4]:SetWidth(size)
+                    for i = 1, 4 do button:AddDispelTypeTexture(edges[i], opts) end
+                end
+                if symbols then
+                    for _, t in ipairs(ns.DEBUFF_TYPES) do
+                        local map = { None = none }
+                        for _, s in ipairs(ns.DEBUFF_TYPES) do map[s.name] = s.name == t.name and CreateColor(1, 1, 1, 1) or none end
+                        local tex = button:CreateTexture(nil, "OVERLAY", nil, 2)
+                        tex:SetAtlas(t.atlas)
+                        tex:SetSize(symSize, symSize)
+                        tex:SetPoint(symPoint, button, symPoint, symX, symY)
+                        button:AddDispelTypeTexture(tex, { style = styleEnum.PreserveAsset, showWhenHarmful = true,
+                            showWhenHelpful = false, showWithoutDispelType = false, customDispelColorMap = map })
+                    end
+                end
+            end,
+        })
+        if not ok then
+            ns.ReportError("AuraContainer ff_dispel", err)
+            c:Hide()
+            return nil
+        end
+        pcall(c.SetAuraGroupLayout, c, "ff_dispel", { elementWidth = w, elementHeight = h, elementSpacing = 0,
+            lineSpacing = 0, layoutIndex = 1 })
+        ApplyFlow(c, "RIGHT", "TOPLEFT", w)
+        c.ffSig, c.ffUnit = sig, nil
+        v.engineC.dispel = c
+    end
+    c:ClearAllPoints()
+    c:SetPoint("TOPLEFT", v.content, "TOPLEFT", 0, 0)
+    SetContainerUnit(c, v.ffUnitForDispel)
+    c:Show()
+    return c
+end
+
 -- Container eines Buttons an die Einstellungen anpassen (Aussehen, Filter, Position)
 function engine.Layout(b)
     local v, db = b.ff, GetDB()
     local use = db.auraEngine and engine.Supported() and not b.ffFake
     v.engine = nil
+    v.dispelEngine = nil
     if not use then
         for _, c in pairs(v.engineC or {}) do c:Hide() end
         return
+    end
+    v.ffUnitForDispel = b.ffUnit
+    if EnsureDispelContainer(v) then
+        v.dispelEngine = true
+        for _, tex in pairs(v.dispelSym) do tex:Hide() end
+        v.dispelBorder:Hide()
     end
 
     local debuffNum = math.min(db.debuffNum, ns.MAX_AURA_ICONS)
@@ -856,6 +951,7 @@ end
 
 -- Typ-Symbol und Rahmen fuer einen bannbaren Debuff
 local function ShowDispel(v, unit, id)
+    if v.dispelEngine then HideDispel(v) return end -- die Blizzard-Anzeige übernimmt (EnsureDispelContainer)
     local db = GetDB()
     if not (IsSecret(id) or id) or (not db.dispelShow and not db.dispelBorder) then HideDispel(v) return end
     local aura = GetAura(unit, id)
@@ -1048,6 +1144,7 @@ end
 -- Blizzard. Ist die Abfrage gesperrt oder schlägt fehl, bleibt alles wie es war.
 local function UpdateDispelInCombat(b)
     local v, db, unit = b.ff, GetDB(), b.ffUnit
+    if v.dispelEngine then return end -- Blizzard-Anzeige zeichnet/entfernt selbst
     if not v.dispelBorder or (not db.dispelShow and not db.dispelBorder) then return end
     local filter = db.dispelOnlyMine and "HARMFUL|RAID" or "HARMFUL"
     local ok, ids = pcall(C_UnitAuras.GetUnitAuraInstanceIDs, unit, filter)
