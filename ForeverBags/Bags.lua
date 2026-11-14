@@ -107,11 +107,15 @@ ns.AddForeverLook = AddForeverLook
 -- oder Händler-Ansicht seiner eigenen Fenster) nicht passen. In unseren Fenstern ergab das fälschlich "passt nicht"
 -- (alles dunkel). Die Suche dunkelt weiter über SetMatchesSearch ab.
 local function NoItemContext(button)
-    local result = ItemButtonUtil and ItemButtonUtil.ItemContextMatchResult
-    if result and result.DoesNotApply then
-        button.GetItemContextMatchResult = function() return result.DoesNotApply end
+    -- (Blizzards Funktion nicht mehr überschreiben – das "beschmutzte" den Klick-Ablauf (Taint, Ruhestein nutzen
+    -- ging nicht). Stattdessen sicherer Haken: nach Blizzards Prüfung die Abdunklung wieder wegnehmen.)
+    if button.UpdateItemContextMatching and not button.fbagsCtxHook then
+        button.fbagsCtxHook = true
+        hooksecurefunc(button, "UpdateItemContextMatching", function(self)
+            if self.ItemContextOverlay then self.ItemContextOverlay:Hide() end
+        end)
+        pcall(button.UpdateItemContextMatching, button)
     end
-    if button.UpdateItemContextMatching then pcall(button.UpdateItemContextMatching, button) end
 end
 ns.NoItemContext = NoItemContext
 
