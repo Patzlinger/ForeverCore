@@ -1,6 +1,12 @@
 # Forever Core – Changelog
 
-## Unreleased
+## 0.545b – 2026-11-14
+
+- **New optional "Runes" look** (prototype): a dark blue look with a gold frame and a faint rune circle for the Forever windows. Switch it with the "Design" button next to the search box in the settings window. It also recolors the action bars, XP/reputation bar, quest log, dungeon window, the ForeverSkin windows and more; `/frunen` lists windows that still lack the look. Switch it off again and everything is exactly as before.
+- ForeverHelpers (marker wheel): now also usable in combat, and it recognizes hostile players under the mouse.
+- ForeverUnits: fixed the error "Cannot set texture to a secret string value" with raid markers.
+- ForeverMinimap: the quest tracker and the micro menu now only follow the first column of the button bar.
+- Settings (ForeverUnits, ForeverFrames): some section headings sat too close to the item above, so text was clipped by the frames. Fixed.
 
 - **Looking for Group > Browse now finds far more listings.** Blizzard's search only returned listings in your game client's language (in our test 8 instead of 100). New flag button next to Refresh: choose the languages to search in, then click Refresh.
 

@@ -4,7 +4,7 @@
 ## Category: Forever Core UI
 ## Notes: Simple minimap in the Forever Core UI look: round or square, slim bar with zone, clock and coordinates, buttons only when you need them
 ## Notes-deDE: Schlichte Minimap im Forever-Core-UI-Stil: rund oder eckig, schmale Leiste mit Zone, Uhr und Koordinaten, Knöpfe nur bei Bedarf
-## Version: 0.544b
+## Version: 0.545b
 ## Author: Patzlinger
 ## X-License: MIT
 ## X-Curse-Project-ID: 1743753
