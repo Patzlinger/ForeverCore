@@ -2165,9 +2165,34 @@ local function OpenListGroupFinder(activities, categoryID)
     return true
 end
 
+-- Schutzfläche während unserer Suche (wie ForeverHelpers/Languages.lua): Blizzards Liste zeigt die alten Treffer bis
+-- zu den neuen weiter, das Spiel hat sie aber schon verworfen – Maus darüber = Fehler in Blizzards Tooltip.
+local shield
+local function Shield(browse)
+    if not shield then
+        shield = CreateFrame("Frame", nil, browse)
+        shield:SetAllPoints(browse)
+        shield:SetFrameLevel(browse:GetFrameLevel() + 50)
+        shield:EnableMouse(true)
+        shield:Hide()
+        for _, event in ipairs({ "LFG_LIST_SEARCH_RESULTS_RECEIVED", "LFG_LIST_SEARCH_FAILED" }) do
+            pcall(shield.RegisterEvent, shield, event)
+        end
+        shield:SetScript("OnEvent", function(self) self:Hide() end)
+        browse:HookScript("OnHide", function() shield:Hide() end)
+    end
+    shield:Show()
+    local token = {}
+    shield.token = token
+    C_Timer.After(3, function() if shield.token == token then shield:Hide() end end)
+end
+
 -- Variante "Suche nach Gruppe" (Classic-Stil, LFGParentFrame mit Reiter "Durchsuchen" = LFGBrowseFrame):
--- Reiter Durchsuchen öffnen, Kategorie setzen, im Filter "Nach Aktivität filtern" nur diesen Dungeon
--- anhaken und suchen
+-- Reiter Durchsuchen öffnen und selbst nach genau diesem Dungeon suchen; Blizzards Liste zeigt das Ergebnis.
+-- Blizzards Auswahlfelder (Kategorie, "Nach Aktivität filtern") und LFGBrowse_DoSearch NICHT aus Addon-Code
+-- bedienen: das schrieb deren Werte "getaintet", und Blizzards eigene Suche nach dem Einstellen einer Gruppe
+-- (LFG_LIST_ACTIVE_ENTRY_UPDATE > SearchActiveEntry > Search) wurde blockiert (ADDON_ACTION_BLOCKED, 2026-11-15).
+-- Folge: die Auswahlfelder oben zeigen den Dungeon nicht an. Sprachen wie Blizzard gespeichert (ForeverHelpers).
 local function OpenBrowseGroupFinder(activities, categoryID)
     if not LFGParentFrame then return false end
     if ShowLFGParentFrame then
@@ -2176,28 +2201,11 @@ local function OpenBrowseGroupFinder(activities, categoryID)
         if ShowUIPanel then ShowUIPanel(LFGParentFrame) else LFGParentFrame:Show() end
         if LFGParentFrameTab2_OnClick then LFGParentFrameTab2_OnClick() end
     end
-    local browse = LFGBrowseFrame
-    if browse then
-        -- Kategorie (z. B. "Dungeons") einstellen
-        local categoryDropdown = browse.CategoryDropdown or browse.CategoryDropDown
-        if categoryDropdown and categoryDropdown.SetValue and categoryID
-            and not (categoryDropdown.GetValue and categoryDropdown:GetValue() == categoryID) then
-            categoryDropdown:SetValue(categoryID)
-        end
-        -- Aktivitätsfilter: alles abwählen, dann nur diesen Dungeon (bzw. seine Flügel) anhaken
-        local activityDropdown = browse.ActivityDropdown or browse.ActivityDropDown
-        if activityDropdown and activityDropdown.ValueReset and activityDropdown.ValueSetSelected then
-            activityDropdown:ValueReset()
-            for _, activityID in ipairs(activities) do
-                activityDropdown:ValueSetSelected(activityID, true)
-            end
-        end
-    end
-    -- Suche mit dem Filter starten
-    if LFGBrowse_DoSearch then
-        LFGBrowse_DoSearch()
-    elseif C_LFGList.Search then
-        C_LFGList.Search(categoryID, activities)
+    if C_LFGList.Search and categoryID then
+        local okLang, languages = pcall(C_LFGList.GetLanguageSearchFilter)
+        if not (okLang and type(languages) == "table") then languages = nil end
+        local searched = pcall(C_LFGList.Search, categoryID, 0, 0, languages, false, nil, activities)
+        if searched and LFGBrowseFrame then pcall(Shield, LFGBrowseFrame) end
     end
     return true
 end

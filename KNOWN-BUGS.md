@@ -12,6 +12,14 @@ Ablauf:
 
 ## Offen
 
+### ForeverQuests: „Search()“ blockiert beim Einstellen einer eigenen Gruppe (Fix wartet auf Bestätigung)
+- **Was passiert:** BugSack `ADDON_ACTION_BLOCKED … ForeverQuests … Search()` aus `Blizzard_LFGVanilla_Listing.lua:110`
+  (Gruppe in „Suche nach Gruppe“ eingestellt > Blizzard sucht selbst). Gefunden 2026-11-15 (flowfy).
+- **Ursache:** der Gruppensuche-Knopf im Tracker/Dungeonfenster stellte Blizzards Kategorie- und Aktivitätsauswahl per
+  `SetValue`/`ValueSetSelected` ein und rief `LFGBrowse_DoSearch` – damit waren diese Werte getaintet.
+- **Stand:** jetzt eigene Suche per `C_LFGList.Search` mit den Dungeon-Aktivitäten, Blizzards Felder bleiben unberührt.
+  Prüfen: `/reload`, Gruppensuche-Knopf an einem Dungeon klicken, danach eine eigene Gruppe einstellen – kein BugSack.
+
 ### ForeverQuests: „blocked from an action only available to the Blizzard UI“ nach Questmarker-Klick (Fix wartet auf Bestätigung)
 - **Was passiert:** Quest im Tracker anklicken → Weltkarte → dunkelroten „?“-Marker anklicken (gelb, Super-Tracking) →
   Karte schließen → ADDON_ACTION_BLOCKED, Spieler muss ForeverQuests abschalten. Gemeldet 2026-11-09 auf CurseForge

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverQuests: fixed "ForeverQuests tried to call the protected function Search()" after listing your own group, when the group finder had been opened from a dungeon before.
+
 - ForeverBags: dragging an item onto a group or target frame to trade no longer cancels the trade right away (with "Replace Blizzard's bag windows" on).
 
 - Runes look: the small loot alerts ("You received …") no longer get a misplaced rune circle.
