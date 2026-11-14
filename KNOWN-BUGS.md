@@ -54,8 +54,10 @@ Ablauf:
   Gegenständen geht der Handel (flowfy). Die Sperre danach ist Blizzards Verhalten (`/reload` löst sie).
 - **Nachtrag 2026-11-14:** genauer liegt es daran, WIE der Handel gestartet wird: Gegenstand auf einen **Einheitenrahmen**
   (Gruppen- oder Zielrahmen) ziehen → Server bricht 0,16 s nach `TRADE_SHOW` ab (gemessen: ein einziger Klick, keine
-  Forever-Funktion beteiligt). Passiert laut flowfy **auch mit allen Addons aus** auf Blizzards Rahmen – Fehler des
-  Forever-Clients, nicht von uns. Auf die Spielfigur in der Welt ziehen oder über „Handeln“ starten funktioniert.
+  Forever-Funktion beteiligt). **Korrektur:** doch von uns – ohne Forever-Addons geht es. Eingegrenzt (flowfy):
+  ForeverBags, Einstellung „Blizzards Taschenfenster ersetzen“: Blizzard öffnet beim Handelsstart seine Taschen,
+  ForeverBags machte sie sofort im `OnShow` zu → Server bricht ab. Behoben `5a78311`: Schließen erst im nächsten Bild
+  (bis dahin unsichtbar). Im Spiel noch bestätigen.
 
 ### BugSack-Fehler vom 5.–7.11.2026 (behoben, per Zeitstempel gegen Commits geprüft, 2026-11-08)
 - Bars.lua `ManaNow` gesperrtes Mana (25×) → `Readable()` (2026-11-05); Units.lua `PlaceCombat` und Hub `GuidOf`
