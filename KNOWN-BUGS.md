@@ -52,6 +52,10 @@ Ablauf:
   `TRADE_SHOW`, Meldung „Handel abgebrochen.“), typisch bei nicht (mehr) handelbarer Beute. Mit einem temporären
   Mess-Addon geprüft: kein Forever-Addon ruft etwas auf, Blizzards `TradeFrame` schließt sich selbst. Mit anderen
   Gegenständen geht der Handel (flowfy). Die Sperre danach ist Blizzards Verhalten (`/reload` löst sie).
+- **Nachtrag 2026-11-14:** genauer liegt es daran, WIE der Handel gestartet wird: Gegenstand auf einen **Einheitenrahmen**
+  (Gruppen- oder Zielrahmen) ziehen → Server bricht 0,16 s nach `TRADE_SHOW` ab (gemessen: ein einziger Klick, keine
+  Forever-Funktion beteiligt). Passiert laut flowfy **auch mit allen Addons aus** auf Blizzards Rahmen – Fehler des
+  Forever-Clients, nicht von uns. Auf die Spielfigur in der Welt ziehen oder über „Handeln“ starten funktioniert.
 
 ### BugSack-Fehler vom 5.–7.11.2026 (behoben, per Zeitstempel gegen Commits geprüft, 2026-11-08)
 - Bars.lua `ManaNow` gesperrtes Mana (25×) → `Readable()` (2026-11-05); Units.lua `PlaceCombat` und Hub `GuidOf`
