@@ -68,7 +68,7 @@ Ablauf:
   (bis dahin unsichtbar). Von flowfy im Spiel bestätigt (2026-11-14).
 - **Rückfall 2026-11-15** (gleicher Ablauf, gleicher Gegenstand): ein Bild Wartezeit reichte nicht immer. Jetzt schließt
   ForeverBags Blizzards Taschen erst, wenn kein Gegenstand mehr am Mauszeiger hängt und der Handelsstart ≥ 1 s her ist.
-  Wartet auf Bestätigung.
+  Von flowfy im Spiel bestätigt (2026-11-15).
 
 ### BugSack-Fehler vom 5.–7.11.2026 (behoben, per Zeitstempel gegen Commits geprüft, 2026-11-08)
 - Bars.lua `ManaNow` gesperrtes Mana (25×) → `Readable()` (2026-11-05); Units.lua `PlaceCombat` und Hub `GuidOf`
