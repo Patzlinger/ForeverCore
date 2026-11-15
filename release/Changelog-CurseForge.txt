@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- ForeverAlts: hovering a flight master or flight point on the world map now lists which of your characters know that flight point.
+- ForeverAlts: hovering a flight master or flight point on the world map now shows whether your current character knows that flight point.
 
 ## 0.6b – 2026-11-15
 

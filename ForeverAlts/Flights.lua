@@ -134,23 +134,19 @@ local function AddFlightLines(tip)
         local text = line and line:GetText()
         if text and not issecret(text) and text:find(TIP_HEADER, 1, true) then return end
     end
-    local chars = {}
-    for _, entry in ipairs(ns.Characters()) do
-        if not entry.data.hidden then chars[#chars + 1] = entry end
-    end
-    if #chars == 0 then return end
+    -- nur der gerade gespielte Charakter (Wunsch flowfy 2026-11-15); alle Charaktere zeigt das Fenster /falts flug
+    local data = ns.CharacterData(ns.CharKey())
+    if not data then return end
+    local state = StateOf(data, name)
     tip:AddLine(" ")
     tip:AddLine(TIP_HEADER .. T("Flugpunkt: ", "Flight point: ") .. name .. "|r")
-    for _, entry in ipairs(chars) do
-        local state = StateOf(entry.data, name)
-        local who = ns.ColoredName(entry.data) or entry.data.name or "?"
-        if state then
-            tip:AddDoubleLine(who, T("ja", "yes"), 1, 1, 1, 0.25, 1, 0.25)
-        elseif state == false then
-            tip:AddDoubleLine(who, T("nein", "no"), 1, 1, 1, 1, 0.38, 0.38)
-        else
-            tip:AddDoubleLine(who, T("? (Flugkarte nie geöffnet)", "? (map never opened)"), 1, 1, 1, 0.55, 0.55, 0.55)
-        end
+    if state then
+        tip:AddLine(T("Bekannt", "Known"), 0.25, 1, 0.25)
+    elseif state == false then
+        tip:AddLine(T("Noch nicht entdeckt", "Not discovered yet"), 1, 0.38, 0.38)
+    else
+        tip:AddLine(T("Unbekannt – einmal bei einem Flugmeister die Flugkarte öffnen",
+            "Unknown – open the flight map at a flight master once"), 0.55, 0.55, 0.55, true)
     end
     tipBusy = true
     tip:Show() -- Größe an die neuen Zeilen anpassen
