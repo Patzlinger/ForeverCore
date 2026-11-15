@@ -70,13 +70,27 @@ end
 -- Unsichtbar machen (Deckkraft 0) geht auch im Kampf: Blizzard zeigt den Tracker z. B. beim Aufsammeln von
 -- Questgegenständen neu an – im Kampf darf er nicht versteckt werden, bliebe also bis Kampfende sichtbar.
 -- Der Hub hält die Deckkraft auf 0, solange "Blizzard-Questtracker ausblenden" an ist.
+-- Leichte Variante (Versuch gegen "QuestObjectiveTracker:SetHeight() blockiert"): KEINE Haken (hooksecurefunc) und
+-- KEINE eigenen Felder mehr am Blizzard-Rahmen (das war vermutlich, was Blizzards Tracker-Code "beschmutzte") –
+-- nur Deckkraft 0 setzen, den Zustand außerhalb merken und einmal pro Sekunde nachprüfen (Hub-Takt, auch im Kampf).
+local hiddenTrackers = setmetatable({}, { __mode = "k" })
 local function HoldInvisible(frame)
-    local UI = _G.ForeverHub and _G.ForeverHub.UI
-    if not (UI and UI.HideBlizzard) then return end
     if ns.db.hideBlizzard then
-        UI.HideBlizzard(frame, { children = false, when = function() return ns.db.hideBlizzard end })
-    elseif UI.ShowBlizzard then
-        UI.ShowBlizzard(frame)
+        hiddenTrackers[frame] = true
+        if frame:GetAlpha() ~= 0 then frame:SetAlpha(0) end
+    elseif hiddenTrackers[frame] then
+        hiddenTrackers[frame] = nil
+        frame:SetAlpha(1)
+    end
+end
+do
+    local UI = _G.ForeverHub and _G.ForeverHub.UI
+    if UI and UI.Every then
+        UI.Every(1, function()
+            for frame in pairs(hiddenTrackers) do
+                if ns.db.hideBlizzard and frame:GetAlpha() ~= 0 then frame:SetAlpha(0) end
+            end
+        end, { addon = "ForeverQuests", name = "BlizzardTrackerAlpha", when = function() return next(hiddenTrackers) ~= nil end })
     end
 end
 
