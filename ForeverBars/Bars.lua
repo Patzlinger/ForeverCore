@@ -1153,8 +1153,13 @@ function ns.UpdateCastCounts()
                         end
                     end
                     -- (der Text kann gesperrt sein: Vergleich im pcall, im Zweifel zeigen)
-                    local okText, hasText = pcall(function() return (fs:GetText() or "") ~= "" end)
-                    fs:SetShown((not okText) or hasText)
+                    -- (gesperrter Text: gar nicht erst vergleichen – der Vergleich im pcall füllte das Taint-Protokoll)
+                    local text = fs:GetText()
+                    if issecretvalue and issecretvalue(text) then
+                        fs:Show()
+                    else
+                        fs:SetShown((text or "") ~= "")
+                    end
                 end
             elseif fs then
                 fs:Hide()
