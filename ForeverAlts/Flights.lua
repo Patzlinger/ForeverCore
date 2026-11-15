@@ -76,6 +76,94 @@ local function Matches(name, filter)
     return filter == "" or name:lower():find(filter, 1, true) ~= nil
 end
 
+-- Stand eines Flugpunkts für einen Charakter: true (ja), false (nein) oder nil (Karte nie gesehen). Findet den Namen
+-- auch, wenn die Weltkarte ihn etwas anders schreibt (nur der Teil vor dem Komma gleich, z. B. ohne Gebiet).
+local function Short(name) return (name:match("^([^,]+)") or name):lower() end
+local function StateOf(data, name)
+    local flights = data.flights
+    if not flights then return nil end
+    if flights[name] ~= nil then return flights[name] end
+    local short = Short(name)
+    for stored, state in pairs(flights) do
+        if Short(stored) == short then return state end
+    end
+    return nil
+end
+
+---------------------------------------------------------------------------
+-- Weltkarte: beim Zeigen auf einen Flugmeister/Flugpunkt (Questie oder Blizzard) die Charaktere anhängen
+---------------------------------------------------------------------------
+-- Nur Zeilen an den ohnehin gezeigten Tooltip anhängen – nichts an Blizzards oder Questies Kartenpunkten ändern.
+-- Welcher Flugpunkt: der nächste aus C_TaxiMap.GetTaxiNodesForMap (geht auch ohne Flugmeister) zur Mausposition.
+local TIP_HEADER = "|cffffd100" .. "»" .. " "
+local tipBusy = false
+
+local function NodeUnderCursor()
+    local map = _G.WorldMapFrame
+    if not (map and map:IsVisible() and map.ScrollContainer and map.ScrollContainer:IsMouseOver()) then return nil end
+    if not (C_TaxiMap and C_TaxiMap.GetTaxiNodesForMap and map.GetMapID and map.GetNormalizedCursorPosition) then return nil end
+    local mapID = map:GetMapID()
+    local okPos, cx, cy = pcall(map.GetNormalizedCursorPosition, map)
+    if not (mapID and okPos and type(cx) == "number" and type(cy) == "number") then return nil end
+    local okNodes, nodes = pcall(C_TaxiMap.GetTaxiNodesForMap, mapID)
+    if not (okNodes and type(nodes) == "table") then return nil end
+    -- Abstand: auf einer Zonenkarte großzügig (Questies Flugmeister steht neben dem Flugpunkt), auf größeren Karten enger
+    local info = C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(mapID)
+    local limit = (info and info.mapType and info.mapType <= 2) and 0.012 or 0.03
+    local best, bestDist
+    for _, node in ipairs(nodes) do
+        local name, pos = node.name, node.position
+        if type(name) == "string" and not issecret(name) and pos and pos.GetXY then
+            local x, y = pos:GetXY()
+            if type(x) == "number" and type(y) == "number" then
+                local d = math.sqrt((x - cx) ^ 2 + (y - cy) ^ 2)
+                if d <= limit and (not bestDist or d < bestDist) then best, bestDist = name, d end
+            end
+        end
+    end
+    return best
+end
+
+local function AddFlightLines(tip)
+    if tipBusy then return end
+    local name = NodeUnderCursor()
+    if not name then return end
+    -- schon angehängt (Show wird bei einem Tooltip mehrmals aufgerufen)?
+    for i = 1, tip:NumLines() do
+        local line = _G[tip:GetName() .. "TextLeft" .. i]
+        local text = line and line:GetText()
+        if text and not issecret(text) and text:find(TIP_HEADER, 1, true) then return end
+    end
+    local chars = {}
+    for _, entry in ipairs(ns.Characters()) do
+        if not entry.data.hidden then chars[#chars + 1] = entry end
+    end
+    if #chars == 0 then return end
+    tip:AddLine(" ")
+    tip:AddLine(TIP_HEADER .. T("Flugpunkt: ", "Flight point: ") .. name .. "|r")
+    for _, entry in ipairs(chars) do
+        local state = StateOf(entry.data, name)
+        local who = ns.ColoredName(entry.data) or entry.data.name or "?"
+        if state then
+            tip:AddDoubleLine(who, T("ja", "yes"), 1, 1, 1, 0.25, 1, 0.25)
+        elseif state == false then
+            tip:AddDoubleLine(who, T("nein", "no"), 1, 1, 1, 1, 0.38, 0.38)
+        else
+            tip:AddDoubleLine(who, T("? (Flugkarte nie geöffnet)", "? (map never opened)"), 1, 1, 1, 0.55, 0.55, 0.55)
+        end
+    end
+    tipBusy = true
+    tip:Show() -- Größe an die neuen Zeilen anpassen
+    tipBusy = false
+end
+
+if GameTooltip then
+    hooksecurefunc(GameTooltip, "Show", function(self)
+        local ok, err = pcall(AddFlightLines, self)
+        if not ok then tipBusy = false if UI.ReportError then UI.ReportError("ForeverAlts", "Flights/Tooltip", err) end end
+    end)
+end
+
 function ns.RefreshFlights()
     if not (window and window:IsShown()) then return end
     local filter = strtrim(search:GetText() or ""):lower()

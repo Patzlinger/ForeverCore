@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverAlts: hovering a flight master or flight point on the world map now lists which of your characters know that flight point.
+
 ## 0.6b – 2026-11-15
 
 - ForeverAlts (prototype): remembers which flight points each character knows. Open the flight map at a flight master once per character, then check `/falts flug [name]` or the new "Flight points" button in the alts window.
