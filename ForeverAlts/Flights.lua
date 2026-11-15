@@ -15,7 +15,11 @@ local function ReadNodes()
         for i = 1, NumTaxiNodes() do
             local name, kind = TaxiNodeName(i), TaxiNodeGetType(i)
             if name and not issecret(name) and not issecret(kind) then
-                out[name] = (kind ~= "NONE") -- CURRENT / REACHABLE / DISTANT = bekannt
+                -- bekannt = CURRENT (hier) oder REACHABLE; DISTANT/NONE = nicht entdeckt (der erste Versuch zählte
+                -- DISTANT mit: alle Punkte waren "ja"). Auszählung der Typen für /falts flug dump:
+                out[name] = (kind == "CURRENT" or kind == "REACHABLE")
+                ns.flightTally = ns.flightTally or {}
+                ns.flightTally[tostring(kind)] = (ns.flightTally[tostring(kind)] or 0) + 1
                 n = n + 1
             end
         end
@@ -35,8 +39,10 @@ end
 local function Store()
     local c = ns.CharacterData(ns.CharKey())
     if not c then return end
+    ns.flightTally = {}
     local nodes, n = ReadNodes()
     if n == 0 then return end
+    if c.flightsV ~= 2 then c.flights, c.flightsV = {}, 2 end -- Daten des ersten Versuchs (alles "ja") verwerfen
     c.flights = c.flights or {}
     for name, known in pairs(nodes) do
         if known then
