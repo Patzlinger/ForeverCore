@@ -49,6 +49,43 @@ local function EdgeColor(bag)
     return C.border
 end
 
+-- Günstigster Plunder (Einstellung markCheapest, Standard aus): der graue Gegenstand bzw. die weiße Rüstung/Waffe
+-- mit dem kleinsten Verkaufswert (Preis x Anzahl) in den Taschen – das, was man am ehesten wegwirft. Handwerksmaterial,
+-- Verbrauchsgüter, Rezepte, Quest- und grüne+ Gegenstände zählen nicht. Pro Bild nur einmal berechnet.
+local CHEAP_COLOR = { 1, 0.15, 0.15, 1 }
+local cheapStamp, cheapBag, cheapSlot
+local function FindCheapest()
+    local now = GetTime()
+    if cheapStamp == now then return cheapBag, cheapSlot end
+    cheapStamp, cheapBag, cheapSlot = now, nil, nil
+    local best
+    local reagent = ReagentBag()
+    for bag = 0, NUM_BAG_SLOTS or 4 do
+        if bag ~= reagent then
+            for slot = 1, C_Container.GetContainerNumSlots(bag) or 0 do
+                local info = C_Container.GetContainerItemInfo(bag, slot)
+                local q = info and info.quality
+                if q == 0 or q == 1 then
+                    local quest = C_Container.GetContainerItemQuestInfo and C_Container.GetContainerItemQuestInfo(bag, slot)
+                    local isQuest = quest and (quest.isQuestItem or quest.questID ~= nil)
+                    local ok, _, _, _, _, _, _, _, _, _, _, sellPrice, classID = pcall(C_Item.GetItemInfo, info.hyperlink)
+                    -- (sellPrice nil = Gegenstandsdaten noch nicht geladen: überspringen, sonst zählte er als "wertlos")
+                    if ok and sellPrice ~= nil and not isQuest and (q == 0 or classID == 2 or classID == 4) then
+                        local value = (tonumber(sellPrice) or 0) * (info.stackCount or 1)
+                        if not best or value < best then best, cheapBag, cheapSlot = value, bag, slot end
+                    end
+                end
+            end
+        end
+    end
+    return cheapBag, cheapSlot
+end
+function ns.IsCheapestJunk(bag, slot)
+    if not (ns.db and ns.db.markCheapest) then return false end
+    local b, s = FindCheapest()
+    return b == bag and s == slot
+end
+
 -- Rand neu setzen: beim Darüberfahren gold, Questgegenstand gelb (1 px plus schwacher Innenrand = etwas
 -- kräftiger als normal, aber nicht mehr 2 px dick), sonst Farbe der Tasche
 local function ApplyEdge(button, hovered)
@@ -63,7 +100,10 @@ local function ApplyEdge(button, hovered)
         inner:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 })
         edge.fbagsInner = inner
     end
-    if button.fbagsQuest and not hovered then
+    if button.fbagsCheap and not hovered then
+        edge.fbagsInner:SetBackdropBorderColor(CHEAP_COLOR[1], CHEAP_COLOR[2], CHEAP_COLOR[3], 0.5)
+        edge.fbagsInner:Show()
+    elseif button.fbagsQuest and not hovered then
         edge.fbagsInner:SetBackdropBorderColor(QUEST_COLOR[1], QUEST_COLOR[2], QUEST_COLOR[3], 0.35)
         edge.fbagsInner:Show()
     else
@@ -75,6 +115,8 @@ local function ApplyEdge(button, hovered)
     end
     if hovered then
         edge:SetBackdropBorderColor(C.accent[1], C.accent[2], C.accent[3], 0.9)
+    elseif button.fbagsCheap then
+        edge:SetBackdropBorderColor(unpack(CHEAP_COLOR))
     elseif button.fbagsQuest then
         edge:SetBackdropBorderColor(unpack(QUEST_COLOR))
     else
@@ -347,6 +389,7 @@ function ns.UpdateSlot(button, bag, slot)
             bang:Hide()
         end
     end
+    button.fbagsCheap = ns.IsCheapestJunk(bag, slot)
     ApplyEdge(button, button:IsMouseOver())
     button:Show()
 end

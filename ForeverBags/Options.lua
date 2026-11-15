@@ -102,6 +102,8 @@ local function CreateOptions()
     Check(options, x2, -194, L("OPT_NEW"), "highlightNew")
     ColorSwatch(options, x2, -218, L("OPT_REAGENT_COLOR"), "reagentColor")
     Check(options, x2, -242, L("OPT_SEPARATE"), "separateBags")
+    Check(options, x2, -266, L("OPT_CHEAPEST"), "markCheapest")
+    UI.Hint(options, x2 + 28, -290, colW - 32, L("OPT_CHEAPEST_HINT"))
 
     -- Fußleiste: links Position zurücksetzen, rechts Schließen (unten rechts bleibt Platz für den Größen-Griff)
     local reset = UI.Button(options, L("BTN_RESET_POS"), 150, function() ns.ResetPosition() end)

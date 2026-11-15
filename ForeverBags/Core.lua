@@ -18,6 +18,7 @@ ns.defaults = {
     spacing = 2,            -- Abstand zwischen den Plätzen (px)
     qualityBorder = true,   -- Rand in Qualitätsfarbe (grün, blau, episch …)
     highlightNew = true,    -- neu erhaltene Gegenstände leuchten, bis man mit der Maus darüberfährt
+    markCheapest = false,  -- rotes Markieren des günstigsten Plunders (grau/weiß) – das am ehesten wegzuwerfende Item
     openAtCursor = false,   -- beim Öffnen an der Mausposition (beim Händler: unter ForeverVendor / neben dem Händler)
     reagentColor = { 0.25, 0.75, 0.55 }, -- Rand der Plätze in der Reagenzientasche
     replaceBank = true,     -- eigenes Bankfenster beim Bankier
