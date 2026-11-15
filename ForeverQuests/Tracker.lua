@@ -73,14 +73,20 @@ end
 -- Leichte Variante (Versuch gegen "QuestObjectiveTracker:SetHeight() blockiert"): KEINE Haken (hooksecurefunc) und
 -- KEINE eigenen Felder mehr am Blizzard-Rahmen (das war vermutlich, was Blizzards Tracker-Code "beschmutzte") –
 -- nur Deckkraft 0 setzen, den Zustand außerhalb merken und einmal pro Sekunde nachprüfen (Hub-Takt, auch im Kampf).
+-- Deckkraft über die ROHEN Rahmen-Funktionen setzen (nicht frame:SetAlpha): Blizzards Tracker-Rahmen hängt am
+-- Bewegungs-Ausblender (PlayerMovementFrameFader); ein Aufruf über seine Lua-Methode lief mit unserem Taint in dessen
+-- Code (Protokoll: "Execution tainted by ForeverQuests while reading upvalue deferredFadingFrames") und verseuchte
+-- danach den Tracker-Ablauf im Kampf.
+local rawMethods = getmetatable(CreateFrame("Frame")).__index
+local RawSetAlpha, RawGetAlpha = rawMethods.SetAlpha, rawMethods.GetAlpha
 local hiddenTrackers = setmetatable({}, { __mode = "k" })
 local function HoldInvisible(frame)
     if ns.db.hideBlizzard then
         hiddenTrackers[frame] = true
-        if frame:GetAlpha() ~= 0 then frame:SetAlpha(0) end
+        if RawGetAlpha(frame) ~= 0 then RawSetAlpha(frame, 0) end
     elseif hiddenTrackers[frame] then
         hiddenTrackers[frame] = nil
-        frame:SetAlpha(1)
+        RawSetAlpha(frame, 1)
     end
 end
 do
@@ -88,7 +94,7 @@ do
     if UI and UI.Every then
         UI.Every(1, function()
             for frame in pairs(hiddenTrackers) do
-                if ns.db.hideBlizzard and frame:GetAlpha() ~= 0 then frame:SetAlpha(0) end
+                if ns.db.hideBlizzard and RawGetAlpha(frame) ~= 0 then RawSetAlpha(frame, 0) end
             end
         end, { addon = "ForeverQuests", name = "BlizzardTrackerAlpha", when = function() return next(hiddenTrackers) ~= nil end })
     end
