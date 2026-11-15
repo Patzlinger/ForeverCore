@@ -68,9 +68,14 @@ local function FindCheapest()
                 if q == 0 or q == 1 then
                     local quest = C_Container.GetContainerItemQuestInfo and C_Container.GetContainerItemQuestInfo(bag, slot)
                     local isQuest = quest and (quest.isQuestItem or quest.questID ~= nil)
-                    local ok, _, _, _, _, _, _, _, _, _, _, sellPrice, classID = pcall(C_Item.GetItemInfo, info.hyperlink)
+                    local ok, _, _, _, _, _, _, _, _, equipLoc, _, sellPrice, classID, subID = pcall(C_Item.GetItemInfo, info.hyperlink)
+                    -- weiß zählt nur echte Rüstung/Waffe: nicht Angel (Waffe/20), Werkzeug (Waffe/14: Spitzhacke,
+                    -- Hammer …), Hemd, Wappenrock
+                    local tool = classID == 2 and (subID == 20 or subID == 14)
+                    local cosmetic = equipLoc == "INVTYPE_BODY" or equipLoc == "INVTYPE_TABARD"
                     -- (sellPrice nil = Gegenstandsdaten noch nicht geladen: überspringen, sonst zählte er als "wertlos")
-                    if ok and sellPrice ~= nil and not isQuest and (q == 0 or classID == 2 or classID == 4) then
+                    if ok and sellPrice ~= nil and not isQuest
+                        and (q == 0 or ((classID == 2 or classID == 4) and not tool and not cosmetic)) then
                         local value = (tonumber(sellPrice) or 0) * (info.stackCount or 1)
                         if not best or value < best then best, cheapBag, cheapSlot = value, bag, slot end
                     end
