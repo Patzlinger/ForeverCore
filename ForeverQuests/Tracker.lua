@@ -2238,13 +2238,22 @@ do
     watcher:RegisterEvent("PLAYER_LOGIN")
     watcher:SetScript("OnEvent", function(self)
         self:UnregisterAllEvents()
-        local manager = _G.EditModeManagerFrame
-        if manager and manager.HookScript then
-            manager:HookScript("OnHide", function()
-                for _, delay in ipairs({ 0.2, 1, 2.5 }) do
-                    C_Timer.After(delay, function() if ns.ApplyLayout then ns.ApplyLayout() end end)
+        -- Ende des Bearbeitungsmodus: früher HookScript("OnHide") an Blizzards EditModeManagerFrame – das beschmutzte
+        -- Blizzards Bearbeitungsmodus-Code (Taint, "QuestObjectiveTracker:SetHeight() blockiert" beim Stufenaufstieg über
+        -- EditModeManager.lua:UpdateLayoutInfo). Jetzt nur noch mitlesen: ein Takt merkt das Schließen.
+        local hubUI = _G.ForeverHub and _G.ForeverHub.UI
+        if hubUI and hubUI.Every then
+            local wasOpen = false
+            hubUI.Every(0.5, function()
+                local manager = _G.EditModeManagerFrame
+                local open = manager and manager:IsShown() or false
+                if wasOpen and not open then
+                    for _, delay in ipairs({ 0.2, 1, 2.5 }) do
+                        C_Timer.After(delay, function() if ns.ApplyLayout then ns.ApplyLayout() end end)
+                    end
                 end
-            end)
+                wasOpen = open
+            end, { addon = "ForeverQuests", name = "EditModeEnde" })
         end
         -- Breite hängt an Karte und Knopfleiste von ForeverMinimap: ändern die sich (Größe, ein-/ausgeblendet –
         -- z. B. erst ein paar Sekunden nach dem Bearbeitungsmodus), sofort nachziehen statt einen Zwischenstand
