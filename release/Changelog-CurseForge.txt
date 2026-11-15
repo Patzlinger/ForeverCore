@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 0.6b – 2026-11-15
+
+- ForeverAlts (prototype): remembers which flight points each character knows. Open the flight map at a flight master once per character, then check `/falts flug [name]` or the new "Flight points" button in the alts window.
+- ForeverFrames: the dispel border and type icons now also update in combat (they are drawn by the game itself, like the HoTs), so they disappear right after you dispel.
+- ForeverBags: new option (off by default) "Mark cheapest junk in red": highlights the gray item, or white armor/weapon, with the lowest sell value (no crafting materials, fishing poles, tools or shirts).
+- ForeverBags: using an item from the Forever bags (e.g. the hearthstone) no longer fails with an "action forbidden" error.
+- ForeverQuests: hiding the Blizzard quest tracker was reworked to avoid a "SetHeight blocked" error (attempted fix).
+
 - ForeverQuests dungeon window: the quest count in the list now counts a quest chain as one quest, matching the cards on the right.
 
 - ForeverQuests: fixed "ForeverQuests tried to call the protected function Search()" after listing your own group, when the group finder had been opened from a dungeon before.
