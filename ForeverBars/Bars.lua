@@ -2297,6 +2297,23 @@ local function StyleBackpack(button)
     end
 end
 
+-- Reihenfolge der Haltungen/Gestalten (cfg.stanceOrder = Liste der Haltungs-Nummern von links nach rechts).
+-- Standard: Nummer 1 (beim Druiden der Bär) ganz links, weitere rechts daneben. Eine gespeicherte Liste wird
+-- bereinigt: unbekannte/doppelte Nummern fallen weg, fehlende (neu gelernte Gestalten) kommen hinten dazu.
+function ns.StanceOrder(cfg, count)
+    local order, seen = {}, {}
+    for _, idx in ipairs(cfg and cfg.stanceOrder or {}) do
+        if type(idx) == "number" and idx >= 1 and idx <= count and not seen[idx] then
+            seen[idx] = true
+            order[#order + 1] = idx
+        end
+    end
+    for idx = 1, count do
+        if not seen[idx] then order[#order + 1] = idx end
+    end
+    return order
+end
+
 -- Knöpfe in Reihen anordnen. Wachstumsrichtung: von links nach rechts bzw. rechts nach links,
 -- von oben nach unten bzw. unten nach oben (der erste Knopf sitzt in der Ecke, von der aus es wächst).
 local function LayoutButtons(def, cfg, holder)
@@ -2336,11 +2353,17 @@ local function LayoutButtons(def, cfg, holder)
         return
     end
     if def.kind == "food" and ns.LayoutFoodMarks then ns.LayoutFoodMarks(cfg, holder, gap, corner, toLeft, toTop) end
+    -- Haltungen: Platz nach eigener Reihenfolge (Knopf Nummer i sitzt an Platz posOf[i])
+    local posOf
+    if def.kind == "stance" then
+        posOf = {}
+        for place, idx in ipairs(ns.StanceOrder(cfg, count)) do posOf[idx] = place end
+    end
     local shown = {}
     for i, button in ipairs(buttons) do
         if i <= count then
             shown[button] = true
-            local column, row = slots[i][1], slots[i][2]
+            local column, row = slots[posOf and posOf[i] or i][1], slots[posOf and posOf[i] or i][2]
             local x = column * (size + gap) * (toLeft and -1 or 1)
             local y = row * (size + gap) * (toTop and 1 or -1)
             button.fbPositioning = true

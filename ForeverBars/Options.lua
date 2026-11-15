@@ -390,6 +390,57 @@ local function CreateOptions()
         ns.Print(L("FOOD_RESET_DONE"))
     end, L("TIP_FOOD_RESET"))
     options.foodResetButton:SetPoint("TOPLEFT", RIGHT_X, -214)
+    -- Nur Haltungsleiste: Reihenfolge der Haltungen/Gestalten festlegen (Symbole; Pfeile darunter tauschen mit dem Nachbarn)
+    do
+        local row = CreateFrame("Frame", nil, layoutPage)
+        row:SetSize(300, 78)
+        local title = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        title:SetPoint("TOPLEFT", 0, 0)
+        title:SetText(L("OPT_STANCE_ORDER"))
+        local cells = {}
+        local function Move(place, delta)
+            local cfg = SelectedConfig()
+            local count = math.max(1, GetNumShapeshiftForms and GetNumShapeshiftForms() or 0)
+            local order = ns.StanceOrder(cfg, count)
+            local other = place + delta
+            if other < 1 or other > #order then return end
+            order[place], order[other] = order[other], order[place]
+            cfg.stanceOrder = order
+            Changed()
+            row.Update()
+        end
+        for i = 1, 10 do
+            local cell = CreateFrame("Frame", nil, row)
+            cell:SetSize(28, 56)
+            cell:SetPoint("TOPLEFT", (i - 1) * 30, -16)
+            cell.icon = cell:CreateTexture(nil, "ARTWORK")
+            cell.icon:SetSize(26, 26)
+            cell.icon:SetPoint("TOP", 0, 0)
+            cell.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+            cell.left = ns.Style.CreateButton(cell, "<", 13, 16, function() Move(i, -1) end)
+            cell.left:SetPoint("TOPLEFT", 0, -30)
+            cell.right = ns.Style.CreateButton(cell, ">", 13, 16, function() Move(i, 1) end)
+            cell.right:SetPoint("TOPRIGHT", 0, -30)
+            cells[i] = cell
+        end
+        row.Update = function()
+            local cfg = SelectedConfig()
+            local count = math.min(10, GetNumShapeshiftForms and GetNumShapeshiftForms() or 0)
+            local order = ns.StanceOrder(cfg, count)
+            for i, cell in ipairs(cells) do
+                local idx = order[i]
+                cell:SetShown(idx ~= nil)
+                if idx then
+                    local texture = GetShapeshiftFormInfo and GetShapeshiftFormInfo(idx)
+                    cell.icon:SetTexture(texture or 134400)
+                    cell.left:SetShown(i > 1)
+                    cell.right:SetShown(i < count)
+                end
+            end
+        end
+        options.stanceOrderRow = row
+        row:Hide()
+    end
     -- Rahmen um die Leiste (wie die Fenster in ForeverQuests)
     options.frameCheck = CreateCheckbox(layoutPage, L("OPT_FRAME"), RIGHT_X, -244,
         function() return SelectedConfig().frame end,
@@ -505,7 +556,7 @@ local function CreateOptions()
             { options.growXSelector, 48 }, { options.growYSelector, 48 }, { options.flyoutSelector, 48 },
             { options.microOwnCheck, 24 }, { options.microGreyCheck, 24 }, { options.collapseArrowCheck, 24 },
             { options.arrowSideSelector, 46, 16 },
-            { options.backpackCheck, 24 }, { options.keyringCheck, 24 }, { options.foodResetButton, 30 },
+            { options.backpackCheck, 24 }, { options.keyringCheck, 24 }, { options.foodResetButton, 30 }, { options.stanceOrderRow, 84 },
             { options.statusTextsCheck, 24 }, { options.statusTicksCheck, 24 }, { options.statusReplaceCheck, 28 },
             { options.statusWidthReset, 30 }, { options.statusRateReset, 30 },
             { options.frameCheck, 24 }, { options.frameTitleCheck, 22, 16 }, { titleBox, 32, 16 },
@@ -1124,6 +1175,10 @@ function ns.RefreshOptions()
     if options.formPagingCheck then options.formPagingCheck:SetShown(def.key == "bar1") end
     options.backpackCheck:SetShown(def.kind == "bags")
     options.collapseArrowCheck:SetShown(def.kind == "prof" or def.kind == "food")
+    if options.stanceOrderRow then
+        options.stanceOrderRow:SetShown(def.kind == "stance")
+        if def.kind == "stance" and options.stanceOrderRow.Update then options.stanceOrderRow.Update() end
+    end
     options.arrowSideSelector:SetShown((def.kind == "prof" or def.kind == "food") and SelectedConfig().collapseArrow == true)
     options.perRowSlider:SetShown(hasButtons)
     options.keyringCheck:SetShown(def.kind == "bags" and ns.HasKeyring())
