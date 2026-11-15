@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverQuests dungeon window: the quest count in the list now counts a quest chain as one quest, matching the cards on the right.
+
 - ForeverQuests: fixed "ForeverQuests tried to call the protected function Search()" after listing your own group, when the group finder had been opened from a dungeon before.
 
 - ForeverBags: dragging an item onto a group or target frame to trade no longer cancels the trade right away (with "Replace Blizzard's bag windows" on).

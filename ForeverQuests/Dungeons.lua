@@ -339,13 +339,26 @@ local function IsQuestVisible(quest)
     return PassesBaseFilters(quest)
 end
 
--- Verbleibende (noch nicht abgeschlossene) und abgeschlossene Quests eines Dungeons
+-- Verbleibende (noch nicht abgeschlossene) und abgeschlossene Quests eines Dungeons – gezählt wie die Karten rechts
+-- (Wunsch flowfy 2026-11-15): eine Questreihe bzw. gleichnamige Quests = eine Quest; sie gilt als abgeschlossen,
+-- wenn alle Teile abgeschlossen sind. Gleiche Schlüssel wie BuildCards.
 local function CountQuests(dungeon)
-    local remaining, completed = 0, 0
+    local cards, order = {}, {}
     for _, quest in ipairs(dungeon.quests or {}) do
         if PassesBaseFilters(quest) then
-            if IsCompleted(quest) then completed = completed + 1 else remaining = remaining + 1 end
+            local chain = quest.id and not quest.isLog and ns.GetQuestChain and ns.GetQuestChain(quest.id)
+            local key = (quest.isLog and ("log:" .. tostring(quest.id))) or (chain and ("chain:" .. chain[1].questID))
+                or ("name:" .. tostring(QuestName(quest)):lower())
+            if cards[key] == nil then
+                cards[key] = true
+                order[#order + 1] = key
+            end
+            if not IsCompleted(quest) then cards[key] = false end
         end
+    end
+    local remaining, completed = 0, 0
+    for _, key in ipairs(order) do
+        if cards[key] then completed = completed + 1 else remaining = remaining + 1 end
     end
     return remaining, completed
 end
