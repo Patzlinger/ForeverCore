@@ -2419,9 +2419,11 @@ function ns.CreateTracker()
         local hub = _G.ForeverHub and _G.ForeverHub.UI
         if hub and hub.AddMover then hub.AddMover(tracker) end
     end
-    -- Über den Aktionsleisten (z. B. Bartender4), damit deren - auch leere/unsichtbare - Knöpfe
-    -- nicht die Maus über dem Tracker abfangen. Menüs, Dungeonfenster und Tooltips liegen noch höher.
-    tracker:SetFrameStrata("HIGH")
+    -- MEDIUM (früher HIGH): Fenster, die man darüber zieht (Taschen = HIGH, Hub-Fenster = DIALOG, Blizzards
+    -- Charakterfenster usw.), müssen VOR dem Tracker liegen – in gleicher Ebene mischten sich beide (Tracker-Teile
+    -- schauten durchs Fenster). Falls Aktionsleisten (z. B. Bartender4) mit unsichtbaren Knöpfen die Maus über dem
+    -- Tracker abfangen: wieder auf "HIGH" stellen und die Taschenfenster auf "DIALOG".
+    tracker:SetFrameStrata("MEDIUM")
     tracker:SetMovable(true)
     tracker:SetResizable(true)
     tracker:SetResizeBounds(200, 100, 800, 1200)
