@@ -74,7 +74,11 @@ local function FindCheapest()
                     local tool = classID == 2 and (subID == 20 or subID == 14)
                     local cosmetic = equipLoc == "INVTYPE_BODY" or equipLoc == "INVTYPE_TABARD"
                     -- (sellPrice nil = Gegenstandsdaten noch nicht geladen: überspringen, sonst zählte er als "wertlos")
-                    if ok and sellPrice ~= nil and not isQuest
+                    -- nicht verkaufbar (Preis 0: herbeigezauberte Gegenstände wie Manaachat, Spezialgegenstände) oder mit
+                    -- Benutzen-Effekt (Zauber, Trank, Spielzeug …) ist kein Plunder
+                    local okSp, spell = pcall(C_Item.GetItemSpell, info.hyperlink)
+                    local useful = (okSp and spell ~= nil) or info.isBound and q == 1 and (tonumber(sellPrice) or 0) == 0
+                    if ok and sellPrice ~= nil and sellPrice > 0 and not useful and not isQuest
                         and (q == 0 or ((classID == 2 or classID == 4) and not tool and not cosmetic)) then
                         local value = (tonumber(sellPrice) or 0) * (info.stackCount or 1)
                         if not best or value < best then best, cheapBag, cheapSlot = value, bag, slot end
