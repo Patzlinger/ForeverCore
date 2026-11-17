@@ -847,13 +847,18 @@ local function CopyBlizzardColor(fp)
     local r, g, b = fp.hb:GetStatusBarColor()
     -- gegnerische Spieler (z. B. andere Fraktion): Klassenfarbe statt Blizzards Rot (Einstellung "enemyClassColor");
     -- ist die Klasse gesperrt oder unbekannt, bleibt es bei Blizzards Farbe
-    if db.enemyClassColor and fp.enemy and fp.isPlayer and fp.unit then
+    -- (Schlachtfeld: ob die Einheit ein Spieler ist, kann gesperrt sein – dann trotzdem die Klasse nehmen, wenn sie
+    -- lesbar ist; sonst gilt Blizzards Klassenfarbe über die Einstellung ShowClassColorInNameplate, siehe FRIEND_CVARS)
+    local exactClass = false
+    if db.enemyClassColor and fp.enemy and (fp.isPlayer or fp.playerUnknown) and fp.unit then
         local _, class = UnitClass(fp.unit)
         if ns.testMode == "pvp" and fp.testClass then class = fp.testClass end
         local col = Yes(class) and C_ClassColor and C_ClassColor.GetClassColor(class)
-        if col then r, g, b = col.r, col.g, col.b end
+        if col then r, g, b = col.r, col.g, col.b exactClass = true end
     end
-    r, g, b = Soften(r, g, b)
+    -- Klassenfarben unverändert (die Originalfarben des Spiels, nicht abgedunkelt); nur Blizzards Reaktionsfarben
+    -- (Rot/Gelb/Grün) werden zum Stil passend gedämpft
+    if not exactClass then r, g, b = Soften(r, g, b) end
     fp.baseCol = { r, g, b }
     ApplyBarColor(fp)
 end
@@ -1139,7 +1144,9 @@ local function UpdateName(fp)
         if cls == "rare" or cls == "rareelite" then mark = mark .. "R" end
     end
     fp.level:SetText(level .. mark)
-    local col = GetCreatureDifficultyColor and GetCreatureDifficultyColor(level)
+    -- Stufenfarbe wie in den Einheitenrahmen (gemeinsam im Hub: UI.LevelColor, passend zur Erfahrungsregel – grau =
+    -- gibt keine Erfahrung mehr); Blizzards GetCreatureDifficultyColor färbt im Forever-Client zu früh grau
+    local col = (UI.LevelColor and UI.LevelColor(level)) or (GetCreatureDifficultyColor and GetCreatureDifficultyColor(level))
     if col then fp.level:SetTextColor(col.r, col.g, col.b) else fp.level:SetTextColor(1, 0.82, 0) end
 end
 
@@ -1582,7 +1589,9 @@ local function Refresh(fp)
     local unit = fp.unit
     local can = UnitCanAttack("player", unit)
     fp.enemy = IsSecret(can) or can and true or false
-    fp.isPlayer = Yes(UnitIsPlayer(unit))
+    local isPlayerRaw = UnitIsPlayer(unit)
+    fp.isPlayer = Yes(isPlayerRaw)
+    fp.playerUnknown = IsSecret(isPlayerRaw) -- (z. B. im Schlachtfeld gesperrt)
     if ns.testMode == "pvp" and fp.enemy then
         -- Testmodus: jede Gegner-Plakette als gegnerischer Spieler mit reihum verteilter Klasse
         fp.isPlayer = true
@@ -1681,6 +1690,9 @@ end
 local FRIEND_CVARS = {
     nameplateShowOnlyNameForFriendlyPlayerUnits = { "1", "friendlySimple" },
     nameplateUseClassColorForFriendlyPlayerUnitNames = { "1", "friendlySimple" },
+    -- gegnerische Spieler in Blizzards Klassenfarbe (reicht auch, wenn die Klasse im Schlachtfeld gesperrt ist: wir
+    -- übernehmen dann Blizzards Leistenfarbe); wird beim Abschalten der Einstellung zurückgesetzt
+    ShowClassColorInNameplate = { "1", "enemyClassColor" },
     nameplateMotion = { "1", "stack" },            -- 1 = stapeln, 0 = überlappen
     -- Abstand beim Stapeln: Blizzard rechnet mit seinem eigenen (kleinen) Plaketten-Rahmen, unsere Plakette ist mit
     -- Name, Auren und Zauberleiste viel höher – darum Mindestabstand (senkrecht, Vielfaches) und Tempo erhöhen
