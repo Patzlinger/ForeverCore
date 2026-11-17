@@ -572,7 +572,7 @@ local mailButton
 
 local TOOL_DEFS = {
     -- Fernglas fuellt sein Symbol mehr aus als die anderen: etwas mehr Innenabstand
-    { key = "tracking", icon = "Interface\\Icons\\INV_Misc_Spyglass_03", inset = 4,
+    { key = "tracking", icon = "Interface\\Icons\\INV_Misc_Spyglass_03", inset = 3,
       tip = function() GameTooltip:AddLine(T("Verfolgung", "Tracking")) GameTooltip:AddLine(T("Auch: Rechtsklick auf die Minimap", "Also: right-click the minimap"), 0.6, 0.6, 0.6) end,
       click = OpenTracking },
     { key = "calendar", calendar = true,
@@ -686,10 +686,12 @@ local function ToolButton(def)
     UI.SetFlat(b, { C.button[1], C.button[2], C.button[3], 0.85 })
     b:SetFrameLevel(Minimap:GetFrameLevel() + 8)
     b.fmmTool = true
-    local inset = def.inset or 2
+    local inset = def.inset or 1
     b.icon = b:CreateTexture(nil, "ARTWORK")
     b.icon:SetPoint("TOPLEFT", inset, -inset)
     b.icon:SetPoint("BOTTOMRIGHT", -inset, inset)
+    -- scharf: Symbol auf das Pixelraster legen (sonst verwischt es bei gebrochenen Positionen)
+    if b.icon.SetSnapToPixelGrid then b.icon:SetSnapToPixelGrid(true) b.icon:SetTexelSnappingBias(0) end
     if def.calendar then
         b.day = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
         b.day:SetPoint("CENTER", 0, -2)
@@ -697,7 +699,7 @@ local function ToolButton(def)
         SetCalendarIcon(b)
     else
         b.icon:SetTexture(def.icon)
-        if def.icon ~= UI.LOGO then b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92) end
+        if def.icon ~= UI.LOGO then b.icon:SetTexCoord(0.06, 0.94, 0.06, 0.94) end
     end
     b.def = def
     b:RegisterForClicks("LeftButtonUp")
