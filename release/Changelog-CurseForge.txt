@@ -2,7 +2,22 @@
 
 ## Unreleased
 
-- ForeverAlts: hovering a flight master or flight point on the world map now shows whether your current character knows that flight point.
+## 1.0 – 2026-11-18
+
+First stable version. The addons no longer carry the "b" (beta) suffix in their version number.
+
+- ForeverAlts: hovering a flight master or flight point on the world map now shows whether your current character knows that flight point. Flight point detection fixed (only points you can really use are counted as known).
+- ForeverFrames: raid markers are no longer dropped when the game hides the marker number; they are shown in combat too.
+- ForeverBars: the order of druid forms/stances is now configurable (default: bear on the left, further forms to the right).
+- ForeverBars: fixed an error with secret text in cast counters during combat.
+- ForeverQuests: the quest tracker now sits below the Forever windows, so bags, character and other windows dragged over it stay in front.
+- ForeverQuests: more fixes against the "SetHeight blocked" error (tracker opacity via raw frame functions, no hook on the Edit Mode frame, so level-ups no longer taint).
+- ForeverPlates: level colors now follow the experience rule (gray/green/yellow/orange/red), and class colors work in battlegrounds.
+- ForeverMinimap: icons in the button bar are larger and sharper; the bar keeps its size.
+- ForeverBags: "Mark cheapest junk" no longer marks conjured or unsellable items (e.g. Mana Agate) or items with a use effect.
+- ForeverSkin: the TSM tab in the auction house is left alone, so it no longer draws large colored bars across the screen.
+- Forever Core: new chat command /fprobe measures which game queries are blocked in combat (diagnostic tool, no effect on play).
+- Internal: the "Entering dungeon" hint window now uses the shared Forever window code.
 
 ## 0.6b – 2026-11-15
 

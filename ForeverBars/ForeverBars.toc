@@ -6,7 +6,7 @@
 ## Category: Forever Core UI
 ## Author: flowfy
 ## X-License: MIT
-## Version: 0.6b
+## Version: 1.0
 ## X-Curse-Project-ID: 1743753
 ## Dependencies: ForeverCoreUI
 ## OptionalDeps: Masque
