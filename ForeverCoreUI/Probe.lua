@@ -41,11 +41,49 @@ local PROBES = {
     { "StatusBar-Wert",        function() local b = CreateFrame("StatusBar") b:SetMinMaxValues(0, 100) b:SetValue(UnitHealth("player")) return "ok" end },
 }
 
+
+-- weitere Aura-Wege (Blizzard-Funktionen, die Addons sonst nutzen)
+local function AuraProbe(name, fn) PROBES[#PROBES + 1] = { name, fn } end
+AuraProbe("Aura: GetUnitAuras",        function() local t = C_UnitAuras.GetUnitAuras and C_UnitAuras.GetUnitAuras("player", "HELPFUL") return t and #t or 0 end)
+AuraProbe("Aura: GetPlayerAuraBySpellID", function() local a = C_UnitAuras.GetPlayerAuraBySpellID(1459) return a and a.name or "-" end)
+AuraProbe("Aura: ForEachAura",         function() local n = 0 AuraUtil.ForEachAura("player", "HELPFUL", nil, function() n = n + 1 end, true) return n end)
+AuraProbe("Aura: GetAuraDataBySpellName", function() local a = C_UnitAuras.GetAuraDataBySpellName("player", "Arcane Intellect", "HELPFUL") return a and a.name or "-" end)
+AuraProbe("Aura: Anzahl (GetAuraSlots)", function() return select("#", C_UnitAuras.GetAuraSlots("player", "HELPFUL")) end)
+AuraProbe("Kampfstatus (player)",      function() return UnitAffectingCombat("player") end)
+
+-- gleiche Abfragen für weitere Einheiten (keine Einheit vorhanden = "keine Einheit", zählt nicht als ok)
+local NONE = {}
+local UNIT_PROBES = {
+    { "Name",       function(u) return UnitName(u) end },
+    { "Klasse",     function(u) return (select(2, UnitClass(u))) end },
+    { "IstSpieler", function(u) return UnitIsPlayer(u) end },
+    { "Reaktion",   function(u) return UnitReaction("player", u) or 0 end },
+    { "Feind?",     function(u) return UnitIsEnemy("player", u) end },
+    { "Stufe",      function(u) return UnitLevel(u) end },
+    { "Klassif.",   function(u) return UnitClassification(u) end },
+    { "Tot?",       function(u) return UnitIsDead(u) end },
+    { "Bedrohung",  function(u) return UnitThreatSituation("player", u) or 0 end },
+    { "Markierung", function(u) return GetRaidTargetIndex(u) or 0 end },
+    { "Zauber",     function(u) return UnitCastingInfo(u) or "-" end },
+    { "Leben %",    function(u) return UnitHealthPercent and UnitHealthPercent(u) or 0 end },
+    { "Aura 1",     function(u) local a = C_UnitAuras.GetAuraDataByIndex(u, 1, "HARMFUL") return a and a.name or "-" end },
+    { "Kampf?",     function(u) return UnitAffectingCombat(u) end },
+}
+for _, unit in ipairs({ "target", "focus", "mouseover", "nameplate1", "party1", "pet" }) do
+    for _, up in ipairs(UNIT_PROBES) do
+        PROBES[#PROBES + 1] = { unit .. ": " .. up[1], function()
+            if not UnitExists(unit) then return NONE end
+            return up[2](unit)
+        end, none = NONE }
+    end
+end
+
 local function Run()
     local out = {}
     for _, p in ipairs(PROBES) do
         local ok, v = pcall(p[2])
         if not ok then out[p[1]] = "Fehler"
+        elseif v == NONE then out[p[1]] = "keine Einheit"
         elseif isSecret(v) then out[p[1]] = "gesperrt"
         else out[p[1]] = "ok" end
     end
@@ -62,15 +100,24 @@ local function Report()
         print("|cffffd100ForeverProbe|r " .. T("Noch keine Kampfmessung. /fprobe eingeben und einen Kampf beginnen.", "No combat measurement yet. Type /fprobe, then enter combat."))
         return
     end
-    print("|cffffd100ForeverProbe|r " .. T("Abfrage: außerhalb → im Kampf", "Query: outside → in combat"))
-    local diff = 0
+    -- nur Auffälliges zeigen: Unterschiede, gesperrte Werte, Fehler; "ok → ok" wird nur gezählt, fehlende Einheiten gelistet
+    print("|cffffd100ForeverProbe|r " .. T("Abfrage: außerhalb → im Kampf (nur Auffälliges)", "Query: outside → in combat (notable only)"))
+    local fine, missing = 0, {}
     for _, p in ipairs(PROBES) do
         local a, b = before[p[1]], during[p[1]]
-        local color = (a == b) and "|cff80ff80" or "|cffff8080"
-        if a ~= b then diff = diff + 1 end
-        print(("  %s%s|r: %s → %s"):format(color, p[1], a, b))
+        if a == "keine Einheit" and b == "keine Einheit" then
+            local unit = p[1]:match("^(%w+):")
+            if unit then missing[unit] = true end
+        elseif a == "ok" and b == "ok" then
+            fine = fine + 1
+        else
+            print(("  %s%s|r: %s → %s"):format(a == b and "|cffffff80" or "|cffff8080", p[1], tostring(a), tostring(b)))
+        end
     end
-    print("|cffffd100ForeverProbe|r " .. T("Unterschiede im Kampf: ", "Differences in combat: ") .. diff)
+    print("|cffffd100ForeverProbe|r " .. T("ok in beiden Fällen: ", "ok in both: ") .. fine)
+    local list = {}
+    for u in pairs(missing) do list[#list + 1] = u end
+    if #list > 0 then table.sort(list) print("|cffffd100ForeverProbe|r " .. T("Einheit nicht vorhanden (nicht gemessen): ", "Unit missing (not measured): ") .. table.concat(list, ", ")) end
     _G.ForeverHubDB = type(_G.ForeverHubDB) == "table" and _G.ForeverHubDB or {}
     _G.ForeverHubDB.probe = { before = before, during = during, date = date("%Y-%m-%d %H:%M") }
 end
