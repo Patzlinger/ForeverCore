@@ -1,5 +1,5 @@
 ## Interface: 16001
-## Title: ForeverSkin |cff8a8a8a(Beta)|r
+## Title: ForeverSkin
 ## IconTexture: Interface\AddOns\ForeverSkin\Media\ForeverSkin
 ## Category: Forever Core UI
 ## Notes: Blizzard windows in the Forever Core UI look

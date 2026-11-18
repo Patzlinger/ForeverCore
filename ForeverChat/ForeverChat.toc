@@ -1,5 +1,5 @@
 ## Interface: 16001
-## Title: ForeverChat |cff8a8a8a(Beta)|r
+## Title: ForeverChat
 ## Notes: Chat in the Forever Core UI look: transparent window, flat tabs, class colors and levels, clickable links, copy chat
 ## Notes-deDE: Chat im Forever-Core-UI-Stil: durchsichtiges Fenster, flache Reiter, Klassenfarben und Stufen, klickbare Links, Chat kopieren
 ## IconTexture: Interface\AddOns\ForeverChat\Media\ForeverChat

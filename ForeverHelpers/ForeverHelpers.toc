@@ -1,5 +1,5 @@
 ## Interface: 16001
-## Title: ForeverHelpers |cff8a8a8a(Beta)|r
+## Title: ForeverHelpers
 ## IconTexture: Interface\AddOns\ForeverHelpers\Media\ForeverHelpers
 ## Category: Forever Core UI
 ## Notes: Small helpers in the Forever Core UI look: loot rolls (who chose what), buff reminder and vendor helper

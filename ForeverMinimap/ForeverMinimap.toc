@@ -1,5 +1,5 @@
 ## Interface: 16001
-## Title: ForeverMinimap |cff8a8a8a(Beta)|r
+## Title: ForeverMinimap
 ## IconTexture: Interface\AddOns\ForeverMinimap\Media\ForeverMinimap
 ## Category: Forever Core UI
 ## Notes: Simple minimap in the Forever Core UI look: round or square, slim bar with zone, clock and coordinates, buttons only when you need them

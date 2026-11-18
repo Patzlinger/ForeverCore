@@ -1,5 +1,5 @@
 ## Interface: 16001
-## Title: ForeverCast |cff8a8a8a(Beta)|r
+## Title: ForeverCast
 ## IconTexture: Interface\AddOns\ForeverCast\Media\ForeverCast
 ## Category: Forever Core UI
 ## Notes: Minimalist cast bar with ping, lag zone, spell queue window and GCD display

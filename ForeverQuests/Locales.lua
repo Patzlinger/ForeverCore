@@ -5,7 +5,7 @@ local addonName, ns = ...
 
 local STRINGS = {
     deDE = {
-        ADDON_NAME = "ForeverQuests (Beta)",
+        ADDON_NAME = "ForeverQuests",
         LOADED = "geladen. Menü: /fq",
         RESET_DONE = "Alle Einstellungen zurückgesetzt (angeheftete Quests und Sprache bleiben).",
         TRACKER_UNLOCKED = "Tracker entsperrt.",
@@ -46,7 +46,7 @@ local STRINGS = {
         AUTO_TURNIN = "Quests abgeben",
         AUTO_TURNIN_TIP = "Fertige Quests sofort abgeben. Bei mehreren Belohnungen wählst du selbst, Quests, die Gold kosten, gibst du ebenfalls selbst ab. Shift gedrückt halten: diesmal nicht.",
         TIP_REWARD_CHEST = "Die Truhe erscheint bei Belohnungen ab der im Menü eingestellten Seltenheit.",
-        BINDING_HEADER = "ForeverQuests (Beta)",
+        BINDING_HEADER = "ForeverQuests",
         BINDING_TRACKER = "Questtracker ein-/ausblenden",
         BINDING_DUNGEONS = "Dungeonfenster öffnen/schließen",
         BINDING_OPTIONS = "Menü öffnen/schließen",
@@ -277,7 +277,7 @@ local STRINGS = {
     },
 
     enUS = {
-        ADDON_NAME = "ForeverQuests (Beta)",
+        ADDON_NAME = "ForeverQuests",
         LOADED = "loaded. Menu: /fq",
         RESET_DONE = "All settings reset (pinned quests and language are kept).",
         TRACKER_UNLOCKED = "Tracker unlocked.",
@@ -316,7 +316,7 @@ local STRINGS = {
         AUTO_TURNIN = "Turn in quests",
         AUTO_TURNIN_TIP = "Turn in finished quests right away. With several rewards you choose yourself, quests that cost gold you also turn in yourself. Hold Shift: not this time.",
         TIP_REWARD_CHEST = "The chest appears for rewards of the rarity set in the menu or better.",
-        BINDING_HEADER = "ForeverQuests (Beta)",
+        BINDING_HEADER = "ForeverQuests",
         BINDING_TRACKER = "Show/hide quest tracker",
         BINDING_DUNGEONS = "Open/close dungeon window",
         BINDING_OPTIONS = "Open/close menu",

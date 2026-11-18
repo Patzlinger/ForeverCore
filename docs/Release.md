@@ -15,7 +15,7 @@ Vorher `git pull --rebase`, damit der Stand des anderen mit drin ist.
 - `release/addons.txt` = Addons im Release (maßgeblich für „im Release“); Prototypen erst nach Freigabe eintragen.
   ForeverCoreUI baut das Skript immer mit – es steckt in **jedem Einzel-Zip** (sonst lädt das Addon nicht).
 - Alle Release-Addons tragen dieselbe `## Version` (Suite-Version, z. B. `0.44b`); `tools/build-release.ps1` prüft das.
-- Alle Release-.toc: `## Title: <Addon> |cff8a8a8a(Beta)|r`, `## X-Curse-Project-ID: 1743753`, `## X-License: MIT`
+- Alle Release-.toc: `## Title: <Addon>`, `## X-Curse-Project-ID: 1743753`, `## X-License: MIT`
   (plus `LICENSE.txt` im Addon).
 - **Zips enthalten ausschließlich Addon-Ordner, keine Dateien daneben.** In den Addon-Ordnern bleibt `LICENSE.txt`
   (MIT, Urheber = Autor des Addons: Patzlinger bzw. flowfy) mit im Zip; `README*` und `.md` kommen nicht hinein.

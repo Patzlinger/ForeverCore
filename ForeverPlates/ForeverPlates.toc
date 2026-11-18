@@ -1,5 +1,5 @@
 ## Interface: 16001
-## Title: ForeverPlates |cff8a8a8a(Beta)|r
+## Title: ForeverPlates
 ## IconTexture: Interface\AddOns\ForeverPlates\Media\ForeverPlates
 ## Category: Forever Core UI
 ## Notes: Better nameplates: health in % and total, threat with percent, slim cast bar with target, your DoTs on top, crowd control at the side, quest mobs, combo points, raid markers – optional Forever look

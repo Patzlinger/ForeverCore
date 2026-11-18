@@ -1,5 +1,5 @@
 ## Interface: 16001
-## Title: ForeverSpellbook |cff8a8a8a(Beta)|r
+## Title: ForeverSpellbook
 ## IconTexture: Interface\AddOns\ForeverSpellbook\Media\ForeverSpellbook
 ## Category: Forever Core UI
 ## Notes: Compact spellbook with search, outdated-rank reminder and a preview of what your trainer has next

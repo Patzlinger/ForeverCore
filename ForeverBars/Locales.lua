@@ -4,7 +4,7 @@ local addonName, ns = ...
 
 local STRINGS = {
     deDE = {
-        ADDON_NAME = "ForeverBars (Beta)",
+        ADDON_NAME = "ForeverBars",
         BARTENDER_ACTIVE = "Bartender4 ist aktiv – ForeverBars verändert die Leisten erst, wenn Bartender4 abgeschaltet ist.",
         COMBAT_QUEUED = "Änderung wird nach dem Kampf übernommen.",
         GEAR_TIP = "Einstellungen dieser Leiste", OPT_DISABLE_BAR = "Leiste ausschalten",
@@ -187,12 +187,12 @@ BAR_COLLAPSE = "Leiste einklappen", BAR_EXPAND = "Leiste ausklappen",
         KEYBIND_UNAVAILABLE = "Die Schnelltastenbelegung ist nicht verfügbar – bitte über Optionen > Tastaturbelegung.",
 
         -- Tastenkürzel (Blizzard-Menü)
-        BINDING_HEADER = "ForeverBars (Beta)",
+        BINDING_HEADER = "ForeverBars",
         BINDING_OPTIONS = "Menü öffnen/schließen",
         BINDING_UNLOCK = "Leisten entsperren/sperren",
     },
     enUS = {
-        ADDON_NAME = "ForeverBars (Beta)",
+        ADDON_NAME = "ForeverBars",
         BARTENDER_ACTIVE = "Bartender4 is active – ForeverBars only changes the bars once Bartender4 is disabled.",
         COMBAT_QUEUED = "Change will be applied after combat.",
         GEAR_TIP = "Settings of this bar", OPT_DISABLE_BAR = "Turn bar off",
@@ -371,7 +371,7 @@ BAR_COLLAPSE = "Collapse bar", BAR_EXPAND = "Expand bar",
         NOT_IN_COMBAT = "Not possible in combat.",
         KEYBIND_UNAVAILABLE = "Quick keybind mode is not available – please use Options > Keybindings.",
 
-        BINDING_HEADER = "ForeverBars (Beta)",
+        BINDING_HEADER = "ForeverBars",
         BINDING_OPTIONS = "Open/close menu",
         BINDING_UNLOCK = "Unlock/lock bars",
     },

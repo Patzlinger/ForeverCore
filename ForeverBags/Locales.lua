@@ -4,7 +4,7 @@ local addonName, ns = ...
 
 local STRINGS = {
     deDE = {
-        ADDON_NAME = "ForeverBags (Beta)",
+        ADDON_NAME = "ForeverBags",
         WINDOW_TITLE = "Taschen",
         SEARCH = "Suchen …",
         SORT = "Sortieren",
@@ -87,7 +87,7 @@ local STRINGS = {
         TIP_RIGHT = "Rechtsklick: Taschen öffnen/schließen",
     },
     enUS = {
-        ADDON_NAME = "ForeverBags (Beta)",
+        ADDON_NAME = "ForeverBags",
         WINDOW_TITLE = "Bags",
         SEARCH = "Search …",
         SORT = "Sort",

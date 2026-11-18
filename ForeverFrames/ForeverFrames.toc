@@ -1,5 +1,5 @@
 ## Interface: 16001
-## Title: ForeverFrames |cff8a8a8a(Beta)|r
+## Title: ForeverFrames
 ## IconTexture: Interface\AddOns\ForeverFrames\Media\ForeverFrames
 ## Category: Forever Core UI
 ## Notes: Slim party and raid frames in the style of Cell, with click casting

@@ -10,7 +10,7 @@ wird oder ein Addon neue Hub-Funktionen, Einstellungen, Profile, Minimap-Knopf o
 - Pflicht in der .toc (Vorlage):
   ```
   ## Interface: 16001
-  ## Title: ForeverName |cff8a8a8a(Beta)|r
+  ## Title: ForeverName
   ## Notes: English description
   ## Notes-deDE: Deutsche Beschreibung
   ## IconTexture: Interface\AddOns\ForeverName\Media\ForeverCore
@@ -30,7 +30,6 @@ wird oder ein Addon neue Hub-Funktionen, Einstellungen, Profile, Minimap-Knopf o
   - `ForeverHubDB` steht **nur in ForeverCore** (seit 2026-11-05; vorher als Übergang in jedem Addon – dadurch speicherte
     das Spiel dieselben Hub-Einstellungen 14-mal, und die Kopie eines länger ausgeschalteten Addons konnte neuere
     Einstellungen überschreiben). Neue Addons tragen sie nicht ein; der Lua-Code nutzt weiter dieselbe Tabelle.
-  - Der Titel trägt den dezenten Beta-Hinweis (nur in der Addon-Liste sichtbar).
   - `Media\ForeverCore.tga` (Logo) liegt in jedem Addon (Kopie z. B. aus ForeverBars).
   - Eigenes Addon-Logo: `Media\ForeverName.tga` (64 × 64, 32 Bit TGA) – steht in `## IconTexture` und im Minimap-Knopf;
     die Kacheln der Übersicht nehmen das Logo aus der .toc.

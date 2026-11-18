@@ -1,5 +1,5 @@
 ## Interface: 16001
-## Title: ForeverUnits |cff8a8a8a(Beta)|r
+## Title: ForeverUnits
 ## IconTexture: Interface\AddOns\ForeverUnits\Media\ForeverUnits
 ## Category: Forever Core UI
 ## Notes: Slim unit frames (player, target, target of target, focus, pet) – optionally in the look of ForeverFrames

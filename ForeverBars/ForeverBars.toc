@@ -1,5 +1,5 @@
 ## Interface: 16001
-## Title: ForeverBars |cff8a8a8a(Beta)|r
+## Title: ForeverBars
 ## Notes: Action bars in the ForeverQuests style (size, layout, visibility, key bindings) with experience and reputation bars
 ## Notes-deDE: Aktionsleisten im Stil von ForeverQuests (Größe, Anordnung, Sichtbarkeit, Tastenbelegung) mit Erfahrungs- und Ruf-Leiste
 ## IconTexture: Interface\AddOns\ForeverBars\Media\ForeverBars
