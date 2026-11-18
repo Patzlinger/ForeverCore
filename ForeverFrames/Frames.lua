@@ -767,8 +767,16 @@ local function ShowMark(v, index)
 end
 
 local function UpdateMark(b)
-    local index = GetRaidTargetIndex(b.ffUnit)
-    if IsSecret(index) then index = nil end
+    local index = GetDB().markShow and GetRaidTargetIndex(b.ffUnit)
+    if IsSecret(index) then
+        -- gesperrte Nummer (Messung /fprobe: auch bei Gegnern lesbar, aber gesperrt möglich): nicht rechnen, nur an
+        -- Blizzards Funktion weiterreichen (wie in ForeverUnits/ForeverPlates); lehnt sie ab: verstecken
+        local v = b.ff
+        v.mark:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcons")
+        local ok = type(SetRaidTargetIconTexture) == "function" and pcall(SetRaidTargetIconTexture, v.mark, index)
+        v.mark:SetShown(ok and true or false)
+        return
+    end
     ShowMark(b.ff, index)
 end
 
