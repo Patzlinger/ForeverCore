@@ -180,7 +180,7 @@ end
 -- fremde Addons gestalten wir nicht um. Erkannt am Namen; deren ganze Unterrahmen werden übersprungen.
 local function Foreign(obj)
     local name = obj.GetName and obj:GetName()
-    return type(name) == "string" and name:find("Auctionator") ~= nil
+    return type(name) == "string" and (name:find("Auctionator") ~= nil or name:find("^LibAHFrame") ~= nil or name:find("^TSM") ~= nil)
 end
 
 local function Scan(frame, depth)
@@ -267,7 +267,7 @@ local function Place(f)
     local function FindForeignTab(frame, depth)
         for _, child in ipairs({ frame:GetChildren() }) do
             local name = not Forbidden(child) and child:GetName()
-            if name and name:find("Auctionator") and child:IsObjectType("Button") and child:IsShown()
+            if name and (name:find("Auctionator") or name:find("^LibAHFrame") or name:find("^TSM")) and child:IsObjectType("Button") and child:IsShown()
                 and child:GetTop() and bottom and child:GetTop() - bottom < 40 then
                 return child
             end
