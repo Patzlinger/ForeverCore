@@ -132,55 +132,16 @@ end
 ---------------------------------------------------------------------------
 
 function Style.CreateWindow(name, width, height, titleText)
-    local window = CreateFrame("Frame", name, UIParent, "BackdropTemplate")
-    window:SetSize(width, height)
-    window:SetPoint("CENTER")
-    window:SetFrameStrata("DIALOG")
-    window:SetMovable(true)
-    window:SetClampedToScreen(true)
-    window:EnableMouse(true)
-    Style.SetFlat(window, COLOR.background)
-    tinsert(UISpecialFrames, name) -- mit Escape schließbar
-
-    -- Titelleiste zum Verschieben
-    local header = CreateFrame("Frame", nil, window, "BackdropTemplate")
-    header:SetPoint("TOPLEFT", 1, -1)
-    header:SetPoint("TOPRIGHT", -1, -1)
-    header:SetHeight(40)
-    header:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8" })
-    header:SetBackdropColor(unpack(COLOR.header))
-    header:EnableMouse(true)
-    header:RegisterForDrag("LeftButton")
-    header:SetScript("OnDragStart", function() window:StartMoving() end)
-    header:SetScript("OnDragStop", function() window:StopMovingOrSizing() end)
-
-    local accentLine = header:CreateTexture(nil, "ARTWORK")
-    accentLine:SetPoint("BOTTOMLEFT")
-    accentLine:SetPoint("BOTTOMRIGHT")
-    accentLine:SetHeight(1)
-    accentLine:SetColorTexture(COLOR.accent[1], COLOR.accent[2], COLOR.accent[3], 0.6)
-
-    window.titleText = header:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    window.titleText:SetPoint("LEFT", 16, 0)
-    window.titleText:SetText(titleText)
-    window.subText = header:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    window.subText:SetPoint("LEFT", window.titleText, "RIGHT", 10, -1)
-
-    local hubUI = _G.ForeverHub and _G.ForeverHub.UI
-    local close
-    if hubUI and hubUI.CloseButton then
-        close = hubUI.CloseButton(header, function() window:Hide() end)
-        close:SetPoint("RIGHT", -8, 0)
-    else
-        close = CreateFrame("Button", nil, header, "UIPanelCloseButton")
-        close:SetPoint("RIGHT", -6, 0)
-        close:SetScript("OnClick", function() window:Hide() end)
-    end
-
-    window.header = header
-    -- beim Forever-Core-UI anmelden: das zuletzt geoeffnete/angeklickte Forever-Fenster liegt oben (kein Ineinander-Clippen)
-    local hubUI = _G.ForeverHub and _G.ForeverHub.UI
-    if hubUI and hubUI.RegisterWindow then hubUI.RegisterWindow(window) end
+    -- Fensterbau kommt aus dem Hub (UI.Window: Ziehen, Schließen, Logo, Ebenen-Stapel, Runen-Design).
+    -- Ohne Namen übergeben: keine Größen-Griffe (Hinweisfenster passt seine Höhe selbst an); Escape wie bisher.
+    local window = HUB_UI.Window(nil, titleText, width, height)
+    window.header:SetHeight(40) -- höhere Titelleiste dieses Addons
+    window.titleText = window.TitleText
+    window.TitleText:SetFontObject("GameFontNormalLarge")
+    window.subText = window.header:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    window.subText:SetPoint("LEFT", window.TitleText, "RIGHT", 10, -1)
+    window:Show()
+    if name then _G[name] = window tinsert(UISpecialFrames, name) end
     return window
 end
 
