@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverBags: in combat, Blizzard's bag windows no longer open alongside the ForeverBags window.
+
 ## 1.0 – 2026-11-18
 
 First stable version. The addons no longer carry the "b" (beta) suffix in their version number.

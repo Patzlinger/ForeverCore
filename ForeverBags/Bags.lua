@@ -1585,13 +1585,14 @@ local function KeepClosed(frame)
         if not Replacing() then return end
         self:SetAlpha(0) -- (kein Aufblitzen bis zum Schließen)
         local started = GetTime()
+        -- Auch im Kampf zumachen: Blizzards Taschenfenster sind keine geschützten Rahmen (vor 5a78311 gingen sie im
+        -- Kampf zu; die Kampf-Sperre danach war übervorsichtig – im Kampf waren beide Taschen offen, 2026-11-19).
+        -- Nur falls das Spiel den Rahmen doch einmal schützt: im Kampf offen lassen.
+        local function Blocked() return InCombatLockdown() and self:IsProtected() end
         local function Try()
             if not (Replacing() and self:IsShown()) then self:SetAlpha(1) return end
-            if (Busy() and GetTime() - started < 3) or InCombatLockdown() then
-                if not InCombatLockdown() then C_Timer.After(0.1, Try) return end
-            else
-                self:Hide()
-            end
+            if Busy() and GetTime() - started < 3 then C_Timer.After(0.1, Try) return end
+            if not Blocked() then self:Hide() end
             self:SetAlpha(1) -- (für den Fall, dass die Einstellung später ausgeschaltet wird)
         end
         C_Timer.After(0, Try)
