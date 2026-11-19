@@ -754,6 +754,50 @@ function engine.SetUnit(b)
     if not v.engine or not b.ffUnit then return end
     for _, c in pairs(v.engineC or {}) do SetContainerUnit(c, b.ffUnit) end
 end
+
+-- Wurde eine Aura entfernt (z. B. Gift gebannt), die Container der Einheit neu einlesen lassen: im Kampf blieb das
+-- Symbol sonst stehen (flowfy 2026-11-19, eigener Rahmen, Blizzard-Anzeige aktiv). Einheit kurz lösen und wieder
+-- setzen – SetUnit ist auch im Kampf erlaubt (engine.SetUnit). Gebündelt: höchstens einmal je Bild und Einheit.
+local refreshUnits, refreshPlanned = {}, false
+local function RefreshEngineUnits()
+    refreshPlanned = false
+    local units = refreshUnits
+    refreshUnits = {}
+    for _, b in ipairs(ns.buttons or {}) do
+        local v, unit = b.ff, b.ffUnit
+        if v and v.engine and unit and units[unit] then
+            for _, c in pairs(v.engineC or {}) do
+                if c:IsShown() then
+                    pcall(c.SetUnit, c, nil)
+                    c.ffUnit = nil
+                    SetContainerUnit(c, unit)
+                end
+            end
+        end
+    end
+end
+do
+    local ev = CreateFrame("Frame")
+    ev:RegisterEvent("UNIT_AURA")
+    ev:SetScript("OnEvent", function(_, _, unit, info)
+        if type(unit) ~= "string" or IsSecret(unit) or not GetDB().auraEngine then return end
+        -- nur bei entfernten Auren (oder Komplett-Aktualisierung); gesperrte Angaben zählen als "ja"
+        local removed = true
+        if type(info) == "table" and not IsSecret(info) then
+            local ids, full = info.removedAuraInstanceIDs, info.isFullUpdate
+            removed = IsSecret(ids) or IsSecret(full) or ids ~= nil or full == true
+        end
+        if not removed then return end
+        refreshUnits[unit] = true
+        if not refreshPlanned then
+            refreshPlanned = true
+            C_Timer.After(0, function()
+                local ok, err = pcall(RefreshEngineUnits)
+                if not ok then refreshPlanned = false ns.ReportError("AuraContainer refresh", err) end
+            end)
+        end
+    end)
+end
 ns.auraEngine = engine
 
 function ns.CreateAuraVisuals(b)

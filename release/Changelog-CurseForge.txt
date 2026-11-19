@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverFrames: a debuff removed in combat (e.g. a dispelled poison) should no longer stay visible on the group frame.
+
 - ForeverBags: in combat, Blizzard's bag windows no longer open alongside the ForeverBags window.
 
 ## 1.0 – 2026-11-18
