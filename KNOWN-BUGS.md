@@ -12,6 +12,14 @@ Ablauf:
 
 ## Offen
 
+### ForeverFrames: entferntes Gift bleibt im Kampf als Symbol im Gruppenrahmen stehen (offen)
+- **Was passiert:** Im Kampf ein Gift entfernen (bannen) → das Debuff-Symbol im Gruppenrahmen bleibt stehen.
+  Gemeldet 2026-11-19 (flowfy). `/ff status`: „Blizzard-Anzeige für Auren (AuraContainer) – aktiv“, 0 Fehler.
+- **Stand:** Mit aktiver Blizzard-Anzeige zeichnet das alte System keine Debuffs (`UpdateDebuffs`: `not v.engine`) –
+  das stehende Symbol kommt also aus dem AuraContainer (`ff_debuffs` bzw. `ff_dispel`, `Auras.lua` `engine.Layout`/
+  `EnsureDispelContainer`), der es eigentlich selbst entfernen müsste. Noch unklar: Debuff-Symbol oder Typ-Symbol,
+  eigener Rahmen oder Mitspieler, verschwindet es nach Kampfende. Für Patzlinger (Bereich ForeverFrames).
+
 ### ForeverQuests: „Search()“ blockiert beim Einstellen einer eigenen Gruppe (Fix wartet auf Bestätigung)
 - **Was passiert:** BugSack `ADDON_ACTION_BLOCKED … ForeverQuests … Search()` aus `Blizzard_LFGVanilla_Listing.lua:110`
   (Gruppe in „Suche nach Gruppe“ eingestellt > Blizzard sucht selbst). Gefunden 2026-11-15 (flowfy).
