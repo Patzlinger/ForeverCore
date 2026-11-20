@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- ForeverSkin: the icon picker of the equipment manager (character window) shows its icons again.
+
 - ForeverFrames: a debuff removed in combat (e.g. a dispelled poison) should no longer stay visible on the group frame.
 
 - ForeverBags: in combat, Blizzard's bag windows no longer open alongside the ForeverBags window.

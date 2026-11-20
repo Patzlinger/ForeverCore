@@ -656,7 +656,12 @@ HookRepList = function(list) HookList(list, true) end
 
 local function FindPageHeaders(frame, depth)
     for _, child in ipairs({ frame:GetChildren() }) do
-        if not Forbidden(child) and child:IsVisible() and not slotDone[child] then
+        -- Symbol-Auswahl der Ausrüstungssets nicht hier: ihr Name enthält "GearManager", jedes Symbol-Feld wurde sonst
+        -- als Set-Eintrag zum grauen Balken und das Symbol verschwand (2026-11-20). Sie hat ihre eigene Umgestaltung
+        -- (ns.SkinIconPopup, Macro.lua).
+        if child == G("GearManagerPopupFrame") then
+            -- übersprungen
+        elseif not Forbidden(child) and child:IsVisible() and not slotDone[child] then
             local name = child:GetName() or ""
             local target = (child.GetScrollTarget and child:GetScrollTarget())
                 or (child:IsObjectType("ScrollFrame") and child:GetScrollChild())
