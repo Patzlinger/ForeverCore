@@ -238,6 +238,12 @@ local function UpdateCoords()
 end
 
 local function SetWaypointHere()
+    -- im Kampf nicht: Blizzards Karte legt dabei eine Markierung an (geschützter Rahmen, SetPassThroughButtons) und der
+    -- Aufruf aus unserem Code wird blockiert (BugSack 2026-11-18, ForeverQuests-/ForeverMinimap-Fehler "SetPassThroughButtons")
+    if InCombatLockdown() then
+        ns.Chat(T("Im Kampf nicht möglich.", "Not possible in combat."))
+        return false
+    end
     local mapID, x, y = PlayerPosition()
     if not (mapID and C_Map.SetUserWaypoint and UiMapPoint and UiMapPoint.CreateFromCoordinates) then return false end
     if C_Map.CanSetUserWaypointOnMap and not C_Map.CanSetUserWaypointOnMap(mapID) then
