@@ -17,6 +17,8 @@ local function DB()
     return ForeverBagsData
 end
 
+UI.AddRealmHint(function() return _G.ForeverBagsData and _G.ForeverBagsData.chars end)
+
 function ns.CharKey()
     return UI.CharKey() or ((UnitName("player") or "?") .. "-?") -- "-?" nur, solange der Realm unbekannt ist
 end

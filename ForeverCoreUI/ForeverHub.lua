@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 88
+local VERSION = 89
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -234,6 +234,7 @@ end
 -- Realm-Name des eingeloggten Charakters, auch wenn der Client ihn kurz nach einem Spiel-Update beim Login noch nicht
 -- (oder leer) liefert: dann gilt der zuletzt gemerkte Realm DIESES Charakternamens (ForeverHubDB.realmOf). Ohne
 -- Wert: nil – Aufrufer dürfen dann keinen neuen "Charakter" anlegen. Alle "Name-Realm"-Schlüssel nutzen das.
+UI.realmHints = UI.realmHints or {}
 function UI.RealmName()
     local name = UnitName and UnitName("player")
     local realm = GetRealmName and GetRealmName()
@@ -245,8 +246,38 @@ function UI.RealmName()
         end
         return realm
     end
-    if type(db) == "table" and type(db.realmOf) == "table" and type(name) == "string" then return db.realmOf[name] end
+    if type(db) == "table" and type(db.realmOf) == "table" and type(name) == "string" and db.realmOf[name] then
+        return db.realmOf[name]
+    end
+    -- Letzter Weg: aus den gespeicherten Charakter-Daten der Addons ableiten (derselbe Name mit Realm, sonst der
+    -- häufigste Realm) – so bleibt der Charakter derselbe, auch wenn der Client den Realm dauerhaft leer liefert.
+    for _, hint in ipairs(UI.realmHints) do
+        local ok, chars = pcall(hint)
+        local found = ok and UI.RealmFromChars(chars, name)
+        if found then
+            if type(db) == "table" and type(name) == "string" then
+                if type(db.realmOf) ~= "table" then db.realmOf = {} end
+                db.realmOf[name] = found
+            end
+            return found
+        end
+    end
     return nil
+end
+
+-- Hilfen für die Ableitung: Addons melden eine Funktion, die ihre Tabelle "Name-Realm" -> Daten liefert
+function UI.AddRealmHint(fn) UI.realmHints[#UI.realmHints + 1] = fn end
+function UI.RealmFromChars(chars, name)
+    if type(chars) ~= "table" then return nil end
+    local counts, best, bestN = {}, nil, 0
+    for _, c in pairs(chars) do
+        if type(c) == "table" and type(c.realm) == "string" and c.realm ~= "" then
+            if c.name == name then return c.realm end
+            counts[c.realm] = (counts[c.realm] or 0) + 1
+            if counts[c.realm] > bestN then best, bestN = c.realm, counts[c.realm] end
+        end
+    end
+    return best
 end
 
 -- Schlüssel "Name-Realm" (nil, solange der Realm unbekannt ist)

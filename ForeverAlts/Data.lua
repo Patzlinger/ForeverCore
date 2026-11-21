@@ -56,6 +56,8 @@ local function Data()
 end
 
 -- gleicher Schlüssel wie ForeverBags ("Name-Realm"), damit die Taschen eines Twinks gefunden werden
+UI.AddRealmHint(function() return _G.ForeverAltsData and _G.ForeverAltsData.chars end) -- Realm notfalls aus den gespeicherten Charakteren ableiten
+
 function ns.CharKey()
     return UI.CharKey() or ((UnitName("player") or "?") .. "-?") -- "-?" nur, solange der Realm unbekannt ist (siehe UI.RealmName)
 end
