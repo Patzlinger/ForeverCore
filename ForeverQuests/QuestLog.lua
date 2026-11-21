@@ -244,7 +244,26 @@ local function SetupMapMoving(map, top)
     grip:SetScript("OnLeave", function() Style.GetTooltip():Hide() end)
 
     -- Blizzard setzt die Karte beim Öffnen und beim Wechsel Vollbild/Fenster neu: danach unsere Werte
-    map:HookScript("OnShow", function() C_Timer.After(0, ApplyMapPlacement) end)
+    -- Unsere Lage wird bewusst erst im nächsten Schritt gesetzt (siehe unten) – dadurch blitzte die Karte vorher
+    -- einen Moment an Blizzards Standardplatz (Ecke) auf. Darum: beim Öffnen unsichtbar (rohe Deckkraft-Funktion,
+    -- Blizzards Lua-Überschreibung SetAlpha bleibt unberührt), nach dem Platzieren wieder sichtbar (Sicherung nach 0,2 s).
+    local rawMeta = getmetatable(CreateFrame("Frame")).__index
+    local hiddenAlpha
+    local function RevealMap()
+        if not hiddenAlpha then return end
+        rawMeta.SetAlpha(map, hiddenAlpha)
+        hiddenAlpha = nil
+    end
+    map:HookScript("OnShow", function()
+        local pos = ns.db and ns.db.mapPos
+        if pos and not hiddenAlpha and not IsMaximized(map) and not LeatrixMapsDoes("UnlockMap") then
+            hiddenAlpha = rawMeta.GetAlpha(map)
+            if not hiddenAlpha or hiddenAlpha < 0.05 then hiddenAlpha = 1 end
+            rawMeta.SetAlpha(map, 0)
+            C_Timer.After(0.2, RevealMap)
+        end
+        C_Timer.After(0, function() ApplyMapPlacement() RevealMap() end)
+    end)
     if type(_G.UpdateUIPanelPositions) == "function" then
         hooksecurefunc("UpdateUIPanelPositions", function(frame)
             -- NICHT sofort: Position/Skalierung mitten in Blizzards Fensterverwaltung (ShowUIPanel -> Karte öffnen)
