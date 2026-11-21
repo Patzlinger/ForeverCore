@@ -3713,6 +3713,7 @@ local function CheckEditMode()
 end
 
 function ns.WatchEditMode()
+    if _G.ForeverHub.UI.EditModeSync then return end -- seit Hub v88 steuert der Hub das Entsperren für alle Forever-Rahmen mit
     _G.ForeverHub.UI.Every(EDIT_MODE_INTERVAL, CheckEditMode, { addon = "ForeverBars", name = "Edit mode" }) -- (gemeinsamer Takt)
 end
 

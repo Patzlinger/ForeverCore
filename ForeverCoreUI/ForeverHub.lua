@@ -17,7 +17,7 @@
 -- Raster, Warteschlange "nach dem Kampf"), und die Funktionen frueher geladener Kopien werden auf
 -- die neueste umgeleitet – Addons, die sich bei einer aelteren Kopie angemeldet haben, gehen nicht verloren.
 local ADDON_NAME = ...
-local VERSION = 87
+local VERSION = 88
 local PREV = _G.ForeverHub
 if PREV and (PREV.version or 0) >= VERSION then return end
 
@@ -2174,6 +2174,31 @@ do
         UI.CloseSettings()
         if was then UI.Chat("Forever", T("Kampf: Verschieben beendet, Fenster geschlossen.", "Combat: move mode ended, windows closed.")) end
     end)
+end
+
+-- Blizzards Bearbeitungsmodus (Edit Mode) steuert unser Verschieben mit: beim Öffnen werden alle Forever-Rahmen
+-- entsperrt, beim Schließen wieder gesperrt – aber nur, wenn WIR sie entsperrt haben (wer schon von Hand mit /fmove
+-- entsperrt hatte, bleibt entsperrt). Nur Beobachten per Takt (kein HookScript an Blizzards Rahmen: Taint-Gefahr).
+UI.EditModeSync = true -- (ForeverBars verlässt sich darauf und hat keinen eigenen Beobachter mehr)
+do
+    local lastOpen, byEditMode = false, false
+    UI.Every(0.2, function()
+        if _G.ForeverHub ~= hub then return end
+        local frame = _G.EditModeManagerFrame
+        local open = frame and frame:IsShown() or false
+        if open == lastOpen then return end
+        if InCombatLockdown() then return end -- im Kampf nichts umbauen, danach erneut prüfen
+        lastOpen = open
+        if open then
+            if #movableOrder > 0 and not UI.AnyUnlocked() then
+                byEditMode = true
+                UI.MoveAll(false)
+            end
+        elseif byEditMode then
+            byEditMode = false
+            if UI.AnyUnlocked() then UI.MoveAll(true) end
+        end
+    end, { addon = "ForeverCore", name = "Edit mode" })
 end
 
 SLASH_FOREVERMOVE1 = "/fmove"
