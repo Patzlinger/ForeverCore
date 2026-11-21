@@ -1,4 +1,5 @@
 local addonName, ns = ...
+local UI = ForeverHub.UI
 
 -- Data.lua: Taschen, Bank und Gold JEDES Charakters, der einmal eingeloggt war – kontoweit gespeichert in
 -- ForeverBagsData (eigene SavedVariable, NICHT über die Profil-Verwaltung: das sind Charakter-Daten, keine
@@ -17,17 +18,19 @@ local function DB()
 end
 
 function ns.CharKey()
-    return (UnitName("player") or "?") .. "-" .. (GetRealmName() or "?")
+    return UI.CharKey() or ((UnitName("player") or "?") .. "-?") -- "-?" nur, solange der Realm unbekannt ist
 end
 
 -- Daten des eingeloggten Charakters (wird angelegt)
 local function Me()
+    if not UI.RealmName() then return {} end -- Realm unbekannt (nach Spiel-Update): nichts speichern
     local chars = DB().chars
+    UI.MergeRealmlessChars(chars)
     local key = ns.CharKey()
     local c = chars[key]
     if type(c) ~= "table" then c = {} chars[key] = c end
     c.name = UnitName("player")
-    c.realm = GetRealmName()
+    c.realm = UI.RealmName()
     local _, class = UnitClass("player")
     c.class = class
     c.faction = UnitFactionGroup("player")

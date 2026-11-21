@@ -231,6 +231,54 @@ function UI.Safe(addon, where, fn)
     end
 end
 
+-- Realm-Name des eingeloggten Charakters, auch wenn der Client ihn kurz nach einem Spiel-Update beim Login noch nicht
+-- (oder leer) liefert: dann gilt der zuletzt gemerkte Realm DIESES Charakternamens (ForeverHubDB.realmOf). Ohne
+-- Wert: nil – Aufrufer dürfen dann keinen neuen "Charakter" anlegen. Alle "Name-Realm"-Schlüssel nutzen das.
+function UI.RealmName()
+    local name = UnitName and UnitName("player")
+    local realm = GetRealmName and GetRealmName()
+    local db = _G.ForeverHubDB
+    if type(realm) == "string" and realm ~= "" then
+        if type(db) == "table" and type(name) == "string" then
+            if type(db.realmOf) ~= "table" then db.realmOf = {} end
+            db.realmOf[name] = realm
+        end
+        return realm
+    end
+    if type(db) == "table" and type(db.realmOf) == "table" and type(name) == "string" then return db.realmOf[name] end
+    return nil
+end
+
+-- Schlüssel "Name-Realm" (nil, solange der Realm unbekannt ist)
+function UI.CharKey()
+    local name, realm = UnitName and UnitName("player"), UI.RealmName()
+    if type(name) ~= "string" or name == "" or not realm then return nil end
+    return name .. "-" .. realm
+end
+
+-- Aufräumen nach einem Login ohne Realm-Namen (Fehler vor 1.0.1): Einträge ohne Realm, deren Name zu einem Eintrag MIT
+-- Realm passt, werden dort hineingeführt (neuere Werte gewinnen) und entfernt. chars = Tabelle "Name-Realm" -> Daten.
+function UI.MergeRealmlessChars(chars)
+    if type(chars) ~= "table" then return end
+    local orphans = {}
+    for key, c in pairs(chars) do
+        if type(c) == "table" and (c.realm == nil or c.realm == "") then orphans[#orphans + 1] = key end
+    end
+    for _, key in ipairs(orphans) do
+        local c = chars[key]
+        for otherKey, other in pairs(chars) do
+            if otherKey ~= key and type(other) == "table" and type(other.realm) == "string" and other.realm ~= ""
+                and other.name ~= nil and other.name == c.name then
+                for field, value in pairs(c) do
+                    if field ~= "realm" and field ~= "hidden" then other[field] = value end
+                end
+                chars[key] = nil
+                break
+            end
+        end
+    end
+end
+
 ---------------------------------------------------------------------------
 -- Gesperrte Werte ("secret values"): Zahlen/Texte aus Einheiten-Abfragen (Leben, Mana, GUID, Auren …) sind im Kampf,
 -- bei manchen Werten (Mana!) auch ausserhalb, für Addons gesperrt. Erlaubt: anzeigen (SetText, StatusBar:SetValue,
@@ -3590,9 +3638,9 @@ local function MaybeWelcome()
     local db = GetDB()
     -- seit v71: Einrichtungsassistent (Setup.lua) einmal je Charakter (ForeverHubDB.setupDone["Name-Realm"]); sofort
     -- merken, damit er auch nach einfachem Schließen nicht wiederkommt. Die Frage nach anderen Addons kommt am Ende.
-    local charKey = (UnitName("player") or "?") .. "-" .. (GetRealmName() or "?")
+    local charKey = UI.CharKey() -- nil = Realm noch unbekannt (nach Spiel-Update): Assistent dann nicht jetzt
     db.setupDone = db.setupDone or {}
-    if UI.ShowSetup and not db.setupDone[charKey] then
+    if UI.ShowSetup and charKey and not db.setupDone[charKey] then
         db.setupDone[charKey] = true
         local first = not db.welcomeDone
         db.welcomeDone = true
@@ -4064,9 +4112,7 @@ local DEFAULT_PROFILE = "Default"
 UI.DEFAULT_PROFILE = DEFAULT_PROFILE
 
 local function CharKey()
-    local name = UnitName("player")
-    if type(name) ~= "string" or name == "" then return nil end
-    return name .. "-" .. (GetRealmName and GetRealmName() or "")
+    return UI.CharKey() -- Realm-Fallback siehe UI.RealmName (sonst wäre der Charakter nach einem Update "neu" und sein Profil weg)
 end
 
 local function CharName()
@@ -4928,9 +4974,9 @@ do
                 -- Standard (v50): Forever-Look einmal je Charakter automatisch (Details merkt sich das Profil je
                 -- Charakter). Wer einmal "vorheriges Profil" gewählt hat, bekommt es nie wieder automatisch.
                 local db = GetDB()
-                local char = (UnitName("player") or "?") .. "-" .. (GetRealmName() or "?")
+                local char = UI.CharKey()
                 db.detailsAuto = type(db.detailsAuto) == "table" and db.detailsAuto or {}
-                if not db.detailsOptOut and not db.detailsAuto[char] and not InCombatLockdown() then
+                if char and not db.detailsOptOut and not db.detailsAuto[char] and not InCombatLockdown() then
                     db.detailsAuto[char] = true
                     if not UI.DetailsForeverActive() then pcall(UI.DetailsApplyForever) end
                 end

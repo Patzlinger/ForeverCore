@@ -57,7 +57,7 @@ end
 
 -- gleicher Schlüssel wie ForeverBags ("Name-Realm"), damit die Taschen eines Twinks gefunden werden
 function ns.CharKey()
-    return (UnitName("player") or "?") .. "-" .. (GetRealmName() or "?")
+    return UI.CharKey() or ((UnitName("player") or "?") .. "-?") -- "-?" nur, solange der Realm unbekannt ist (siehe UI.RealmName)
 end
 
 function ns.CharacterData(key) return Data().chars[key] end
@@ -76,6 +76,7 @@ function ns.HiddenCount()
 end
 
 local function Me()
+    if not UI.RealmName() then return {} end -- Realm unbekannt (nach Spiel-Update): nichts speichern, kein Doppel-Charakter
     local chars, key = Data().chars, ns.CharKey()
     if type(chars[key]) ~= "table" then chars[key] = {} end
     return chars[key]
@@ -92,7 +93,7 @@ end
 -- Alle Charaktere nach den Einstellungen gefiltert (der eingeloggte immer dabei) und sortiert
 function ns.Characters()
     local db, me = ns.GetDB(), ns.CharKey()
-    local myRealm, myFaction = GetRealmName(), UnitFactionGroup("player")
+    local myRealm, myFaction = UI.RealmName() or GetRealmName(), UnitFactionGroup("player")
     local list = {}
     for key, c in pairs(Data().chars) do
         if type(c) == "table" and (key == me or ((not db.sameRealm or c.realm == myRealm)
@@ -384,8 +385,17 @@ function ns.Update(what)
         UI.AfterCombat("ForeverAlts:update", function() ns.Update() end, "ForeverAlts")
         return
     end
+    if not UI.RealmName() then
+        -- Realm noch unbekannt: später erneut versuchen, bis der Client ihn liefert
+        if not ns.realmRetry then
+            ns.realmRetry = true
+            C_Timer.After(3, function() ns.realmRetry = nil ns.Update(what) end)
+        end
+        return
+    end
+    UI.MergeRealmlessChars(Data().chars)
     local c = Me()
-    c.name, c.realm = UnitName("player"), GetRealmName()
+    c.name, c.realm = UnitName("player"), UI.RealmName()
     local _, class = UnitClass("player")
     c.class = class
     c.race = UnitRace("player")
