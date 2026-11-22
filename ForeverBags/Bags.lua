@@ -317,6 +317,23 @@ local function PlaceSorted(placer, entries)
     if free then HideGroupLabels(labels + 1) end
 end
 
+-- Eigene Suche für lebende Plätze (Taschen/Bank): Blizzards Suchergebnis (isFiltered) kam im Forever-Client nicht
+-- zuverlässig an – es wurde nichts abgedunkelt. Darum selbst prüfen: Suchtext im Namen, Typ, Untertyp oder Platz
+-- (Rüstung, Waffe, Verbrauchsgut, Kopf …), ohne Groß-/Kleinschreibung. Leere Plätze bleiben unberührt.
+local function LiveMatches(link, text)
+    if text == "" then return true end
+    local name = link and link:match("%[(.-)%]")
+    if name and name:lower():find(text, 1, true) then return true end
+    local ok, _, _, _, _, _, itemType, subType, _, equipLoc = pcall(C_Item.GetItemInfo, link)
+    if ok then
+        if itemType and itemType:lower():find(text, 1, true) then return true end
+        if subType and subType:lower():find(text, 1, true) then return true end
+        local equip = equipLoc and equipLoc ~= "" and _G[equipLoc]
+        if equip and equip:lower():find(text, 1, true) then return true end
+    end
+    return false
+end
+
 -- Anzeige eines Platzes aus den Taschendaten (geht auch im Kampf: keine geschützten Änderungen).
 -- Auch für das Bankfenster (Bank.lua).
 function ns.UpdateSlot(button, bag, slot)
@@ -348,12 +365,18 @@ function ns.UpdateSlot(button, bag, slot)
     -- Suchtreffer: Blizzards Suche markiert nicht passende Gegenstände (isFiltered) – aber nur, wenn in UNSEREM Suchfeld
     -- etwas steht. Bei geöffneter neuer Bank meldet das Spiel "gefiltert" auch ohne Suche (Blizzards Bankfenster im
     -- Hintergrund) – das hat Bank und Taschen komplett abgedunkelt.
-    local searching = searchBox and strtrim(searchBox:GetText() or "") ~= ""
-    local filtered = searching and info and info.isFiltered
-    if button.SetMatchesSearch then
-        button:SetMatchesSearch(not filtered)
-    else
-        button:SetAlpha(filtered and 0.3 or 1)
+    local searchText = searchBox and strtrim(searchBox:GetText() or ""):lower() or ""
+    local searching = searchText ~= ""
+    local filtered = searching and info and info.hyperlink and not LiveMatches(info.hyperlink, searchText)
+    if button.SetMatchesSearch then pcall(button.SetMatchesSearch, button, not filtered) end
+    -- zusätzlich selbst abdunkeln (SetMatchesSearch allein zeigte nichts); Alpha nur anfassen, wenn die Suche es braucht
+    -- (die Taschen-Hervorhebung beim Darüberfahren nutzt ebenfalls die Deckkraft)
+    if filtered then
+        button:SetAlpha(0.3)
+        button.fbagsSearchDim = true
+    elseif button.fbagsSearchDim then
+        button:SetAlpha(1)
+        button.fbagsSearchDim = nil
     end
     if button.UpdateItemContextMatching then pcall(button.UpdateItemContextMatching, button) end
     -- Neu erhaltene Gegenstände (erst nach dem Login erhaltene – siehe ClearAll beim Einloggen). Blizzards
@@ -1277,7 +1300,7 @@ local function CreateWindow()
         local text = self:GetText() or ""
         placeholder:SetShown(text == "" and not self:HasFocus())
         if C_Container.SetItemSearch then C_Container.SetItemSearch(text) end
-        if view ~= nil then ns.LayoutBags() end -- gespeicherte Ansicht: selbst filtern
+        ns.LayoutBags() -- Plätze neu zeichnen: wir filtern selbst (gespeicherte Ansicht wie lebende Taschen)
     end)
     searchBox:SetScript("OnEditFocusGained", function() placeholder:Hide() end)
     searchBox:SetScript("OnEditFocusLost", function(self) placeholder:SetShown((self:GetText() or "") == "") end)
