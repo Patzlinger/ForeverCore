@@ -2,11 +2,16 @@
 
 ## Unreleased
 
-- ForeverSkin: the icon picker of the equipment manager (character window) shows its icons again.
+## 1.01 – 2026-11-22
 
+- **Fixed: duplicate characters after a game update.** After a client update the game can report an empty realm name at login, which made a known character show up twice (with wrong gold in the Alts overview and the first-login setup shown again). Forever Core now remembers the realm per character, falls back to the realm stored in your saved data, and merges such duplicate entries automatically. Alts, Bags and the per-character profiles all use it.
+- **Blizzard Edit Mode now unlocks all Forever frames** while it is open and locks them again when you leave it (same as /fmove). Frames you had unlocked yourself stay unlocked.
+- ForeverSpellbook: spells can now be cast by clicking them **in combat**. The spell list is frozen during combat (search and tabs work again afterwards). Dragging a spell onto an action bar still only works out of combat (the game blocks it for addons).
+- ForeverQuests: the world map no longer flashes in the top corner for a moment before jumping to its saved position.
 - ForeverFrames: a debuff removed in combat (e.g. a dispelled poison) should no longer stay visible on the group frame.
-
 - ForeverBags: in combat, Blizzard's bag windows no longer open alongside the ForeverBags window.
+- ForeverSkin: the icon picker of the equipment manager (character window) shows its icons again.
+- ForeverMinimap: clicking the coordinates to set a map pin in combat no longer causes an "action blocked" error; it now says "Not possible in combat."
 
 ## 1.0 – 2026-11-18
 
