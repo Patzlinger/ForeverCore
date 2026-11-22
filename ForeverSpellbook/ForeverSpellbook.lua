@@ -644,6 +644,32 @@ local function Entry(i)
         end
         Pick(self)
     end)
+    -- Zauber im Kampf wirken: ein sicherer Knopf (wie Blizzards Aktionsknöpfe) liegt über dem Eintrag. Außerhalb des
+    -- Kampfes tut er nichts (Klick = aufnehmen wie bisher); mit Kampfbeginn schaltet ein Zustands-Treiber (läuft im
+    -- geschützten Teil, darf auch im Kampf Attribute setzen) auf "wirke den Zauber". Welcher Zauber, steht im Attribut
+    -- "spell" – das lässt sich NUR außerhalb des Kampfes ändern (Place()); darum friert Refresh() im Kampf die Liste ein.
+    if not InCombatLockdown() then
+        local ok, c = pcall(CreateFrame, "Button", nil, b, "SecureActionButtonTemplate,SecureHandlerStateTemplate")
+        if ok and c then
+            c:SetAllPoints(b)
+            c:SetFrameLevel(b:GetFrameLevel() + 2)
+            c:RegisterForClicks("AnyUp")
+            c:RegisterForDrag("LeftButton")
+            c:SetAttribute("_onstate-fsbcombat", [[ self:SetAttribute("type1", newstate == "c" and "spell" or nil) ]])
+            RegisterStateDriver(c, "fsbcombat", "[combat] c; n")
+            local hl2 = c:CreateTexture(nil, "HIGHLIGHT")
+            hl2:SetAllPoints()
+            hl2:SetColorTexture(1, 1, 1, 0.06)
+            c:SetScript("OnEnter", function() EntryTooltip(b) end)
+            c:SetScript("OnLeave", GameTooltip_Hide)
+            c:SetScript("OnDragStart", function() Pick(b) end)
+            -- (der Klick selbst läuft wie bisher über den Eintrag: Link, Klickbelegung, Aufnehmen – nur außerhalb des Kampfes)
+            c:HookScript("OnClick", function(_, btn)
+                if not InCombatLockdown() then b:GetScript("OnClick")(b, btn) end
+            end)
+            b.cast = c
+        end
+    end
     entries[i] = b
     return b
 end
@@ -686,8 +712,22 @@ warnBar:SetScript("OnLeave", GameTooltip_Hide)
 
 -- Ansicht neu aufbauen
 local outdatedBySpell = {}
+local refreshPending, refreshedBefore = false, false
 function Refresh()
     if not frame:IsShown() then return end
+    -- Im Kampf bleibt die Liste stehen, wie sie war: die Kampf-Klick-Knöpfe (Entry) tragen ihren Zauber fest und lassen
+    -- sich im Kampf nicht umbelegen – eine neu angeordnete Liste würde sonst einen anderen Zauber wirken als angezeigt.
+    -- Gilt erst, wenn die Liste einmal gebaut wurde; nach dem Kampf wird nachgeholt.
+    if InCombatLockdown() and refreshedBefore then
+        if not refreshPending then
+            refreshPending = true
+            Chat(T("Im Kampf: Zauberliste eingefroren (Suche/Reiter nach dem Kampf). Klick wirkt den Zauber.",
+                "In combat: spell list frozen (search/tabs after combat). Click casts the spell."))
+        end
+        return
+    end
+    refreshedBefore = true
+    refreshPending = false
     Collect()
     local d = GetDB()
 
@@ -781,6 +821,10 @@ function Refresh()
         b:SetPoint("TOPLEFT", col * (entryW + 6), y)
         col = col + 1
         b.entry = e
+        if b.cast and not InCombatLockdown() then -- Zauber für den Kampf-Klick festlegen (nur gelernte, aktive Zauber)
+            local castable = e.name and not e.trainer and not e.future and not e.passive
+            b.cast:SetAttribute("spell", castable and e.name or nil)
+        end
         b.icon:SetTexture(e.icon or 134400)
         b.icon:SetDesaturated(e.future or (e.trainer and not e.now) or false)
         b.name:SetText(label)
@@ -1288,3 +1332,12 @@ end
 -- Gemeinsame Einstellungs-Verwaltung (ForeverCore): Profile je Charakter, Zuruecksetzen, Export/Import
 ---------------------------------------------------------------------------
 UI.RegisterSettings({ addon = "ForeverSpellbook", sv = "ForeverSpellbookDB", defaults = DEFAULTS, version = 1 })
+
+-- nach dem Kampf: eingefrorene Zauberliste nachholen (und die Kampf-Klick-Knöpfe neu belegen)
+do
+    local regen = CreateFrame("Frame")
+    regen:RegisterEvent("PLAYER_REGEN_ENABLED")
+    regen:SetScript("OnEvent", function()
+        if refreshPending and Refresh then Refresh() end
+    end)
+end
