@@ -556,6 +556,26 @@ scroll:SetScrollChild(content)
 local ENTRY_W, ENTRY_H = 200, 40 -- Mindestbreite eines Eintrags; breiteres Fenster = mehr Spalten
 local entries = {}
 local sectionLabels = {}
+-- Zwei Ebenen: A = Liste mit Kampf-Klick-Knöpfen (nur außerhalb des Kampfes gebaut, im Kampf unveränderlich),
+-- B = einfache Liste ohne Knöpfe, die im Kampf für andere Reiter/Suche benutzt wird (Anzeigen/Umschalten geht im Kampf).
+local layerA = { content = content, entries = entries, labels = sectionLabels }
+local layerB
+local plain, layerKey = false, nil
+local function SelectLayer(wantPlain)
+    if wantPlain and not layerB then
+        local c = CreateFrame("Frame", nil, scroll)
+        c:SetSize(400, 10)
+        layerB = { content = c, entries = {}, labels = {} }
+    end
+    local L, other = wantPlain and layerB or layerA, wantPlain and layerA or layerB
+    if plain == wantPlain and content == L.content then return end
+    plain = wantPlain
+    content, entries, sectionLabels = L.content, L.entries, L.labels
+    if other then other.content:Hide() end
+    content:Show()
+    pcall(scroll.SetScrollChild, scroll, content)
+    scroll:SetVerticalScroll(0)
+end
 
 local function EntryTooltip(self)
     local e = self.entry
@@ -648,7 +668,7 @@ local function Entry(i)
     -- Kampfes tut er nichts (Klick = aufnehmen wie bisher); mit Kampfbeginn schaltet ein Zustands-Treiber (läuft im
     -- geschützten Teil, darf auch im Kampf Attribute setzen) auf "wirke den Zauber". Welcher Zauber, steht im Attribut
     -- "spell" – das lässt sich NUR außerhalb des Kampfes ändern (Place()); darum friert Refresh() im Kampf die Liste ein.
-    if not InCombatLockdown() then
+    if not InCombatLockdown() and not plain then
         local ok, c = pcall(CreateFrame, "Button", nil, b, "SecureActionButtonTemplate,SecureHandlerStateTemplate")
         if ok and c then
             c:SetAllPoints(b)
@@ -715,19 +735,14 @@ local outdatedBySpell = {}
 local refreshPending, refreshedBefore = false, false
 function Refresh()
     if not frame:IsShown() then return end
-    -- Im Kampf bleibt die Liste stehen, wie sie war: die Kampf-Klick-Knöpfe (Entry) tragen ihren Zauber fest und lassen
-    -- sich im Kampf nicht umbelegen – eine neu angeordnete Liste würde sonst einen anderen Zauber wirken als angezeigt.
-    -- Gilt erst, wenn die Liste einmal gebaut wurde; nach dem Kampf wird nachgeholt.
-    if InCombatLockdown() and refreshedBefore then
-        if not refreshPending then
-            refreshPending = true
-            Chat(T("Im Kampf: Zauberliste eingefroren (Suche/Reiter nach dem Kampf). Klick wirkt den Zauber.",
-                "In combat: spell list frozen (search/tabs after combat). Click casts the spell."))
-        end
-        return
+    -- Im Kampf tragen die Kampf-Klick-Knöpfe (Ebene A) ihren Zauber fest und lassen sich nicht umbelegen. Darum: Zeigt die
+    -- Ansicht noch dasselbe wie vor dem Kampf, bleibt Ebene A (Klick wirkt). Bei anderem Reiter/Suche wird eine einfache
+    -- Liste ohne Wirk-Knöpfe (Ebene B) gebaut; nach dem Kampf kommt Ebene A wieder.
+    local fight = InCombatLockdown() and refreshedBefore
+    if not fight then
+        refreshedBefore = true
+        refreshPending = false
     end
-    refreshedBefore = true
-    refreshPending = false
     Collect()
     local d = GetDB()
 
@@ -802,6 +817,20 @@ function Refresh()
             Refresh()
         end)
         b:Show()
+    end
+
+    local key = tostring(view) .. "|" .. tostring(query)
+    if fight then
+        if key == layerKey then SelectLayer(false) return end -- zurück zur Ansicht mit Wirk-Knöpfen
+        SelectLayer(true)
+        if not refreshPending then
+            refreshPending = true
+            Chat(T("Im Kampf: Diese Ansicht zeigt nur an – Zauber wirken geht im zuletzt geöffneten Reiter (ohne Suche).",
+                "In combat: this view is display only – casting works in the tab that was open before combat (no search)."))
+        end
+    else
+        SelectLayer(false)
+        layerKey = key
     end
 
     -- Inhalt: so viele Spalten, wie in die aktuelle Fensterbreite passen
