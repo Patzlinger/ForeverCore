@@ -67,18 +67,20 @@ end
 local hiddenPins = setmetatable({}, { __mode = "k" })
 local pinHookDone = false
 
+-- Nur Deckkraft, über die ROHE Rahmenfunktion (nicht pin:SetAlpha, das ist Blizzards Marker-Lua) und KEIN EnableMouse:
+-- Eingriffe in die Maus-Einstellung der Marker verseuchten vermutlich Blizzards Marker-Ablauf ("SetPropagateMouseClicks
+-- blockiert" beim Öffnen der Karte).
+local RawSetAlpha = getmetatable(CreateFrame("Frame")).__index.SetAlpha
 local function UpdateQuestPins(map, template)
     if not map.EnumeratePinsByTemplate then return end
     local hide = HideBlizzardMarkers()
     for pin in map:EnumeratePinsByTemplate(template) do
         if hide then
-            pin:SetAlpha(0)
-            if pin.EnableMouse then pin:EnableMouse(false) end
+            RawSetAlpha(pin, 0)
             hiddenPins[pin] = true
         elseif hiddenPins[pin] then
             hiddenPins[pin] = nil
-            pin:SetAlpha(1)
-            if pin.EnableMouse then pin:EnableMouse(true) end
+            RawSetAlpha(pin, 1)
         end
     end
 end
