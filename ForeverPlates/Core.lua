@@ -55,7 +55,6 @@ ns.DEFAULTS = {
     noShrink = true,          -- nicht mit der Entfernung verkleinern (sonst wird kleine Schrift unleserlich)
     los = true,               -- "keine Sicht" am Ziel, wenn ein Zauber daran scheitert
     castbar = true,           -- eigene schmale Zauberleiste
-    totemTimer = true,        -- eigene Totems: Restzeit-Leiste unter dem Namen
     castHeight = 9,
     castTarget = true,        --   Plakette mit dem Ziel am Ende
     interruptHint = true,     --   grün, wenn unterbrechbar und meine Unterbrechung bereit ist
@@ -465,112 +464,6 @@ local function BuildCombo(fp)
         t.edge = edge
         fp.combo[i] = t
     end
-end
-
----------------------------------------------------------------------------
--- Eigene Totems: unter dem Namen (Blizzards verbündete Plakette) eine herunterlaufende Leiste mit der Restzeit in
--- Sekunden daneben, im Stil der Zauberleiste (Wunsch flowfy 2026-11-23). Nur die EIGENEN Totems: nur für sie sagt
--- das Spiel, wann sie gesetzt wurden und wie lange sie halten (GetTotemInfo). Totems anderer behalten den Namen.
--- Zuordnung Plakette -> Totem über den Namen (und, wenn das Spiel es sagt, "gehört mir"); im Kampf kann der Name
--- gesperrt sein – dann bleibt eine schon zugeordnete Plakette zugeordnet, eine neue bekommt keine Leiste.
----------------------------------------------------------------------------
-local MAX_TOTEMS = MAX_TOTEMS or 4
-local TOTEM_W, TOTEM_H = 60, 5
-
-local function SameTotemName(a, b)
-    if type(a) ~= "string" or type(b) ~= "string" or a == "" or b == "" then return false end
-    -- (Rang-Zusatz wie "II" an einem der beiden Namen zulassen)
-    return a == b or a:find(b, 1, true) == 1 or b:find(a, 1, true) == 1
-end
-
-local function TotemSlotFor(unit)
-    if not GetTotemInfo then return nil end
-    local name = UnitName(unit)
-    if IsSecret(name) or type(name) ~= "string" then return nil end
-    if UnitIsOwnerOrControllerOfUnit then
-        local mine = UnitIsOwnerOrControllerOfUnit("player", unit)
-        if not IsSecret(mine) and not mine then return nil end
-    end
-    for slot = 1, MAX_TOTEMS do
-        local have, tname, start, duration = GetTotemInfo(slot)
-        if not IsSecret(have, tname, start, duration) and have and SameTotemName(name, tname)
-            and type(start) == "number" and type(duration) == "number" and duration > 0 then
-            return slot, start, duration
-        end
-    end
-end
-
-local function TotemOnUpdate(self)
-    local left = self.tEnd - GetTime()
-    if left <= 0 then
-        self:SetScript("OnUpdate", nil)
-        self:Hide()
-        return
-    end
-    self:SetValue(left)
-    local secs = math.ceil(left)
-    if secs ~= self.shownSecs then
-        self.shownSecs = secs
-        self.num:SetText(secs)
-    end
-end
-
-local function BuildTotem(fp)
-    local tb = CreateFrame("StatusBar", nil, fp.plate)
-    tb:SetSize(TOTEM_W, TOTEM_H)
-    tb:SetStatusBarTexture(Look())
-    tb:GetStatusBarTexture():SetVertexColor(COL.cast[1], COL.cast[2], COL.cast[3])
-    tb:SetFrameLevel(fp.frame:GetFrameLevel() + 10)
-    local bg = tb:CreateTexture(nil, "BACKGROUND")
-    bg:SetPoint("TOPLEFT", -1, 1)
-    bg:SetPoint("BOTTOMRIGHT", 1, -1)
-    bg:SetColorTexture(0, 0, 0, 0.75)
-    Edges(tb, "OVERLAY", tb, 0, 0, 0, 1, 1)
-    local spark = tb:CreateTexture(nil, "OVERLAY", nil, 2)
-    spark:SetWidth(2)
-    spark:SetPoint("TOP", tb:GetStatusBarTexture(), "TOPRIGHT", 0, 0)
-    spark:SetPoint("BOTTOM", tb:GetStatusBarTexture(), "BOTTOMRIGHT", 0, 0)
-    spark:SetColorTexture(1, 1, 0.9, 0.9)
-    tb.num = NewText(tb)
-    Font(tb.num, 8)
-    tb.num:SetPoint("LEFT", tb, "RIGHT", 3, 0)
-    tb:Hide()
-    fp.totem = tb
-end
-
-local function HideTotem(fp)
-    local tb = fp.totem
-    if tb then tb:SetScript("OnUpdate", nil) tb:Hide() end
-    fp.totemSlot = nil
-end
-
-local function UpdateTotem(fp)
-    if db.totemTimer == false or not fp.unit or fp.enemy then HideTotem(fp) return end
-    local slot, start, duration = TotemSlotFor(fp.unit)
-    if not slot and fp.totemSlot and GetTotemInfo then
-        -- schon zugeordnet (Name jetzt evtl. gesperrt): beim selben Platz bleiben, solange dort ein Totem steht
-        local have, _, s, d = GetTotemInfo(fp.totemSlot)
-        if not IsSecret(have, s, d) and have and type(s) == "number" and type(d) == "number" and d > 0 then
-            slot, start, duration = fp.totemSlot, s, d
-        end
-    end
-    if not slot or start + duration <= GetTime() then HideTotem(fp) return end
-    if not fp.totem then BuildTotem(fp) end
-    local tb = fp.totem
-    fp.totemSlot = slot
-    tb:ClearAllPoints()
-    local name = fp.frame.name
-    if name and name.IsShown and name:IsShown() then
-        tb:SetPoint("TOP", name, "BOTTOM", 0, -2)
-    else
-        tb:SetPoint("TOP", fp.plate, "CENTER", 0, -4)
-    end
-    tb:SetMinMaxValues(0, duration)
-    tb.tEnd = start + duration
-    tb.shownSecs = nil
-    tb:SetScript("OnUpdate", TotemOnUpdate)
-    TotemOnUpdate(tb)
-    if tb.tEnd > GetTime() then tb:Show() end
 end
 
 local function Setup(plate, frame)
@@ -1708,10 +1601,8 @@ local function Refresh(fp)
     if not fp.enemy then
         Mute(fp.frame, false)
         ReleaseOwn(fp)
-        UpdateTotem(fp) -- eigenes Totem: Restzeit-Leiste unter dem Namen
         return
     end
-    HideTotem(fp)
     Mute(fp.frame, true)
     UpdateTargetState(fp)
     fp.Resize = Resize
@@ -1757,7 +1648,6 @@ local function Detach(unit)
     if not fp then return end
     plates[unit] = nil
     ReleaseOwn(fp)
-    HideTotem(fp)
     fp.unit = nil
 end
 
@@ -2027,17 +1917,6 @@ H.UNIT_POWER_FREQUENT = function(unit, powerType)
 end
 
 H.RAID_TARGET_UPDATE = function() for _, fp in pairs(plates) do UpdateRaid(fp) end end
--- Totem gesetzt, ersetzt oder weg: Restzeit-Leisten neu zuordnen (die Plakette eines neuen Totems kann schon da sein)
-H.PLAYER_TOTEM_UPDATE = function()
-    C_Timer.After(0.1, function()
-        for _, fp in pairs(plates) do
-            if not fp.enemy then
-                local ok, err = pcall(UpdateTotem, fp)
-                if not ok then UI.ReportError("ForeverPlates", "totem", err) end
-            end
-        end
-    end)
-end
 H.QUEST_LOG_UPDATE = QueueQuest
 H.UNIT_QUEST_LOG_CHANGED = QueueQuest
 H.QUEST_ACCEPTED = QueueQuest
