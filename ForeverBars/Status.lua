@@ -26,7 +26,7 @@ local TEXT_COLOR = { 1, 1, 0.98 }
 -- (auf Wunsch zurück, 2026-10-18). Jede Füllung bekommt einen leichten Glanz (oben heller, unten dunkler).
 local XP_COLOR = { 0.60, 0.20, 0.90, 1.00 }      -- aktuelle Erfahrung: Violett
 local XP_RESTED_COLOR = { 0.25, 0.45, 1.00, 1.00 } -- aktuelle Erfahrung, solange man erholt ist: Blau (Wunsch 2026-11-07)
-local RESTED_COLOR = { 0.20, 0.38, 0.85, 0.80 }  -- erholter Bereich: Blau (hinter dem violetten Fortschritt)
+local RESTED_COLOR = { 0.25, 0.45, 1.00, 0.45 }  -- erholter Bereich: Blau; was über die Quest-XP hinausgeht, bleibt durchscheinend
 local POOL_COLOR = { 0.55, 0.80, 1.00, 1.00 }    -- Vorrat-Streifen unten: wie viel Erholung insgesamt (max. 1,5 Level)
 local QUEST_COLOR = { 1.00, 0.80, 0.10, 0.80 }   -- fertige Quests: Gold
 
@@ -480,12 +480,6 @@ local function Build(key, holder)
         w.fill = Layer(w, XP_COLOR, 3)       -- aktuelle XP
         -- Fertige Quests nur als dünner goldener Streifen oben (nur der Teil hinter den aktuellen XP sichtbar), damit er
         -- nicht wie echter Fortschritt aussieht; die Füllung (volle Höhe) bleibt wie bei Blizzard Violett.
-        w.quest:ClearAllPoints()
-        w.quest:SetPoint("TOPLEFT", w.inner, "TOPLEFT")
-        w.quest:SetPoint("TOPRIGHT", w.inner, "TOPRIGHT")
-        w.quest:SetHeight(3)
-        w.quest:SetFrameLevel(w.root:GetFrameLevel() + 4)
-        SetFill(w.quest, 1, 0.82, 0.15, 1)
         -- dünner Streifen am unteren Rand: gesamter Erholungsvorrat im Verhältnis zum Höchstwert (1,5 Level)
         w.pool = CreateFrame("StatusBar", nil, w.root)
         w.pool:SetPoint("BOTTOMLEFT", w.inner, "BOTTOMLEFT")
@@ -717,11 +711,11 @@ local function RenderXP(w)
     w.quest:SetValue(math.min(maxXP, xp + questXP))
     w.rested:SetValue(math.min(maxXP, xp + rested))
     SetFill(w.fill, XP_COLOR[1], XP_COLOR[2], XP_COLOR[3], XP_COLOR[4]) -- immer Violett (wie Blizzard); Erholung = blauer Bereich dahinter
-    PlaceMark(w, w.restedMark, rested > 0 and (xp + rested) / maxXP or nil)
     w.pool:SetMinMaxValues(0, maxXP * 1.5)
     w.pool:SetValue(rested)
-    w.pool:SetShown(rested > 0)
-    PlaceMark(w, w.questMark, questXP > 0 and (xp + questXP) / maxXP or nil)
+    w.pool:Hide() -- eine einzige Leiste, keine Zusatzstreifen/Marken (Wunsch 2026-11-24)
+    w.restedMark:Hide()
+    w.questMark:Hide()
 
     -- Hinweis, sobald die fertigen Quests fürs Level-Up reichen (einmal pro Level)
     local enough = questXP > 0 and questXP >= missing
@@ -875,7 +869,7 @@ local function XPTooltip(tip)
     tip:AddLine(" ")
     tip:AddLine(T("XP/h = Durchschnitt der letzten 30 Minuten", "XP/h = average of the last 30 minutes"), 0.7, 0.7, 0.7)
     tip:AddLine(T("Kills/Quests = Schnitt der letzten 5", "Kills/quests = average of the last 5"), 0.7, 0.7, 0.7)
-    tip:AddLine(T("Violett = deine XP, Blau = Erholungsbonus, goldener Streifen oben = fertige Quests, Streifen unten = Erholungsvorrat", "Purple = your XP, blue = rested bonus, gold strip on top = completed quests, bottom strip = rested pool"), 0.7, 0.7, 0.7)
+    tip:AddLine(T("Violett = deine XP, Gelb = fertige Quests im Log, Blau (durchscheinend) = Erholungsbonus", "Purple = your XP, yellow = completed quests in log, blue (translucent) = rested bonus"), 0.7, 0.7, 0.7)
 end
 
 local function RepTooltip(tip)
