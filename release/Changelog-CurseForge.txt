@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 1.02 – 2026-11-25
+
+- **ForeverBars: clearer XP bar.** A single bar now: purple for your XP, yellow directly after it for the XP of completed quests in your log, and a translucent blue area for your rested bonus. The extra strip at the bottom and the end markers are gone.
+- ForeverBags: the search box works again – items that do not match are dimmed.
+- ForeverSpellbook: tabs and search can be used **in combat** again. Click-casting works in the tab that was open when combat started; other tabs and search results are display only until combat ends.
+- ForeverQuests: hiding Blizzard's quest markers on the world map no longer touches their mouse settings, to avoid an "action blocked" error when opening the map.
+
 ## 1.01 – 2026-11-22
 
 - **Fixed: duplicate characters after a game update.** After a client update the game can report an empty realm name at login, which made a known character show up twice (with wrong gold in the Alts overview and the first-login setup shown again). Forever Core now remembers the realm per character, falls back to the realm stored in your saved data, and merges such duplicate entries automatically. Alts, Bags and the per-character profiles all use it.
