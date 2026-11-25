@@ -800,6 +800,102 @@ do
 end
 ns.auraEngine = engine
 
+-- Selbst mitzählen, ob eine Einheit noch etwas Bannbares hat: Die UNIT_AURA-Meldung nennt neu hinzugekommene und
+-- entfernte Aura-Nummern. Ist die Zahl sicher 0, wird Blizzards Bann-Anzeige unsichtbar (Deckkraft 0) – sie blieb
+-- nach dem Bannen im Kampf stehen. Sobald irgendeine Angabe gesperrt ist, gilt "unbekannt" und alles bleibt sichtbar.
+-- Mitschrift in ForeverFramesDB._auraProbe (nur Zähler, nur im Kampf): zeigt, was das Spiel wirklich herausgibt.
+do
+    local tracked = {} -- [unit] = { ids = { [Nummer] = true } }; fehlt = unbekannt
+
+    local function Count(key)
+        if not InCombatLockdown() then return end
+        local db = GetDB()
+        if type(db._auraProbe) ~= "table" then db._auraProbe = {} end
+        db._auraProbe[key] = (db._auraProbe[key] or 0) + 1
+    end
+
+    local function Filter() return GetDB().dispelOnlyMine and "HARMFUL|RAID" or "HARMFUL" end
+
+    -- Bestand neu einlesen; nil = nicht lesbar
+    local function Seed(unit)
+        local ok, ids = pcall(C_UnitAuras.GetUnitAuraInstanceIDs, unit, Filter())
+        if not ok or IsSecret(ids) or type(ids) ~= "table" then Count("seedBlocked") return nil end
+        local set = {}
+        for _, id in ipairs(ids) do
+            if IsSecret(id) then Count("seedIdSecret") return nil end
+            set[id] = true
+        end
+        Count("seedOk")
+        return { ids = set }
+    end
+
+    -- Änderungen aus der Meldung übernehmen; false = ab jetzt unbekannt
+    local function Apply(state, unit, info)
+        local added, removed = info.addedAuras, info.removedAuraInstanceIDs
+        if IsSecret(added) or IsSecret(removed) then Count("listSecret") return false end
+        for _, aura in ipairs(added or {}) do
+            if IsSecret(aura) then Count("addedSecret") return false end
+            local id = aura.auraInstanceID
+            if IsSecret(id) then Count("addedIdSecret") return false end
+            local ok, filtered = pcall(C_UnitAuras.IsAuraFilteredOutByInstanceID, unit, id, Filter())
+            if not ok or IsSecret(filtered) then Count("filterBlocked") return false end
+            Count("addedOk")
+            if not filtered then state.ids[id] = true end
+        end
+        for _, id in ipairs(removed or {}) do
+            if IsSecret(id) then Count("removedIdSecret") return false end
+            Count("removedOk")
+            state.ids[id] = nil
+        end
+        return true
+    end
+
+    local function Show(unit)
+        local state = tracked[unit]
+        local empty = state ~= nil and next(state.ids) == nil
+        for _, b in ipairs(ns.buttons or {}) do
+            local c = b.ffUnit == unit and b.ff and b.ff.engineC and b.ff.engineC.dispel
+            if c then
+                if empty then Count("masked") end
+                pcall(c.SetAlpha, c, empty and 0 or 1)
+            end
+        end
+    end
+
+    local ev = CreateFrame("Frame")
+    ev:RegisterEvent("UNIT_AURA")
+    ev:RegisterEvent("GROUP_ROSTER_UPDATE")
+    ev:RegisterEvent("PLAYER_REGEN_ENABLED")
+    ev:SetScript("OnEvent", function(_, event, unit, info)
+        local ok, err = pcall(function()
+            if event ~= "UNIT_AURA" then
+                local units = {}
+                for u in pairs(tracked) do units[#units + 1] = u end
+                wipe(tracked) -- Plätze neu verteilt bzw. Kampfende: alles wieder sichtbar, beim nächsten Ereignis neu
+                for _, u in ipairs(units) do Show(u) end
+                return
+            end
+            if type(unit) ~= "string" or IsSecret(unit) or not GetDB().auraEngine then return end
+            if not (unit == "player" or unit:match("^party") or unit:match("^raid") or unit == "pet") then return end
+            Count("events")
+            local full = true
+            if type(info) == "table" and not IsSecret(info) then
+                full = info.isFullUpdate
+                if IsSecret(full) then full = true end
+            else
+                Count("infoSecret")
+            end
+            if not InCombatLockdown() or full then
+                tracked[unit] = Seed(unit)
+            elseif tracked[unit] and not Apply(tracked[unit], unit, info) then
+                tracked[unit] = nil
+            end
+            Show(unit)
+        end)
+        if not ok then ns.ReportError("Dispel tracking", err) end
+    end)
+end
+
 function ns.CreateAuraVisuals(b)
     local v = b.ff
     v.auraLayer = CreateFrame("Frame", nil, v.top)
