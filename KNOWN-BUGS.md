@@ -20,7 +20,10 @@ Ablauf:
   `EnsureDispelContainer`), der es eigentlich selbst entfernen müsste. Noch unklar: Debuff-Symbol oder Typ-Symbol,
   eigener Rahmen oder Mitspieler, verschwindet es nach Kampfende. Für Patzlinger (Bereich ForeverFrames).
 - **Versuch 2026-11-19 (flowfy, eigener Rahmen):** bei `UNIT_AURA` mit entfernten Auren lösen die Container der
-  Einheit kurz ihre Einheit und setzen sie neu (`RefreshEngineUnits` in `Auras.lua`). Wartet auf Test im Spiel.
+  Einheit kurz ihre Einheit und setzen sie neu (`RefreshEngineUnits` in `Auras.lua`).
+- **Ersetzt 2026-11-26 (Patzlinger, `e7a3835`):** `RefreshEngineUnits` ruft jetzt `UpdateAllAuras()` des Containers
+  (nach jedem `UNIT_AURA`, im Kampf zusätzlich alle 0,5 s); Mitschrift in `ForeverFramesDB._auraProbe`. Wartet auf
+  Test im Spiel.
 
 ### ForeverQuests: „Search()“ blockiert beim Einstellen einer eigenen Gruppe (Fix wartet auf Bestätigung)
 - **Was passiert:** BugSack `ADDON_ACTION_BLOCKED … ForeverQuests … Search()` aus `Blizzard_LFGVanilla_Listing.lua:110`
