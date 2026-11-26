@@ -755,23 +755,37 @@ function engine.SetUnit(b)
     for _, c in pairs(v.engineC or {}) do SetContainerUnit(c, b.ffUnit) end
 end
 
--- Wurde eine Aura entfernt (z. B. Gift gebannt), die Container der Einheit neu einlesen lassen: im Kampf blieb das
--- Symbol sonst stehen (flowfy 2026-11-19, eigener Rahmen, Blizzard-Anzeige aktiv). Einheit kurz lösen und wieder
--- setzen – SetUnit ist auch im Kampf erlaubt (engine.SetUnit). Gebündelt: höchstens einmal je Bild und Einheit.
+-- Die Blizzard-Anzeige blieb im Kampf nach dem Bannen stehen. Die eigenen Aura-Abfragen sind dort gesperrt (gemessen
+-- 2026-11-26: 548 von 548 Meldungen), aber der Container hat selbst UpdateAllAuras(): er liest dann alle Auren der
+-- Einheit neu ein. Aufruf nach jeder UNIT_AURA-Meldung (gebündelt je Bild) und im Kampf zusätzlich alle 0,5 s.
+-- Mitschrift in ForeverFramesDB._auraProbe (Zähler): zeigt, ob der Aufruf im Kampf durchgeht.
+local function Count(key)
+    local db = GetDB()
+    if type(db._auraProbe) ~= "table" then db._auraProbe = {} end
+    db._auraProbe[key] = (db._auraProbe[key] or 0) + 1
+end
+
+local function ForceUpdate(c)
+    local ok, err
+    if c.UpdateAllAuras then
+        ok, err = pcall(c.UpdateAllAuras, c)
+        if InCombatLockdown() then Count(ok and "updateOk" or "updateError") end
+    else
+        ok, err = pcall(function() c:SetEnabled(false) c:SetEnabled(true) end)
+        if InCombatLockdown() then Count(ok and "toggleOk" or "toggleError") end
+    end
+    if not ok then GetDB()._auraProbe_error = tostring(err) end
+end
+
 local refreshUnits, refreshPlanned = {}, false
-local function RefreshEngineUnits()
-    refreshPlanned = false
+local function RefreshEngineUnits(all)
     local units = refreshUnits
-    refreshUnits = {}
+    if not all then refreshPlanned, refreshUnits = false, {} end
     for _, b in ipairs(ns.buttons or {}) do
         local v, unit = b.ff, b.ffUnit
-        if v and v.engine and unit and units[unit] then
+        if v and v.engine and unit and (all or units[unit]) and b:IsShown() then
             for _, c in pairs(v.engineC or {}) do
-                if c:IsShown() then
-                    pcall(c.SetUnit, c, nil)
-                    c.ffUnit = nil
-                    SetContainerUnit(c, unit)
-                end
+                if c:IsShown() then ForceUpdate(c) end
             end
         end
     end
@@ -779,15 +793,8 @@ end
 do
     local ev = CreateFrame("Frame")
     ev:RegisterEvent("UNIT_AURA")
-    ev:SetScript("OnEvent", function(_, _, unit, info)
+    ev:SetScript("OnEvent", function(_, _, unit)
         if type(unit) ~= "string" or IsSecret(unit) or not GetDB().auraEngine then return end
-        -- nur bei entfernten Auren (oder Komplett-Aktualisierung); gesperrte Angaben zählen als "ja"
-        local removed = true
-        if type(info) == "table" and not IsSecret(info) then
-            local ids, full = info.removedAuraInstanceIDs, info.isFullUpdate
-            removed = IsSecret(ids) or IsSecret(full) or ids ~= nil or full == true
-        end
-        if not removed then return end
         refreshUnits[unit] = true
         if not refreshPlanned then
             refreshPlanned = true
@@ -797,104 +804,13 @@ do
             end)
         end
     end)
-end
-ns.auraEngine = engine
-
--- Selbst mitzählen, ob eine Einheit noch etwas Bannbares hat: Die UNIT_AURA-Meldung nennt neu hinzugekommene und
--- entfernte Aura-Nummern. Ist die Zahl sicher 0, wird Blizzards Bann-Anzeige unsichtbar (Deckkraft 0) – sie blieb
--- nach dem Bannen im Kampf stehen. Sobald irgendeine Angabe gesperrt ist, gilt "unbekannt" und alles bleibt sichtbar.
--- Mitschrift in ForeverFramesDB._auraProbe (nur Zähler, nur im Kampf): zeigt, was das Spiel wirklich herausgibt.
-do
-    local tracked = {} -- [unit] = { ids = { [Nummer] = true } }; fehlt = unbekannt
-
-    local function Count(key)
-        if not InCombatLockdown() then return end
-        local db = GetDB()
-        if type(db._auraProbe) ~= "table" then db._auraProbe = {} end
-        db._auraProbe[key] = (db._auraProbe[key] or 0) + 1
-    end
-
-    local function Filter() return GetDB().dispelOnlyMine and "HARMFUL|RAID" or "HARMFUL" end
-
-    -- Bestand neu einlesen; nil = nicht lesbar
-    local function Seed(unit)
-        local ok, ids = pcall(C_UnitAuras.GetUnitAuraInstanceIDs, unit, Filter())
-        if not ok or IsSecret(ids) or type(ids) ~= "table" then Count("seedBlocked") return nil end
-        local set = {}
-        for _, id in ipairs(ids) do
-            if IsSecret(id) then Count("seedIdSecret") return nil end
-            set[id] = true
-        end
-        Count("seedOk")
-        return { ids = set }
-    end
-
-    -- Änderungen aus der Meldung übernehmen; false = ab jetzt unbekannt
-    local function Apply(state, unit, info)
-        local added, removed = info.addedAuras, info.removedAuraInstanceIDs
-        if IsSecret(added) or IsSecret(removed) then Count("listSecret") return false end
-        for _, aura in ipairs(added or {}) do
-            if IsSecret(aura) then Count("addedSecret") return false end
-            local id = aura.auraInstanceID
-            if IsSecret(id) then Count("addedIdSecret") return false end
-            local ok, filtered = pcall(C_UnitAuras.IsAuraFilteredOutByInstanceID, unit, id, Filter())
-            if not ok or IsSecret(filtered) then Count("filterBlocked") return false end
-            Count("addedOk")
-            if not filtered then state.ids[id] = true end
-        end
-        for _, id in ipairs(removed or {}) do
-            if IsSecret(id) then Count("removedIdSecret") return false end
-            Count("removedOk")
-            state.ids[id] = nil
-        end
-        return true
-    end
-
-    local function Show(unit)
-        local state = tracked[unit]
-        local empty = state ~= nil and next(state.ids) == nil
-        for _, b in ipairs(ns.buttons or {}) do
-            local c = b.ffUnit == unit and b.ff and b.ff.engineC and b.ff.engineC.dispel
-            if c then
-                if empty then Count("masked") end
-                pcall(c.SetAlpha, c, empty and 0 or 1)
-            end
-        end
-    end
-
-    local ev = CreateFrame("Frame")
-    ev:RegisterEvent("UNIT_AURA")
-    ev:RegisterEvent("GROUP_ROSTER_UPDATE")
-    ev:RegisterEvent("PLAYER_REGEN_ENABLED")
-    ev:SetScript("OnEvent", function(_, event, unit, info)
-        local ok, err = pcall(function()
-            if event ~= "UNIT_AURA" then
-                local units = {}
-                for u in pairs(tracked) do units[#units + 1] = u end
-                wipe(tracked) -- Plätze neu verteilt bzw. Kampfende: alles wieder sichtbar, beim nächsten Ereignis neu
-                for _, u in ipairs(units) do Show(u) end
-                return
-            end
-            if type(unit) ~= "string" or IsSecret(unit) or not GetDB().auraEngine then return end
-            if not (unit == "player" or unit:match("^party") or unit:match("^raid") or unit == "pet") then return end
-            Count("events")
-            local full = true
-            if type(info) == "table" and not IsSecret(info) then
-                full = info.isFullUpdate
-                if IsSecret(full) then full = true end
-            else
-                Count("infoSecret")
-            end
-            if not InCombatLockdown() or full then
-                tracked[unit] = Seed(unit)
-            elseif tracked[unit] and not Apply(tracked[unit], unit, info) then
-                tracked[unit] = nil
-            end
-            Show(unit)
-        end)
-        if not ok then ns.ReportError("Dispel tracking", err) end
+    C_Timer.NewTicker(0.5, function()
+        if not InCombatLockdown() or not GetDB().auraEngine then return end
+        local ok, err = pcall(RefreshEngineUnits, true)
+        if not ok then ns.ReportError("AuraContainer refresh", err) end
     end)
 end
+ns.auraEngine = engine
 
 function ns.CreateAuraVisuals(b)
     local v = b.ff
